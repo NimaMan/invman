@@ -80,14 +80,25 @@ class LostSalesHeuristicPolicies:
         return q_value
 
     def _best_quantity(self, evaluator, state, return_value=False):
-        scored = [
-            (order_quantity, evaluator(state, order_quantity))
-            for order_quantity in range(self.env.action_space_dim)
-        ]
-        best_quantity, best_value = min(scored, key=lambda item: item[1])
+        best_quantity = 0
+        current_value = evaluator(state, 0)
+        previous_value = np.inf
+
+        while best_quantity + 1 < self.env.action_space_dim and previous_value > current_value:
+            best_quantity += 1
+            previous_value = current_value
+            current_value = evaluator(state, best_quantity)
+
+        if previous_value > current_value:
+            chosen_quantity = best_quantity
+            chosen_value = current_value
+        else:
+            chosen_quantity = max(0, best_quantity - 1)
+            chosen_value = previous_value
+
         if return_value:
-            return int(best_quantity), float(best_value)
-        return int(best_quantity)
+            return int(chosen_quantity), float(chosen_value)
+        return int(chosen_quantity)
 
     def get_myopic_1_order_quantity(self, state, return_qhat=False):
         return self._best_quantity(self.get_Q_L_x_L_from_state, state, return_value=return_qhat)
@@ -147,7 +158,7 @@ def get_heuristic_policy_cost(args, env=None, heuristic="myopic1", seed=1234):
     np.random.seed(getattr(args, "seed", seed))
 
     if env is None:
-        env = build_env_from_args(args, track_demand=False)
+        env = build_env_from_args(args, track_demand=getattr(args, "track_demand", False))
     elif not isinstance(env, LostSalesEnv):
         raise TypeError("env must be a LostSalesEnv instance")
 

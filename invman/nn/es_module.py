@@ -101,7 +101,7 @@ class ESModule(Module):
         idx = 0
 
         for i, param in enumerate(self.parameters()):
-            delta = np.product(model_shapes[i])
+            delta = np.prod(model_shapes[i])
             block = flat_params[idx: idx + delta]
             block = np.reshape(block, model_shapes[i])
             idx += delta

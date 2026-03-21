@@ -65,6 +65,7 @@ def get_config(argv=None):
     parser.add_argument("--horizon", default=2000, type=int, help="Training rollout horizon.")
     parser.add_argument("--eval_horizon", default=10000, type=int, help="Evaluation rollout horizon.")
     parser.add_argument("--eval_seeds", default=10, type=int, help="Number of evaluation seeds.")
+    parser.add_argument("--track_demand", action="store_true", help="Pre-sample demand paths for reproducible evaluations.")
     parser.add_argument("--warm_up_periods_ratio", default=0.2, type=float, help="Warm-up fraction discarded from the mean cost.")
     parser.add_argument("--inventory_upper_bound", default=200, type=int, help="One-hot helper upper bound retained for legacy utilities.")
 

@@ -47,7 +47,13 @@ def evaluate_model(model, args):
     costs = []
     for seed_offset in range(args.eval_seeds):
         seed = args.seed + seed_offset
-        _, env = get_model_fitness(model, eval_args, seed=seed, return_env=True, track_demand=False)
+        _, env = get_model_fitness(
+            model,
+            eval_args,
+            seed=seed,
+            return_env=True,
+            track_demand=getattr(args, "track_demand", False),
+        )
         costs.append(env.avg_total_cost)
     return summarize_costs(costs)
 
