@@ -1,0 +1,273 @@
+from collections import deque
+
+import numpy as np
+from scipy.stats import nbinom, poisson
+
+
+class LostSalesEnv:
+    def __init__(
+        self,
+        demand_rate: float,
+        lead_time: int = 2,
+        max_order_size: int = 25,
+        inventory_upper_bound: int = 200,
+        holding_cost: float = 1.0,
+        shortage_cost: float = 4.0,
+        horizon: int = int(1e5),
+        procurement_cost: float = 0.0,
+        fixed_order_cost: float = 0.0,
+        demand_dist_name: str = "Poisson",
+        track_demand: bool = True,
+        warm_up_periods_ratio: float = 0.2,
+    ):
+        if lead_time < 1:
+            raise ValueError("lead_time must be at least 1")
+        if max_order_size < 0:
+            raise ValueError("max_order_size must be non-negative")
+
+        self.demand_rate = float(demand_rate)
+        self.demand_dist_name = demand_dist_name
+        self.holding_cost = float(holding_cost)
+        self.shortage_cost = float(shortage_cost)
+        self.procurement_cost = float(procurement_cost)
+        self.fixed_order_cost = float(fixed_order_cost)
+        self.max_order_size = int(max_order_size)
+        self.action_space_dim = self.max_order_size + 1
+        self.inventory_upper_bound = int(inventory_upper_bound)
+        self.lead_time = int(lead_time)
+        self.state_space_dim = self.lead_time
+        self.lead_time_orders = deque(maxlen=self.lead_time)
+        self.current_epoch = 0
+        self.done = False
+        self.horizon = int(horizon)
+        self.warm_up_periods = int(warm_up_periods_ratio * self.horizon)
+        self.gamma = 0.995
+        self.track_demand = track_demand
+        self.demand_probs, self.demand_lb, self.demand_ub = self.get_demand_prob_vector()
+        self.reset()
+
+    def initialize_env(self):
+        self.current_inventory_level = int(round(2 * self.demand_rate))
+        self.lead_time_orders.clear()
+        for _ in range(self.lead_time):
+            if self.max_order_size == 0:
+                order_quantity = 0
+            else:
+                order_quantity = np.random.randint(low=1, high=self.action_space_dim)
+            self.lead_time_orders.append(int(order_quantity))
+            epoch_demand = self._sample_single_demand()
+            self.current_inventory_level = max(0, self.current_inventory_level - int(epoch_demand))
+
+    def reset(self):
+        self.total_cost = 0.0
+        self.epoch_costs = []
+        self.current_epoch = 0
+        self.done = False
+        self.arriving_order = 0
+        self.horizon_demand = self.get_demand() if self.track_demand else None
+        self.initialize_env()
+        return self.norm_state
+
+    def is_valid_action(self, action):
+        return 0 <= int(action) <= self.max_order_size
+
+    def generate_random_demand_geometric(self, size):
+        support = np.arange(self.demand_lb, self.demand_ub + 1)
+        return np.random.choice(support, p=self.demand_probs, size=size)
+
+    def _sample_single_demand(self):
+        if self.demand_dist_name == "Poisson":
+            return int(np.random.poisson(lam=self.demand_rate))
+        if self.demand_dist_name == "Geometric":
+            return int(self.generate_random_demand_geometric(size=1)[0])
+        raise NotImplementedError(f"Unsupported demand distribution: {self.demand_dist_name}")
+
+    def get_demand(self):
+        if self.demand_dist_name == "Poisson":
+            return np.random.poisson(lam=self.demand_rate, size=self.horizon)
+        if self.demand_dist_name == "Geometric":
+            return self.generate_random_demand_geometric(size=self.horizon)
+        raise NotImplementedError(f"Unsupported demand distribution: {self.demand_dist_name}")
+
+    def get_realized_demand(self):
+        if self.horizon_demand is not None:
+            return int(self.horizon_demand[self.current_epoch])
+        return self._sample_single_demand()
+
+    def get_state_dim(self):
+        return self.lead_time
+
+    def is_done(self):
+        return self.done
+
+    def get_epoch_cost(self, epoch_demand, order_quantity):
+        epoch_cost = self.procurement_cost * int(order_quantity)
+        if order_quantity > 0:
+            epoch_cost += self.fixed_order_cost
+
+        if epoch_demand < self.current_inventory_level:
+            self.current_inventory_level -= int(epoch_demand)
+            epoch_cost += self.current_inventory_level * self.holding_cost
+        else:
+            lost_sales = int(epoch_demand) - self.current_inventory_level
+            epoch_cost += self.shortage_cost * lost_sales
+            self.current_inventory_level = 0
+
+        return float(epoch_cost)
+
+    def update_lead_time_orders(self, order_quantity):
+        self.arriving_order = int(self.lead_time_orders.popleft())
+        self.lead_time_orders.append(int(order_quantity))
+        return self.arriving_order
+
+    @property
+    def state(self):
+        state = list(self.lead_time_orders)
+        state[0] += self.current_inventory_level
+        return state
+
+    @property
+    def norm_state(self):
+        scale = max(1, self.max_order_size)
+        return np.asarray(self.state, dtype=np.float32) / scale
+
+    @property
+    def inventory_position(self):
+        return self.current_inventory_level + sum(self.lead_time_orders)
+
+    def step(self, order_quantity):
+        order_quantity = int(order_quantity)
+        if not self.is_valid_action(order_quantity):
+            raise ValueError(f"Invalid order quantity {order_quantity}; expected 0..{self.max_order_size}")
+
+        arriving_orders = self.update_lead_time_orders(order_quantity)
+        self.current_inventory_level += arriving_orders
+        epoch_demand = self.get_realized_demand()
+        epoch_cost = self.get_epoch_cost(epoch_demand=epoch_demand, order_quantity=order_quantity)
+
+        self.epoch_costs.append(epoch_cost)
+        self.total_cost += epoch_cost
+        self.current_epoch += 1
+        if self.current_epoch >= self.horizon:
+            self.done = True
+
+        return self.norm_state, epoch_cost, self.done
+
+    def get_one_hot_encoded_state(self, state):
+        d = self.inventory_upper_bound + self.max_order_size + 1
+        s = np.zeros((1, d))
+        s[0, state[0]] = 1
+        s[0, self.inventory_upper_bound + state[1]] = 1
+        return s
+
+    @property
+    def avg_total_cost(self, after_warmup=True):
+        if not self.epoch_costs:
+            return 0.0
+        if after_warmup and self.warm_up_periods < len(self.epoch_costs):
+            return float(np.mean(self.epoch_costs[self.warm_up_periods:]))
+        return float(np.mean(self.epoch_costs))
+
+    def get_demand_lower_upper_bound_Poisson(self, eps=1e-14):
+        return poisson.interval(1 - eps, mu=self.demand_rate)
+
+    def get_demand_prob_vector_Poisson(self):
+        lb, ub = self.get_demand_lower_upper_bound_Poisson()
+        demand_range = np.arange(int(lb), int(ub) + 1)
+        demand_probs = poisson.pmf(demand_range, self.demand_rate)
+        demand_probs /= demand_probs.sum()
+        return demand_probs, int(lb), int(ub)
+
+    def get_Geometric_demand_probs_lower_upper_bound(self, eps=1e-14):
+        probs = []
+        success_prob = 1.0 / (1.0 + self.demand_rate)
+        cumulative = 0.0
+        k = 0
+        while cumulative < 1 - eps:
+            prob = success_prob * ((1 - success_prob) ** k)
+            probs.append(prob)
+            cumulative += prob
+            k += 1
+        probs = np.asarray(probs, dtype=np.float64)
+        probs /= probs.sum()
+        return probs, 0, len(probs) - 1
+
+    def get_demand_prob_vector_Geometric(self):
+        return self.get_Geometric_demand_probs_lower_upper_bound()
+
+    def get_demand_prob_vector(self):
+        if self.demand_dist_name == "Poisson":
+            return self.get_demand_prob_vector_Poisson()
+        if self.demand_dist_name == "Geometric":
+            return self.get_demand_prob_vector_Geometric()
+        raise NotImplementedError(f"Unsupported demand distribution: {self.demand_dist_name}")
+
+    def get_cumulative_demand_l_L(self, k, l=0):
+        periods = self.lead_time - l + 1
+        if self.demand_dist_name == "Poisson":
+            rate = periods * self.demand_rate
+            return float(poisson.cdf(k=k, mu=rate))
+        if self.demand_dist_name == "Geometric":
+            success_prob = 1.0 / (1.0 + self.demand_rate)
+            return float(nbinom.cdf(k=k, n=periods, p=success_prob))
+        raise NotImplementedError(f"Unsupported demand distribution: {self.demand_dist_name}")
+
+    def get_critical_fractile(self):
+        return (self.procurement_cost + self.holding_cost) / (self.holding_cost + self.shortage_cost)
+
+    @property
+    def critical_fractile(self):
+        return self.get_critical_fractile()
+
+    def get_order_pipeline_partial_sum(self, state, l):
+        if l == self.lead_time:
+            return 0
+        return int(sum(list(state)[l:]))
+
+
+def build_env_from_args(args, horizon=None, track_demand=False):
+    return LostSalesEnv(
+        demand_rate=args.demand_rate,
+        lead_time=args.lead_time,
+        horizon=args.horizon if horizon is None else horizon,
+        max_order_size=args.max_order_size,
+        inventory_upper_bound=getattr(args, "inventory_upper_bound", 200),
+        holding_cost=args.holding_cost,
+        shortage_cost=args.shortage_cost,
+        procurement_cost=getattr(args, "procurement_cost", 0.0),
+        fixed_order_cost=getattr(args, "fixed_order_cost", 0.0),
+        demand_dist_name=args.demand_dist_name,
+        track_demand=track_demand,
+        warm_up_periods_ratio=getattr(args, "warm_up_periods_ratio", 0.2),
+    )
+
+
+def get_model_fitness(
+    model,
+    args,
+    model_params=None,
+    seed=1234,
+    indiv_idx=-1,
+    return_env=False,
+    track_demand=False,
+    verbose=False,
+):
+    import torch
+
+    if model_params is not None:
+        model.set_model_params(model_params)
+
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    env = build_env_from_args(args, track_demand=track_demand)
+    state = env.norm_state
+    done = False
+    while not done:
+        state_tensor = torch.as_tensor(state, dtype=torch.float32)
+        order_quantity = model(state_tensor)
+        state, _, done = env.step(order_quantity=order_quantity)
+    if verbose:
+        print(f"Seed {seed}: avg cost {env.avg_total_cost:.4f}")
+    if return_env:
+        return -env.avg_total_cost, env
+    return -env.avg_total_cost, indiv_idx

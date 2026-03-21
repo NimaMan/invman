@@ -1,0 +1,6 @@
+numpy
+python-dotenv
+scikit-learn
+scipy
+torch
+cma
