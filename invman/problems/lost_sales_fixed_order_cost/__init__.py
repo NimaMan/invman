@@ -12,15 +12,21 @@ from invman.problems.lost_sales_fixed_order_cost.heuristics import (
     search_best_s_s_policy,
 )
 from invman.problems.lost_sales_fixed_order_cost.reference_instances import (
+    build_grid_instances,
+    get_benchmark_grid,
     build_reference_args,
     get_reference_instance,
+    list_reference_instances,
 )
 
 __all__ = [
+    "build_grid_instances",
+    "get_benchmark_grid",
     "build_reference_args",
     "evaluate_policy_across_seeds",
     "evaluate_policy_cost",
     "get_modified_s_s_q_order_quantity",
+    "list_reference_instances",
     "get_paper_q_heuristic",
     "get_reference_instance",
     "get_s_nq_order_quantity",
