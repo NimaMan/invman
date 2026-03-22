@@ -49,5 +49,13 @@ The winning structure so far is:
 
 ## Open direction
 
-The next intended transfer target is the fixed-order-cost lost-sales problem, where current learned
-policies still lag the benchmark heuristics.
+The fixed-order-cost transfer result is now also positive on the canonical instance
+`L=4, p=4, K=5, demand ~ Poisson(5)`:
+
+- learned soft tree, `1M` eval: `8.81009`
+- `s,S`: `9.44401`
+- `s,nQ`: `9.21664`
+- modified `s,S,q`: `9.16537`
+
+So the same oblique depth-2 tree with linear leaves improves materially on the fixed-cost
+heuristics as well.

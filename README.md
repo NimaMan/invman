@@ -34,6 +34,23 @@ The current best learned architecture is:
 
 This is better than `Myopic-2 = 4.8204` and is close to the known optimal reference `4.73`.
 
+Trusted fixed-order-cost transfer benchmark:
+
+- lost sales with `L=4`
+- shortage cost `p=4`
+- fixed ordering cost `K=5`
+- demand `~ Poisson(5)`
+- holding cost `h=1`
+
+On this benchmark, the same soft-tree family transfers strongly:
+
+- learned soft tree, `50k` eval: `8.81895`
+- learned soft tree, `1M` eval: `8.81009`
+- best heuristic on `1M` eval, modified `s,S,q`: `9.16537`
+
+So the current tree policy is about `3.9%` better than the best heuristic on the canonical
+fixed-cost instance.
+
 ## Quick Start
 
 Create an environment and install the package in editable mode:
@@ -79,6 +96,6 @@ Outputs are written under `outputs/`:
 
 The environment already supports an optional `fixed_order_cost` parameter. That gives a clean extension path toward the lost-sales problem with a setup cost on positive orders. The literature note for that variant is tracked in `../docs/lost_sales_fixed_order_cost_literature.md`.
 
-The fixed-order-cost benchmark layer and heuristic baselines are in place, but the current best
-tree-policy finding above has only been established on the trusted vanilla lost-sales benchmark so
-far.
+The fixed-order-cost benchmark layer and heuristic baselines are in place, and the current best
+oblique depth-2 soft tree with linear leaves now also outperforms the benchmark heuristic policies
+on the canonical fixed-cost instance.
