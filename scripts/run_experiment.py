@@ -21,6 +21,7 @@ from invman.problems.lost_sales_fixed_order_cost.heuristics import (
     search_best_s_nq_policy,
     search_best_s_s_policy,
 )
+from invman.tree_policy import SoftTreePolicy
 
 
 def build_model(args):
@@ -40,6 +41,13 @@ def build_model(args):
             activation=args.activation,
             action_output_mode=args.policy_head,
             max_order_size=env.max_order_size,
+        )
+    if args.policy_type == "soft_tree":
+        return SoftTreePolicy(
+            input_dim=env.state_space_dim,
+            max_order_size=env.max_order_size,
+            depth=args.tree_depth,
+            temperature=args.tree_temperature,
         )
     raise NotImplementedError(f"Unknown policy type: {args.policy_type}")
 
@@ -151,7 +159,8 @@ def ensure_output_dirs(args):
 def main():
     args = get_config()
     ensure_output_dirs(args)
-    policy_architecture = f"{args.policy_type}_{args.policy_head}"
+    effective_policy_head = args.policy_head if args.policy_type != "soft_tree" else "tree_leaf_quantity"
+    policy_architecture = f"{args.policy_type}_{effective_policy_head}_{args.state_features}"
     model = build_model(args)
     trained_model, _ = train(
         model=model,
@@ -171,9 +180,13 @@ def main():
         "problem": args.problem,
         "policy_type": args.policy_type,
         "policy_backbone": args.policy_type,
-        "policy_head": args.policy_head,
+        "policy_head": effective_policy_head,
         "policy_architecture": policy_architecture,
-        "action_output_mode": args.policy_head,
+        "action_output_mode": effective_policy_head,
+        "state_features": args.state_features,
+        "tree_depth": args.tree_depth,
+        "tree_temperature": args.tree_temperature,
+        "rollout_backend": args.rollout_backend,
         "demand_dist_name": args.demand_dist_name,
         "demand_rate": args.demand_rate,
         "lead_time": args.lead_time,

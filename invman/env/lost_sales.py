@@ -4,6 +4,20 @@ import numpy as np
 from scipy.stats import nbinom, poisson
 
 
+def _normalize_state_features(state_features: str) -> str:
+    aliases = {
+        "pipeline": "pipeline",
+        "pipeline_plus_summary": "pipeline_plus_summary",
+        "augmented": "pipeline_plus_summary",
+        "feature_augmented": "pipeline_plus_summary",
+    }
+    normalized = aliases.get(state_features)
+    if normalized is None:
+        valid = ", ".join(sorted(aliases))
+        raise ValueError(f"Unknown state feature mode '{state_features}'. Expected one of: {valid}")
+    return normalized
+
+
 class LostSalesEnv:
     def __init__(
         self,
@@ -19,6 +33,7 @@ class LostSalesEnv:
         demand_dist_name: str = "Poisson",
         track_demand: bool = True,
         warm_up_periods_ratio: float = 0.2,
+        state_features: str = "pipeline",
     ):
         if lead_time < 1:
             raise ValueError("lead_time must be at least 1")
@@ -35,7 +50,8 @@ class LostSalesEnv:
         self.action_space_dim = self.max_order_size + 1
         self.inventory_upper_bound = int(inventory_upper_bound)
         self.lead_time = int(lead_time)
-        self.state_space_dim = self.lead_time
+        self.state_features = _normalize_state_features(state_features)
+        self.state_space_dim = self.get_state_dim()
         self.lead_time_orders = deque(maxlen=self.lead_time)
         self.current_epoch = 0
         self.done = False
@@ -95,7 +111,11 @@ class LostSalesEnv:
         return self._sample_single_demand()
 
     def get_state_dim(self):
-        return self.lead_time
+        if self.state_features == "pipeline":
+            return self.lead_time
+        if self.state_features == "pipeline_plus_summary":
+            return self.lead_time + 3
+        raise NotImplementedError(f"Unknown state feature mode: {self.state_features}")
 
     def is_done(self):
         return self.done
@@ -128,8 +148,26 @@ class LostSalesEnv:
 
     @property
     def norm_state(self):
-        scale = max(1, self.max_order_size)
-        return np.asarray(self.state, dtype=np.float32) / scale
+        return self.policy_state
+
+    @property
+    def policy_state(self):
+        scale = float(max(1, self.max_order_size))
+        pipeline_state = np.asarray(self.state, dtype=np.float32) / scale
+        if self.state_features == "pipeline":
+            return pipeline_state
+        if self.state_features == "pipeline_plus_summary":
+            position_scale = float(max(1, self.lead_time * self.max_order_size))
+            summary = np.asarray(
+                [
+                    self.current_inventory_level / scale,
+                    sum(self.lead_time_orders) / position_scale,
+                    self.inventory_position / position_scale,
+                ],
+                dtype=np.float32,
+            )
+            return np.concatenate([pipeline_state, summary]).astype(np.float32, copy=False)
+        raise NotImplementedError(f"Unknown state feature mode: {self.state_features}")
 
     @property
     def inventory_position(self):
@@ -239,7 +277,20 @@ def build_env_from_args(args, horizon=None, track_demand=False):
         demand_dist_name=args.demand_dist_name,
         track_demand=track_demand,
         warm_up_periods_ratio=getattr(args, "warm_up_periods_ratio", 0.2),
+        state_features=getattr(args, "state_features", "pipeline"),
     )
+
+
+def _should_use_rust_soft_tree_rollout(model, args, track_demand=False, return_env=False):
+    if return_env or track_demand:
+        return False
+    if getattr(args, "rollout_backend", "python") != "rust":
+        return False
+    if getattr(args, "demand_dist_name", "Poisson") != "Poisson":
+        return False
+    if getattr(args, "state_features", "pipeline") != "pipeline":
+        return False
+    return type(model).__name__ == "SoftTreePolicy"
 
 
 def get_model_fitness(
@@ -254,13 +305,43 @@ def get_model_fitness(
 ):
     import torch
 
-    if model_params is not None:
+    use_rust_rollout = _should_use_rust_soft_tree_rollout(
+        model,
+        args,
+        track_demand=track_demand,
+        return_env=return_env,
+    )
+    if model_params is not None and not use_rust_rollout:
         model.set_model_params(model_params)
+
+    if use_rust_rollout:
+        import invman_rust
+
+        flat_params = model_params if model_params is not None else model.get_model_flat_params()
+        avg_cost = invman_rust.lost_sales_soft_tree_rollout(
+            flat_params=np.asarray(flat_params, dtype=np.float32).tolist(),
+            input_dim=int(model.input_dim),
+            depth=int(model.depth),
+            max_order_size=int(model.max_order_size),
+            demand_rate=float(args.demand_rate),
+            lead_time=int(args.lead_time),
+            holding_cost=float(args.holding_cost),
+            shortage_cost=float(args.shortage_cost),
+            procurement_cost=float(getattr(args, "procurement_cost", 0.0)),
+            fixed_order_cost=float(getattr(args, "fixed_order_cost", 0.0)),
+            horizon=int(args.horizon),
+            seed=int(seed),
+            warm_up_periods_ratio=float(getattr(args, "warm_up_periods_ratio", 0.2)),
+            temperature=float(model.temperature),
+        )
+        if verbose:
+            print(f"Seed {seed}: avg cost {avg_cost:.4f}")
+        return -float(avg_cost), indiv_idx
 
     np.random.seed(seed)
     torch.manual_seed(seed)
     env = build_env_from_args(args, track_demand=track_demand)
-    state = env.norm_state
+    state = env.policy_state
     done = False
     while not done:
         state_tensor = torch.as_tensor(state, dtype=torch.float32)

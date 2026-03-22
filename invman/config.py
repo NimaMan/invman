@@ -19,6 +19,8 @@ def _normalize_policy_head(policy_head: str) -> str:
         "categorical_quantity": "categorical_quantity",
         "direct_quantity": "direct_quantity",
         "gated_ordinal_quantity": "gated_ordinal_quantity",
+        "two_stage_ordinal_quantity": "two_stage_ordinal_quantity",
+        "conditional_ordinal_quantity": "two_stage_ordinal_quantity",
         # Backward-compatible aliases used in earlier experiments.
         "discrete_logits": "categorical_quantity",
         "scalar_quantity": "direct_quantity",
@@ -27,6 +29,20 @@ def _normalize_policy_head(policy_head: str) -> str:
     if normalized is None:
         valid = ", ".join(sorted(aliases))
         raise ValueError(f"Unknown policy head '{policy_head}'. Expected one of: {valid}")
+    return normalized
+
+
+def _normalize_state_features(state_features: str) -> str:
+    aliases = {
+        "pipeline": "pipeline",
+        "pipeline_plus_summary": "pipeline_plus_summary",
+        "augmented": "pipeline_plus_summary",
+        "feature_augmented": "pipeline_plus_summary",
+    }
+    normalized = aliases.get(state_features)
+    if normalized is None:
+        valid = ", ".join(sorted(aliases))
+        raise ValueError(f"Unknown state feature mode '{state_features}'. Expected one of: {valid}")
     return normalized
 
 
@@ -84,8 +100,19 @@ def get_config(argv=None):
     parser.add_argument("--track_demand", action="store_true", help="Pre-sample demand paths for reproducible evaluations.")
     parser.add_argument("--warm_up_periods_ratio", default=0.2, type=float, help="Warm-up fraction discarded from the mean cost.")
     parser.add_argument("--inventory_upper_bound", default=200, type=int, help="One-hot helper upper bound retained for legacy utilities.")
+    parser.add_argument(
+        "--state_features",
+        default="pipeline",
+        help="State representation fed to the policy approximator.",
+    )
+    parser.add_argument(
+        "--rollout_backend",
+        default="python",
+        choices=["python", "rust"],
+        help="Simulator backend used for policy rollouts when supported.",
+    )
 
-    parser.add_argument("--policy_type", default="nn", choices=["nn", "linear"], help="Policy backbone.")
+    parser.add_argument("--policy_type", default="nn", choices=["nn", "linear", "soft_tree"], help="Policy backbone.")
     parser.add_argument(
         "--policy_head",
         "--action_output_mode",
@@ -106,6 +133,13 @@ def get_config(argv=None):
         choices=["selu", "gelu", "relu"],
         help="Activation used by the neural policy.",
     )
+    parser.add_argument("--tree_depth", default=2, type=int, help="Depth of the soft tree policy.")
+    parser.add_argument(
+        "--tree_temperature",
+        default=0.25,
+        type=float,
+        help="Temperature used by soft tree split sigmoids.",
+    )
 
     parser.add_argument("--experiment_name", default="lost_sales", help="Name used for saved artifacts.")
     parser.add_argument("--results_dir", default=str(default_results_dir), help="Directory for JSON summaries.")
@@ -123,10 +157,18 @@ def get_config(argv=None):
         args.policy_head = _normalize_policy_head(args.policy_head)
     except ValueError as exc:
         parser.error(str(exc))
+    try:
+        args.state_features = _normalize_state_features(args.state_features)
+    except ValueError as exc:
+        parser.error(str(exc))
     # Backward-compatible alias retained for older scripts.
     args.action_output_mode = args.policy_head
 
     if args.problem == "lost_sales_fixed_order_cost" and args.fixed_order_cost <= 0:
         parser.error("--fixed_order_cost must be positive when --problem=lost_sales_fixed_order_cost")
+    if args.tree_depth < 1:
+        parser.error("--tree_depth must be at least 1")
+    if args.tree_temperature <= 0:
+        parser.error("--tree_temperature must be positive")
 
     return args

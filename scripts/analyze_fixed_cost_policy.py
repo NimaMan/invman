@@ -1,6 +1,7 @@
 import argparse
 import json
 from collections import Counter
+from itertools import product
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -17,10 +18,11 @@ def get_args():
     parser.add_argument("--model_dir", required=True, help="Directory containing model_config.json and model_params.torch.")
     parser.add_argument("--seed", default=1234, type=int)
     parser.add_argument("--horizon", default=50000, type=int)
+    parser.add_argument("--state_features", default="pipeline", help="State feature mode expected by the model.")
     return parser.parse_args()
 
 
-def build_reference_args(horizon: int):
+def build_reference_args(horizon: int, state_features: str):
     return SimpleNamespace(
         demand_rate=5.0,
         lead_time=4,
@@ -34,6 +36,7 @@ def build_reference_args(horizon: int):
         demand_dist_name="Poisson",
         track_demand=True,
         warm_up_periods_ratio=0.2,
+        state_features=state_features,
     )
 
 
@@ -52,7 +55,7 @@ def rollout_model(model, args, seed: int):
     np.random.seed(seed)
     torch.manual_seed(seed)
     env = build_env_from_args(args, track_demand=True)
-    state = env.norm_state
+    state = env.policy_state
     actions = []
     done = False
     while not done:
@@ -81,31 +84,62 @@ def rollout_modified_s_s_q(args, seed: int, params=None):
     return env.avg_total_cost, summarize_actions(actions)
 
 
-def coarse_grid_action_histogram(model):
+def build_policy_state(current_inventory, lead_time_orders, max_order_size, state_features):
+    scale = float(max(1, max_order_size))
+    pipeline_state = np.asarray(
+        [current_inventory + lead_time_orders[0], *lead_time_orders[1:]],
+        dtype=np.float32,
+    ) / scale
+    if state_features == "pipeline":
+        return pipeline_state
+    if state_features == "pipeline_plus_summary":
+        position_scale = float(max(1, len(lead_time_orders) * max_order_size))
+        summary = np.asarray(
+            [
+                current_inventory / scale,
+                sum(lead_time_orders) / position_scale,
+                (current_inventory + sum(lead_time_orders)) / position_scale,
+            ],
+            dtype=np.float32,
+        )
+        return np.concatenate([pipeline_state, summary]).astype(np.float32, copy=False)
+    raise NotImplementedError(f"Unsupported state_features '{state_features}'")
+
+
+def coarse_grid_action_histogram(model, state_features, max_order_size=50, lead_time=4):
     vals = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
     counts = Counter()
-    for x0 in vals:
-        for x1 in vals:
-            for x2 in vals:
-                for x3 in vals:
-                    state = torch.tensor(np.array([x0, x1, x2, x3], dtype=np.float32) / 50.0)
-                    counts[int(model(state))] += 1
+    for current_inventory in vals:
+        for lead_time_orders in product(vals, repeat=lead_time):
+            state = torch.tensor(
+                build_policy_state(
+                    current_inventory=current_inventory,
+                    lead_time_orders=lead_time_orders,
+                    max_order_size=max_order_size,
+                    state_features=state_features,
+                )
+            )
+            counts[int(model(state))] += 1
     return counts.most_common(15), len(counts)
 
 
 def main():
     args = get_args()
     model = ESModule.load(args.model_dir)
-    ref_args = build_reference_args(args.horizon)
+    ref_args = build_reference_args(args.horizon, args.state_features)
 
     model_cost, model_actions = rollout_model(model, ref_args, seed=args.seed)
     heuristic_cost, heuristic_actions = rollout_modified_s_s_q(ref_args, seed=args.seed)
-    grid_top_actions, grid_unique_actions = coarse_grid_action_histogram(model)
+    grid_top_actions, grid_unique_actions = coarse_grid_action_histogram(
+        model,
+        state_features=args.state_features,
+    )
 
     payload = {
         "model_dir": str(Path(args.model_dir).resolve()),
         "seed": args.seed,
         "horizon": args.horizon,
+        "state_features": args.state_features,
         "model_rollout": {
             "avg_cost": model_cost,
             "action_summary": model_actions,

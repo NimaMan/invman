@@ -21,6 +21,8 @@ def _normalize_action_output_mode(action_output_mode: str) -> str:
         "categorical_quantity": "categorical_quantity",
         "direct_quantity": "direct_quantity",
         "gated_ordinal_quantity": "gated_ordinal_quantity",
+        "two_stage_ordinal_quantity": "two_stage_ordinal_quantity",
+        "conditional_ordinal_quantity": "two_stage_ordinal_quantity",
         "discrete_logits": "categorical_quantity",
         "scalar_quantity": "direct_quantity",
     }
@@ -61,11 +63,17 @@ class PolicyNet(ESModule):
         for width in hidden_layers:
             self.layers.append(nn.Linear(in_features=in_features, out_features=width))
             in_features = width
-        out_features = output_dim if self.action_output_mode in {"categorical_quantity", "gated_ordinal_quantity"} else 1
+        out_features = (
+            output_dim
+            if self.action_output_mode in {"categorical_quantity", "gated_ordinal_quantity", "two_stage_ordinal_quantity"}
+            else 1
+        )
         if self.action_output_mode == "direct_quantity" and max_order_size is None:
             raise ValueError("max_order_size is required when action_output_mode='direct_quantity'")
-        if self.action_output_mode == "gated_ordinal_quantity" and max_order_size is None:
-            raise ValueError("max_order_size is required when action_output_mode='gated_ordinal_quantity'")
+        if self.action_output_mode in {"gated_ordinal_quantity", "two_stage_ordinal_quantity"} and max_order_size is None:
+            raise ValueError(
+                "max_order_size is required when action_output_mode is an ordinal quantity head"
+            )
 
         self.output_layer = nn.Linear(in_features=in_features, out_features=out_features)
         self.features = {}
@@ -90,13 +98,24 @@ class PolicyNet(ESModule):
             quantity_score = torch.sigmoid(ordinal_logits).sum(dim=-1)
             action = torch.round(gate_prob * quantity_score).to(dtype=torch.int64)
             action = torch.clamp(action, min=0, max=int(self.max_order_size))
+        elif self.action_output_mode == "two_stage_ordinal_quantity":
+            gate_logit = raw_output[..., 0]
+            ordinal_logits = raw_output[..., 1:]
+            gate_prob = torch.sigmoid(gate_logit)
+            quantity_score = torch.sigmoid(ordinal_logits).sum(dim=-1)
+            order_flag = gate_prob >= 0.5
+            positive_action = torch.round(quantity_score).to(dtype=torch.int64)
+            positive_action = torch.clamp(positive_action, min=1, max=int(self.max_order_size))
+            action = torch.where(order_flag, positive_action, torch.zeros_like(positive_action))
         else:
             raise NotImplementedError(f"Unknown action_output_mode: {self.action_output_mode}")
 
         if return_features:
             self.features["raw_output"] = raw_output.detach().cpu().numpy()
-            if self.action_output_mode == "gated_ordinal_quantity":
+            if self.action_output_mode in {"gated_ordinal_quantity", "two_stage_ordinal_quantity"}:
                 self.features["gate_prob"] = gate_prob.detach().cpu().numpy()
                 self.features["quantity_score"] = quantity_score.detach().cpu().numpy()
+                if self.action_output_mode == "two_stage_ordinal_quantity":
+                    self.features["order_flag"] = order_flag.detach().cpu().numpy()
             return int(action.item()), self.features
         return int(action.item())
