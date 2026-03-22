@@ -1,6 +1,8 @@
 import argparse
 from pathlib import Path
 
+from invman.policies.common import normalize_policy_head
+
 try:
     from dotenv import load_dotenv
 except ImportError:  # pragma: no cover - optional dependency
@@ -12,24 +14,6 @@ def _default_output_dirs() -> tuple[Path, Path, Path]:
     package_root = Path(__file__).resolve().parents[1]
     outputs_root = package_root / "outputs"
     return outputs_root / "results", outputs_root / "logs", outputs_root / "models"
-
-
-def _normalize_policy_head(policy_head: str) -> str:
-    aliases = {
-        "categorical_quantity": "categorical_quantity",
-        "direct_quantity": "direct_quantity",
-        "gated_ordinal_quantity": "gated_ordinal_quantity",
-        "two_stage_ordinal_quantity": "two_stage_ordinal_quantity",
-        "conditional_ordinal_quantity": "two_stage_ordinal_quantity",
-        # Backward-compatible aliases used in earlier experiments.
-        "discrete_logits": "categorical_quantity",
-        "scalar_quantity": "direct_quantity",
-    }
-    normalized = aliases.get(policy_head)
-    if normalized is None:
-        valid = ", ".join(sorted(aliases))
-        raise ValueError(f"Unknown policy head '{policy_head}'. Expected one of: {valid}")
-    return normalized
 
 
 def _normalize_state_features(state_features: str) -> str:
@@ -154,7 +138,7 @@ def get_config(argv=None):
     args.log_dir = str(Path(args.log_dir).expanduser())
     args.trained_models_dir = str(Path(args.trained_models_dir).expanduser())
     try:
-        args.policy_head = _normalize_policy_head(args.policy_head)
+        args.policy_head = normalize_policy_head(args.policy_head)
     except ValueError as exc:
         parser.error(str(exc))
     try:

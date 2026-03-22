@@ -84,3 +84,55 @@ def test_rust_soft_tree_rollout_matches_python_on_fixed_path():
     )
 
     assert rust_cost == pytest.approx(env.avg_total_cost)
+
+
+def test_rust_soft_tree_population_rollout_matches_single_rollouts():
+    torch.manual_seed(13)
+    model_a = SoftTreePolicy(input_dim=4, max_order_size=20, depth=3, temperature=0.25)
+    torch.manual_seed(17)
+    model_b = SoftTreePolicy(input_dim=4, max_order_size=20, depth=3, temperature=0.25)
+
+    params_batch = [
+        model_a.get_model_flat_params().astype(np.float32).tolist(),
+        model_b.get_model_flat_params().astype(np.float32).tolist(),
+    ]
+    seeds = [123, 456]
+
+    batch_costs = invman_rust.lost_sales_soft_tree_population_rollout(
+        params_batch=params_batch,
+        input_dim=4,
+        depth=3,
+        max_order_size=20,
+        demand_rate=5.0,
+        seeds=seeds,
+        lead_time=4,
+        holding_cost=1.0,
+        shortage_cost=4.0,
+        procurement_cost=0.0,
+        fixed_order_cost=0.0,
+        horizon=200,
+        warm_up_periods_ratio=0.2,
+        temperature=0.25,
+    )
+
+    single_costs = [
+        invman_rust.lost_sales_soft_tree_rollout(
+            flat_params=params_batch[idx],
+            input_dim=4,
+            depth=3,
+            max_order_size=20,
+            demand_rate=5.0,
+            lead_time=4,
+            holding_cost=1.0,
+            shortage_cost=4.0,
+            procurement_cost=0.0,
+            fixed_order_cost=0.0,
+            horizon=200,
+            seed=seeds[idx],
+            warm_up_periods_ratio=0.2,
+            temperature=0.25,
+        )
+        for idx in range(len(params_batch))
+    ]
+
+    assert batch_costs == pytest.approx(single_costs)

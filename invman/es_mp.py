@@ -41,7 +41,16 @@ def get_es_optimizer(model, args):
     return es
 
 
-def train(model, get_model_fitness, args, same_seed=False, limit_env_time=False, min_steps=100, max_steps=5000):
+def train(
+    model,
+    get_model_fitness,
+    args,
+    get_population_fitness=None,
+    same_seed=False,
+    limit_env_time=False,
+    min_steps=100,
+    max_steps=5000,
+):
     episodes = args.training_episodes
     history = []
     fitness_hist = []
@@ -51,11 +60,12 @@ def train(model, get_model_fitness, args, same_seed=False, limit_env_time=False,
     print(f"Starting {args.training_method} with {model.num_params} parameters")
     start = time.time()
     ctx = mp.get_context("spawn")
+    pool = None
     base_horizon = args.horizon
     save_every = max(1, getattr(args, "save_every", getattr(args, "model_save_step", 100)))
     save_solutions = getattr(args, "save_solutions", False)
 
-    with ctx.Pool(processes=args.mp_num_processors) as pool:
+    try:
         for episode in range(1, episodes + 1):
             worker_args = args
             rollout_horizon = base_horizon
@@ -77,15 +87,22 @@ def train(model, get_model_fitness, args, same_seed=False, limit_env_time=False,
             else:
                 seeds = seeder.next_batch_seeds(args.es_population)
 
-            results = [
-                pool.apply_async(
-                    get_model_fitness,
-                    args=(model, worker_args, solution, seeds[indiv_id], indiv_id),
-                )
-                for indiv_id, solution in enumerate(solutions)
-            ]
+            pop_fitness = None
+            if get_population_fitness is not None:
+                pop_fitness = get_population_fitness(model, worker_args, solutions, seeds)
 
-            pop_fitness = [result.get() for result in results]
+            if pop_fitness is None:
+                if pool is None:
+                    pool = ctx.Pool(processes=args.mp_num_processors)
+                results = [
+                    pool.apply_async(
+                        get_model_fitness,
+                        args=(model, worker_args, solution, seeds[indiv_id], indiv_id),
+                    )
+                    for indiv_id, solution in enumerate(solutions)
+                ]
+                pop_fitness = [result.get() for result in results]
+
             pop_fitness = sorted(pop_fitness, key=lambda item: item[1])
             es_fitness = np.array([fitness for fitness, _ in pop_fitness], dtype=np.float64)
             es.tell(es_fitness)
@@ -109,6 +126,10 @@ def train(model, get_model_fitness, args, same_seed=False, limit_env_time=False,
                     args,
                     save_solutions=save_solutions,
                 )
+    finally:
+        if pool is not None:
+            pool.close()
+            pool.join()
 
     elapsed_minutes = (time.time() - start) / 60.0
     print(f"the optimization ended in {elapsed_minutes}")

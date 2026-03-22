@@ -4,6 +4,8 @@ This repository now keeps one active code path:
 
 - `invman.env.lost_sales.LostSalesEnv` for the periodic-review lost-sales problem
 - policy optimization with evolution strategies over compact policy parameterizations
+- a canonical `invman.policies` package for learned policy classes
+- a colocated Rust crate under `rust/` for high-throughput rollout kernels
 - one runner script at `scripts/run_experiment.py`
 
 The current baseline problem is the single-item lost-sales setting with lead time, holding cost, shortage cost, and either Poisson or geometric demand. The runner can train either a linear policy or a small neural policy and compare the learned policy against the classic lost-sales heuristics already in the repo.
@@ -17,6 +19,12 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 pip install -e .
+```
+
+Build the optional Rust extension into the shared virtualenv:
+
+```bash
+python scripts/build_rust_extension.py
 ```
 
 Run a small experiment:
@@ -36,9 +44,11 @@ Outputs are written under `outputs/`:
 - `invman/config.py`: CLI configuration
 - `invman/env/lost_sales.py`: environment and rollout helpers
 - `invman/heuristics/lost_sales_heuristics.py`: Myopic-1, Myopic-2, SVBS
-- `invman/nn/`: linear and neural policy parameterizations
+- `invman/policies/`: canonical linear, neural, and tree policy parameterizations
+- `rust/`: native rollout kernels used by the Rust-backed policy path
 - `invman/es.py`, `invman/es_mp.py`: evolution-strategy optimizers and training loop
 - `scripts/run_experiment.py`: single entry point for training and evaluation
+- `autoresearch/`: autoresearch-style loop for the trusted lost-sales benchmark
 
 ## Fixed Ordering Cost Variant
 

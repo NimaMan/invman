@@ -352,3 +352,31 @@ def get_model_fitness(
     if return_env:
         return -env.avg_total_cost, env
     return -env.avg_total_cost, indiv_idx
+
+
+def get_population_fitness(model, args, model_params_batch, seeds):
+    if not _should_use_rust_soft_tree_rollout(model, args, track_demand=False, return_env=False):
+        return None
+
+    import invman_rust
+
+    params_batch = [
+        np.asarray(model_params, dtype=np.float32).tolist() for model_params in model_params_batch
+    ]
+    costs = invman_rust.lost_sales_soft_tree_population_rollout(
+        params_batch=params_batch,
+        input_dim=int(model.input_dim),
+        depth=int(model.depth),
+        max_order_size=int(model.max_order_size),
+        demand_rate=float(args.demand_rate),
+        seeds=[int(seed) for seed in seeds],
+        lead_time=int(args.lead_time),
+        holding_cost=float(args.holding_cost),
+        shortage_cost=float(args.shortage_cost),
+        procurement_cost=float(getattr(args, "procurement_cost", 0.0)),
+        fixed_order_cost=float(getattr(args, "fixed_order_cost", 0.0)),
+        horizon=int(args.horizon),
+        warm_up_periods_ratio=float(getattr(args, "warm_up_periods_ratio", 0.2)),
+        temperature=float(model.temperature),
+    )
+    return [(-float(cost), indiv_idx) for indiv_idx, cost in enumerate(costs)]
