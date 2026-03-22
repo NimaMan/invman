@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from invman.env.lost_sales import LostSalesEnv
+from invman.problems.lost_sales.env import LostSalesEnv
 from invman.policies import LinearPolicyNet, PolicyNet, SoftTreePolicy, build_policy
 
 

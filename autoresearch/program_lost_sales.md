@@ -11,7 +11,7 @@ To set up a new run:
    - `README.md`
    - `autoresearch/README.md`
    - `autoresearch/program_lost_sales.md`
-   - `invman/reference_instances.py`
+   - `invman/problems/lost_sales/reference_instances.py`
    - `invman/policies/`
    - `rust/src/policies/`
    - `rust/src/rollout/`
@@ -31,7 +31,7 @@ The benchmark is fixed to the trusted vanilla lost-sales instance:
 
 The evaluation harness is fixed. Do not modify:
 
-- `invman/reference_instances.py`
+- `invman/problems/lost_sales/reference_instances.py`
 - `scripts/validate_reference_instance.py`
 - heuristic implementations used as the benchmark baseline
 

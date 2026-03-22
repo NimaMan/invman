@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 
-from invman.tree_policy import SoftTreePolicy
+from invman.policies import SoftTreePolicy
 
 
 def test_soft_tree_policy_returns_valid_action_and_features():

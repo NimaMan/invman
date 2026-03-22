@@ -1,4 +1,4 @@
-from invman.reference_instances import VANILLA_L4_P4_POISSON5, evaluate_reference_heuristics
+from invman.problems.lost_sales.reference_instances import VANILLA_L4_P4_POISSON5, evaluate_reference_heuristics
 
 
 def test_reference_heuristics_match_literature_values():

@@ -1,6 +1,7 @@
 from copy import deepcopy
 from itertools import product
-from types import SimpleNamespace
+
+from invman.config import get_config
 
 
 BASE_INSTANCE_PARAMS = {
@@ -153,4 +154,7 @@ def get_reference_instance(name: str = "lit_pois_mu5_l4_p4_k5"):
 
 def build_reference_args(name: str = "lit_pois_mu5_l4_p4_k5"):
     instance = get_reference_instance(name)
-    return SimpleNamespace(**instance["params"])
+    args = get_config([])
+    for key, value in instance["params"].items():
+        setattr(args, key, value)
+    return args

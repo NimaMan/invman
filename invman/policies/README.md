@@ -47,15 +47,31 @@ The winning structure so far is:
 - depth `2`
 - linear leaf outputs
 
-## Open direction
+## Fixed-Cost Result
 
-The fixed-order-cost transfer result is now also positive on the canonical instance
-`L=4, p=4, K=5, demand ~ Poisson(5)`:
+On the canonical fixed-order-cost instance `L=4, p=4, K=5, demand ~ Poisson(5)`:
 
-- learned soft tree, `1M` eval: `8.81009`
+- earlier transferred tree, `1M` eval: `8.81009`
+- autoresearch-refined tree, `1M` eval: `8.76576`
 - `s,S`: `9.44401`
 - `s,nQ`: `9.21664`
 - modified `s,S,q`: `9.16537`
 
-So the same oblique depth-2 tree with linear leaves improves materially on the fixed-cost
-heuristics as well.
+The best fixed-cost tree is currently:
+
+- oblique splits
+- depth `1`
+- linear leaf outputs
+
+That is slightly shallower than the current vanilla winner. So the policy family is stable across
+problems, but the best tree depth is not.
+
+## Open Direction
+
+The fixed-cost autoresearch result is now also positive on the canonical instance:
+
+- best learned fixed-cost tree, `1M` eval: `8.76576`
+- best heuristic, `1M` eval: `9.16537`
+
+The next natural question is whether the same fixed-cost search loop can improve the broader
+literature subset grid, not just the canonical instance.

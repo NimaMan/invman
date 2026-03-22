@@ -2,7 +2,7 @@ from collections import deque
 
 import numpy as np
 
-from invman.env.lost_sales import LostSalesEnv
+from invman.problems.lost_sales.env import LostSalesEnv
 
 
 def test_reset_reinitializes_episode_state():

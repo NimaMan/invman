@@ -10,41 +10,46 @@ if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
 
 from invman.experiment_runner import run_experiment
-from invman.problems.lost_sales.reference_instances import VANILLA_L4_P4_POISSON5, build_reference_args
+from invman.problems.lost_sales_fixed_order_cost.reference_instances import (
+    build_reference_args,
+    get_reference_instance,
+)
 
 
 BUDGETS = {
     "screening": {
-        "training_episodes": 100,
+        "training_episodes": 300,
         "es_population": 8,
-        "horizon": 1000,
-        "eval_horizon": 10000,
+        "horizon": 1500,
+        "eval_horizon": 20000,
         "eval_seeds": 2,
     },
     "full": {
         "training_episodes": 2000,
         "es_population": 10,
         "horizon": 2000,
-        "eval_horizon": int(1e5),
+        "eval_horizon": 50000,
         "eval_seeds": 3,
     },
 }
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Autoresearch-style benchmark harness for the trusted lost-sales instance.")
-    parser.add_argument("--run_tag", default="lost_sales_autoresearch", help="Autoresearch run namespace.")
+    parser = argparse.ArgumentParser(
+        description="Autoresearch-style benchmark harness for the canonical fixed-order-cost instance."
+    )
+    parser.add_argument("--run_tag", default="fixed_order_cost_autoresearch", help="Autoresearch run namespace.")
     parser.add_argument("--budget", choices=sorted(BUDGETS), default="screening", help="Fixed experiment budget.")
     parser.add_argument("--description", required=True, help="Short description of the policy change being tested.")
-    parser.add_argument("--reference", default=VANILLA_L4_P4_POISSON5.name, help="Named reference instance.")
+    parser.add_argument("--reference", default="lit_pois_mu5_l4_p4_k5", help="Named fixed-order-cost reference instance.")
     parser.add_argument("--policy_type", choices=["linear", "nn", "soft_tree"], default="soft_tree")
     parser.add_argument("--policy_head", default="categorical_quantity", help="Policy head for nn/linear backbones.")
     parser.add_argument("--rollout_backend", choices=["python", "rust"], default="python")
     parser.add_argument("--training_method", choices=["cma", "es", "ga", "xnes"], default="cma")
-    parser.add_argument("--tree_depth", type=int, default=3)
+    parser.add_argument("--tree_depth", type=int, default=2)
     parser.add_argument("--tree_temperature", type=float, default=0.25)
     parser.add_argument("--tree_split_type", choices=["oblique", "axis_aligned"], default="oblique")
-    parser.add_argument("--tree_leaf_type", choices=["constant", "linear"], default="constant")
+    parser.add_argument("--tree_leaf_type", choices=["constant", "linear"], default="linear")
     parser.add_argument("--hidden_dim", nargs="+", type=int, default=[32, 32])
     parser.add_argument("--activation", choices=["selu", "gelu", "relu"], default="selu")
     parser.add_argument("--sigma_init", type=float, default=5.0)
@@ -122,7 +127,8 @@ def _append_results_row(tsv_path: Path, row):
 def _configure_args(parsed):
     args = build_reference_args(parsed.reference)
     budget = BUDGETS[parsed.budget]
-    args.problem = "lost_sales"
+    reference = get_reference_instance(parsed.reference)
+    args.problem = "lost_sales_fixed_order_cost"
     args.policy_type = parsed.policy_type
     args.policy_head = parsed.policy_head
     args.rollout_backend = parsed.rollout_backend
@@ -146,6 +152,7 @@ def _configure_args(parsed):
         args.max_order_size = parsed.max_order_size
     if args.policy_type == "soft_tree":
         args.rollout_backend = "rust"
+    args.reference_instance_name = reference["name"]
     return args
 
 
@@ -164,7 +171,9 @@ def main():
         if args.policy_type != "soft_tree"
         else (
             f"{parsed.run_tag}_{parsed.budget}_soft_tree_"
-            f"{args.tree_split_type}_{args.tree_leaf_type}_d{args.tree_depth}"
+            f"{args.tree_split_type}_{args.tree_leaf_type}_d{args.tree_depth}_"
+            f"t{str(args.tree_temperature).replace('.', 'p')}_"
+            f"s{str(args.sigma_init).replace('.', 'p')}"
         )
     )
 

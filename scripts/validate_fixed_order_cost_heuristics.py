@@ -24,6 +24,13 @@ def build_parser():
     parser.add_argument("--search_seed", default=None, type=int, help="Override the search seed.")
     parser.add_argument("--top_k_s_s_pairs", default=None, type=int, help="Override the number of s,S pairs used for the modified search.")
     parser.add_argument("--q_window", default=None, type=int, help="Override the q search window around the paper heuristic.")
+    parser.add_argument("--backend", default="python", choices=["python", "rust"], help="Search backend for heuristic parameter search.")
+    parser.add_argument(
+        "--modified_search_mode",
+        default="guided",
+        choices=["guided", "exhaustive"],
+        help="Search mode used for the modified (s,S,q) policy.",
+    )
     return parser
 
 
@@ -39,6 +46,8 @@ def main():
         search_seed=cli_args.search_seed,
         top_k_s_s_pairs=cli_args.top_k_s_s_pairs,
         q_window=cli_args.q_window,
+        backend=cli_args.backend,
+        modified_search_mode=cli_args.modified_search_mode,
     )
     print(json.dumps(payload, indent=2))
 

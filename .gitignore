@@ -1,0 +1,33 @@
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
+
+# Local environment
+.env
+.venv/
+venv/
+
+# Python build / cache
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.eggs/
+*.egg-info/
+build/
+dist/
+
+# Native build artifacts
+.maturin/
+rust/target/
+
+# Local experiment artifacts
+outputs/
+data/
+temp/
+tests/env
+tests/test_env
+
+# Legacy local backups
+.git.nested-backup/

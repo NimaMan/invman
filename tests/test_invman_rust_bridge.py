@@ -4,8 +4,8 @@ import numpy as np
 import pytest
 import torch
 
-from invman.env.lost_sales import LostSalesEnv
-from invman.tree_policy import SoftTreePolicy
+from invman.policies import SoftTreePolicy
+from invman.problems.lost_sales.env import LostSalesEnv
 
 invman_rust = pytest.importorskip("invman_rust")
 

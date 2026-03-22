@@ -8,8 +8,8 @@ from types import SimpleNamespace
 import numpy as np
 import torch
 
-from invman.nn.es_module import ESModule
-from invman.env.lost_sales import build_env_from_args
+from invman.policies.es_module import ESModule
+from invman.problems.lost_sales_fixed_order_cost.env import build_env_from_args
 from invman.problems.lost_sales_fixed_order_cost.heuristics import get_modified_s_s_q_order_quantity
 
 

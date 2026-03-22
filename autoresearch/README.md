@@ -43,6 +43,32 @@ Key files:
 - `../scripts/autoresearch_tree_structures.py`: focused tree-structure comparison runner
 - `../scripts/build_rust_extension.py`: helper to rebuild the Rust extension in the shared virtualenv
 
+The second target is the canonical fixed-order-cost benchmark:
+
+- reference instance: `lit_pois_mu5_l4_p4_k5`
+- learned metric: mean long-run cost after warm-up
+- baseline heuristics: `s,S`, `s,nQ`, modified `s,S,q`
+
+Fixed-cost files:
+
+- `program_fixed_order_cost.md`: agent instructions for the fixed-cost loop
+- `../scripts/autoresearch_fixed_order_cost.py`: fixed-cost keep/discard runner and ledger
+- `../scripts/autoresearch_fixed_order_tree_structures.py`: focused tree-structure comparison runner
+- `../scripts/evaluate_saved_policy.py`: long-horizon reevaluation helper for promoted candidates
+
+## Current fixed-cost result
+
+Best fixed-cost autoresearch result so far:
+
+- screening winner: oblique depth-1 linear-leaf tree, temperature `0.25`, sigma `5.0`
+- full-budget `50k` evaluation: `8.77528`
+- long-horizon `1M` reevaluation: `8.76576`
+
+This improved on:
+
+- the earlier transferred depth-2 fixed-cost tree: `8.81009`
+- the best heuristic baseline on the canonical instance: `9.16537`
+
 ## Current result
 
 Best tree architecture found so far on the trusted vanilla benchmark:

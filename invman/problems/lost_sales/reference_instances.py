@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from invman.config import get_config
-from invman.heuristics.lost_sales_heuristics import get_heuristic_policy_cost
+from invman.problems.lost_sales.heuristics import get_heuristic_policy_cost
 
 
 @dataclass(frozen=True)

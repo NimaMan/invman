@@ -7,7 +7,7 @@ Reference heuristics for the classic lost-sales problem:
 
 import numpy as np
 
-from invman.env.lost_sales import LostSalesEnv, build_env_from_args
+from invman.problems.lost_sales.env import LostSalesEnv, build_env_from_args
 
 
 class LostSalesHeuristicPolicies:

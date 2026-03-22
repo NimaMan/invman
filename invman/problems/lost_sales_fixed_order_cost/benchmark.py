@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from copy import copy
 
+import numpy as np
+
 from invman.problems.lost_sales_fixed_order_cost.heuristics import (
     evaluate_policy_across_seeds,
     search_best_modified_s_s_q_policy,
@@ -15,6 +17,67 @@ from invman.problems.lost_sales_fixed_order_cost.reference_instances import (
 )
 
 
+def summarize_costs(costs):
+    return {
+        "mean_cost": float(np.mean(costs)),
+        "std_cost": float(np.std(costs)),
+        "min_cost": float(np.min(costs)),
+        "max_cost": float(np.max(costs)),
+        "num_seeds": int(len(costs)),
+    }
+
+
+def evaluate_default_heuristics(args):
+    search_args = copy(args)
+    search_args.horizon = args.horizon
+    eval_args = copy(args)
+    eval_args.horizon = args.eval_horizon
+
+    s_s_summary = search_best_s_s_policy(
+        args=search_args,
+        seed=args.seed,
+        horizon=args.horizon,
+    )
+    s_nq_summary = search_best_s_nq_policy(
+        args=search_args,
+        seed=args.seed,
+        horizon=args.horizon,
+    )
+    modified_search = search_best_modified_s_s_q_policy(
+        args=search_args,
+        seed=args.seed,
+        horizon=args.horizon,
+        s_s_summary=s_s_summary,
+    )
+
+    return {
+        "s_s": evaluate_policy_across_seeds(
+            args=eval_args,
+            policy_name="s_s",
+            params=s_s_summary.best_result.params,
+            num_seeds=args.eval_seeds,
+            horizon=args.eval_horizon,
+            track_demand=getattr(args, "track_demand", False),
+        ),
+        "s_nq": evaluate_policy_across_seeds(
+            args=eval_args,
+            policy_name="s_nq",
+            params=s_nq_summary.best_result.params,
+            num_seeds=args.eval_seeds,
+            horizon=args.eval_horizon,
+            track_demand=getattr(args, "track_demand", False),
+        ),
+        "modified_s_s_q": evaluate_policy_across_seeds(
+            args=eval_args,
+            policy_name="modified_s_s_q",
+            params=modified_search["modified_policy"].best_result.params,
+            num_seeds=args.eval_seeds,
+            horizon=args.eval_horizon,
+            track_demand=getattr(args, "track_demand", False),
+        ),
+    }
+
+
 def benchmark_reference_instance(
     reference_instance: str,
     *,
@@ -25,6 +88,8 @@ def benchmark_reference_instance(
     search_seed: int | None = None,
     top_k_s_s_pairs: int | None = None,
     q_window: int | None = None,
+    backend: str = "python",
+    modified_search_mode: str = "guided",
 ):
     reference = get_reference_instance(reference_instance)
     args = build_reference_args(reference_instance)
@@ -54,12 +119,14 @@ def benchmark_reference_instance(
         horizon=resolved_search_horizon,
         position_upper_bound=resolved_position_upper_bound,
         top_k=resolved_top_k_s_s_pairs,
+        backend=backend,
     )
     s_nq_summary = search_best_s_nq_policy(
         args=search_args,
         seed=resolved_search_seed,
         horizon=resolved_search_horizon,
         position_upper_bound=resolved_position_upper_bound,
+        backend=backend,
     )
     modified_search = search_best_modified_s_s_q_policy(
         args=search_args,
@@ -69,6 +136,8 @@ def benchmark_reference_instance(
         top_k_s_s_pairs=resolved_top_k_s_s_pairs,
         q_window=resolved_q_window,
         s_s_summary=s_s_summary,
+        search_mode=modified_search_mode,
+        backend=backend,
     )
 
     evaluations = {
@@ -109,6 +178,8 @@ def benchmark_reference_instance(
             "search_seed": resolved_search_seed,
             "top_k_s_s_pairs": resolved_top_k_s_s_pairs,
             "q_window": resolved_q_window,
+            "backend": backend,
+            "modified_search_mode": modified_search_mode,
         },
         "search_results": {
             "s_s": s_s_summary.to_dict(),

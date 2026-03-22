@@ -4,20 +4,14 @@ from pathlib import Path
 
 import numpy as np
 
-from invman.env.lost_sales import build_env_from_args, get_model_fitness, get_population_fitness
 from invman.es_mp import train
-from invman.heuristics.lost_sales_heuristics import get_heuristic_policy_cost
 from invman.policies import build_policy
-from invman.problems.lost_sales_fixed_order_cost.heuristics import (
-    evaluate_policy_across_seeds,
-    search_best_modified_s_s_q_policy,
-    search_best_s_nq_policy,
-    search_best_s_s_policy,
-)
+from invman.problems import get_problem_module
 
 
 def build_model(args):
-    env = build_env_from_args(args, track_demand=False)
+    problem_module = get_problem_module(args.problem)
+    env = problem_module.build_env_from_args(args, track_demand=False)
     return build_policy(args, env)
 
 
@@ -32,12 +26,13 @@ def summarize_costs(costs):
 
 
 def evaluate_model(model, args):
+    problem_module = get_problem_module(args.problem)
     eval_args = copy(args)
     eval_args.horizon = args.eval_horizon
     costs = []
     for seed_offset in range(args.eval_seeds):
         seed = args.seed + seed_offset
-        _, env = get_model_fitness(
+        _, env = problem_module.get_model_fitness(
             model,
             eval_args,
             seed=seed,
@@ -49,73 +44,8 @@ def evaluate_model(model, args):
 
 
 def evaluate_heuristics(args):
-    if args.problem == "lost_sales" and args.fixed_order_cost <= 0:
-        eval_args = copy(args)
-        eval_args.horizon = args.eval_horizon
-        heuristic_results = {}
-        for heuristic_name in ("myopic1", "myopic2", "svbs"):
-            costs = []
-            for seed_offset in range(args.eval_seeds):
-                eval_args.seed = args.seed + seed_offset
-                env, _, _ = get_heuristic_policy_cost(eval_args, heuristic=heuristic_name)
-                costs.append(env.avg_total_cost)
-            heuristic_results[heuristic_name] = summarize_costs(costs)
-        return heuristic_results
-
-    if args.problem == "lost_sales_fixed_order_cost" or args.fixed_order_cost > 0:
-        search_args = copy(args)
-        search_args.horizon = args.horizon
-        eval_args = copy(args)
-        eval_args.horizon = args.eval_horizon
-
-        s_s_summary = search_best_s_s_policy(
-            args=search_args,
-            seed=args.seed,
-            horizon=args.horizon,
-        )
-        s_nq_summary = search_best_s_nq_policy(
-            args=search_args,
-            seed=args.seed,
-            horizon=args.horizon,
-        )
-        modified_search = search_best_modified_s_s_q_policy(
-            args=search_args,
-            seed=args.seed,
-            horizon=args.horizon,
-            s_s_summary=s_s_summary,
-        )
-
-        return {
-            "s_s": evaluate_policy_across_seeds(
-                args=eval_args,
-                policy_name="s_s",
-                params=s_s_summary.best_result.params,
-                num_seeds=args.eval_seeds,
-                horizon=args.eval_horizon,
-                track_demand=getattr(args, "track_demand", False),
-            ),
-            "s_nq": evaluate_policy_across_seeds(
-                args=eval_args,
-                policy_name="s_nq",
-                params=s_nq_summary.best_result.params,
-                num_seeds=args.eval_seeds,
-                horizon=args.eval_horizon,
-                track_demand=getattr(args, "track_demand", False),
-            ),
-            "modified_s_s_q": evaluate_policy_across_seeds(
-                args=eval_args,
-                policy_name="modified_s_s_q",
-                params=modified_search["modified_policy"].best_result.params,
-                num_seeds=args.eval_seeds,
-                horizon=args.eval_horizon,
-                track_demand=getattr(args, "track_demand", False),
-            ),
-        }
-
-    return {
-        "status": "skipped",
-        "reason": f"No heuristic evaluator registered for problem '{args.problem}'.",
-    }
+    problem_module = get_problem_module(args.problem)
+    return problem_module.evaluate_default_heuristics(args)
 
 
 def ensure_output_dirs(args):
@@ -173,11 +103,12 @@ def save_result_payload(args, payload):
 
 def run_experiment(args):
     ensure_output_dirs(args)
+    problem_module = get_problem_module(args.problem)
     model = build_model(args)
     trained_model, _ = train(
         model=model,
-        get_model_fitness=get_model_fitness,
-        get_population_fitness=get_population_fitness,
+        get_model_fitness=problem_module.get_model_fitness,
+        get_population_fitness=problem_module.get_population_fitness,
         args=args,
         same_seed=args.same_seed,
         limit_env_time=args.dynamic_horizon,

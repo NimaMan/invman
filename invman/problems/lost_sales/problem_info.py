@@ -15,7 +15,7 @@ Poisson_demand_shortage_cost_4 = {
     4: {"optimal": 4.73, "M2": 4.82, "M1": 5.06, "SVBS": 5.83, "CappedBS": 4.80, "CAP_levels": (26, 5)},
     6: {"optimal": None, "M2": 5.04476375, "M1": 5.4140775, "SVBS": 6.77253875, "CappedBS": 5.03894625, "CAP_levels": (34, 5)},
     8: {"optimal": None, "M2": 5.1991675, "M1": 5.6982775, "SVBS": 7.6943475, "CappedBS": 5.19198, "CAP_levels": (43, 5)},
-    10: {"optimal": None, "M2": 5.31, "M1": None, "SVBS": None, "CappedBS": 5.27, "CAP_levels": None},
+    10: {"optimal": 5.31, "M2": 5.31, "M1": None, "SVBS": None, "CappedBS": 5.27, "CAP_levels": None},
     16: {"optimal": None, "M2": 5.467825, "M1": 6.3501375, "SVBS": 10.144, "CappedBS": 5.26011625, "CAP_levels": (112, 4)},
 }
 
@@ -24,7 +24,7 @@ Poisson_demand_shortage_cost_19 = {
     4: {"optimal": 8.89, "M2": 8.95289875, "M1": 9.17321125, "SVBS": 9.56453125, "CappedBS": 8.95},
     6: {"optimal": None, "M2": 9.8306675, "M1": 10.26865, "SVBS": 11.23402, "CappedBS": 9.80, "CAP_levels": (41, 6)},
     8: {"optimal": None, "M2": 10.510595, "M1": 11.0916, "SVBS": 12.3333375, "CappedBS": 10.33341375, "CAP_levels": (53, 5)},
-    10: {"optimal": None, "M2": 11.09, "M1": np.nan, "SVBS": None, "CappedBS": 10.66, "CAP_levels": (91, 5)},
+    10: {"optimal": 11.09, "M2": 11.09, "M1": np.nan, "SVBS": None, "CappedBS": 10.66, "CAP_levels": (91, 5)},
     16: {"optimal": None, "M2": np.nan, "M1": np.nan, "SVBS": None, "CappedBS": 11.35735875, "CAP_levels": (91, 5)},
 }
 

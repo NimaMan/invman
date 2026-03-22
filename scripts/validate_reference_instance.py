@@ -6,7 +6,7 @@ PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
 
-from invman.reference_instances import (
+from invman.problems.lost_sales.reference_instances import (
     VANILLA_L4_P4_POISSON5,
     evaluate_cap_sensitivity,
     evaluate_reference_heuristics,
