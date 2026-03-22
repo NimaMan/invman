@@ -14,6 +14,22 @@ def _default_output_dirs() -> tuple[Path, Path, Path]:
     return outputs_root / "results", outputs_root / "logs", outputs_root / "models"
 
 
+def _normalize_policy_head(policy_head: str) -> str:
+    aliases = {
+        "categorical_quantity": "categorical_quantity",
+        "direct_quantity": "direct_quantity",
+        "gated_ordinal_quantity": "gated_ordinal_quantity",
+        # Backward-compatible aliases used in earlier experiments.
+        "discrete_logits": "categorical_quantity",
+        "scalar_quantity": "direct_quantity",
+    }
+    normalized = aliases.get(policy_head)
+    if normalized is None:
+        valid = ", ".join(sorted(aliases))
+        raise ValueError(f"Unknown policy head '{policy_head}'. Expected one of: {valid}")
+    return normalized
+
+
 def get_config(argv=None):
     load_dotenv()
 
@@ -69,7 +85,14 @@ def get_config(argv=None):
     parser.add_argument("--warm_up_periods_ratio", default=0.2, type=float, help="Warm-up fraction discarded from the mean cost.")
     parser.add_argument("--inventory_upper_bound", default=200, type=int, help="One-hot helper upper bound retained for legacy utilities.")
 
-    parser.add_argument("--policy_type", default="nn", choices=["nn", "linear"], help="Policy parameterization.")
+    parser.add_argument("--policy_type", default="nn", choices=["nn", "linear"], help="Policy backbone.")
+    parser.add_argument(
+        "--policy_head",
+        "--action_output_mode",
+        dest="policy_head",
+        default="categorical_quantity",
+        help="Action head used by the policy approximator.",
+    )
     parser.add_argument(
         "--hidden_dim",
         nargs="+",
@@ -96,6 +119,12 @@ def get_config(argv=None):
     args.results_dir = str(Path(args.results_dir).expanduser())
     args.log_dir = str(Path(args.log_dir).expanduser())
     args.trained_models_dir = str(Path(args.trained_models_dir).expanduser())
+    try:
+        args.policy_head = _normalize_policy_head(args.policy_head)
+    except ValueError as exc:
+        parser.error(str(exc))
+    # Backward-compatible alias retained for older scripts.
+    args.action_output_mode = args.policy_head
 
     if args.problem == "lost_sales_fixed_order_cost" and args.fixed_order_cost <= 0:
         parser.error("--fixed_order_cost must be positive when --problem=lost_sales_fixed_order_cost")

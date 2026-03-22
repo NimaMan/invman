@@ -15,18 +15,31 @@ from invman.es_mp import train
 from invman.heuristics.lost_sales_heuristics import get_heuristic_policy_cost
 from invman.nn.linear_policy_net import LinearPolicyNet
 from invman.nn.policy_net import PolicyNet
+from invman.problems.lost_sales_fixed_order_cost.heuristics import (
+    evaluate_policy_across_seeds,
+    search_best_modified_s_s_q_policy,
+    search_best_s_nq_policy,
+    search_best_s_s_policy,
+)
 
 
 def build_model(args):
     env = build_env_from_args(args, track_demand=False)
     if args.policy_type == "linear":
-        return LinearPolicyNet(input_dim=env.state_space_dim, output_dim=env.action_space_dim)
+        return LinearPolicyNet(
+            input_dim=env.state_space_dim,
+            output_dim=env.action_space_dim,
+            action_output_mode=args.policy_head,
+            max_order_size=env.max_order_size,
+        )
     if args.policy_type == "nn":
         return PolicyNet(
             input_dim=env.state_space_dim,
             hidden_dim=args.hidden_dim,
             output_dim=env.action_space_dim,
             activation=args.activation,
+            action_output_mode=args.policy_head,
+            max_order_size=env.max_order_size,
         )
     raise NotImplementedError(f"Unknown policy type: {args.policy_type}")
 
@@ -59,23 +72,74 @@ def evaluate_model(model, args):
 
 
 def evaluate_heuristics(args):
-    if args.problem != "lost_sales" or args.fixed_order_cost > 0:
+    if args.problem == "lost_sales" and args.fixed_order_cost <= 0:
+        eval_args = copy(args)
+        eval_args.horizon = args.eval_horizon
+        heuristic_results = {}
+        for heuristic_name in ("myopic1", "myopic2", "svbs"):
+            costs = []
+            for seed_offset in range(args.eval_seeds):
+                eval_args.seed = args.seed + seed_offset
+                env, _, _ = get_heuristic_policy_cost(eval_args, heuristic=heuristic_name)
+                costs.append(env.avg_total_cost)
+            heuristic_results[heuristic_name] = summarize_costs(costs)
+        return heuristic_results
+
+    if args.problem == "lost_sales_fixed_order_cost" or args.fixed_order_cost > 0:
+        search_args = copy(args)
+        search_args.horizon = args.horizon
+        eval_args = copy(args)
+        eval_args.horizon = args.eval_horizon
+
+        # Reuse the same benchmark search path as the fixed-cost grid builder.
+        s_s_summary = search_best_s_s_policy(
+            args=search_args,
+            seed=args.seed,
+            horizon=args.horizon,
+        )
+        s_nq_summary = search_best_s_nq_policy(
+            args=search_args,
+            seed=args.seed,
+            horizon=args.horizon,
+        )
+        modified_search = search_best_modified_s_s_q_policy(
+            args=search_args,
+            seed=args.seed,
+            horizon=args.horizon,
+            s_s_summary=s_s_summary,
+        )
+
         return {
-            "status": "skipped",
-            "reason": "Classic lost-sales heuristics are not valid benchmarks once a fixed order cost is introduced.",
+            "s_s": evaluate_policy_across_seeds(
+                args=eval_args,
+                policy_name="s_s",
+                params=s_s_summary.best_result.params,
+                num_seeds=args.eval_seeds,
+                horizon=args.eval_horizon,
+                track_demand=getattr(args, "track_demand", False),
+            ),
+            "s_nq": evaluate_policy_across_seeds(
+                args=eval_args,
+                policy_name="s_nq",
+                params=s_nq_summary.best_result.params,
+                num_seeds=args.eval_seeds,
+                horizon=args.eval_horizon,
+                track_demand=getattr(args, "track_demand", False),
+            ),
+            "modified_s_s_q": evaluate_policy_across_seeds(
+                args=eval_args,
+                policy_name="modified_s_s_q",
+                params=modified_search["modified_policy"].best_result.params,
+                num_seeds=args.eval_seeds,
+                horizon=args.eval_horizon,
+                track_demand=getattr(args, "track_demand", False),
+            ),
         }
 
-    eval_args = copy(args)
-    eval_args.horizon = args.eval_horizon
-    heuristic_results = {}
-    for heuristic_name in ("myopic1", "myopic2", "svbs"):
-        costs = []
-        for seed_offset in range(args.eval_seeds):
-            eval_args.seed = args.seed + seed_offset
-            env, _, _ = get_heuristic_policy_cost(eval_args, heuristic=heuristic_name)
-            costs.append(env.avg_total_cost)
-        heuristic_results[heuristic_name] = summarize_costs(costs)
-    return heuristic_results
+    return {
+        "status": "skipped",
+        "reason": f"No heuristic evaluator registered for problem '{args.problem}'.",
+    }
 
 
 def ensure_output_dirs(args):
@@ -87,6 +151,7 @@ def ensure_output_dirs(args):
 def main():
     args = get_config()
     ensure_output_dirs(args)
+    policy_architecture = f"{args.policy_type}_{args.policy_head}"
     model = build_model(args)
     trained_model, _ = train(
         model=model,
@@ -105,6 +170,10 @@ def main():
         "experiment_name": args.experiment_name,
         "problem": args.problem,
         "policy_type": args.policy_type,
+        "policy_backbone": args.policy_type,
+        "policy_head": args.policy_head,
+        "policy_architecture": policy_architecture,
+        "action_output_mode": args.policy_head,
         "demand_dist_name": args.demand_dist_name,
         "demand_rate": args.demand_rate,
         "lead_time": args.lead_time,
@@ -114,6 +183,7 @@ def main():
         "procurement_cost": args.procurement_cost,
         "fixed_order_cost": args.fixed_order_cost,
         "training_method": args.training_method,
+        "parameter_optimizer": args.training_method,
         "training_episodes": args.training_episodes,
         "training_horizon": args.horizon,
         "evaluation_horizon": args.eval_horizon,
