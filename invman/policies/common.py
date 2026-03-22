@@ -25,3 +25,28 @@ def normalize_policy_head(policy_head: str) -> str:
         valid = ", ".join(sorted(aliases))
         raise ValueError(f"Unknown policy head '{policy_head}'. Expected one of: {valid}")
     return normalized
+
+
+def normalize_tree_split_type(tree_split_type: str) -> str:
+    aliases = {
+        "oblique": "oblique",
+        "axis_aligned": "axis_aligned",
+        "axis": "axis_aligned",
+    }
+    normalized = aliases.get(tree_split_type)
+    if normalized is None:
+        valid = ", ".join(sorted(aliases))
+        raise ValueError(f"Unknown tree split type '{tree_split_type}'. Expected one of: {valid}")
+    return normalized
+
+
+def normalize_tree_leaf_type(tree_leaf_type: str) -> str:
+    aliases = {
+        "constant": "constant",
+        "linear": "linear",
+    }
+    normalized = aliases.get(tree_leaf_type)
+    if normalized is None:
+        valid = ", ".join(sorted(aliases))
+        raise ValueError(f"Unknown tree leaf type '{tree_leaf_type}'. Expected one of: {valid}")
+    return normalized

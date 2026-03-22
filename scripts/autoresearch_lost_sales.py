@@ -43,6 +43,8 @@ def parse_args():
     parser.add_argument("--training_method", choices=["cma", "es", "ga", "xnes"], default="cma")
     parser.add_argument("--tree_depth", type=int, default=3)
     parser.add_argument("--tree_temperature", type=float, default=0.25)
+    parser.add_argument("--tree_split_type", choices=["oblique", "axis_aligned"], default="oblique")
+    parser.add_argument("--tree_leaf_type", choices=["constant", "linear"], default="constant")
     parser.add_argument("--hidden_dim", nargs="+", type=int, default=[32, 32])
     parser.add_argument("--activation", choices=["selu", "gelu", "relu"], default="selu")
     parser.add_argument("--sigma_init", type=float, default=5.0)
@@ -127,6 +129,8 @@ def _configure_args(parsed):
     args.training_method = parsed.training_method
     args.tree_depth = parsed.tree_depth
     args.tree_temperature = parsed.tree_temperature
+    args.tree_split_type = parsed.tree_split_type
+    args.tree_leaf_type = parsed.tree_leaf_type
     args.hidden_dim = parsed.hidden_dim
     args.activation = parsed.activation
     args.sigma_init = parsed.sigma_init
@@ -158,7 +162,10 @@ def main():
     args.experiment_name = (
         f"{parsed.run_tag}_{parsed.budget}_{args.policy_type}_{args.policy_head}"
         if args.policy_type != "soft_tree"
-        else f"{parsed.run_tag}_{parsed.budget}_soft_tree_d{args.tree_depth}"
+        else (
+            f"{parsed.run_tag}_{parsed.budget}_soft_tree_"
+            f"{args.tree_split_type}_{args.tree_leaf_type}_d{args.tree_depth}"
+        )
     )
 
     payload, results_path = run_experiment(args)

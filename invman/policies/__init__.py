@@ -1,4 +1,9 @@
-from invman.policies.common import get_activation_function, normalize_policy_head
+from invman.policies.common import (
+    get_activation_function,
+    normalize_policy_head,
+    normalize_tree_leaf_type,
+    normalize_tree_split_type,
+)
 from invman.policies.factory import build_policy
 from invman.policies.linear import LinearPolicyNet
 from invman.policies.neural import PolicyNet
@@ -11,4 +16,6 @@ __all__ = [
     "build_policy",
     "get_activation_function",
     "normalize_policy_head",
+    "normalize_tree_leaf_type",
+    "normalize_tree_split_type",
 ]

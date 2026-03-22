@@ -10,6 +10,30 @@ This repository now keeps one active code path:
 
 The current baseline problem is the single-item lost-sales setting with lead time, holding cost, shortage cost, and either Poisson or geometric demand. The runner can train either a linear policy or a small neural policy and compare the learned policy against the classic lost-sales heuristics already in the repo.
 
+## Current Findings
+
+Trusted vanilla benchmark:
+
+- lost sales with `L=4`
+- shortage cost `p=4`
+- demand `~ Poisson(5)`
+- holding cost `h=1`
+
+Current learned-policy reference points on that benchmark:
+
+- linear policy: `4.8066`
+- earlier soft-tree benchmark: `4.7980`
+- current best learned policy: `4.753725`
+
+The current best learned architecture is:
+
+- soft tree
+- oblique splits
+- depth `2`
+- linear leaf outputs
+
+This is better than `Myopic-2 = 4.8204` and is close to the known optimal reference `4.73`.
+
 ## Quick Start
 
 Create an environment and install the package in editable mode:
@@ -48,8 +72,13 @@ Outputs are written under `outputs/`:
 - `rust/`: native rollout kernels used by the Rust-backed policy path
 - `invman/es.py`, `invman/es_mp.py`: evolution-strategy optimizers and training loop
 - `scripts/run_experiment.py`: single entry point for training and evaluation
+- `scripts/autoresearch_tree_structures.py`: tree-architecture comparison runner
 - `autoresearch/`: autoresearch-style loop for the trusted lost-sales benchmark
 
 ## Fixed Ordering Cost Variant
 
 The environment already supports an optional `fixed_order_cost` parameter. That gives a clean extension path toward the lost-sales problem with a setup cost on positive orders. The literature note for that variant is tracked in `../docs/lost_sales_fixed_order_cost_literature.md`.
+
+The fixed-order-cost benchmark layer and heuristic baselines are in place, but the current best
+tree-policy finding above has only been established on the trusted vanilla lost-sales benchmark so
+far.

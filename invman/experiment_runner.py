@@ -125,8 +125,15 @@ def ensure_output_dirs(args):
 
 
 def build_result_payload(args, learned_policy_results, heuristic_results):
-    effective_policy_head = args.policy_head if args.policy_type != "soft_tree" else "tree_leaf_quantity"
-    policy_architecture = f"{args.policy_type}_{effective_policy_head}_{args.state_features}"
+    effective_policy_head = (
+        args.policy_head
+        if args.policy_type != "soft_tree"
+        else f"tree_{args.tree_leaf_type}_leaf_quantity"
+    )
+    if args.policy_type == "soft_tree":
+        policy_architecture = f"{args.policy_type}_{args.tree_split_type}_{effective_policy_head}_{args.state_features}"
+    else:
+        policy_architecture = f"{args.policy_type}_{effective_policy_head}_{args.state_features}"
     return {
         "experiment_name": args.experiment_name,
         "problem": args.problem,
@@ -138,6 +145,8 @@ def build_result_payload(args, learned_policy_results, heuristic_results):
         "state_features": args.state_features,
         "tree_depth": args.tree_depth,
         "tree_temperature": args.tree_temperature,
+        "tree_split_type": args.tree_split_type,
+        "tree_leaf_type": args.tree_leaf_type,
         "rollout_backend": args.rollout_backend,
         "demand_dist_name": args.demand_dist_name,
         "demand_rate": args.demand_rate,

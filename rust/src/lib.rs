@@ -9,7 +9,7 @@ use rand_distr::{Distribution, Poisson};
 
 use crate::env::lost_sales::{epoch_cost, initialize_state, LostSalesState};
 use crate::policies::soft_tree::{
-    soft_tree_leaf_probabilities, validate_soft_tree_shapes,
+    parse_leaf_type, parse_split_type, soft_tree_leaf_probabilities, validate_soft_tree_shapes,
 };
 use crate::rollout::lost_sales_soft_tree::{
     population_rollout, rollout, rollout_from_demands, LostSalesRolloutConfig,
@@ -21,7 +21,7 @@ fn version() -> &'static str {
 }
 
 #[pyfunction]
-#[pyo3(signature = (state, split_weights, split_bias, leaf_logits, depth, max_order_size, temperature=0.25))]
+#[pyo3(signature = (state, split_weights, split_bias, leaf_logits, depth, max_order_size, temperature=0.25, split_type="oblique"))]
 fn soft_tree_action(
     state: Vec<f32>,
     split_weights: Vec<f32>,
@@ -30,6 +30,7 @@ fn soft_tree_action(
     depth: usize,
     max_order_size: usize,
     temperature: f32,
+    split_type: &str,
 ) -> PyResult<usize> {
     validate_soft_tree_shapes(
         state.len(),
@@ -39,7 +40,14 @@ fn soft_tree_action(
         depth,
     )?;
 
-    let leaf_probs = soft_tree_leaf_probabilities(&state, &split_weights, &split_bias, depth, temperature);
+    let leaf_probs = soft_tree_leaf_probabilities(
+        &state,
+        &split_weights,
+        &split_bias,
+        depth,
+        temperature,
+        parse_split_type(split_type)?,
+    );
     let mut action_value = 0.0f32;
     for (leaf_prob, leaf_logit) in leaf_probs.iter().zip(leaf_logits.iter()) {
         let quantity = 1.0 / (1.0 + (-leaf_logit).exp()) * max_order_size as f32;
@@ -135,7 +143,9 @@ fn lost_sales_constant_action_rollout(
     horizon=2000,
     seed=1234,
     warm_up_periods_ratio=0.2,
-    temperature=0.25
+    temperature=0.25,
+    split_type="oblique",
+    leaf_type="constant"
 ))]
 fn lost_sales_soft_tree_rollout(
     flat_params: Vec<f32>,
@@ -152,6 +162,8 @@ fn lost_sales_soft_tree_rollout(
     seed: u64,
     warm_up_periods_ratio: f64,
     temperature: f32,
+    split_type: &str,
+    leaf_type: &str,
 ) -> PyResult<f64> {
     let config = LostSalesRolloutConfig {
         input_dim,
@@ -166,6 +178,8 @@ fn lost_sales_soft_tree_rollout(
         horizon,
         warm_up_periods_ratio,
         temperature,
+        split_type: parse_split_type(split_type)?,
+        leaf_type: parse_leaf_type(leaf_type)?,
     };
     rollout(&flat_params, &config, seed)
 }
@@ -184,7 +198,9 @@ fn lost_sales_soft_tree_rollout(
     procurement_cost=0.0,
     fixed_order_cost=0.0,
     warm_up_periods_ratio=0.2,
-    temperature=0.25
+    temperature=0.25,
+    split_type="oblique",
+    leaf_type="constant"
 ))]
 fn lost_sales_soft_tree_rollout_from_demands(
     flat_params: Vec<f32>,
@@ -200,6 +216,8 @@ fn lost_sales_soft_tree_rollout_from_demands(
     fixed_order_cost: f64,
     warm_up_periods_ratio: f64,
     temperature: f32,
+    split_type: &str,
+    leaf_type: &str,
 ) -> PyResult<f64> {
     let config = LostSalesRolloutConfig {
         input_dim,
@@ -214,6 +232,8 @@ fn lost_sales_soft_tree_rollout_from_demands(
         horizon: demands.len(),
         warm_up_periods_ratio,
         temperature,
+        split_type: parse_split_type(split_type)?,
+        leaf_type: parse_leaf_type(leaf_type)?,
     };
     let env_state = LostSalesState {
         current_inventory,
@@ -237,7 +257,9 @@ fn lost_sales_soft_tree_rollout_from_demands(
     fixed_order_cost=0.0,
     horizon=2000,
     warm_up_periods_ratio=0.2,
-    temperature=0.25
+    temperature=0.25,
+    split_type="oblique",
+    leaf_type="constant"
 ))]
 fn lost_sales_soft_tree_population_rollout(
     params_batch: Vec<Vec<f32>>,
@@ -254,6 +276,8 @@ fn lost_sales_soft_tree_population_rollout(
     horizon: usize,
     warm_up_periods_ratio: f64,
     temperature: f32,
+    split_type: &str,
+    leaf_type: &str,
 ) -> PyResult<Vec<f64>> {
     let config = LostSalesRolloutConfig {
         input_dim,
@@ -268,6 +292,8 @@ fn lost_sales_soft_tree_population_rollout(
         horizon,
         warm_up_periods_ratio,
         temperature,
+        split_type: parse_split_type(split_type)?,
+        leaf_type: parse_leaf_type(leaf_type)?,
     };
     population_rollout(&params_batch, &config, &seeds)
 }

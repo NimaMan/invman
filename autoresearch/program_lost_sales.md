@@ -50,6 +50,8 @@ Use the fixed budgets from `scripts/autoresearch_lost_sales.py`:
 - `full`: trusted benchmark budget
 
 The first run in any new `run_tag` should establish a baseline.
+Promising ideas may then be promoted beyond the screening budget. The important requirement is that
+the benchmark and evaluation protocol stay fixed.
 
 ## Experiment loop
 
@@ -69,3 +71,10 @@ For each experiment:
 ## Goal
 
 Lower the learned policy cost on the fixed lost-sales benchmark while preserving a clean, general policy-learning pipeline.
+
+Current best architecture:
+
+- oblique soft tree
+- depth `2`
+- linear leaf outputs
+- benchmark cost `4.753725`

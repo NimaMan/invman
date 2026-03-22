@@ -5,7 +5,7 @@ use rand::SeedableRng;
 use rand_distr::{Distribution, Poisson};
 
 use crate::env::lost_sales::{build_pipeline_state, epoch_cost, initialize_state, LostSalesState};
-use crate::policies::soft_tree::action_from_flat_params;
+use crate::policies::soft_tree::{action_from_flat_params, SoftTreeLeafType, SoftTreeSplitType};
 
 #[derive(Clone, Copy)]
 pub struct LostSalesRolloutConfig {
@@ -21,6 +21,8 @@ pub struct LostSalesRolloutConfig {
     pub horizon: usize,
     pub warm_up_periods_ratio: f64,
     pub temperature: f32,
+    pub split_type: SoftTreeSplitType,
+    pub leaf_type: SoftTreeLeafType,
 }
 
 fn validate_config(config: &LostSalesRolloutConfig) -> PyResult<()> {
@@ -74,6 +76,8 @@ pub fn rollout(
             config.depth,
             config.max_order_size,
             config.temperature,
+            config.split_type,
+            config.leaf_type,
         )?;
 
         let arriving_order = env_state.lead_time_orders.remove(0);
@@ -126,6 +130,8 @@ pub fn rollout_from_demands(
             config.depth,
             config.max_order_size,
             config.temperature,
+            config.split_type,
+            config.leaf_type,
         )?;
 
         let arriving_order = env_state.lead_time_orders.remove(0);

@@ -26,5 +26,7 @@ def build_policy(args, env):
             max_order_size=env.max_order_size,
             depth=args.tree_depth,
             temperature=args.tree_temperature,
+            split_type=args.tree_split_type,
+            leaf_type=args.tree_leaf_type,
         )
     raise NotImplementedError(f"Unknown policy type: {args.policy_type}")

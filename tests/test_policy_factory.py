@@ -12,6 +12,8 @@ def _make_args(policy_type, policy_head="categorical_quantity"):
         activation="relu",
         tree_depth=3,
         tree_temperature=0.3,
+        tree_split_type="oblique",
+        tree_leaf_type="constant",
     )
 
 
@@ -33,3 +35,23 @@ def test_build_policy_returns_soft_tree_policy():
     assert isinstance(model, SoftTreePolicy)
     assert model.depth == 3
     assert model.temperature == 0.3
+    assert model.split_type == "oblique"
+    assert model.leaf_type == "constant"
+
+
+def test_build_policy_returns_axis_aligned_soft_tree_policy():
+    env = LostSalesEnv(demand_rate=5.0, lead_time=4, max_order_size=20, horizon=10, track_demand=True)
+    args = _make_args("soft_tree")
+    args.tree_split_type = "axis_aligned"
+    model = build_policy(args, env)
+    assert isinstance(model, SoftTreePolicy)
+    assert model.split_type == "axis_aligned"
+
+
+def test_build_policy_returns_linear_leaf_soft_tree_policy():
+    env = LostSalesEnv(demand_rate=5.0, lead_time=4, max_order_size=20, horizon=10, track_demand=True)
+    args = _make_args("soft_tree")
+    args.tree_leaf_type = "linear"
+    model = build_policy(args, env)
+    assert isinstance(model, SoftTreePolicy)
+    assert model.leaf_type == "linear"

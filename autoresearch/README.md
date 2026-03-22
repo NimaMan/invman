@@ -31,8 +31,27 @@ The main adaptation:
 - Here we fix the rollout/training budget because policy families currently have different runtime
   backends (`python` vs `rust`) and we care first about policy quality on the benchmark.
 
+Budgets are a default protocol, not a hard restriction. In practice we use:
+
+- screening runs to reject weak ideas quickly
+- promoted full-budget runs for promising architectures
+
 Key files:
 
 - `program_lost_sales.md`: agent instructions for the autonomous loop
 - `../scripts/autoresearch_lost_sales.py`: fixed-budget experiment runner and logger
+- `../scripts/autoresearch_tree_structures.py`: focused tree-structure comparison runner
 - `../scripts/build_rust_extension.py`: helper to rebuild the Rust extension in the shared virtualenv
+
+## Current result
+
+Best tree architecture found so far on the trusted vanilla benchmark:
+
+- `soft_tree_oblique_tree_linear_leaf_quantity_pipeline`
+- depth `2`
+- mean cost: `4.753725`
+
+This came from two stages:
+
+- tree split-structure screening showed `oblique` was better than `axis_aligned`
+- full-budget leaf comparison showed `linear` leaves were much better than `constant` leaves

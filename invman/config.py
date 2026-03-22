@@ -1,7 +1,11 @@
 import argparse
 from pathlib import Path
 
-from invman.policies.common import normalize_policy_head
+from invman.policies.common import (
+    normalize_policy_head,
+    normalize_tree_leaf_type,
+    normalize_tree_split_type,
+)
 
 try:
     from dotenv import load_dotenv
@@ -124,6 +128,16 @@ def get_config(argv=None):
         type=float,
         help="Temperature used by soft tree split sigmoids.",
     )
+    parser.add_argument(
+        "--tree_split_type",
+        default="oblique",
+        help="Tree split structure used by the soft tree policy.",
+    )
+    parser.add_argument(
+        "--tree_leaf_type",
+        default="constant",
+        help="Leaf output type used by the soft tree policy.",
+    )
 
     parser.add_argument("--experiment_name", default="lost_sales", help="Name used for saved artifacts.")
     parser.add_argument("--results_dir", default=str(default_results_dir), help="Directory for JSON summaries.")
@@ -143,6 +157,14 @@ def get_config(argv=None):
         parser.error(str(exc))
     try:
         args.state_features = _normalize_state_features(args.state_features)
+    except ValueError as exc:
+        parser.error(str(exc))
+    try:
+        args.tree_split_type = normalize_tree_split_type(args.tree_split_type)
+    except ValueError as exc:
+        parser.error(str(exc))
+    try:
+        args.tree_leaf_type = normalize_tree_leaf_type(args.tree_leaf_type)
     except ValueError as exc:
         parser.error(str(exc))
     # Backward-compatible alias retained for older scripts.
