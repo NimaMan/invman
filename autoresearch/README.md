@@ -91,3 +91,24 @@ Current smoke results:
 
 - dual sourcing primary instance (`lr=4`, `ce=110`): learned tree `249.84`, best heuristic `220.73`
 - multi-echelon setting 2: learned tree `3776.45`, best constant base-stock benchmark `3776.45`
+
+## Dual-Sourcing status
+
+The dual-sourcing smoke result was not the final word. A full-budget rerun on the same primary instance
+now gives:
+
+- learned oblique depth-2 linear-leaf tree: `233.08375`
+- best heuristic baseline, capped dual-index: `221.61`
+
+That is a real improvement over the smoke run, but still leaves the learned tree about `5.2%` behind the
+best heuristic.
+
+So the current dual-sourcing conclusion is:
+
+- the dual-sourcing environment, heuristic search, DP benchmark, and Rust rollout path are working;
+- additional CMA-ES budget helps;
+- but the next high-value change is a better policy search space, not just more training.
+
+The most motivated next autoresearch target is a state-dependent target-position policy for dual sourcing,
+because the benchmark heuristics act on expedited and regular inventory positions rather than directly on
+raw `(q_regular, q_expedited)` orders.

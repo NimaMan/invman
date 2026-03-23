@@ -88,3 +88,32 @@ Current smoke results:
 
 - dual sourcing primary instance: learned tree `249.84`, best heuristic `220.73`
 - multi-echelon setting 2: learned tree `3776.45`, best constant base-stock benchmark `3776.45`
+
+## Dual-Sourcing Policy Finding
+
+The current best tested learned policy on the primary dual-sourcing instance `dual_l4_ce110` is still
+the direct vector-action soft tree:
+
+- `soft_tree_oblique_tree_linear_leaf_quantity_pipeline`
+- depth `2`
+- full-budget mean cost: `233.08375`
+
+Reference heuristics on the same evaluation:
+
+- single-index: `226.816875`
+- dual-index: `222.4025`
+- capped dual-index: `221.61`
+- tailored base-surge: `222.7825`
+
+So the current learned tree is about `5.2%` worse than the best heuristic.
+
+This is the first clear case in the repo where the current soft-tree family is probably not failing from
+insufficient training budget alone. The more likely issue is the action representation:
+
+- the current tree emits direct raw orders `(q_regular, q_expedited)`
+- strong dual-sourcing heuristics operate in target-position space and only then derive order quantities
+
+That makes dual sourcing the next policy-design problem rather than the next budget-tuning problem.
+
+The next policy family to add here should therefore be a learned target-position policy, likely with
+state-dependent outputs for expedited and regular targets instead of direct order quantities.

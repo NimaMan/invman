@@ -67,6 +67,29 @@ Dual-sourcing smoke benchmark on the hardest small-scale literature instance `lr
 - best benchmark heuristic in the repo baseline: capped dual-index at `220.73`
 - current interpretation: the dual-sourcing package is implemented and benchmarked, but tree policies are not yet competitive there under the first smoke budget
 
+Dual-sourcing full-budget baseline on the same primary instance:
+
+- learned oblique depth-2 soft tree with linear leaves: `233.08375`
+- single-index: `226.816875`
+- dual-index: `222.4025`
+- capped dual-index: `221.61`
+- tailored base-surge: `222.7825`
+
+Current interpretation:
+
+- the dual-sourcing training path is correct and reproducible;
+- more CMA-ES budget helped materially versus the smoke run;
+- but the current direct vector-action tree remains about `5.2%` worse than the best heuristic.
+
+The current working hypothesis is that dual sourcing needs a better action representation:
+
+- benchmark heuristics act on expedited and regular inventory positions, not directly on raw
+  `(q_regular, q_expedited)` quantities;
+- our current tree must learn both the inventory-position transform and the replenishment logic in one
+  vector output space;
+- the next likely-better family is a state-dependent target-position policy, for example a learned tree
+  that outputs target expedited and regular positions and then maps those deterministically to orders.
+
 Multi-echelon smoke benchmark on the larger Van Roy / Gijsbrechts setting:
 
 - learned oblique depth-2 soft tree with linear leaves: `3776.45`
