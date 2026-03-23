@@ -34,6 +34,16 @@ Best learned policy found so far in this package:
 This beats the heuristic baseline `Myopic-2 = 4.8204` and improves on the earlier constant-leaf
 soft-tree result `4.7980`.
 
+Fresh refresh runs after the Rust/problem-package refactor:
+
+- Rust-backed soft tree rerun: `4.7658`
+- fresh linear rerun: `5.0049`
+- fresh NN `8x8` smoke rerun: `5.2504`
+
+These refresh runs confirm the Rust soft-tree path is still sound. The linear and NN reruns were weaker
+than their locked historical references, so the canonical benchmark anchors for those backbones remain
+the older saved runs and paper values rather than the fresh smoke numbers.
+
 ## Tree-policy findings
 
 From the completed tree-structure search on the vanilla benchmark:

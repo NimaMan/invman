@@ -27,6 +27,20 @@ Current learned-policy reference points on that benchmark:
 - earlier soft-tree benchmark: `4.7980`
 - current best learned policy: `4.753725`
 
+Fresh post-refactor refresh runs on the same benchmark:
+
+- heuristic validator still matches the trusted reference numbers: Myopic-1 `5.0641`, Myopic-2
+  `4.8204`, SVBS `5.8349`
+- fresh Rust-backed soft-tree rerun: `4.7658`
+- fresh linear rerun: `5.0049`
+- fresh NN `8x8` smoke rerun: `5.2504`
+
+Interpretation:
+
+- the Rust-backed soft-tree path remains healthy after the native/runtime refactor
+- the linear and NN backbones are still more seed- and budget-sensitive, so the locked historical
+  references above remain the stronger canonical baselines for those families
+
 The current best learned architecture is:
 
 - soft tree
@@ -142,6 +156,8 @@ Outputs are written under `outputs/`:
 - `scripts/autoresearch_dual_sourcing.py`: dual-sourcing autoresearch runner
 - `scripts/autoresearch_multi_echelon.py`: multi-echelon autoresearch runner
 - `autoresearch/`: autoresearch-style loop docs for vanilla and fixed-cost benchmarks
+- `../docs/benchmarks/lost_sales_l4_refresh.md`: refreshed vanilla lost-sales benchmark note after
+  the Rust refactor
 
 ## Fixed Ordering Cost Variant
 

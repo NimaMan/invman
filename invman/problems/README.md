@@ -8,6 +8,7 @@ Each inventory-control problem lives in its own subpackage under `invman/problem
   - `reference_instances.py`: trusted benchmark instances
   - `problem_info.py`: literature reference tables
   - `benchmark.py`: default heuristic evaluation helpers
+  - `README.md`: canonical vanilla benchmark and refresh notes
 - `lost_sales_fixed_order_cost/`
   - `env.py`: fixed-cost problem entrypoint built on the lost-sales simulator
   - `heuristics.py`: `(s,S)`, `(s,nQ)`, modified `(s,S,q)` search and evaluation
