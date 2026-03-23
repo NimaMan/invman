@@ -9,15 +9,35 @@ use rand::SeedableRng;
 use rand_distr::{Distribution, Poisson};
 
 use crate::env::lost_sales::{epoch_cost, initialize_state, LostSalesState};
+use crate::heuristics::dual_sourcing::{
+    search_capped_dual_index_from_demands, search_dual_index_from_demands,
+    search_single_index_from_demands, search_tailored_base_surge_from_demands,
+};
 use crate::heuristics::fixed_order_cost::{
     fixed_policy_rollout_from_demands, search_modified_s_s_q_from_demands, search_s_nq_from_demands,
     search_s_s_from_demands,
 };
+use crate::heuristics::multi_echelon::search_constant_base_stock_from_demands;
 use crate::policies::soft_tree::{
-    parse_leaf_type, parse_split_type, soft_tree_leaf_probabilities, validate_soft_tree_shapes,
+    build_action_spec, parse_leaf_type, parse_split_type, soft_tree_leaf_probabilities,
+    validate_soft_tree_shapes,
 };
 use crate::rollout::lost_sales_soft_tree::{
-    population_rollout, rollout, rollout_from_demands, LostSalesRolloutConfig,
+    population_rollout as lost_sales_population_rollout,
+    rollout as lost_sales_rollout,
+    rollout_from_demands,
+    LostSalesRolloutConfig,
+};
+use crate::rollout::dual_sourcing_soft_tree::{
+    population_rollout as dual_sourcing_population_rollout,
+    rollout_from_demands as dual_sourcing_rollout_from_demands,
+    rollout as dual_sourcing_rollout,
+    DualSourcingRolloutConfig,
+};
+use crate::rollout::multi_echelon_soft_tree::{
+    population_rollout as multi_echelon_population_rollout,
+    rollout as multi_echelon_rollout,
+    MultiEchelonRolloutConfig,
 };
 
 #[pyfunction]
@@ -186,7 +206,7 @@ fn lost_sales_soft_tree_rollout(
         split_type: parse_split_type(split_type)?,
         leaf_type: parse_leaf_type(leaf_type)?,
     };
-    rollout(&flat_params, &config, seed)
+    lost_sales_rollout(&flat_params, &config, seed)
 }
 
 #[pyfunction]
@@ -468,7 +488,635 @@ fn lost_sales_soft_tree_population_rollout(
         split_type: parse_split_type(split_type)?,
         leaf_type: parse_leaf_type(leaf_type)?,
     };
-    population_rollout(&params_batch, &config, &seeds)
+    lost_sales_population_rollout(&params_batch, &config, &seeds)
+}
+
+#[pyfunction]
+#[pyo3(signature = (
+    flat_params,
+    input_dim,
+    depth,
+    min_values,
+    max_values,
+    action_mode,
+    regular_lead_time,
+    regular_order_cost,
+    expedited_order_cost,
+    holding_cost,
+    shortage_cost,
+    regular_max_order_size,
+    expedited_max_order_size,
+    demand_low,
+    demand_high,
+    horizon=2000,
+    seed=1234,
+    warm_up_periods_ratio=0.2,
+    temperature=0.25,
+    split_type="oblique",
+    leaf_type="constant",
+    allowed_values=None
+))]
+fn dual_sourcing_soft_tree_rollout(
+    flat_params: Vec<f32>,
+    input_dim: usize,
+    depth: usize,
+    min_values: Vec<usize>,
+    max_values: Vec<usize>,
+    action_mode: &str,
+    regular_lead_time: usize,
+    regular_order_cost: f64,
+    expedited_order_cost: f64,
+    holding_cost: f64,
+    shortage_cost: f64,
+    regular_max_order_size: usize,
+    expedited_max_order_size: usize,
+    demand_low: usize,
+    demand_high: usize,
+    horizon: usize,
+    seed: u64,
+    warm_up_periods_ratio: f64,
+    temperature: f32,
+    split_type: &str,
+    leaf_type: &str,
+    allowed_values: Option<Vec<Vec<usize>>>,
+) -> PyResult<f64> {
+    let config = DualSourcingRolloutConfig {
+        input_dim,
+        depth,
+        action_spec: build_action_spec(action_mode, min_values, max_values, allowed_values)?,
+        regular_lead_time,
+        regular_order_cost,
+        expedited_order_cost,
+        holding_cost,
+        shortage_cost,
+        regular_max_order_size,
+        expedited_max_order_size,
+        demand_low,
+        demand_high,
+        horizon,
+        warm_up_periods_ratio,
+        temperature,
+        split_type: parse_split_type(split_type)?,
+        leaf_type: parse_leaf_type(leaf_type)?,
+    };
+    dual_sourcing_rollout(&flat_params, &config, seed)
+}
+
+#[pyfunction]
+#[pyo3(signature = (
+    params_batch,
+    input_dim,
+    depth,
+    min_values,
+    max_values,
+    action_mode,
+    regular_lead_time,
+    regular_order_cost,
+    expedited_order_cost,
+    holding_cost,
+    shortage_cost,
+    regular_max_order_size,
+    expedited_max_order_size,
+    demand_low,
+    demand_high,
+    seeds,
+    horizon=2000,
+    warm_up_periods_ratio=0.2,
+    temperature=0.25,
+    split_type="oblique",
+    leaf_type="constant",
+    allowed_values=None
+))]
+fn dual_sourcing_soft_tree_population_rollout(
+    params_batch: Vec<Vec<f32>>,
+    input_dim: usize,
+    depth: usize,
+    min_values: Vec<usize>,
+    max_values: Vec<usize>,
+    action_mode: &str,
+    regular_lead_time: usize,
+    regular_order_cost: f64,
+    expedited_order_cost: f64,
+    holding_cost: f64,
+    shortage_cost: f64,
+    regular_max_order_size: usize,
+    expedited_max_order_size: usize,
+    demand_low: usize,
+    demand_high: usize,
+    seeds: Vec<u64>,
+    horizon: usize,
+    warm_up_periods_ratio: f64,
+    temperature: f32,
+    split_type: &str,
+    leaf_type: &str,
+    allowed_values: Option<Vec<Vec<usize>>>,
+) -> PyResult<Vec<f64>> {
+    let config = DualSourcingRolloutConfig {
+        input_dim,
+        depth,
+        action_spec: build_action_spec(action_mode, min_values, max_values, allowed_values)?,
+        regular_lead_time,
+        regular_order_cost,
+        expedited_order_cost,
+        holding_cost,
+        shortage_cost,
+        regular_max_order_size,
+        expedited_max_order_size,
+        demand_low,
+        demand_high,
+        horizon,
+        warm_up_periods_ratio,
+        temperature,
+        split_type: parse_split_type(split_type)?,
+        leaf_type: parse_leaf_type(leaf_type)?,
+    };
+    dual_sourcing_population_rollout(&params_batch, &config, &seeds)
+}
+
+#[pyfunction]
+#[pyo3(signature = (
+    flat_params,
+    input_dim,
+    depth,
+    min_values,
+    max_values,
+    action_mode,
+    state,
+    demands,
+    regular_order_cost,
+    expedited_order_cost,
+    holding_cost,
+    shortage_cost,
+    regular_max_order_size,
+    expedited_max_order_size,
+    warm_up_periods_ratio=0.2,
+    temperature=0.25,
+    split_type="oblique",
+    leaf_type="constant",
+    allowed_values=None
+))]
+fn dual_sourcing_soft_tree_rollout_from_demands(
+    flat_params: Vec<f32>,
+    input_dim: usize,
+    depth: usize,
+    min_values: Vec<usize>,
+    max_values: Vec<usize>,
+    action_mode: &str,
+    state: Vec<i64>,
+    demands: Vec<usize>,
+    regular_order_cost: f64,
+    expedited_order_cost: f64,
+    holding_cost: f64,
+    shortage_cost: f64,
+    regular_max_order_size: usize,
+    expedited_max_order_size: usize,
+    warm_up_periods_ratio: f64,
+    temperature: f32,
+    split_type: &str,
+    leaf_type: &str,
+    allowed_values: Option<Vec<Vec<usize>>>,
+) -> PyResult<f64> {
+    let config = DualSourcingRolloutConfig {
+        input_dim,
+        depth,
+        action_spec: build_action_spec(action_mode, min_values, max_values, allowed_values)?,
+        regular_lead_time: state.len(),
+        regular_order_cost,
+        expedited_order_cost,
+        holding_cost,
+        shortage_cost,
+        regular_max_order_size,
+        expedited_max_order_size,
+        demand_low: 0,
+        demand_high: 0,
+        horizon: demands.len(),
+        warm_up_periods_ratio,
+        temperature,
+        split_type: parse_split_type(split_type)?,
+        leaf_type: parse_leaf_type(leaf_type)?,
+    };
+    dual_sourcing_rollout_from_demands(&flat_params, &config, state, &demands)
+}
+
+#[pyfunction]
+#[pyo3(signature = (
+    state,
+    demands,
+    regular_max_order_size,
+    expedited_max_order_size,
+    regular_order_cost,
+    expedited_order_cost,
+    holding_cost,
+    shortage_cost,
+    warm_up_periods_ratio=0.2,
+    target_upper_bound=20,
+    top_k=10
+))]
+fn dual_sourcing_single_index_search_from_demands(
+    state: Vec<i64>,
+    demands: Vec<usize>,
+    regular_max_order_size: usize,
+    expedited_max_order_size: usize,
+    regular_order_cost: f64,
+    expedited_order_cost: f64,
+    holding_cost: f64,
+    shortage_cost: f64,
+    warm_up_periods_ratio: f64,
+    target_upper_bound: usize,
+    top_k: usize,
+) -> PyResult<((usize, usize, f64), Vec<(usize, usize, f64)>)> {
+    search_single_index_from_demands(
+        &state,
+        &demands,
+        regular_max_order_size,
+        expedited_max_order_size,
+        regular_order_cost,
+        expedited_order_cost,
+        holding_cost,
+        shortage_cost,
+        warm_up_periods_ratio,
+        target_upper_bound,
+        top_k,
+    )
+}
+
+#[pyfunction]
+#[pyo3(signature = (
+    state,
+    demands,
+    regular_max_order_size,
+    expedited_max_order_size,
+    regular_order_cost,
+    expedited_order_cost,
+    holding_cost,
+    shortage_cost,
+    warm_up_periods_ratio=0.2,
+    target_upper_bound=20,
+    top_k=10
+))]
+fn dual_sourcing_dual_index_search_from_demands(
+    state: Vec<i64>,
+    demands: Vec<usize>,
+    regular_max_order_size: usize,
+    expedited_max_order_size: usize,
+    regular_order_cost: f64,
+    expedited_order_cost: f64,
+    holding_cost: f64,
+    shortage_cost: f64,
+    warm_up_periods_ratio: f64,
+    target_upper_bound: usize,
+    top_k: usize,
+) -> PyResult<((usize, usize, f64), Vec<(usize, usize, f64)>)> {
+    search_dual_index_from_demands(
+        &state,
+        &demands,
+        regular_max_order_size,
+        expedited_max_order_size,
+        regular_order_cost,
+        expedited_order_cost,
+        holding_cost,
+        shortage_cost,
+        warm_up_periods_ratio,
+        target_upper_bound,
+        top_k,
+    )
+}
+
+#[pyfunction]
+#[pyo3(signature = (
+    state,
+    demands,
+    regular_max_order_size,
+    expedited_max_order_size,
+    regular_order_cost,
+    expedited_order_cost,
+    holding_cost,
+    shortage_cost,
+    warm_up_periods_ratio=0.2,
+    target_upper_bound=20,
+    top_k=10
+))]
+fn dual_sourcing_capped_dual_index_search_from_demands(
+    state: Vec<i64>,
+    demands: Vec<usize>,
+    regular_max_order_size: usize,
+    expedited_max_order_size: usize,
+    regular_order_cost: f64,
+    expedited_order_cost: f64,
+    holding_cost: f64,
+    shortage_cost: f64,
+    warm_up_periods_ratio: f64,
+    target_upper_bound: usize,
+    top_k: usize,
+) -> PyResult<((usize, usize, usize, f64), Vec<(usize, usize, usize, f64)>)> {
+    search_capped_dual_index_from_demands(
+        &state,
+        &demands,
+        regular_max_order_size,
+        expedited_max_order_size,
+        regular_order_cost,
+        expedited_order_cost,
+        holding_cost,
+        shortage_cost,
+        warm_up_periods_ratio,
+        target_upper_bound,
+        top_k,
+    )
+}
+
+#[pyfunction]
+#[pyo3(signature = (
+    state,
+    demands,
+    regular_max_order_size,
+    expedited_max_order_size,
+    regular_order_cost,
+    expedited_order_cost,
+    holding_cost,
+    shortage_cost,
+    warm_up_periods_ratio=0.2,
+    target_upper_bound=20,
+    top_k=10
+))]
+fn dual_sourcing_tailored_base_surge_search_from_demands(
+    state: Vec<i64>,
+    demands: Vec<usize>,
+    regular_max_order_size: usize,
+    expedited_max_order_size: usize,
+    regular_order_cost: f64,
+    expedited_order_cost: f64,
+    holding_cost: f64,
+    shortage_cost: f64,
+    warm_up_periods_ratio: f64,
+    target_upper_bound: usize,
+    top_k: usize,
+) -> PyResult<((usize, usize, f64), Vec<(usize, usize, f64)>)> {
+    search_tailored_base_surge_from_demands(
+        &state,
+        &demands,
+        regular_max_order_size,
+        expedited_max_order_size,
+        regular_order_cost,
+        expedited_order_cost,
+        holding_cost,
+        shortage_cost,
+        warm_up_periods_ratio,
+        target_upper_bound,
+        top_k,
+    )
+}
+
+#[pyfunction]
+#[pyo3(signature = (
+    flat_params,
+    input_dim,
+    depth,
+    min_values,
+    max_values,
+    action_mode,
+    warehouse_lead_time,
+    retailer_lead_time,
+    num_retailers,
+    warehouse_holding_cost,
+    retailer_holding_cost,
+    warehouse_expedited_cost,
+    warehouse_lost_sale_cost,
+    expedited_service_prob,
+    warehouse_capacity,
+    warehouse_inventory_cap,
+    retailer_inventory_cap,
+    demand_mean,
+    demand_std,
+    horizon=2000,
+    seed=1234,
+    warm_up_periods_ratio=0.2,
+    temperature=0.25,
+    split_type="oblique",
+    leaf_type="constant",
+    allowed_values=None
+))]
+fn multi_echelon_soft_tree_rollout(
+    flat_params: Vec<f32>,
+    input_dim: usize,
+    depth: usize,
+    min_values: Vec<usize>,
+    max_values: Vec<usize>,
+    action_mode: &str,
+    warehouse_lead_time: usize,
+    retailer_lead_time: usize,
+    num_retailers: usize,
+    warehouse_holding_cost: f64,
+    retailer_holding_cost: f64,
+    warehouse_expedited_cost: f64,
+    warehouse_lost_sale_cost: f64,
+    expedited_service_prob: f64,
+    warehouse_capacity: usize,
+    warehouse_inventory_cap: usize,
+    retailer_inventory_cap: usize,
+    demand_mean: f64,
+    demand_std: f64,
+    horizon: usize,
+    seed: u64,
+    warm_up_periods_ratio: f64,
+    temperature: f32,
+    split_type: &str,
+    leaf_type: &str,
+    allowed_values: Option<Vec<Vec<usize>>>,
+) -> PyResult<f64> {
+    let warehouse_levels = allowed_values
+        .as_ref()
+        .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("multi-echelon rollouts require allowed_values"))?
+        .get(0)
+        .cloned()
+        .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("missing warehouse allowed_values"))?;
+    let retailer_levels = allowed_values
+        .as_ref()
+        .unwrap()
+        .get(1)
+        .cloned()
+        .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("missing retailer allowed_values"))?;
+    let config = MultiEchelonRolloutConfig {
+        input_dim,
+        depth,
+        action_spec: build_action_spec(action_mode, min_values, max_values, allowed_values)?,
+        warehouse_lead_time,
+        retailer_lead_time,
+        num_retailers,
+        warehouse_holding_cost,
+        retailer_holding_cost,
+        warehouse_expedited_cost,
+        warehouse_lost_sale_cost,
+        expedited_service_prob,
+        warehouse_capacity,
+        warehouse_inventory_cap,
+        retailer_inventory_cap,
+        demand_mean,
+        demand_std,
+        horizon,
+        warm_up_periods_ratio,
+        temperature,
+        split_type: parse_split_type(split_type)?,
+        leaf_type: parse_leaf_type(leaf_type)?,
+    };
+    multi_echelon_rollout(&flat_params, &config, seed, &warehouse_levels, &retailer_levels)
+}
+
+#[pyfunction]
+#[pyo3(signature = (
+    params_batch,
+    input_dim,
+    depth,
+    min_values,
+    max_values,
+    action_mode,
+    warehouse_lead_time,
+    retailer_lead_time,
+    num_retailers,
+    warehouse_holding_cost,
+    retailer_holding_cost,
+    warehouse_expedited_cost,
+    warehouse_lost_sale_cost,
+    expedited_service_prob,
+    warehouse_capacity,
+    warehouse_inventory_cap,
+    retailer_inventory_cap,
+    demand_mean,
+    demand_std,
+    seeds,
+    horizon=2000,
+    warm_up_periods_ratio=0.2,
+    temperature=0.25,
+    split_type="oblique",
+    leaf_type="constant",
+    allowed_values=None
+))]
+fn multi_echelon_soft_tree_population_rollout(
+    params_batch: Vec<Vec<f32>>,
+    input_dim: usize,
+    depth: usize,
+    min_values: Vec<usize>,
+    max_values: Vec<usize>,
+    action_mode: &str,
+    warehouse_lead_time: usize,
+    retailer_lead_time: usize,
+    num_retailers: usize,
+    warehouse_holding_cost: f64,
+    retailer_holding_cost: f64,
+    warehouse_expedited_cost: f64,
+    warehouse_lost_sale_cost: f64,
+    expedited_service_prob: f64,
+    warehouse_capacity: usize,
+    warehouse_inventory_cap: usize,
+    retailer_inventory_cap: usize,
+    demand_mean: f64,
+    demand_std: f64,
+    seeds: Vec<u64>,
+    horizon: usize,
+    warm_up_periods_ratio: f64,
+    temperature: f32,
+    split_type: &str,
+    leaf_type: &str,
+    allowed_values: Option<Vec<Vec<usize>>>,
+) -> PyResult<Vec<f64>> {
+    let warehouse_levels = allowed_values
+        .as_ref()
+        .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("multi-echelon rollouts require allowed_values"))?
+        .get(0)
+        .cloned()
+        .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("missing warehouse allowed_values"))?;
+    let retailer_levels = allowed_values
+        .as_ref()
+        .unwrap()
+        .get(1)
+        .cloned()
+        .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("missing retailer allowed_values"))?;
+    let config = MultiEchelonRolloutConfig {
+        input_dim,
+        depth,
+        action_spec: build_action_spec(action_mode, min_values, max_values, allowed_values)?,
+        warehouse_lead_time,
+        retailer_lead_time,
+        num_retailers,
+        warehouse_holding_cost,
+        retailer_holding_cost,
+        warehouse_expedited_cost,
+        warehouse_lost_sale_cost,
+        expedited_service_prob,
+        warehouse_capacity,
+        warehouse_inventory_cap,
+        retailer_inventory_cap,
+        demand_mean,
+        demand_std,
+        horizon,
+        warm_up_periods_ratio,
+        temperature,
+        split_type: parse_split_type(split_type)?,
+        leaf_type: parse_leaf_type(leaf_type)?,
+    };
+    multi_echelon_population_rollout(&params_batch, &config, &seeds, &warehouse_levels, &retailer_levels)
+}
+
+#[pyfunction]
+#[pyo3(signature = (
+    warehouse_inventory,
+    warehouse_pipeline,
+    retailer_inventory,
+    retailer_pipeline,
+    demands,
+    expedite_uniforms,
+    warehouse_levels,
+    retailer_levels,
+    warehouse_holding_cost,
+    retailer_holding_cost,
+    warehouse_expedited_cost,
+    warehouse_lost_sale_cost,
+    expedited_service_prob,
+    warehouse_capacity,
+    warehouse_inventory_cap,
+    retailer_inventory_cap,
+    warm_up_periods_ratio=0.2,
+    top_k=10
+))]
+fn multi_echelon_constant_base_stock_search_from_demands(
+    warehouse_inventory: i64,
+    warehouse_pipeline: Vec<usize>,
+    retailer_inventory: Vec<i64>,
+    retailer_pipeline: Vec<Vec<usize>>,
+    demands: Vec<Vec<usize>>,
+    expedite_uniforms: Vec<Vec<Vec<f64>>>,
+    warehouse_levels: Vec<usize>,
+    retailer_levels: Vec<usize>,
+    warehouse_holding_cost: f64,
+    retailer_holding_cost: f64,
+    warehouse_expedited_cost: f64,
+    warehouse_lost_sale_cost: f64,
+    expedited_service_prob: f64,
+    warehouse_capacity: usize,
+    warehouse_inventory_cap: usize,
+    retailer_inventory_cap: usize,
+    warm_up_periods_ratio: f64,
+    top_k: usize,
+) -> PyResult<((usize, usize, f64), Vec<(usize, usize, f64)>)> {
+    search_constant_base_stock_from_demands(
+        warehouse_inventory,
+        &warehouse_pipeline,
+        &retailer_inventory,
+        &retailer_pipeline,
+        &demands,
+        &expedite_uniforms,
+        &warehouse_levels,
+        &retailer_levels,
+        warehouse_holding_cost,
+        retailer_holding_cost,
+        warehouse_expedited_cost,
+        warehouse_lost_sale_cost,
+        expedited_service_prob,
+        warehouse_capacity,
+        warehouse_inventory_cap,
+        retailer_inventory_cap,
+        warm_up_periods_ratio,
+        top_k,
+    )
 }
 
 #[pymodule]
@@ -483,5 +1131,15 @@ fn invman_rust(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(lost_sales_fixed_s_nq_search_from_demands, m)?)?;
     m.add_function(wrap_pyfunction!(lost_sales_fixed_modified_s_s_q_search_from_demands, m)?)?;
     m.add_function(wrap_pyfunction!(lost_sales_soft_tree_population_rollout, m)?)?;
+    m.add_function(wrap_pyfunction!(dual_sourcing_soft_tree_rollout, m)?)?;
+    m.add_function(wrap_pyfunction!(dual_sourcing_soft_tree_population_rollout, m)?)?;
+    m.add_function(wrap_pyfunction!(dual_sourcing_soft_tree_rollout_from_demands, m)?)?;
+    m.add_function(wrap_pyfunction!(dual_sourcing_single_index_search_from_demands, m)?)?;
+    m.add_function(wrap_pyfunction!(dual_sourcing_dual_index_search_from_demands, m)?)?;
+    m.add_function(wrap_pyfunction!(dual_sourcing_capped_dual_index_search_from_demands, m)?)?;
+    m.add_function(wrap_pyfunction!(dual_sourcing_tailored_base_surge_search_from_demands, m)?)?;
+    m.add_function(wrap_pyfunction!(multi_echelon_soft_tree_rollout, m)?)?;
+    m.add_function(wrap_pyfunction!(multi_echelon_soft_tree_population_rollout, m)?)?;
+    m.add_function(wrap_pyfunction!(multi_echelon_constant_base_stock_search_from_demands, m)?)?;
     Ok(())
 }

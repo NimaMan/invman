@@ -3,6 +3,8 @@ from collections import deque
 import numpy as np
 from scipy.stats import nbinom, poisson
 
+from invman.policies.common import build_scalar_action_spec
+
 
 def _normalize_state_features(state_features: str) -> str:
     aliases = {
@@ -48,6 +50,7 @@ class LostSalesEnv:
         self.fixed_order_cost = float(fixed_order_cost)
         self.max_order_size = int(max_order_size)
         self.action_space_dim = self.max_order_size + 1
+        self.action_spec = build_scalar_action_spec(self.max_order_size)
         self.inventory_upper_bound = int(inventory_upper_bound)
         self.lead_time = int(lead_time)
         self.state_features = _normalize_state_features(state_features)

@@ -3,6 +3,8 @@
 This repository now keeps one active code path:
 
 - `invman.problems.lost_sales` for the canonical vanilla lost-sales package
+- `invman.problems.dual_sourcing` for the Gijsbrechts / Veeraraghavan-Scheller-Wolf dual-sourcing settings
+- `invman.problems.multi_echelon` for the Van Roy / Gijsbrechts two-echelon warehouse-retailer settings
 - policy optimization with evolution strategies over compact policy parameterizations
 - a canonical `invman.policies` package for learned policy classes
 - a colocated Rust crate under `rust/` for high-throughput rollout kernels
@@ -59,6 +61,18 @@ Reference comparisons:
 So the current best fixed-cost tree improves on the earlier tree by about `0.5%` and improves on
 the best heuristic by about `4.36%` on the canonical fixed-cost instance.
 
+Dual-sourcing smoke benchmark on the hardest small-scale literature instance `lr=4`, `ce=110`:
+
+- learned oblique depth-2 soft tree with linear leaves: `249.84`
+- best benchmark heuristic in the repo baseline: capped dual-index at `220.73`
+- current interpretation: the dual-sourcing package is implemented and benchmarked, but tree policies are not yet competitive there under the first smoke budget
+
+Multi-echelon smoke benchmark on the larger Van Roy / Gijsbrechts setting:
+
+- learned oblique depth-2 soft tree with linear leaves: `3776.45`
+- best constant base-stock benchmark on the same evaluation: `3776.45`
+- current interpretation: the first tree smoke run matched the best constant base-stock benchmark on the setting-2 action grid
+
 ## Quick Start
 
 Create an environment and install the package in editable mode:
@@ -93,6 +107,8 @@ Outputs are written under `outputs/`:
 - `invman/config.py`: CLI configuration
 - `invman/problems/lost_sales/`: vanilla lost-sales env, heuristics, and benchmark references
 - `invman/problems/lost_sales_fixed_order_cost/`: fixed-order-cost extension and heuristic search
+- `invman/problems/dual_sourcing/`: dual-sourcing env, heuristics, bounded DP, and literature settings
+- `invman/problems/multi_echelon/`: two-echelon env, constant base-stock benchmark, and literature settings
 - `invman/policies/`: canonical linear, neural, and tree policy parameterizations
 - `rust/`: native rollout kernels used by the Rust-backed policy path
 - `invman/es.py`, `invman/es_mp.py`: evolution-strategy optimizers and training loop
@@ -100,6 +116,8 @@ Outputs are written under `outputs/`:
 - `scripts/autoresearch_tree_structures.py`: vanilla lost-sales tree-architecture comparison runner
 - `scripts/autoresearch_fixed_order_cost.py`: fixed-cost autoresearch runner
 - `scripts/autoresearch_fixed_order_tree_structures.py`: fixed-cost tree-architecture screening runner
+- `scripts/autoresearch_dual_sourcing.py`: dual-sourcing autoresearch runner
+- `scripts/autoresearch_multi_echelon.py`: multi-echelon autoresearch runner
 - `autoresearch/`: autoresearch-style loop docs for vanilla and fixed-cost benchmarks
 
 ## Fixed Ordering Cost Variant

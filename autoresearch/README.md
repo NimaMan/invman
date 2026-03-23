@@ -81,3 +81,13 @@ This came from two stages:
 
 - tree split-structure screening showed `oblique` was better than `axis_aligned`
 - full-budget leaf comparison showed `linear` leaves were much better than `constant` leaves
+
+The next targets are the two additional Gijsbrechts (2022) problem classes:
+
+- dual sourcing: `program_dual_sourcing.md`, `../scripts/autoresearch_dual_sourcing.py`
+- multi echelon: `program_multi_echelon.md`, `../scripts/autoresearch_multi_echelon.py`
+
+Current smoke results:
+
+- dual sourcing primary instance (`lr=4`, `ce=110`): learned tree `249.84`, best heuristic `220.73`
+- multi-echelon setting 2: learned tree `3776.45`, best constant base-stock benchmark `3776.45`

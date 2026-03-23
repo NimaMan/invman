@@ -6,7 +6,8 @@ Current policy families:
 
 - `LinearPolicyNet`: linear policy with categorical or ordinal quantity heads
 - `PolicyNet`: small MLP policy with categorical or ordinal quantity heads
-- `SoftTreePolicy`: soft decision tree with configurable split and leaf structure
+- `SoftTreePolicy`: soft decision tree with configurable split and leaf structure, now supporting
+  scalar, vector, and discrete-grid action specifications
 
 ## Current benchmark findings
 
@@ -75,3 +76,15 @@ The fixed-cost autoresearch result is now also positive on the canonical instanc
 
 The next natural question is whether the same fixed-cost search loop can improve the broader
 literature subset grid, not just the canonical instance.
+
+## New Vector-Action Problems
+
+The same soft-tree family now also supports:
+
+- dual sourcing with 2D actions `(q_regular, q_expedited)`
+- multi-echelon state-dependent base-stock actions `(y_w, y_r)`
+
+Current smoke results:
+
+- dual sourcing primary instance: learned tree `249.84`, best heuristic `220.73`
+- multi-echelon setting 2: learned tree `3776.45`, best constant base-stock benchmark `3776.45`

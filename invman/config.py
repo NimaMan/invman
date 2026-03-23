@@ -44,7 +44,7 @@ def get_config(argv=None):
     parser.add_argument(
         "--problem",
         default="lost_sales",
-        choices=["lost_sales", "lost_sales_fixed_order_cost"],
+        choices=["lost_sales", "lost_sales_fixed_order_cost", "dual_sourcing", "multi_echelon"],
         help="Problem variant to simulate.",
     )
 
@@ -82,6 +82,27 @@ def get_config(argv=None):
         type=float,
         help="Fixed setup cost charged whenever a positive order is placed.",
     )
+    parser.add_argument("--regular_lead_time", default=2, type=int, help="Regular supplier lead time.")
+    parser.add_argument("--expedited_lead_time", default=0, type=int, help="Expedited supplier lead time.")
+    parser.add_argument("--regular_order_cost", default=100.0, type=float, help="Regular supplier unit cost.")
+    parser.add_argument("--expedited_order_cost", default=105.0, type=float, help="Expedited supplier unit cost.")
+    parser.add_argument("--regular_max_order_size", default=20, type=int, help="Max regular-source order quantity.")
+    parser.add_argument("--expedited_max_order_size", default=20, type=int, help="Max expedited-source order quantity.")
+    parser.add_argument("--dual_demand_low", default=0, type=int, help="Lower support bound for dual-sourcing demand.")
+    parser.add_argument("--dual_demand_high", default=4, type=int, help="Upper support bound for dual-sourcing demand.")
+    parser.add_argument("--warehouse_lead_time", default=2, type=int, help="Manufacturer to warehouse lead time.")
+    parser.add_argument("--retailer_lead_time", default=2, type=int, help="Warehouse to retailer lead time.")
+    parser.add_argument("--num_retailers", default=10, type=int, help="Number of identical retailers.")
+    parser.add_argument("--warehouse_holding_cost", default=3.0, type=float, help="Warehouse holding cost.")
+    parser.add_argument("--retailer_holding_cost", default=3.0, type=float, help="Retailer holding cost.")
+    parser.add_argument("--warehouse_expedited_cost", default=0.0, type=float, help="Unit cost of same-day warehouse expediting.")
+    parser.add_argument("--warehouse_lost_sale_cost", default=60.0, type=float, help="Lost-sales penalty in the multi-echelon model.")
+    parser.add_argument("--expedited_service_prob", default=0.8, type=float, help="Probability a retailer stockout customer accepts same-day warehouse service.")
+    parser.add_argument("--warehouse_capacity", default=100, type=int, help="Warehouse production/replenishment capacity.")
+    parser.add_argument("--warehouse_inventory_cap", default=1000, type=int, help="Warehouse inventory-position cap.")
+    parser.add_argument("--retailer_inventory_cap", default=100, type=int, help="Retail inventory-position cap.")
+    parser.add_argument("--multi_demand_mean", default=5.0, type=float, help="Mean retailer demand in the multi-echelon model.")
+    parser.add_argument("--multi_demand_std", default=14.0, type=float, help="Std. dev. of retailer demand in the multi-echelon model.")
     parser.add_argument("--horizon", default=2000, type=int, help="Training rollout horizon.")
     parser.add_argument("--eval_horizon", default=10000, type=int, help="Evaluation rollout horizon.")
     parser.add_argument("--eval_seeds", default=10, type=int, help="Number of evaluation seeds.")
@@ -172,6 +193,8 @@ def get_config(argv=None):
 
     if args.problem == "lost_sales_fixed_order_cost" and args.fixed_order_cost <= 0:
         parser.error("--fixed_order_cost must be positive when --problem=lost_sales_fixed_order_cost")
+    if args.problem == "dual_sourcing" and args.expedited_lead_time > args.regular_lead_time:
+        parser.error("--expedited_lead_time must be <= --regular_lead_time for dual_sourcing")
     if args.tree_depth < 1:
         parser.error("--tree_depth must be at least 1")
     if args.tree_temperature <= 0:

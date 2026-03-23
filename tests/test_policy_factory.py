@@ -1,6 +1,9 @@
 from types import SimpleNamespace
 
+import pytest
+
 from invman.problems.lost_sales.env import LostSalesEnv
+from invman.problems.dual_sourcing.env import DualSourcingEnv
 from invman.policies import LinearPolicyNet, PolicyNet, SoftTreePolicy, build_policy
 
 
@@ -55,3 +58,16 @@ def test_build_policy_returns_linear_leaf_soft_tree_policy():
     model = build_policy(args, env)
     assert isinstance(model, SoftTreePolicy)
     assert model.leaf_type == "linear"
+
+
+def test_build_policy_rejects_linear_on_vector_action_problem():
+    env = DualSourcingEnv(horizon=10, track_demand=True)
+    with pytest.raises(ValueError):
+        build_policy(_make_args("linear"), env)
+
+
+def test_build_policy_supports_soft_tree_on_vector_action_problem():
+    env = DualSourcingEnv(horizon=10, track_demand=True)
+    model = build_policy(_make_args("soft_tree"), env)
+    assert isinstance(model, SoftTreePolicy)
+    assert model.action_dim == 2

@@ -64,9 +64,30 @@ def build_result_payload(args, learned_policy_results, heuristic_results):
         policy_architecture = f"{args.policy_type}_{args.tree_split_type}_{effective_policy_head}_{args.state_features}"
     else:
         policy_architecture = f"{args.policy_type}_{effective_policy_head}_{args.state_features}"
+    problem_params = {
+        "lead_time": getattr(args, "lead_time", None),
+        "fixed_order_cost": getattr(args, "fixed_order_cost", None),
+        "regular_lead_time": getattr(args, "regular_lead_time", None),
+        "expedited_lead_time": getattr(args, "expedited_lead_time", None),
+        "regular_order_cost": getattr(args, "regular_order_cost", None),
+        "expedited_order_cost": getattr(args, "expedited_order_cost", None),
+        "warehouse_lead_time": getattr(args, "warehouse_lead_time", None),
+        "retailer_lead_time": getattr(args, "retailer_lead_time", None),
+        "num_retailers": getattr(args, "num_retailers", None),
+        "warehouse_capacity": getattr(args, "warehouse_capacity", None),
+        "warehouse_inventory_cap": getattr(args, "warehouse_inventory_cap", None),
+        "retailer_inventory_cap": getattr(args, "retailer_inventory_cap", None),
+        "multi_demand_mean": getattr(args, "multi_demand_mean", None),
+        "multi_demand_std": getattr(args, "multi_demand_std", None),
+        "dual_demand_low": getattr(args, "dual_demand_low", None),
+        "dual_demand_high": getattr(args, "dual_demand_high", None),
+    }
+    problem_params = {key: value for key, value in problem_params.items() if value is not None}
+
     return {
         "experiment_name": args.experiment_name,
         "problem": args.problem,
+        "problem_params": problem_params,
         "policy_type": args.policy_type,
         "policy_backbone": args.policy_type,
         "policy_head": effective_policy_head,
@@ -80,7 +101,6 @@ def build_result_payload(args, learned_policy_results, heuristic_results):
         "rollout_backend": args.rollout_backend,
         "demand_dist_name": args.demand_dist_name,
         "demand_rate": args.demand_rate,
-        "lead_time": args.lead_time,
         "max_order_size": args.max_order_size,
         "holding_cost": args.holding_cost,
         "shortage_cost": args.shortage_cost,

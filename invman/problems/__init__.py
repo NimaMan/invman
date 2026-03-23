@@ -5,6 +5,8 @@ from importlib import import_module
 PROBLEM_MODULES = {
     "lost_sales": "invman.problems.lost_sales",
     "lost_sales_fixed_order_cost": "invman.problems.lost_sales_fixed_order_cost",
+    "dual_sourcing": "invman.problems.dual_sourcing",
+    "multi_echelon": "invman.problems.multi_echelon",
 }
 
 
