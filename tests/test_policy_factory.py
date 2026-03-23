@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
 import pytest
+import torch
 
 from invman.problems.lost_sales.env import LostSalesEnv
 from invman.problems.dual_sourcing.env import DualSourcingEnv
@@ -18,6 +19,7 @@ def _make_args(policy_type, policy_head="categorical_quantity"):
         tree_temperature=0.3,
         tree_split_type="oblique",
         tree_leaf_type="constant",
+        action_adapter="identity",
         tree_action_adapter="identity",
     )
 
@@ -62,10 +64,30 @@ def test_build_policy_returns_linear_leaf_soft_tree_policy():
     assert model.leaf_type == "linear"
 
 
-def test_build_policy_rejects_linear_on_vector_action_problem():
+def test_build_policy_supports_bounded_linear_on_vector_action_problem():
     env = DualSourcingEnv(horizon=10, track_demand=True)
-    with pytest.raises(ValueError):
-        build_policy(_make_args("linear"), env)
+    args = _make_args("linear", policy_head="bounded_quantity")
+    args.problem = "dual_sourcing"
+    model = build_policy(args, env)
+    assert isinstance(model, LinearPolicyNet)
+    action = model(torch.as_tensor(env.policy_state, dtype=torch.float32))
+    assert isinstance(action, tuple)
+    assert len(action) == 2
+    assert 0 <= action[0] <= env.regular_max_order_size
+    assert 0 <= action[1] <= env.expedited_max_order_size
+
+
+def test_build_policy_supports_bounded_nn_on_vector_action_problem():
+    env = DualSourcingEnv(horizon=10, track_demand=True)
+    args = _make_args("nn", policy_head="bounded_quantity")
+    args.problem = "dual_sourcing"
+    model = build_policy(args, env)
+    assert isinstance(model, PolicyNet)
+    action = model(torch.as_tensor(env.policy_state, dtype=torch.float32))
+    assert isinstance(action, tuple)
+    assert len(action) == 2
+    assert 0 <= action[0] <= env.regular_max_order_size
+    assert 0 <= action[1] <= env.expedited_max_order_size
 
 
 def test_build_policy_supports_soft_tree_on_vector_action_problem():
@@ -82,9 +104,24 @@ def test_build_policy_supports_structured_dual_sourcing_tree():
     args = _make_args("soft_tree")
     args.problem = "dual_sourcing"
     args.tree_leaf_type = "linear"
+    args.action_adapter = "capped_dual_index_targets"
     args.tree_action_adapter = "capped_dual_index_targets"
     model = build_policy(args, env)
     assert isinstance(model, SoftTreePolicy)
     assert model.action_adapter == "dual_sourcing_capped_dual_index_targets"
     assert model.action_dim == 2
     assert model.control_dim == 3
+
+
+def test_build_policy_supports_structured_dual_sourcing_nn():
+    env = DualSourcingEnv(horizon=10, track_demand=True)
+    args = _make_args("nn", policy_head="bounded_quantity")
+    args.problem = "dual_sourcing"
+    args.action_adapter = "base_surge_targets"
+    args.tree_action_adapter = "base_surge_targets"
+    model = build_policy(args, env)
+    action = model(torch.as_tensor(env.policy_state, dtype=torch.float32))
+    assert isinstance(action, tuple)
+    assert len(action) == 2
+    assert 0 <= action[0] <= env.regular_max_order_size
+    assert 0 <= action[1] <= env.expedited_max_order_size

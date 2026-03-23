@@ -30,7 +30,9 @@ def parse_args():
     parser.add_argument("--tree_split_type", choices=["oblique", "axis_aligned"], default="oblique")
     parser.add_argument("--tree_leaf_type", choices=["constant", "linear"], default="linear")
     parser.add_argument(
+        "--action_adapter",
         "--tree_action_adapter",
+        dest="action_adapter",
         default="identity",
         help="Structured soft-tree action adapter to use for dual sourcing.",
     )
@@ -57,7 +59,8 @@ def main():
     args.tree_temperature = parsed.tree_temperature
     args.tree_split_type = parsed.tree_split_type
     args.tree_leaf_type = parsed.tree_leaf_type
-    args.tree_action_adapter = parsed.tree_action_adapter
+    args.action_adapter = parsed.action_adapter
+    args.tree_action_adapter = parsed.action_adapter
     args.sigma_init = parsed.sigma_init
     args.seed = parsed.seed
     args.mp_num_processors = parsed.mp_num_processors
@@ -67,7 +70,7 @@ def main():
     args.eval_horizon = budget["eval_horizon"]
     args.eval_seeds = budget["eval_seeds"]
     args.experiment_name = (
-        f"{parsed.run_tag}_{parsed.budget}_{args.tree_action_adapter}_"
+        f"{parsed.run_tag}_{parsed.budget}_{args.action_adapter}_"
         f"d{args.tree_depth}_{args.tree_split_type}_{args.tree_leaf_type}"
     )
 

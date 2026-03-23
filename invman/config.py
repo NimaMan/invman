@@ -2,6 +2,7 @@ import argparse
 from pathlib import Path
 
 from invman.policies.common import (
+    normalize_action_adapter,
     normalize_policy_head,
     normalize_tree_action_adapter,
     normalize_tree_leaf_type,
@@ -160,9 +161,11 @@ def get_config(argv=None):
         help="Leaf output type used by the soft tree policy.",
     )
     parser.add_argument(
+        "--action_adapter",
         "--tree_action_adapter",
+        dest="action_adapter",
         default="identity",
-        help="Structured action adapter used by the soft tree policy.",
+        help="Structured action adapter used by learned policies.",
     )
 
     parser.add_argument("--experiment_name", default="lost_sales", help="Name used for saved artifacts.")
@@ -194,9 +197,10 @@ def get_config(argv=None):
     except ValueError as exc:
         parser.error(str(exc))
     try:
-        args.tree_action_adapter = normalize_tree_action_adapter(args.tree_action_adapter)
+        args.action_adapter = normalize_action_adapter(args.action_adapter)
     except ValueError as exc:
         parser.error(str(exc))
+    args.tree_action_adapter = args.action_adapter
     # Backward-compatible alias retained for older scripts.
     args.action_output_mode = args.policy_head
 
