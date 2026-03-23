@@ -24,6 +24,7 @@ def parse_args():
     parser.add_argument("--eval_horizon", type=int, default=int(1e6))
     parser.add_argument("--eval_seeds", type=int, default=3)
     parser.add_argument("--seed", type=int, default=123)
+    parser.add_argument("--track_demand", action="store_true", help="Force Python tracked-demand evaluation.")
     return parser.parse_args()
 
 
@@ -58,14 +59,13 @@ def main():
     for seed_offset in range(parsed.eval_seeds):
         eval_args = copy(args)
         seed = parsed.seed + seed_offset
-        _, env = problem_module.get_model_fitness(
+        reward, _ = problem_module.get_model_fitness(
             model,
             eval_args,
             seed=seed,
-            return_env=True,
-            track_demand=True,
+            track_demand=parsed.track_demand,
         )
-        costs.append(env.avg_total_cost)
+        costs.append(-float(reward))
 
     payload = {
         "model_dir": str(Path(parsed.model_dir).resolve()),
