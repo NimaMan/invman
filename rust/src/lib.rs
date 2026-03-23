@@ -1,40 +1,39 @@
-mod env;
-mod heuristics;
-mod policies;
-mod rollout;
+mod core;
+mod problems;
 
 use pyo3::prelude::*;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
 use rand_distr::{Distribution, Poisson};
 
-use crate::env::lost_sales::{epoch_cost, initialize_state, LostSalesState};
-use crate::heuristics::dual_sourcing::{
+use crate::core::soft_tree::{
+    build_action_spec, parse_leaf_type, parse_split_type, soft_tree_leaf_probabilities,
+    validate_soft_tree_shapes,
+};
+use crate::problems::dual_sourcing::heuristics::{
     search_capped_dual_index_from_demands, search_dual_index_from_demands,
     search_single_index_from_demands, search_tailored_base_surge_from_demands,
 };
-use crate::heuristics::fixed_order_cost::{
-    fixed_policy_rollout_from_demands, search_modified_s_s_q_from_demands, search_s_nq_from_demands,
-    search_s_s_from_demands,
-};
-use crate::heuristics::multi_echelon::search_constant_base_stock_from_demands;
-use crate::policies::soft_tree::{
-    build_action_spec, parse_action_adapter, parse_leaf_type, parse_split_type, soft_tree_leaf_probabilities,
-    validate_soft_tree_shapes,
-};
-use crate::rollout::lost_sales_soft_tree::{
-    population_rollout as lost_sales_population_rollout,
-    rollout as lost_sales_rollout,
-    rollout_from_demands,
-    LostSalesRolloutConfig,
-};
-use crate::rollout::dual_sourcing_soft_tree::{
+use crate::problems::dual_sourcing::policies::parse_action_adapter;
+use crate::problems::dual_sourcing::rollout::{
     population_rollout as dual_sourcing_population_rollout,
     rollout_from_demands as dual_sourcing_rollout_from_demands,
     rollout as dual_sourcing_rollout,
     DualSourcingRolloutConfig,
 };
-use crate::rollout::multi_echelon_soft_tree::{
+use crate::problems::lost_sales::env::{epoch_cost, initialize_state, LostSalesState};
+use crate::problems::lost_sales::rollout::{
+    population_rollout as lost_sales_population_rollout,
+    rollout as lost_sales_rollout,
+    rollout_from_demands as lost_sales_rollout_from_demands,
+    LostSalesRolloutConfig,
+};
+use crate::problems::lost_sales_fixed_order_cost::heuristics::{
+    fixed_policy_rollout_from_demands, search_modified_s_s_q_from_demands,
+    search_s_nq_from_demands, search_s_s_from_demands,
+};
+use crate::problems::multi_echelon::heuristics::search_constant_base_stock_from_demands;
+use crate::problems::multi_echelon::rollout::{
     population_rollout as multi_echelon_population_rollout,
     rollout as multi_echelon_rollout,
     MultiEchelonRolloutConfig,
@@ -264,7 +263,7 @@ fn lost_sales_soft_tree_rollout_from_demands(
         current_inventory,
         lead_time_orders,
     };
-    rollout_from_demands(&flat_params, &config, env_state, &demands)
+    lost_sales_rollout_from_demands(&flat_params, &config, env_state, &demands)
 }
 
 #[pyfunction]

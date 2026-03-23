@@ -6,8 +6,10 @@ use rand::Rng;
 use rand::SeedableRng;
 use rand_distr::{Distribution, Normal};
 
-use crate::env::multi_echelon::{flattened_policy_state, initialize_state};
-use crate::policies::soft_tree::{action_vector_from_flat_params, SoftTreeActionSpec, SoftTreeLeafType, SoftTreeSplitType};
+use crate::core::soft_tree::{
+    action_vector_from_flat_params, SoftTreeActionSpec, SoftTreeLeafType, SoftTreeSplitType,
+};
+use crate::problems::multi_echelon::env::{flattened_policy_state, initialize_state};
 
 #[derive(Clone)]
 pub struct MultiEchelonRolloutConfig {

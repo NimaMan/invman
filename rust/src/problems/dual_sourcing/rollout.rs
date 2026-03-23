@@ -5,11 +5,11 @@ use rand::rngs::StdRng;
 use rand::Rng;
 use rand::SeedableRng;
 
-use crate::env::dual_sourcing::{epoch_cost, initialize_state, step_state, validate_action};
-use crate::policies::soft_tree::{
-    action_vector_from_flat_params, dual_sourcing_action_from_controls, SoftTreeActionAdapter, SoftTreeActionSpec, SoftTreeLeafType,
-    SoftTreeSplitType,
+use crate::core::soft_tree::{
+    action_vector_from_flat_params, SoftTreeActionSpec, SoftTreeLeafType, SoftTreeSplitType,
 };
+use crate::problems::dual_sourcing::env::{epoch_cost, initialize_state, step_state, validate_action};
+use crate::problems::dual_sourcing::policies::{action_from_controls, DualSourcingActionAdapter};
 
 #[derive(Clone)]
 pub struct DualSourcingRolloutConfig {
@@ -30,7 +30,7 @@ pub struct DualSourcingRolloutConfig {
     pub temperature: f32,
     pub split_type: SoftTreeSplitType,
     pub leaf_type: SoftTreeLeafType,
-    pub action_adapter: SoftTreeActionAdapter,
+    pub action_adapter: DualSourcingActionAdapter,
 }
 
 fn mean_after_warmup(epoch_costs: &[f64], warm_up_periods_ratio: f64) -> f64 {
@@ -75,7 +75,7 @@ pub fn rollout(flat_params: &[f32], config: &DualSourcingRolloutConfig, seed: u6
             config.leaf_type,
             &config.action_spec,
         )?;
-        let action = dual_sourcing_action_from_controls(
+        let action = action_from_controls(
             &env_state.reduced_state,
             &controls,
             config.action_adapter,
@@ -130,7 +130,7 @@ pub fn rollout_from_demands(
             config.leaf_type,
             &config.action_spec,
         )?;
-        let action = dual_sourcing_action_from_controls(
+        let action = action_from_controls(
             &reduced_state,
             &controls,
             config.action_adapter,

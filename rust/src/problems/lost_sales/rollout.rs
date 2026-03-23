@@ -5,8 +5,8 @@ use rand::rngs::StdRng;
 use rand::SeedableRng;
 use rand_distr::{Distribution, Poisson};
 
-use crate::env::lost_sales::{build_pipeline_state, epoch_cost, initialize_state, LostSalesState};
-use crate::policies::soft_tree::{action_from_flat_params, SoftTreeLeafType, SoftTreeSplitType};
+use crate::core::soft_tree::{action_from_flat_params, SoftTreeLeafType, SoftTreeSplitType};
+use crate::problems::lost_sales::env::{build_pipeline_state, epoch_cost, initialize_state, LostSalesState};
 
 #[derive(Clone, Copy)]
 pub struct LostSalesRolloutConfig {

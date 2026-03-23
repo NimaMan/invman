@@ -1,7 +1,7 @@
 use pyo3::exceptions::PyValueError;
 use pyo3::PyResult;
 
-use crate::env::dual_sourcing::{epoch_cost, step_state};
+use crate::problems::dual_sourcing::env::{epoch_cost, step_state};
 
 fn mean_after_warmup(epoch_costs: &[f64], warm_up_periods_ratio: f64) -> f64 {
     let horizon = epoch_costs.len();
