@@ -22,8 +22,10 @@ from invman.problems.dual_sourcing.heuristics import (
     search_best_tailored_base_surge_policy,
 )
 from invman.problems.dual_sourcing.reference_instances import (
+    DUAL_SOURCING_BENCHMARK_REFERENCE,
     DUAL_SOURCING_REFERENCE_INSTANCES,
     build_reference_args,
+    get_benchmark_reference,
     get_primary_reference_instance,
     get_reference_instance,
     list_reference_instances,
@@ -31,6 +33,7 @@ from invman.problems.dual_sourcing.reference_instances import (
 
 __all__ = [
     "DualSourcingEnv",
+    "DUAL_SOURCING_BENCHMARK_REFERENCE",
     "DUAL_SOURCING_REFERENCE_INSTANCES",
     "build_env_from_args",
     "build_fixed_demand_path",
@@ -40,6 +43,7 @@ __all__ = [
     "evaluate_policy_cost",
     "get_capped_dual_index_action",
     "get_dual_index_action",
+    "get_benchmark_reference",
     "get_model_fitness",
     "get_population_fitness",
     "get_primary_reference_instance",

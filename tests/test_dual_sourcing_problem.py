@@ -4,8 +4,10 @@ import torch
 
 from invman.policies import SoftTreePolicy
 from invman.problems.dual_sourcing import (
+    get_benchmark_reference,
     build_reference_args,
     build_fixed_demand_path,
+    get_reference_instance,
     search_best_capped_dual_index_policy,
     search_best_dual_index_policy,
     search_best_single_index_policy,
@@ -56,6 +58,18 @@ def test_dual_sourcing_search_backends_match():
         rust_result = search_fn(args, seed=321, horizon=200, backend="rust")
         assert rust_result.best_result.params == python_result.best_result.params
         assert rust_result.best_result.mean_cost == pytest.approx(python_result.best_result.mean_cost)
+
+
+def test_dual_sourcing_reference_instances_include_literature_benchmark_metadata():
+    benchmark = get_benchmark_reference()
+    instance = get_reference_instance("dual_l4_ce110")
+
+    assert "optimal_dp" in benchmark.benchmark_policies
+    assert "capped_dual_index" in benchmark.benchmark_policies
+    assert benchmark.published_values["a3c_optimality_gap_pct_upper"] == 2.0
+    assert instance.expected_ranking[0] == "capped_dual_index"
+    assert instance.literature_values["best_reported_heuristic_family"] == "capped_dual_index"
+    assert instance.literature_values["has_exact_published_cost"] is False
 
 
 def test_dual_sourcing_soft_tree_rust_matches_python_rollout():

@@ -2,6 +2,8 @@ import pytest
 
 from invman.problems.multi_echelon import (
     build_reference_args,
+    get_benchmark_reference,
+    get_reference_instance,
     search_best_constant_base_stock_policy,
 )
 from invman.problems.multi_echelon.env import MultiEchelonEnv
@@ -47,3 +49,16 @@ def test_multi_echelon_constant_base_stock_search_backends_match():
     rust_result = search_best_constant_base_stock_policy(args, seed=222, horizon=200, backend="rust")
     assert rust_result["best_result"]["params"] == python_result["best_result"]["params"]
     assert rust_result["best_result"]["mean_cost"] == pytest.approx(python_result["best_result"]["mean_cost"])
+
+
+def test_multi_echelon_reference_instances_include_literature_benchmark_metadata():
+    benchmark = get_benchmark_reference()
+    instance1 = get_reference_instance("multi_echelon_setting1")
+    instance2 = get_reference_instance("multi_echelon_setting2")
+
+    assert "constant_base_stock" in benchmark.benchmark_policies
+    assert benchmark.published_values["setting1_a3c_improvement_vs_constant_base_stock_pct"] == 9.0
+    assert benchmark.published_values["setting2_a3c_improvement_vs_constant_base_stock_pct"] == 12.0
+    assert instance1.literature_values["a3c_improvement_vs_constant_base_stock_pct"] == 9.0
+    assert instance2.literature_values["a3c_improvement_vs_constant_base_stock_pct"] == 12.0
+    assert instance2.literature_values["has_exact_published_cost"] is False

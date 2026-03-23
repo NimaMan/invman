@@ -14,8 +14,10 @@ from invman.problems.multi_echelon.heuristics import (
     search_best_constant_base_stock_policy,
 )
 from invman.problems.multi_echelon.reference_instances import (
+    MULTI_ECHELON_BENCHMARK_REFERENCE,
     MULTI_ECHELON_REFERENCE_INSTANCES,
     build_reference_args,
+    get_benchmark_reference,
     get_primary_reference_instance,
     get_reference_instance,
     list_reference_instances,
@@ -23,6 +25,7 @@ from invman.problems.multi_echelon.reference_instances import (
 
 __all__ = [
     "MULTI_ECHELON_REFERENCE_INSTANCES",
+    "MULTI_ECHELON_BENCHMARK_REFERENCE",
     "MultiEchelonEnv",
     "build_env_from_args",
     "build_fixed_demand_path",
@@ -30,6 +33,7 @@ __all__ = [
     "evaluate_constant_base_stock_policy",
     "evaluate_constant_base_stock_policy_across_seeds",
     "evaluate_default_heuristics",
+    "get_benchmark_reference",
     "get_model_fitness",
     "get_population_fitness",
     "get_primary_reference_instance",
