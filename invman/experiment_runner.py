@@ -7,6 +7,7 @@ import numpy as np
 from invman.es_mp import train
 from invman.policies import build_policy
 from invman.problems import get_problem_module
+from invman.utils import set_global_seeds
 
 
 def build_model(args):
@@ -128,6 +129,7 @@ def save_result_payload(args, payload):
 
 def run_experiment(args):
     ensure_output_dirs(args)
+    set_global_seeds(getattr(args, "seed", 0))
     problem_module = get_problem_module(args.problem)
     model = build_model(args)
     trained_model, _ = train(

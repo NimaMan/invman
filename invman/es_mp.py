@@ -15,6 +15,7 @@ def get_es_optimizer(model, args):
         model.num_params,
         sigma_init=args.sigma_init,
         popsize=args.es_population,
+        seed=getattr(args, "seed", None),
     )
 
 

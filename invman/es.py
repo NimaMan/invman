@@ -20,12 +20,14 @@ class CMAES:
         popsize: int = 255,
         weight_decay: float = 0.00,
         param_scales=None,
+        seed: int | None = None,
     ) -> None:
         self.num_params = num_params
         self.sigma_init = sigma_init
         self.popsize = popsize
         self.weight_decay = weight_decay
         self.solutions = None
+        self.seed = None if seed is None else int(seed)
         self.param_scales = (
             np.ones(self.num_params, dtype=np.float64)
             if param_scales is None
@@ -34,10 +36,11 @@ class CMAES:
 
         import cma
 
+        rng = np.random.RandomState(self.seed)
         self.es = cma.CMAEvolutionStrategy(
-            np.random.randn(self.num_params),
+            rng.randn(self.num_params),
             self.sigma_init,
-            {"popsize": self.popsize},
+            {"popsize": self.popsize, "seed": self.seed},
         )
 
     def rms_stdev(self) -> float:

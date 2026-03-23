@@ -1,6 +1,7 @@
 import gzip
 import os
 import pickle
+import random
 from pathlib import Path
 
 import numpy as np
@@ -16,16 +17,29 @@ def env_time_limit(iteration, min_steps, max_steps, num_cma_iterations, scaling_
 
 class Seeder:
     def __init__(self, init_seed=0):
-        np.random.seed(init_seed)
+        self.rng = np.random.RandomState(init_seed)
         self.limit = np.int32(2**31-1)
 
     def next_seed(self, batch_size=1):
-        result = [np.random.randint(self.limit)]*batch_size
+        seed = int(self.rng.randint(self.limit))
+        result = [seed] * batch_size
         return result
 
     def next_batch_seeds(self, batch_size):
-        result = np.random.randint(self.limit, size=batch_size).tolist()
+        result = self.rng.randint(self.limit, size=batch_size).tolist()
         return result
+
+
+def set_global_seeds(seed):
+    seed = int(seed)
+    random.seed(seed)
+    np.random.seed(seed)
+    try:
+        import torch
+    except ImportError:  # pragma: no cover - torch is optional for some paths
+        torch = None
+    if torch is not None:
+        torch.manual_seed(seed)
 
 def save_init_args(init_method):
     def wrapper(self, *args, **kwargs):

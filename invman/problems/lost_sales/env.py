@@ -284,16 +284,24 @@ def build_env_from_args(args, horizon=None, track_demand=False):
     )
 
 
-def _should_use_rust_soft_tree_rollout(model, args, track_demand=False, return_env=False):
+def _rust_lost_sales_policy_mode(model, args, track_demand=False, return_env=False):
     if return_env or track_demand:
-        return False
+        return None
     if getattr(args, "rollout_backend", "python") != "rust":
-        return False
+        return None
     if getattr(args, "demand_dist_name", "Poisson") != "Poisson":
-        return False
+        return None
     if getattr(args, "state_features", "pipeline") != "pipeline":
-        return False
-    return type(model).__name__ == "SoftTreePolicy"
+        return None
+
+    model_name = type(model).__name__
+    if model_name == "SoftTreePolicy":
+        return "soft_tree"
+    if model_name == "LinearPolicyNet" and getattr(model, "action_output_mode", None) == "categorical_quantity":
+        return "linear"
+    if model_name == "PolicyNet" and getattr(model, "action_output_mode", None) == "categorical_quantity":
+        return "nn"
+    return None
 
 
 def get_model_fitness(
@@ -308,16 +316,16 @@ def get_model_fitness(
 ):
     import torch
 
-    use_rust_rollout = _should_use_rust_soft_tree_rollout(
+    rust_mode = _rust_lost_sales_policy_mode(
         model,
         args,
         track_demand=track_demand,
         return_env=return_env,
     )
-    if model_params is not None and not use_rust_rollout:
+    if model_params is not None and rust_mode is None:
         model.set_model_params(model_params)
 
-    if use_rust_rollout:
+    if rust_mode == "soft_tree":
         import invman_rust
 
         flat_params = model_params if model_params is not None else model.get_model_flat_params()
@@ -343,6 +351,54 @@ def get_model_fitness(
             print(f"Seed {seed}: avg cost {avg_cost:.4f}")
         return -float(avg_cost), indiv_idx
 
+    if rust_mode == "linear":
+        import invman_rust
+
+        flat_params = model_params if model_params is not None else model.get_model_flat_params()
+        avg_cost = invman_rust.lost_sales_linear_rollout(
+            flat_params=np.asarray(flat_params, dtype=np.float32).tolist(),
+            input_dim=int(model.input_dim),
+            output_dim=int(model.output_dim),
+            max_order_size=int(model.max_order_size),
+            demand_rate=float(args.demand_rate),
+            lead_time=int(args.lead_time),
+            holding_cost=float(args.holding_cost),
+            shortage_cost=float(args.shortage_cost),
+            procurement_cost=float(getattr(args, "procurement_cost", 0.0)),
+            fixed_order_cost=float(getattr(args, "fixed_order_cost", 0.0)),
+            horizon=int(args.horizon),
+            seed=int(seed),
+            warm_up_periods_ratio=float(getattr(args, "warm_up_periods_ratio", 0.2)),
+        )
+        if verbose:
+            print(f"Seed {seed}: avg cost {avg_cost:.4f}")
+        return -float(avg_cost), indiv_idx
+
+    if rust_mode == "nn":
+        import invman_rust
+
+        flat_params = model_params if model_params is not None else model.get_model_flat_params()
+        avg_cost = invman_rust.lost_sales_nn_rollout(
+            flat_params=np.asarray(flat_params, dtype=np.float32).tolist(),
+            input_dim=int(model.input_dim),
+            hidden_dims=[int(width) for width in model.hidden_dim],
+            output_dim=int(model.output_dim),
+            max_order_size=int(model.max_order_size),
+            activation=str(getattr(args, "activation", "selu")),
+            demand_rate=float(args.demand_rate),
+            lead_time=int(args.lead_time),
+            holding_cost=float(args.holding_cost),
+            shortage_cost=float(args.shortage_cost),
+            procurement_cost=float(getattr(args, "procurement_cost", 0.0)),
+            fixed_order_cost=float(getattr(args, "fixed_order_cost", 0.0)),
+            horizon=int(args.horizon),
+            seed=int(seed),
+            warm_up_periods_ratio=float(getattr(args, "warm_up_periods_ratio", 0.2)),
+        )
+        if verbose:
+            print(f"Seed {seed}: avg cost {avg_cost:.4f}")
+        return -float(avg_cost), indiv_idx
+
     np.random.seed(seed)
     torch.manual_seed(seed)
     env = build_env_from_args(args, track_demand=track_demand)
@@ -360,7 +416,8 @@ def get_model_fitness(
 
 
 def get_population_fitness(model, args, model_params_batch, seeds):
-    if not _should_use_rust_soft_tree_rollout(model, args, track_demand=False, return_env=False):
+    rust_mode = _rust_lost_sales_policy_mode(model, args, track_demand=False, return_env=False)
+    if rust_mode is None:
         return None
 
     import invman_rust
@@ -368,22 +425,57 @@ def get_population_fitness(model, args, model_params_batch, seeds):
     params_batch = [
         np.asarray(model_params, dtype=np.float32).tolist() for model_params in model_params_batch
     ]
-    costs = invman_rust.lost_sales_soft_tree_population_rollout(
-        params_batch=params_batch,
-        input_dim=int(model.input_dim),
-        depth=int(model.depth),
-        max_order_size=int(model.max_order_size),
-        split_type=str(getattr(model, "split_type", "oblique")),
-        leaf_type=str(getattr(model, "leaf_type", "constant")),
-        demand_rate=float(args.demand_rate),
-        seeds=[int(seed) for seed in seeds],
-        lead_time=int(args.lead_time),
-        holding_cost=float(args.holding_cost),
-        shortage_cost=float(args.shortage_cost),
-        procurement_cost=float(getattr(args, "procurement_cost", 0.0)),
-        fixed_order_cost=float(getattr(args, "fixed_order_cost", 0.0)),
-        horizon=int(args.horizon),
-        warm_up_periods_ratio=float(getattr(args, "warm_up_periods_ratio", 0.2)),
-        temperature=float(model.temperature),
-    )
+    if rust_mode == "soft_tree":
+        costs = invman_rust.lost_sales_soft_tree_population_rollout(
+            params_batch=params_batch,
+            input_dim=int(model.input_dim),
+            depth=int(model.depth),
+            max_order_size=int(model.max_order_size),
+            split_type=str(getattr(model, "split_type", "oblique")),
+            leaf_type=str(getattr(model, "leaf_type", "constant")),
+            demand_rate=float(args.demand_rate),
+            seeds=[int(seed) for seed in seeds],
+            lead_time=int(args.lead_time),
+            holding_cost=float(args.holding_cost),
+            shortage_cost=float(args.shortage_cost),
+            procurement_cost=float(getattr(args, "procurement_cost", 0.0)),
+            fixed_order_cost=float(getattr(args, "fixed_order_cost", 0.0)),
+            horizon=int(args.horizon),
+            warm_up_periods_ratio=float(getattr(args, "warm_up_periods_ratio", 0.2)),
+            temperature=float(model.temperature),
+        )
+    elif rust_mode == "linear":
+        costs = invman_rust.lost_sales_linear_population_rollout(
+            params_batch=params_batch,
+            input_dim=int(model.input_dim),
+            output_dim=int(model.output_dim),
+            max_order_size=int(model.max_order_size),
+            demand_rate=float(args.demand_rate),
+            seeds=[int(seed) for seed in seeds],
+            lead_time=int(args.lead_time),
+            holding_cost=float(args.holding_cost),
+            shortage_cost=float(args.shortage_cost),
+            procurement_cost=float(getattr(args, "procurement_cost", 0.0)),
+            fixed_order_cost=float(getattr(args, "fixed_order_cost", 0.0)),
+            horizon=int(args.horizon),
+            warm_up_periods_ratio=float(getattr(args, "warm_up_periods_ratio", 0.2)),
+        )
+    else:
+        costs = invman_rust.lost_sales_nn_population_rollout(
+            params_batch=params_batch,
+            input_dim=int(model.input_dim),
+            hidden_dims=[int(width) for width in model.hidden_dim],
+            output_dim=int(model.output_dim),
+            max_order_size=int(model.max_order_size),
+            activation=str(getattr(args, "activation", "selu")),
+            demand_rate=float(args.demand_rate),
+            seeds=[int(seed) for seed in seeds],
+            lead_time=int(args.lead_time),
+            holding_cost=float(args.holding_cost),
+            shortage_cost=float(args.shortage_cost),
+            procurement_cost=float(getattr(args, "procurement_cost", 0.0)),
+            fixed_order_cost=float(getattr(args, "fixed_order_cost", 0.0)),
+            horizon=int(args.horizon),
+            warm_up_periods_ratio=float(getattr(args, "warm_up_periods_ratio", 0.2)),
+        )
     return [(-float(cost), indiv_idx) for indiv_idx, cost in enumerate(costs)]

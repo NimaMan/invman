@@ -6,6 +6,7 @@ use rand::rngs::StdRng;
 use rand::SeedableRng;
 use rand_distr::{Distribution, Poisson};
 
+use crate::core::dense::parse_activation;
 use crate::core::soft_tree::{
     build_action_spec, parse_leaf_type, parse_split_type, soft_tree_leaf_probabilities,
     validate_soft_tree_shapes,
@@ -23,9 +24,17 @@ use crate::problems::dual_sourcing::rollout::{
 };
 use crate::problems::lost_sales::env::{epoch_cost, initialize_state, LostSalesState};
 use crate::problems::lost_sales::rollout::{
+    linear_population_rollout as lost_sales_linear_population_rollout_impl,
+    linear_rollout as lost_sales_linear_rollout_impl,
+    linear_rollout_from_demands as lost_sales_linear_rollout_from_demands_impl,
+    neural_population_rollout as lost_sales_neural_population_rollout_impl,
+    neural_rollout as lost_sales_neural_rollout_impl,
+    neural_rollout_from_demands as lost_sales_neural_rollout_from_demands_impl,
     population_rollout as lost_sales_population_rollout,
     rollout as lost_sales_rollout,
     rollout_from_demands as lost_sales_rollout_from_demands,
+    LostSalesLinearRolloutConfig,
+    LostSalesNeuralRolloutConfig,
     LostSalesRolloutConfig,
 };
 use crate::problems::lost_sales_fixed_order_cost::heuristics::{
@@ -488,6 +497,310 @@ fn lost_sales_soft_tree_population_rollout(
         leaf_type: parse_leaf_type(leaf_type)?,
     };
     lost_sales_population_rollout(&params_batch, &config, &seeds)
+}
+
+#[pyfunction]
+#[pyo3(signature = (
+    flat_params,
+    input_dim,
+    output_dim,
+    max_order_size,
+    demand_rate,
+    lead_time=4,
+    holding_cost=1.0,
+    shortage_cost=4.0,
+    procurement_cost=0.0,
+    fixed_order_cost=0.0,
+    horizon=2000,
+    seed=1234,
+    warm_up_periods_ratio=0.2
+))]
+fn lost_sales_linear_rollout(
+    flat_params: Vec<f32>,
+    input_dim: usize,
+    output_dim: usize,
+    max_order_size: usize,
+    demand_rate: f64,
+    lead_time: usize,
+    holding_cost: f64,
+    shortage_cost: f64,
+    procurement_cost: f64,
+    fixed_order_cost: f64,
+    horizon: usize,
+    seed: u64,
+    warm_up_periods_ratio: f64,
+) -> PyResult<f64> {
+    let config = LostSalesLinearRolloutConfig {
+        input_dim,
+        output_dim,
+        max_order_size,
+        demand_rate,
+        lead_time,
+        holding_cost,
+        shortage_cost,
+        procurement_cost,
+        fixed_order_cost,
+        horizon,
+        warm_up_periods_ratio,
+    };
+    lost_sales_linear_rollout_impl(&flat_params, &config, seed)
+}
+
+#[pyfunction]
+#[pyo3(signature = (
+    flat_params,
+    input_dim,
+    output_dim,
+    max_order_size,
+    current_inventory,
+    lead_time_orders,
+    demands,
+    holding_cost=1.0,
+    shortage_cost=4.0,
+    procurement_cost=0.0,
+    fixed_order_cost=0.0,
+    warm_up_periods_ratio=0.2
+))]
+fn lost_sales_linear_rollout_from_demands(
+    flat_params: Vec<f32>,
+    input_dim: usize,
+    output_dim: usize,
+    max_order_size: usize,
+    current_inventory: i64,
+    lead_time_orders: Vec<usize>,
+    demands: Vec<usize>,
+    holding_cost: f64,
+    shortage_cost: f64,
+    procurement_cost: f64,
+    fixed_order_cost: f64,
+    warm_up_periods_ratio: f64,
+) -> PyResult<f64> {
+    let config = LostSalesLinearRolloutConfig {
+        input_dim,
+        output_dim,
+        max_order_size,
+        demand_rate: 0.0,
+        lead_time: lead_time_orders.len(),
+        holding_cost,
+        shortage_cost,
+        procurement_cost,
+        fixed_order_cost,
+        horizon: demands.len(),
+        warm_up_periods_ratio,
+    };
+    let env_state = LostSalesState {
+        current_inventory,
+        lead_time_orders,
+    };
+    lost_sales_linear_rollout_from_demands_impl(&flat_params, &config, env_state, &demands)
+}
+
+#[pyfunction]
+#[pyo3(signature = (
+    params_batch,
+    input_dim,
+    output_dim,
+    max_order_size,
+    demand_rate,
+    seeds,
+    lead_time=4,
+    holding_cost=1.0,
+    shortage_cost=4.0,
+    procurement_cost=0.0,
+    fixed_order_cost=0.0,
+    horizon=2000,
+    warm_up_periods_ratio=0.2
+))]
+fn lost_sales_linear_population_rollout(
+    params_batch: Vec<Vec<f32>>,
+    input_dim: usize,
+    output_dim: usize,
+    max_order_size: usize,
+    demand_rate: f64,
+    seeds: Vec<u64>,
+    lead_time: usize,
+    holding_cost: f64,
+    shortage_cost: f64,
+    procurement_cost: f64,
+    fixed_order_cost: f64,
+    horizon: usize,
+    warm_up_periods_ratio: f64,
+) -> PyResult<Vec<f64>> {
+    let config = LostSalesLinearRolloutConfig {
+        input_dim,
+        output_dim,
+        max_order_size,
+        demand_rate,
+        lead_time,
+        holding_cost,
+        shortage_cost,
+        procurement_cost,
+        fixed_order_cost,
+        horizon,
+        warm_up_periods_ratio,
+    };
+    lost_sales_linear_population_rollout_impl(&params_batch, &config, &seeds)
+}
+
+#[pyfunction]
+#[pyo3(signature = (
+    flat_params,
+    input_dim,
+    hidden_dims,
+    output_dim,
+    max_order_size,
+    activation,
+    demand_rate,
+    lead_time=4,
+    holding_cost=1.0,
+    shortage_cost=4.0,
+    procurement_cost=0.0,
+    fixed_order_cost=0.0,
+    horizon=2000,
+    seed=1234,
+    warm_up_periods_ratio=0.2
+))]
+fn lost_sales_nn_rollout(
+    flat_params: Vec<f32>,
+    input_dim: usize,
+    hidden_dims: Vec<usize>,
+    output_dim: usize,
+    max_order_size: usize,
+    activation: &str,
+    demand_rate: f64,
+    lead_time: usize,
+    holding_cost: f64,
+    shortage_cost: f64,
+    procurement_cost: f64,
+    fixed_order_cost: f64,
+    horizon: usize,
+    seed: u64,
+    warm_up_periods_ratio: f64,
+) -> PyResult<f64> {
+    let config = LostSalesNeuralRolloutConfig {
+        input_dim,
+        hidden_dims,
+        output_dim,
+        max_order_size,
+        demand_rate,
+        lead_time,
+        holding_cost,
+        shortage_cost,
+        procurement_cost,
+        fixed_order_cost,
+        horizon,
+        warm_up_periods_ratio,
+        activation: parse_activation(activation)?,
+    };
+    lost_sales_neural_rollout_impl(&flat_params, &config, seed)
+}
+
+#[pyfunction]
+#[pyo3(signature = (
+    flat_params,
+    input_dim,
+    hidden_dims,
+    output_dim,
+    max_order_size,
+    activation,
+    current_inventory,
+    lead_time_orders,
+    demands,
+    holding_cost=1.0,
+    shortage_cost=4.0,
+    procurement_cost=0.0,
+    fixed_order_cost=0.0,
+    warm_up_periods_ratio=0.2
+))]
+fn lost_sales_nn_rollout_from_demands(
+    flat_params: Vec<f32>,
+    input_dim: usize,
+    hidden_dims: Vec<usize>,
+    output_dim: usize,
+    max_order_size: usize,
+    activation: &str,
+    current_inventory: i64,
+    lead_time_orders: Vec<usize>,
+    demands: Vec<usize>,
+    holding_cost: f64,
+    shortage_cost: f64,
+    procurement_cost: f64,
+    fixed_order_cost: f64,
+    warm_up_periods_ratio: f64,
+) -> PyResult<f64> {
+    let config = LostSalesNeuralRolloutConfig {
+        input_dim,
+        hidden_dims,
+        output_dim,
+        max_order_size,
+        demand_rate: 0.0,
+        lead_time: lead_time_orders.len(),
+        holding_cost,
+        shortage_cost,
+        procurement_cost,
+        fixed_order_cost,
+        horizon: demands.len(),
+        warm_up_periods_ratio,
+        activation: parse_activation(activation)?,
+    };
+    let env_state = LostSalesState {
+        current_inventory,
+        lead_time_orders,
+    };
+    lost_sales_neural_rollout_from_demands_impl(&flat_params, &config, env_state, &demands)
+}
+
+#[pyfunction]
+#[pyo3(signature = (
+    params_batch,
+    input_dim,
+    hidden_dims,
+    output_dim,
+    max_order_size,
+    activation,
+    demand_rate,
+    seeds,
+    lead_time=4,
+    holding_cost=1.0,
+    shortage_cost=4.0,
+    procurement_cost=0.0,
+    fixed_order_cost=0.0,
+    horizon=2000,
+    warm_up_periods_ratio=0.2
+))]
+fn lost_sales_nn_population_rollout(
+    params_batch: Vec<Vec<f32>>,
+    input_dim: usize,
+    hidden_dims: Vec<usize>,
+    output_dim: usize,
+    max_order_size: usize,
+    activation: &str,
+    demand_rate: f64,
+    seeds: Vec<u64>,
+    lead_time: usize,
+    holding_cost: f64,
+    shortage_cost: f64,
+    procurement_cost: f64,
+    fixed_order_cost: f64,
+    horizon: usize,
+    warm_up_periods_ratio: f64,
+) -> PyResult<Vec<f64>> {
+    let config = LostSalesNeuralRolloutConfig {
+        input_dim,
+        hidden_dims,
+        output_dim,
+        max_order_size,
+        demand_rate,
+        lead_time,
+        holding_cost,
+        shortage_cost,
+        procurement_cost,
+        fixed_order_cost,
+        horizon,
+        warm_up_periods_ratio,
+        activation: parse_activation(activation)?,
+    };
+    lost_sales_neural_population_rollout_impl(&params_batch, &config, &seeds)
 }
 
 #[pyfunction]
@@ -1134,6 +1447,12 @@ fn invman_rust(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(lost_sales_constant_action_rollout, m)?)?;
     m.add_function(wrap_pyfunction!(lost_sales_soft_tree_rollout, m)?)?;
     m.add_function(wrap_pyfunction!(lost_sales_soft_tree_rollout_from_demands, m)?)?;
+    m.add_function(wrap_pyfunction!(lost_sales_linear_rollout, m)?)?;
+    m.add_function(wrap_pyfunction!(lost_sales_linear_rollout_from_demands, m)?)?;
+    m.add_function(wrap_pyfunction!(lost_sales_linear_population_rollout, m)?)?;
+    m.add_function(wrap_pyfunction!(lost_sales_nn_rollout, m)?)?;
+    m.add_function(wrap_pyfunction!(lost_sales_nn_rollout_from_demands, m)?)?;
+    m.add_function(wrap_pyfunction!(lost_sales_nn_population_rollout, m)?)?;
     m.add_function(wrap_pyfunction!(lost_sales_fixed_policy_rollout_from_demands, m)?)?;
     m.add_function(wrap_pyfunction!(lost_sales_fixed_s_s_search_from_demands, m)?)?;
     m.add_function(wrap_pyfunction!(lost_sales_fixed_s_nq_search_from_demands, m)?)?;
