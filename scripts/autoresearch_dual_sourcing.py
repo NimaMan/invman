@@ -29,6 +29,11 @@ def parse_args():
     parser.add_argument("--tree_temperature", type=float, default=0.25)
     parser.add_argument("--tree_split_type", choices=["oblique", "axis_aligned"], default="oblique")
     parser.add_argument("--tree_leaf_type", choices=["constant", "linear"], default="linear")
+    parser.add_argument(
+        "--tree_action_adapter",
+        default="identity",
+        help="Structured soft-tree action adapter to use for dual sourcing.",
+    )
     parser.add_argument("--sigma_init", type=float, default=3.0)
     parser.add_argument("--seed", type=int, default=123)
     parser.add_argument("--mp_num_processors", type=int, default=4)
@@ -52,6 +57,7 @@ def main():
     args.tree_temperature = parsed.tree_temperature
     args.tree_split_type = parsed.tree_split_type
     args.tree_leaf_type = parsed.tree_leaf_type
+    args.tree_action_adapter = parsed.tree_action_adapter
     args.sigma_init = parsed.sigma_init
     args.seed = parsed.seed
     args.mp_num_processors = parsed.mp_num_processors
@@ -60,7 +66,10 @@ def main():
     args.horizon = budget["horizon"]
     args.eval_horizon = budget["eval_horizon"]
     args.eval_seeds = budget["eval_seeds"]
-    args.experiment_name = f"{parsed.run_tag}_{parsed.budget}_d{args.tree_depth}_{args.tree_split_type}_{args.tree_leaf_type}"
+    args.experiment_name = (
+        f"{parsed.run_tag}_{parsed.budget}_{args.tree_action_adapter}_"
+        f"d{args.tree_depth}_{args.tree_split_type}_{args.tree_leaf_type}"
+    )
 
     root = PACKAGE_ROOT / "outputs" / "autoresearch" / parsed.run_tag
     results_tsv = root / "results.tsv"

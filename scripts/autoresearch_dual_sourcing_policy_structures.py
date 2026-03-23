@@ -8,66 +8,67 @@ if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
 
 from invman.experiment_runner import run_experiment
-from invman.problems.lost_sales.reference_instances import VANILLA_L4_P4_POISSON5, build_reference_args
+from invman.problems.dual_sourcing.reference_instances import build_reference_args
 
 
 BUDGETS = {
     "screening": {
-        "training_episodes": 100,
+        "training_episodes": 300,
         "es_population": 8,
         "horizon": 1000,
-        "eval_horizon": 10000,
+        "eval_horizon": 5000,
         "eval_seeds": 2,
     },
     "full": {
-        "training_episodes": 2000,
+        "training_episodes": 1500,
         "es_population": 10,
         "horizon": 2000,
-        "eval_horizon": int(1e5),
+        "eval_horizon": 10000,
         "eval_seeds": 3,
     },
 }
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Compare candidate tree policy structures on the trusted lost-sales benchmark.")
-    parser.add_argument("--run_tag", default="tree_structure_search", help="Namespace used for outputs.")
+    parser = argparse.ArgumentParser(description="Compare candidate learned policy structures on the primary dual-sourcing benchmark.")
+    parser.add_argument("--run_tag", default="dual_sourcing_policy_search", help="Namespace used for outputs.")
     parser.add_argument("--budget", choices=sorted(BUDGETS), default="screening", help="Fixed experiment budget.")
-    parser.add_argument("--reference", default=VANILLA_L4_P4_POISSON5.name, help="Named reference instance.")
-    parser.add_argument("--tree_depths", nargs="+", type=int, default=[2, 3], help="Tree depths to compare.")
+    parser.add_argument("--reference", default="dual_l4_ce110", help="Named dual-sourcing reference instance.")
     parser.add_argument(
-        "--tree_split_types",
+        "--tree_action_adapters",
         nargs="+",
-        choices=["oblique", "axis_aligned"],
-        default=["oblique", "axis_aligned"],
-        help="Tree split structures to compare.",
+        default=[
+            "identity",
+            "single_index_targets",
+            "dual_index_targets",
+            "capped_dual_index_targets",
+            "base_surge_targets",
+        ],
+        help="Structured action adapters to compare.",
     )
-    parser.add_argument(
-        "--tree_leaf_types",
-        nargs="+",
-        choices=["constant", "linear"],
-        default=["constant"],
-        help="Tree leaf output types to compare.",
-    )
+    parser.add_argument("--tree_depths", nargs="+", type=int, default=[2], help="Tree depths to compare.")
     parser.add_argument("--tree_temperature", type=float, default=0.25)
-    parser.add_argument("--sigma_init", type=float, default=5.0)
+    parser.add_argument("--tree_split_type", choices=["oblique", "axis_aligned"], default="oblique")
+    parser.add_argument("--tree_leaf_type", choices=["constant", "linear"], default="linear")
+    parser.add_argument("--sigma_init", type=float, default=3.0)
     parser.add_argument("--seed", type=int, default=123)
     parser.add_argument("--mp_num_processors", type=int, default=4)
     parser.add_argument("--same_seed", action="store_true", help="Use common random numbers within an ES batch.")
     return parser.parse_args()
 
 
-def _prepare_args(parsed, root, split_type, leaf_type, depth):
+def _prepare_args(parsed, root, tree_action_adapter, depth):
     budget = BUDGETS[parsed.budget]
     args = build_reference_args(parsed.reference)
-    args.problem = "lost_sales"
+    args.problem = "dual_sourcing"
     args.policy_type = "soft_tree"
     args.rollout_backend = "rust"
     args.training_method = "cma"
     args.tree_depth = depth
     args.tree_temperature = parsed.tree_temperature
-    args.tree_split_type = split_type
-    args.tree_leaf_type = leaf_type
+    args.tree_split_type = parsed.tree_split_type
+    args.tree_leaf_type = parsed.tree_leaf_type
+    args.tree_action_adapter = tree_action_adapter
     args.sigma_init = parsed.sigma_init
     args.seed = parsed.seed
     args.mp_num_processors = parsed.mp_num_processors
@@ -80,7 +81,10 @@ def _prepare_args(parsed, root, split_type, leaf_type, depth):
     args.results_dir = str(root / "results")
     args.log_dir = str(root / "logs")
     args.trained_models_dir = str(root / "models")
-    args.experiment_name = f"{parsed.run_tag}_{parsed.budget}_{split_type}_{leaf_type}_d{depth}"
+    args.experiment_name = (
+        f"{parsed.run_tag}_{parsed.budget}_{tree_action_adapter}_"
+        f"d{depth}_{parsed.tree_split_type}_{parsed.tree_leaf_type}"
+    )
     return args
 
 
@@ -94,9 +98,10 @@ def _summarize_result(payload):
     return {
         "experiment_name": payload["experiment_name"],
         "policy_architecture": payload["policy_architecture"],
+        "tree_action_adapter": payload.get("tree_action_adapter", "identity"),
+        "tree_depth": payload["tree_depth"],
         "tree_split_type": payload["tree_split_type"],
         "tree_leaf_type": payload["tree_leaf_type"],
-        "tree_depth": payload["tree_depth"],
         "learned_mean_cost": learned_cost,
         "best_heuristic_cost": heuristic_cost,
         "heuristic_gap": learned_cost - heuristic_cost,
@@ -110,27 +115,27 @@ def main():
     root.mkdir(parents=True, exist_ok=True)
 
     results = []
-    for split_type in parsed.tree_split_types:
-        for leaf_type in parsed.tree_leaf_types:
-            for depth in parsed.tree_depths:
-                args = _prepare_args(parsed, root, split_type, leaf_type, depth)
-                payload, results_path = run_experiment(args)
-                payload["results_file"] = str(results_path)
-                results.append(_summarize_result(payload))
+    for tree_action_adapter in parsed.tree_action_adapters:
+        for depth in parsed.tree_depths:
+            args = _prepare_args(parsed, root, tree_action_adapter, depth)
+            payload, results_path = run_experiment(args)
+            payload["results_file"] = str(results_path)
+            results.append(_summarize_result(payload))
 
     results.sort(key=lambda item: item["learned_mean_cost"])
     summary = {
         "run_tag": parsed.run_tag,
         "budget": parsed.budget,
         "reference": parsed.reference,
+        "tree_action_adapters": parsed.tree_action_adapters,
         "tree_depths": parsed.tree_depths,
-        "tree_split_types": parsed.tree_split_types,
-        "tree_leaf_types": parsed.tree_leaf_types,
+        "tree_split_type": parsed.tree_split_type,
+        "tree_leaf_type": parsed.tree_leaf_type,
         "results": results,
         "best_result": results[0] if results else None,
     }
 
-    summary_path = root / f"tree_structure_search_{parsed.budget}.json"
+    summary_path = root / f"dual_sourcing_policy_search_{parsed.budget}.json"
     summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
     print(json.dumps(summary, indent=2))
 

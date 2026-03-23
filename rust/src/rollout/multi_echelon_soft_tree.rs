@@ -1,5 +1,6 @@
 use pyo3::exceptions::PyValueError;
 use pyo3::PyResult;
+use rayon::prelude::*;
 use rand::rngs::StdRng;
 use rand::Rng;
 use rand::SeedableRng;
@@ -173,9 +174,15 @@ pub fn population_rollout(
     if params_batch.len() != seeds.len() {
         return Err(PyValueError::new_err("params batch size must match seeds size"));
     }
-    let mut costs = Vec::with_capacity(params_batch.len());
-    for (params, seed) in params_batch.iter().zip(seeds.iter().copied()) {
-        costs.push(rollout(params, config, seed, warehouse_levels, retailer_levels)?);
+    let results: Vec<PyResult<f64>> = params_batch
+        .par_iter()
+        .zip(seeds.par_iter())
+        .map(|(params, seed)| rollout(params, config, *seed, warehouse_levels, retailer_levels))
+        .collect();
+
+    let mut costs = Vec::with_capacity(results.len());
+    for result in results {
+        costs.push(result?);
     }
     Ok(costs)
 }

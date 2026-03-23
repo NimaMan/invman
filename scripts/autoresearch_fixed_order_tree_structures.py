@@ -65,7 +65,6 @@ def parse_args():
         default=[2.0, 5.0],
         help="Initial CMA sigma values to compare.",
     )
-    parser.add_argument("--training_method", choices=["cma", "es", "ga", "xnes"], default="cma")
     parser.add_argument("--seed", type=int, default=123)
     parser.add_argument("--mp_num_processors", type=int, default=4)
     parser.add_argument("--same_seed", action="store_true", help="Use common random numbers within an ES batch.")
@@ -78,7 +77,7 @@ def _prepare_args(parsed, root, split_type, leaf_type, depth, temperature, sigma
     args.problem = "lost_sales_fixed_order_cost"
     args.policy_type = "soft_tree"
     args.rollout_backend = "rust"
-    args.training_method = parsed.training_method
+    args.training_method = "cma"
     args.tree_depth = depth
     args.tree_temperature = temperature
     args.tree_split_type = split_type

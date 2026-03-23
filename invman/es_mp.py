@@ -4,41 +4,18 @@ from copy import copy
 
 import numpy as np
 
-from invman.es import CMAES, OpenES, SimpleGA, XNES
+from invman.es import CMAES
 from invman.utils import Seeder, env_time_limit, save_model_solutions, write_log
 
 
 def get_es_optimizer(model, args):
-    if args.training_method == "cma":
-        es = CMAES(
-            model.num_params,
-            sigma_init=args.sigma_init,
-            popsize=args.es_population,
-        )
-    elif args.training_method == "ga":
-        es = SimpleGA(
-            model.num_params,
-            sigma_init=args.sigma_init,
-            popsize=args.es_population,
-            sigma_decay=args.sigma_decay,
-        )
-    elif args.training_method == "es":
-        es = OpenES(
-            model.num_params,
-            sigma_init=args.sigma_init,
-            popsize=args.es_population,
-        )
-    elif args.training_method == "xnes":
-        es = XNES(
-            model.num_params,
-            sigma_init=args.sigma_init,
-            popsize=args.es_population,
-            sigma_decay=args.sigma_decay,
-        )
-    else:
-        raise NotImplementedError(f"Unknown ES optimizer: {args.training_method}")
-
-    return es
+    if args.training_method != "cma":
+        raise NotImplementedError(f"Unsupported optimizer '{args.training_method}'. Only CMA-ES is supported.")
+    return CMAES(
+        model.num_params,
+        sigma_init=args.sigma_init,
+        popsize=args.es_population,
+    )
 
 
 def train(

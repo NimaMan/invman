@@ -3,6 +3,7 @@ from pathlib import Path
 
 from invman.policies.common import (
     normalize_policy_head,
+    normalize_tree_action_adapter,
     normalize_tree_leaf_type,
     normalize_tree_split_type,
 )
@@ -51,13 +52,12 @@ def get_config(argv=None):
     parser.add_argument(
         "--training_method",
         default="cma",
-        choices=["cma", "es", "ga", "xnes"],
-        help="Evolution-strategy optimizer.",
+        choices=["cma"],
+        help="Parameter optimizer.",
     )
     parser.add_argument("--training_episodes", default=500, type=int, help="Number of ES iterations.")
     parser.add_argument("--mp_num_processors", default=4, type=int, help="Worker processes for parallel rollouts.")
     parser.add_argument("--sigma_init", default=5.0, type=float, help="Initial search variance.")
-    parser.add_argument("--sigma_decay", default=0.999, type=float, help="Sigma decay for GA/OpenES/XNES.")
     parser.add_argument("--es_population", default=50, type=int, help="Population size per ES iteration.")
     parser.add_argument("--same_seed", action="store_true", help="Use common random numbers within each ES batch.")
     parser.add_argument("--dynamic_horizon", action="store_true", help="Increase the rollout horizon over training.")
@@ -159,6 +159,11 @@ def get_config(argv=None):
         default="constant",
         help="Leaf output type used by the soft tree policy.",
     )
+    parser.add_argument(
+        "--tree_action_adapter",
+        default="identity",
+        help="Structured action adapter used by the soft tree policy.",
+    )
 
     parser.add_argument("--experiment_name", default="lost_sales", help="Name used for saved artifacts.")
     parser.add_argument("--results_dir", default=str(default_results_dir), help="Directory for JSON summaries.")
@@ -186,6 +191,10 @@ def get_config(argv=None):
         parser.error(str(exc))
     try:
         args.tree_leaf_type = normalize_tree_leaf_type(args.tree_leaf_type)
+    except ValueError as exc:
+        parser.error(str(exc))
+    try:
+        args.tree_action_adapter = normalize_tree_action_adapter(args.tree_action_adapter)
     except ValueError as exc:
         parser.error(str(exc))
     # Backward-compatible alias retained for older scripts.

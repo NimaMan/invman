@@ -132,3 +132,65 @@ def test_dual_sourcing_soft_tree_rust_matches_python_rollout():
         allowed_values=model.action_spec["allowed_values"],
     )
     assert rust_cost == pytest.approx(env.avg_total_cost)
+
+
+def test_dual_sourcing_structured_tree_rust_matches_python_rollout():
+    args = build_reference_args("dual_l2_ce105")
+    args.horizon = 50
+    args.warm_up_periods_ratio = 0.0
+    args.problem = "dual_sourcing"
+    args.policy_type = "soft_tree"
+    fixed_path = build_fixed_demand_path(args, seed=91, horizon=50)
+    env = DualSourcingEnv(
+        regular_lead_time=args.regular_lead_time,
+        regular_order_cost=args.regular_order_cost,
+        expedited_order_cost=args.expedited_order_cost,
+        holding_cost=args.holding_cost,
+        shortage_cost=args.shortage_cost,
+        regular_max_order_size=args.regular_max_order_size,
+        expedited_max_order_size=args.expedited_max_order_size,
+        demand_low=args.dual_demand_low,
+        demand_high=args.dual_demand_high,
+        horizon=args.horizon,
+        track_demand=True,
+        warm_up_periods_ratio=args.warm_up_periods_ratio,
+    )
+    args.tree_action_adapter = "capped_dual_index_targets"
+    args.tree_leaf_type = "linear"
+    from invman.policies.factory import build_policy
+
+    model = build_policy(args, env)
+    model.set_model_params(model.get_model_flat_params())
+
+    env.state = list(fixed_path.state)
+    env.current_epoch = 0
+    env.done = False
+    env.epoch_costs = []
+    env.total_cost = 0.0
+    env.horizon_demand = np.asarray(fixed_path.demands, dtype=np.int64)
+    while not env.is_done():
+        env.step(model(torch.as_tensor(env.policy_state, dtype=torch.float32)))
+
+    rust_cost = invman_rust.dual_sourcing_soft_tree_rollout_from_demands(
+        flat_params=model.get_model_flat_params().astype(np.float32).tolist(),
+        input_dim=model.input_dim,
+        depth=model.depth,
+        min_values=model.min_values,
+        max_values=model.max_values,
+        action_mode=model.control_mode,
+        action_adapter=model.action_adapter,
+        state=list(fixed_path.state),
+        demands=list(fixed_path.demands),
+        regular_order_cost=args.regular_order_cost,
+        expedited_order_cost=args.expedited_order_cost,
+        holding_cost=args.holding_cost,
+        shortage_cost=args.shortage_cost,
+        regular_max_order_size=args.regular_max_order_size,
+        expedited_max_order_size=args.expedited_max_order_size,
+        warm_up_periods_ratio=0.0,
+        temperature=model.temperature,
+        split_type=model.split_type,
+        leaf_type=model.leaf_type,
+        allowed_values=model.control_spec["allowed_values"],
+    )
+    assert rust_cost == pytest.approx(env.avg_total_cost)

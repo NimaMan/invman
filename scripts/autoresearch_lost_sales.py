@@ -40,7 +40,6 @@ def parse_args():
     parser.add_argument("--policy_type", choices=["linear", "nn", "soft_tree"], default="soft_tree")
     parser.add_argument("--policy_head", default="categorical_quantity", help="Policy head for nn/linear backbones.")
     parser.add_argument("--rollout_backend", choices=["python", "rust"], default="python")
-    parser.add_argument("--training_method", choices=["cma", "es", "ga", "xnes"], default="cma")
     parser.add_argument("--tree_depth", type=int, default=3)
     parser.add_argument("--tree_temperature", type=float, default=0.25)
     parser.add_argument("--tree_split_type", choices=["oblique", "axis_aligned"], default="oblique")
@@ -126,7 +125,7 @@ def _configure_args(parsed):
     args.policy_type = parsed.policy_type
     args.policy_head = parsed.policy_head
     args.rollout_backend = parsed.rollout_backend
-    args.training_method = parsed.training_method
+    args.training_method = "cma"
     args.tree_depth = parsed.tree_depth
     args.tree_temperature = parsed.tree_temperature
     args.tree_split_type = parsed.tree_split_type

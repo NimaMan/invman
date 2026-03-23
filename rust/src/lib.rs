@@ -19,7 +19,7 @@ use crate::heuristics::fixed_order_cost::{
 };
 use crate::heuristics::multi_echelon::search_constant_base_stock_from_demands;
 use crate::policies::soft_tree::{
-    build_action_spec, parse_leaf_type, parse_split_type, soft_tree_leaf_probabilities,
+    build_action_spec, parse_action_adapter, parse_leaf_type, parse_split_type, soft_tree_leaf_probabilities,
     validate_soft_tree_shapes,
 };
 use crate::rollout::lost_sales_soft_tree::{
@@ -514,6 +514,7 @@ fn lost_sales_soft_tree_population_rollout(
     temperature=0.25,
     split_type="oblique",
     leaf_type="constant",
+    action_adapter="identity",
     allowed_values=None
 ))]
 fn dual_sourcing_soft_tree_rollout(
@@ -538,6 +539,7 @@ fn dual_sourcing_soft_tree_rollout(
     temperature: f32,
     split_type: &str,
     leaf_type: &str,
+    action_adapter: &str,
     allowed_values: Option<Vec<Vec<usize>>>,
 ) -> PyResult<f64> {
     let config = DualSourcingRolloutConfig {
@@ -558,6 +560,7 @@ fn dual_sourcing_soft_tree_rollout(
         temperature,
         split_type: parse_split_type(split_type)?,
         leaf_type: parse_leaf_type(leaf_type)?,
+        action_adapter: parse_action_adapter(action_adapter)?,
     };
     dual_sourcing_rollout(&flat_params, &config, seed)
 }
@@ -585,6 +588,7 @@ fn dual_sourcing_soft_tree_rollout(
     temperature=0.25,
     split_type="oblique",
     leaf_type="constant",
+    action_adapter="identity",
     allowed_values=None
 ))]
 fn dual_sourcing_soft_tree_population_rollout(
@@ -609,6 +613,7 @@ fn dual_sourcing_soft_tree_population_rollout(
     temperature: f32,
     split_type: &str,
     leaf_type: &str,
+    action_adapter: &str,
     allowed_values: Option<Vec<Vec<usize>>>,
 ) -> PyResult<Vec<f64>> {
     let config = DualSourcingRolloutConfig {
@@ -629,6 +634,7 @@ fn dual_sourcing_soft_tree_population_rollout(
         temperature,
         split_type: parse_split_type(split_type)?,
         leaf_type: parse_leaf_type(leaf_type)?,
+        action_adapter: parse_action_adapter(action_adapter)?,
     };
     dual_sourcing_population_rollout(&params_batch, &config, &seeds)
 }
@@ -653,6 +659,7 @@ fn dual_sourcing_soft_tree_population_rollout(
     temperature=0.25,
     split_type="oblique",
     leaf_type="constant",
+    action_adapter="identity",
     allowed_values=None
 ))]
 fn dual_sourcing_soft_tree_rollout_from_demands(
@@ -674,6 +681,7 @@ fn dual_sourcing_soft_tree_rollout_from_demands(
     temperature: f32,
     split_type: &str,
     leaf_type: &str,
+    action_adapter: &str,
     allowed_values: Option<Vec<Vec<usize>>>,
 ) -> PyResult<f64> {
     let config = DualSourcingRolloutConfig {
@@ -694,6 +702,7 @@ fn dual_sourcing_soft_tree_rollout_from_demands(
         temperature,
         split_type: parse_split_type(split_type)?,
         leaf_type: parse_leaf_type(leaf_type)?,
+        action_adapter: parse_action_adapter(action_adapter)?,
     };
     dual_sourcing_rollout_from_demands(&flat_params, &config, state, &demands)
 }

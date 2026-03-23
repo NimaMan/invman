@@ -10,6 +10,7 @@ from invman.policies import LinearPolicyNet, PolicyNet, SoftTreePolicy, build_po
 def _make_args(policy_type, policy_head="categorical_quantity"):
     return SimpleNamespace(
         policy_type=policy_type,
+        problem="lost_sales",
         policy_head=policy_head,
         hidden_dim=[8, 8],
         activation="relu",
@@ -17,6 +18,7 @@ def _make_args(policy_type, policy_head="categorical_quantity"):
         tree_temperature=0.3,
         tree_split_type="oblique",
         tree_leaf_type="constant",
+        tree_action_adapter="identity",
     )
 
 
@@ -68,6 +70,21 @@ def test_build_policy_rejects_linear_on_vector_action_problem():
 
 def test_build_policy_supports_soft_tree_on_vector_action_problem():
     env = DualSourcingEnv(horizon=10, track_demand=True)
-    model = build_policy(_make_args("soft_tree"), env)
+    args = _make_args("soft_tree")
+    args.problem = "dual_sourcing"
+    model = build_policy(args, env)
     assert isinstance(model, SoftTreePolicy)
     assert model.action_dim == 2
+
+
+def test_build_policy_supports_structured_dual_sourcing_tree():
+    env = DualSourcingEnv(horizon=10, track_demand=True)
+    args = _make_args("soft_tree")
+    args.problem = "dual_sourcing"
+    args.tree_leaf_type = "linear"
+    args.tree_action_adapter = "capped_dual_index_targets"
+    model = build_policy(args, env)
+    assert isinstance(model, SoftTreePolicy)
+    assert model.action_adapter == "dual_sourcing_capped_dual_index_targets"
+    assert model.action_dim == 2
+    assert model.control_dim == 3

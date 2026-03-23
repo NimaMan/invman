@@ -1,11 +1,15 @@
 use pyo3::exceptions::PyValueError;
 use pyo3::PyResult;
+use rayon::prelude::*;
 use rand::rngs::StdRng;
 use rand::Rng;
 use rand::SeedableRng;
 
 use crate::env::dual_sourcing::{epoch_cost, initialize_state, step_state, validate_action};
-use crate::policies::soft_tree::{action_vector_from_flat_params, SoftTreeActionSpec, SoftTreeLeafType, SoftTreeSplitType};
+use crate::policies::soft_tree::{
+    action_vector_from_flat_params, dual_sourcing_action_from_controls, SoftTreeActionAdapter, SoftTreeActionSpec, SoftTreeLeafType,
+    SoftTreeSplitType,
+};
 
 #[derive(Clone)]
 pub struct DualSourcingRolloutConfig {
@@ -26,6 +30,7 @@ pub struct DualSourcingRolloutConfig {
     pub temperature: f32,
     pub split_type: SoftTreeSplitType,
     pub leaf_type: SoftTreeLeafType,
+    pub action_adapter: SoftTreeActionAdapter,
 }
 
 fn mean_after_warmup(epoch_costs: &[f64], warm_up_periods_ratio: f64) -> f64 {
@@ -60,7 +65,7 @@ pub fn rollout(flat_params: &[f32], config: &DualSourcingRolloutConfig, seed: u6
             .iter()
             .map(|value| *value as f32 / scale)
             .collect::<Vec<_>>();
-        let action = action_vector_from_flat_params(
+        let controls = action_vector_from_flat_params(
             &state,
             flat_params,
             config.input_dim,
@@ -69,6 +74,13 @@ pub fn rollout(flat_params: &[f32], config: &DualSourcingRolloutConfig, seed: u6
             config.split_type,
             config.leaf_type,
             &config.action_spec,
+        )?;
+        let action = dual_sourcing_action_from_controls(
+            &env_state.reduced_state,
+            &controls,
+            config.action_adapter,
+            config.regular_max_order_size,
+            config.expedited_max_order_size,
         )?;
         let regular_order = action[0];
         let expedited_order = action[1];
@@ -108,7 +120,7 @@ pub fn rollout_from_demands(
             .iter()
             .map(|value| *value as f32 / scale)
             .collect::<Vec<_>>();
-        let action = action_vector_from_flat_params(
+        let controls = action_vector_from_flat_params(
             &state,
             flat_params,
             config.input_dim,
@@ -117,6 +129,13 @@ pub fn rollout_from_demands(
             config.split_type,
             config.leaf_type,
             &config.action_spec,
+        )?;
+        let action = dual_sourcing_action_from_controls(
+            &reduced_state,
+            &controls,
+            config.action_adapter,
+            config.regular_max_order_size,
+            config.expedited_max_order_size,
         )?;
         let regular_order = action[0];
         let expedited_order = action[1];
@@ -145,9 +164,15 @@ pub fn population_rollout(params_batch: &[Vec<f32>], config: &DualSourcingRollou
     if params_batch.len() != seeds.len() {
         return Err(PyValueError::new_err("params batch size must match seeds size"));
     }
-    let mut costs = Vec::with_capacity(params_batch.len());
-    for (params, seed) in params_batch.iter().zip(seeds.iter().copied()) {
-        costs.push(rollout(params, config, seed)?);
+    let results: Vec<PyResult<f64>> = params_batch
+        .par_iter()
+        .zip(seeds.par_iter())
+        .map(|(params, seed)| rollout(params, config, *seed))
+        .collect();
+
+    let mut costs = Vec::with_capacity(results.len());
+    for result in results {
+        costs.push(result?);
     }
     Ok(costs)
 }

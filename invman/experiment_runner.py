@@ -61,7 +61,10 @@ def build_result_payload(args, learned_policy_results, heuristic_results):
         else f"tree_{args.tree_leaf_type}_leaf_quantity"
     )
     if args.policy_type == "soft_tree":
-        policy_architecture = f"{args.policy_type}_{args.tree_split_type}_{effective_policy_head}_{args.state_features}"
+        adapter_suffix = ""
+        if getattr(args, "tree_action_adapter", "identity") != "identity":
+            adapter_suffix = f"_{args.tree_action_adapter}"
+        policy_architecture = f"{args.policy_type}_{args.tree_split_type}_{effective_policy_head}{adapter_suffix}_{args.state_features}"
     else:
         policy_architecture = f"{args.policy_type}_{effective_policy_head}_{args.state_features}"
     problem_params = {
@@ -98,6 +101,7 @@ def build_result_payload(args, learned_policy_results, heuristic_results):
         "tree_temperature": args.tree_temperature,
         "tree_split_type": args.tree_split_type,
         "tree_leaf_type": args.tree_leaf_type,
+        "tree_action_adapter": getattr(args, "tree_action_adapter", "identity"),
         "rollout_backend": args.rollout_backend,
         "demand_dist_name": args.demand_dist_name,
         "demand_rate": args.demand_rate,
