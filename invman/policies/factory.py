@@ -1,43 +1,21 @@
 from invman.policies.linear import LinearPolicyNet
 from invman.policies.neural import PolicyNet
 from invman.policies.soft_tree import SoftTreePolicy
-from invman.policies.structured_actions import (
-    build_dual_sourcing_action_adapter_config,
-    build_dual_sourcing_control_spec,
-)
-from invman.policies.common import normalize_action_adapter
+from invman.problems import get_problem_module
 
 
 def build_policy(args, env):
-    action_spec = getattr(env, "action_spec", None)
-    if action_spec is None:
-        action_spec = {
-            "action_dim": 1,
-            "action_mode": "scalar_quantity",
-            "min_values": [0],
-            "max_values": [int(env.max_order_size)],
-            "allowed_values": None,
-        }
+    problem_module = get_problem_module(getattr(args, "problem", "lost_sales"))
+    context = problem_module.build_policy_context(args, env)
+    supported_policy_types = tuple(context.get("supported_policy_types", ()))
+    if supported_policy_types and args.policy_type not in supported_policy_types:
+        valid = ", ".join(supported_policy_types)
+        raise ValueError(f"Problem '{args.problem}' supports policy types: {valid}")
 
-    action_adapter = normalize_action_adapter(getattr(args, "action_adapter", getattr(args, "tree_action_adapter", "identity")))
-    control_spec = None
-    action_adapter_config = None
-    if getattr(args, "problem", None) == "dual_sourcing" and action_adapter != "identity":
-        control_spec = build_dual_sourcing_control_spec(
-            action_adapter,
-            regular_lead_time=int(env.regular_lead_time),
-            demand_low=int(env.demand_low),
-            demand_high=int(env.demand_high),
-            regular_max_order_size=int(env.regular_max_order_size),
-            expedited_max_order_size=int(env.expedited_max_order_size),
-        )
-        action_adapter_config = build_dual_sourcing_action_adapter_config(
-            regular_max_order_size=int(env.regular_max_order_size),
-            expedited_max_order_size=int(env.expedited_max_order_size),
-            state_scale=float(max(1, env.regular_max_order_size + env.expedited_max_order_size)),
-        )
-    elif action_adapter != "identity":
-        raise ValueError(f"action_adapter '{action_adapter}' is only supported for dual_sourcing right now.")
+    action_spec = context["action_spec"]
+    control_spec = context.get("control_spec")
+    action_adapter = context.get("action_adapter", "identity")
+    action_adapter_config = context.get("action_adapter_config")
 
     if args.policy_type == "linear":
         return LinearPolicyNet(

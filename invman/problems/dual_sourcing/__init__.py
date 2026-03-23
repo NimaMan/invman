@@ -21,6 +21,14 @@ from invman.problems.dual_sourcing.heuristics import (
     search_best_single_index_policy,
     search_best_tailored_base_surge_policy,
 )
+from invman.problems.dual_sourcing.policies import (
+    SUPPORTED_POLICY_TYPES,
+    apply_action_adapter,
+    build_action_adapter_config,
+    build_control_spec,
+    build_policy_context,
+    normalize_action_adapter,
+)
 from invman.problems.dual_sourcing.reference_instances import (
     DUAL_SOURCING_BENCHMARK_REFERENCE,
     DUAL_SOURCING_REFERENCE_INSTANCES,
@@ -35,8 +43,13 @@ __all__ = [
     "DualSourcingEnv",
     "DUAL_SOURCING_BENCHMARK_REFERENCE",
     "DUAL_SOURCING_REFERENCE_INSTANCES",
+    "SUPPORTED_POLICY_TYPES",
+    "apply_action_adapter",
+    "build_action_adapter_config",
+    "build_control_spec",
     "build_env_from_args",
     "build_fixed_demand_path",
+    "build_policy_context",
     "build_reference_args",
     "evaluate_default_heuristics",
     "evaluate_policy_across_seeds",
@@ -51,6 +64,7 @@ __all__ = [
     "get_single_index_action",
     "get_tailored_base_surge_action",
     "list_reference_instances",
+    "normalize_action_adapter",
     "search_best_capped_dual_index_policy",
     "search_best_dual_index_policy",
     "search_best_single_index_policy",

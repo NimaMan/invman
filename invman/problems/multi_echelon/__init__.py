@@ -13,6 +13,10 @@ from invman.problems.multi_echelon.heuristics import (
     evaluate_constant_base_stock_policy_across_seeds,
     search_best_constant_base_stock_policy,
 )
+from invman.problems.multi_echelon.policies import (
+    SUPPORTED_POLICY_TYPES,
+    build_policy_context,
+)
 from invman.problems.multi_echelon.reference_instances import (
     MULTI_ECHELON_BENCHMARK_REFERENCE,
     MULTI_ECHELON_REFERENCE_INSTANCES,
@@ -27,8 +31,10 @@ __all__ = [
     "MULTI_ECHELON_REFERENCE_INSTANCES",
     "MULTI_ECHELON_BENCHMARK_REFERENCE",
     "MultiEchelonEnv",
+    "SUPPORTED_POLICY_TYPES",
     "build_env_from_args",
     "build_fixed_demand_path",
+    "build_policy_context",
     "build_reference_args",
     "evaluate_constant_base_stock_policy",
     "evaluate_constant_base_stock_policy_across_seeds",

@@ -10,7 +10,6 @@ from invman.policies.common import (
     normalize_tree_split_type,
 )
 from invman.policies.es_module import ESModule
-from invman.policies.structured_actions import apply_structured_action_adapter
 from invman.utils import save_init_args
 
 
@@ -152,9 +151,11 @@ class SoftTreePolicy(ESModule):
         return projected, np.asarray(projected, dtype=np.int64)
 
     def _finalize_action(self, projected_controls, state):
+        from invman.problems.dual_sourcing.policies import apply_action_adapter
+
         controls = np.atleast_1d(projected_controls).astype(np.int64).tolist()
         normalized_state = state.detach().cpu().numpy()
-        return apply_structured_action_adapter(
+        return apply_action_adapter(
             self.action_adapter,
             controls,
             normalized_state,

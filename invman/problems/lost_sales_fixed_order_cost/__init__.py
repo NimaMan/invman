@@ -22,6 +22,10 @@ from invman.problems.lost_sales_fixed_order_cost.heuristics import (
     search_best_s_nq_policy,
     search_best_s_s_policy,
 )
+from invman.problems.lost_sales_fixed_order_cost.policies import (
+    SUPPORTED_POLICY_TYPES,
+    build_policy_context,
+)
 from invman.problems.lost_sales_fixed_order_cost.reference_instances import (
     build_grid_instances,
     get_benchmark_grid,
@@ -32,10 +36,12 @@ from invman.problems.lost_sales_fixed_order_cost.reference_instances import (
 
 __all__ = [
     "LostSalesEnv",
+    "SUPPORTED_POLICY_TYPES",
     "benchmark_grid",
     "benchmark_reference_instance",
     "build_grid_instances",
     "build_env_from_args",
+    "build_policy_context",
     "get_benchmark_grid",
     "build_reference_args",
     "evaluate_default_heuristics",

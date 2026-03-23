@@ -3,7 +3,6 @@ import torch.nn as nn
 
 from invman.policies.common import normalize_action_spec, normalize_policy_head
 from invman.policies.es_module import ESModule
-from invman.policies.structured_actions import apply_structured_action_adapter, normalize_tree_action_adapter
 from invman.utils import save_init_args
 
 
@@ -38,7 +37,7 @@ class LinearPolicyNet(ESModule):
         self.control_mode = str(self.control_spec["action_mode"])
         self.min_values = [int(value) for value in self.control_spec["min_values"]]
         self.max_values = [int(value) for value in self.control_spec["max_values"]]
-        self.action_adapter = normalize_tree_action_adapter(action_adapter)
+        self.action_adapter = str(action_adapter)
         self.action_adapter_config = None if action_adapter_config is None else dict(action_adapter_config)
         out_features = (
             output_dim
@@ -88,7 +87,9 @@ class LinearPolicyNet(ESModule):
         return tuple(projected), projected
 
     def _finalize_action(self, projected_controls, state):
-        return apply_structured_action_adapter(
+        from invman.problems.dual_sourcing.policies import apply_action_adapter
+
+        return apply_action_adapter(
             self.action_adapter,
             projected_controls,
             state.detach().cpu().numpy(),

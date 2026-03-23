@@ -11,6 +11,10 @@ from invman.problems.lost_sales.heuristics import (
     LostSalesHeuristicPolicies,
     get_heuristic_policy_cost,
 )
+from invman.problems.lost_sales.policies import (
+    SUPPORTED_POLICY_TYPES,
+    build_policy_context,
+)
 from invman.problems.lost_sales.problem_info import problem_info
 from invman.problems.lost_sales.reference_instances import (
     REFERENCE_INSTANCES,
@@ -25,8 +29,10 @@ __all__ = [
     "LostSalesEnv",
     "LostSalesHeuristicPolicies",
     "REFERENCE_INSTANCES",
+    "SUPPORTED_POLICY_TYPES",
     "VANILLA_L4_P4_POISSON5",
     "build_env_from_args",
+    "build_policy_context",
     "build_reference_args",
     "evaluate_cap_sensitivity",
     "evaluate_default_heuristics",

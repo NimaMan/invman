@@ -1,9 +1,15 @@
+"""Policy support and structured action maps for dual sourcing."""
+
 from __future__ import annotations
 
 from typing import Iterable
 
+from invman.policies.common import normalize_action_spec
 
-def normalize_tree_action_adapter(action_adapter: str) -> str:
+SUPPORTED_POLICY_TYPES = ("linear", "nn", "soft_tree")
+
+
+def normalize_action_adapter(action_adapter: str) -> str:
     aliases = {
         "identity": "identity",
         "direct": "identity",
@@ -20,11 +26,11 @@ def normalize_tree_action_adapter(action_adapter: str) -> str:
     normalized = aliases.get(action_adapter)
     if normalized is None:
         valid = ", ".join(sorted(aliases))
-        raise ValueError(f"Unknown tree action adapter '{action_adapter}'. Expected one of: {valid}")
+        raise ValueError(f"Unknown action adapter '{action_adapter}'. Expected one of: {valid}")
     return normalized
 
 
-def _dual_sourcing_target_upper_bound(
+def _target_upper_bound(
     regular_lead_time: int,
     demand_low: int,
     demand_high: int,
@@ -35,7 +41,7 @@ def _dual_sourcing_target_upper_bound(
     return max(int(expedited_max_order_size), min(24, upper))
 
 
-def build_dual_sourcing_control_spec(
+def build_control_spec(
     action_adapter: str,
     *,
     regular_lead_time: int,
@@ -44,8 +50,8 @@ def build_dual_sourcing_control_spec(
     regular_max_order_size: int,
     expedited_max_order_size: int,
 ):
-    normalized = normalize_tree_action_adapter(action_adapter)
-    target_upper = _dual_sourcing_target_upper_bound(
+    normalized = normalize_action_adapter(action_adapter)
+    target_upper = _target_upper_bound(
         regular_lead_time=regular_lead_time,
         demand_low=demand_low,
         demand_high=demand_high,
@@ -89,7 +95,7 @@ def build_dual_sourcing_control_spec(
     raise NotImplementedError(f"Unsupported dual-sourcing action adapter: {normalized}")
 
 
-def build_dual_sourcing_action_adapter_config(
+def build_action_adapter_config(
     *,
     regular_max_order_size: int,
     expedited_max_order_size: int,
@@ -106,7 +112,7 @@ def _recover_raw_state(normalized_state: Iterable[float], state_scale: float):
     return [int(round(float(value) * float(state_scale))) for value in normalized_state]
 
 
-def _dual_sourcing_action_from_controls(action_adapter: str, controls: list[int], raw_state: list[int], action_adapter_config: dict):
+def _action_from_controls(action_adapter: str, controls: list[int], raw_state: list[int], action_adapter_config: dict):
     expedited_inventory_position = int(raw_state[0])
     regular_inventory_position = int(sum(raw_state))
     max_regular = int(action_adapter_config["regular_max_order_size"])
@@ -145,18 +151,43 @@ def _dual_sourcing_action_from_controls(action_adapter: str, controls: list[int]
     raise NotImplementedError(f"Unsupported dual-sourcing action adapter: {action_adapter}")
 
 
-def apply_structured_action_adapter(action_adapter: str, controls, normalized_state, action_spec: dict, action_adapter_config: dict | None):
-    normalized = normalize_tree_action_adapter(action_adapter)
+def apply_action_adapter(action_adapter: str, controls, normalized_state, action_spec: dict, action_adapter_config: dict | None):
+    normalized = normalize_action_adapter(action_adapter)
     if normalized == "identity":
         if action_spec["action_dim"] == 1:
             return int(controls[0])
         return tuple(int(value) for value in controls)
 
     if action_adapter_config is None:
-        raise ValueError(f"action_adapter_config is required for tree action adapter '{normalized}'")
+        raise ValueError(f"action_adapter_config is required for action adapter '{normalized}'")
 
     raw_state = _recover_raw_state(normalized_state, float(action_adapter_config["state_scale"]))
-    if normalized.startswith("dual_sourcing_"):
-        return _dual_sourcing_action_from_controls(normalized, list(controls), raw_state, action_adapter_config)
+    return _action_from_controls(normalized, list(controls), raw_state, action_adapter_config)
 
-    raise NotImplementedError(f"Unsupported tree action adapter: {normalized}")
+
+def build_policy_context(args, env):
+    action_spec = normalize_action_spec(getattr(env, "action_spec", None))
+    action_adapter = normalize_action_adapter(getattr(args, "action_adapter", getattr(args, "tree_action_adapter", "identity")))
+    control_spec = None
+    action_adapter_config = None
+    if action_adapter != "identity":
+        control_spec = build_control_spec(
+            action_adapter,
+            regular_lead_time=int(env.regular_lead_time),
+            demand_low=int(env.demand_low),
+            demand_high=int(env.demand_high),
+            regular_max_order_size=int(env.regular_max_order_size),
+            expedited_max_order_size=int(env.expedited_max_order_size),
+        )
+        action_adapter_config = build_action_adapter_config(
+            regular_max_order_size=int(env.regular_max_order_size),
+            expedited_max_order_size=int(env.expedited_max_order_size),
+            state_scale=float(max(1, env.regular_max_order_size + env.expedited_max_order_size)),
+        )
+    return {
+        "supported_policy_types": SUPPORTED_POLICY_TYPES,
+        "action_spec": action_spec,
+        "control_spec": control_spec,
+        "action_adapter": action_adapter,
+        "action_adapter_config": action_adapter_config,
+    }

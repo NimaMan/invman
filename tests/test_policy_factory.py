@@ -5,6 +5,7 @@ import torch
 
 from invman.problems.lost_sales.env import LostSalesEnv
 from invman.problems.dual_sourcing.env import DualSourcingEnv
+from invman.problems.lost_sales_fixed_order_cost.env import build_env_from_args as build_fixed_cost_env_from_args
 from invman.policies import LinearPolicyNet, PolicyNet, SoftTreePolicy, build_policy
 
 
@@ -33,6 +34,50 @@ def test_build_policy_returns_linear_policy():
 def test_build_policy_returns_neural_policy():
     env = LostSalesEnv(demand_rate=5.0, lead_time=4, max_order_size=20, horizon=10, track_demand=True)
     model = build_policy(_make_args("nn", policy_head="gated_ordinal_quantity"), env)
+    assert isinstance(model, PolicyNet)
+
+
+def test_build_policy_returns_linear_policy_for_fixed_cost_lost_sales():
+    args = _make_args("linear")
+    args.problem = "lost_sales_fixed_order_cost"
+    env_args = SimpleNamespace(
+        demand_rate=5.0,
+        lead_time=4,
+        max_order_size=20,
+        inventory_upper_bound=200,
+        holding_cost=1.0,
+        shortage_cost=4.0,
+        horizon=10,
+        procurement_cost=0.0,
+        fixed_order_cost=5.0,
+        demand_dist_name="Poisson",
+        warm_up_periods_ratio=0.2,
+        state_features="pipeline",
+    )
+    env = build_fixed_cost_env_from_args(env_args, track_demand=True)
+    model = build_policy(args, env)
+    assert isinstance(model, LinearPolicyNet)
+
+
+def test_build_policy_returns_neural_policy_for_fixed_cost_lost_sales():
+    args = _make_args("nn", policy_head="gated_ordinal_quantity")
+    args.problem = "lost_sales_fixed_order_cost"
+    env_args = SimpleNamespace(
+        demand_rate=5.0,
+        lead_time=4,
+        max_order_size=20,
+        inventory_upper_bound=200,
+        holding_cost=1.0,
+        shortage_cost=4.0,
+        horizon=10,
+        procurement_cost=0.0,
+        fixed_order_cost=5.0,
+        demand_dist_name="Poisson",
+        warm_up_periods_ratio=0.2,
+        state_features="pipeline",
+    )
+    env = build_fixed_cost_env_from_args(env_args, track_demand=True)
+    model = build_policy(args, env)
     assert isinstance(model, PolicyNet)
 
 
