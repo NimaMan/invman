@@ -67,6 +67,13 @@ On this benchmark, the current best learned policy from the fixed-cost autoresea
 - `50k` eval: `8.77528`
 - `1M` eval: `8.76576`
 
+Current policy function approximator anchors on the same canonical instance:
+
+- linear categorical quantity: `10.42369`
+- NN gated ordinal quantity: `9.51636`
+- transferred depth-2 soft tree: `8.81009`
+- autoresearch-refined depth-1 soft tree: `8.76576`
+
 Reference comparisons:
 
 - earlier transferred depth-2 tree, `1M` eval: `8.81009`
@@ -150,6 +157,7 @@ Outputs are written under `outputs/`:
 - `rust/`: native rollout kernels used by the Rust-backed policy path
 - `invman/es.py`, `invman/es_mp.py`: evolution-strategy optimizers and training loop
 - `scripts/run_experiment.py`: single entry point for training and evaluation
+- `numerical_experiments/`: curated experiment catalog and launcher for Linux-scale benchmark runs
 - `scripts/autoresearch_tree_structures.py`: vanilla lost-sales tree-architecture comparison runner
 - `scripts/autoresearch_fixed_order_cost.py`: fixed-cost autoresearch runner
 - `scripts/autoresearch_fixed_order_tree_structures.py`: fixed-cost tree-architecture screening runner
@@ -158,6 +166,7 @@ Outputs are written under `outputs/`:
 - `autoresearch/`: autoresearch-style loop docs for vanilla and fixed-cost benchmarks
 - `../docs/benchmarks/lost_sales_l4_refresh.md`: refreshed vanilla lost-sales benchmark note after
   the Rust refactor
+- `../docs/benchmarks/fixed_cost_l4_refresh.md`: canonical fixed-cost benchmark note
 
 ## Fixed Ordering Cost Variant
 

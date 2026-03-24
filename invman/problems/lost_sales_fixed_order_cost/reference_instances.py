@@ -31,6 +31,71 @@ DEFAULT_EVALUATION_CONFIG = {
     "eval_seeds": 3,
 }
 
+CANONICAL_REFERENCE_NAME = "lit_pois_mu5_l4_p4_k5"
+
+BENCHMARK_ANCHORS = {
+    CANONICAL_REFERENCE_NAME: {
+        "benchmark_type": "repo_canonical",
+        "description": (
+            "Canonical fixed-order-cost benchmark instance aligned with the Bijvank-Bhulai-Huh "
+            "(2015) test-bed subset used in this repo."
+        ),
+        "evaluation_protocol": {
+            "long_run_eval_horizon": int(1e6),
+            "warm_up_periods_ratio": 0.2,
+            "eval_seeds": 3,
+        },
+        "heuristic_anchors_1m": {
+            "s_s": {
+                "params": {"s": 21, "S": 29},
+                "mean_cost": 9.44401,
+            },
+            "s_nq": {
+                "params": {"s": 21, "q": 8},
+                "mean_cost": 9.21664,
+            },
+            "modified_s_s_q": {
+                "params": {"s": 22, "S": 29, "q": 8},
+                "mean_cost": 9.165367083333333,
+            },
+        },
+        "learned_policy_anchors": {
+            "historical_linear_50k": 10.423691666666667,
+            "historical_nn_gated_ordinal_50k": 9.516358333333333,
+            "transferred_tree_depth2_1m": 8.810086666666669,
+            "current_best_tree_depth1_1m": 8.765759583333333,
+        },
+        "policy_approximator_anchors": {
+            "linear_categorical_quantity": {
+                "policy_type": "linear",
+                "policy_head": "categorical_quantity",
+                "eval_horizon": 50000,
+                "mean_cost": 10.423691666666667,
+            },
+            "nn_gated_ordinal_quantity": {
+                "policy_type": "nn",
+                "policy_head": "gated_ordinal_quantity",
+                "eval_horizon": 50000,
+                "mean_cost": 9.516358333333333,
+            },
+            "soft_tree_depth2_linear_leaf": {
+                "policy_type": "soft_tree",
+                "policy_head": "tree_linear_leaf_quantity",
+                "tree_depth": 2,
+                "eval_horizon": int(1e6),
+                "mean_cost": 8.810086666666669,
+            },
+            "soft_tree_depth1_linear_leaf": {
+                "policy_type": "soft_tree",
+                "policy_head": "tree_linear_leaf_quantity",
+                "tree_depth": 1,
+                "eval_horizon": int(1e6),
+                "mean_cost": 8.765759583333333,
+            },
+        },
+    }
+}
+
 BENCHMARK_GRIDS = {
     "literature_subset_poisson_mu5": {
         "name": "literature_subset_poisson_mu5",
@@ -81,7 +146,7 @@ def get_order_overlap_indicator(params):
 def _build_instance_from_params(name, description, params, search, evaluation):
     instance_params = dict(BASE_INSTANCE_PARAMS)
     instance_params.update(params)
-    return {
+    instance = {
         "name": name,
         "description": description,
         "params": instance_params,
@@ -91,6 +156,9 @@ def _build_instance_from_params(name, description, params, search, evaluation):
             "order_overlap_indicator": get_order_overlap_indicator(instance_params),
         },
     }
+    if name in BENCHMARK_ANCHORS:
+        instance["benchmark_anchors"] = deepcopy(BENCHMARK_ANCHORS[name])
+    return instance
 
 
 def build_grid_instances(grid_name: str = "literature_subset_poisson_mu5"):
@@ -144,7 +212,7 @@ def list_reference_instances():
     return sorted(REFERENCE_INSTANCES)
 
 
-def get_reference_instance(name: str = "lit_pois_mu5_l4_p4_k5"):
+def get_reference_instance(name: str = CANONICAL_REFERENCE_NAME):
     try:
         return deepcopy(REFERENCE_INSTANCES[name])
     except KeyError as exc:  # pragma: no cover - defensive programming
@@ -152,7 +220,7 @@ def get_reference_instance(name: str = "lit_pois_mu5_l4_p4_k5"):
         raise KeyError(f"Unknown fixed-order-cost instance '{name}'. Available: {known}") from exc
 
 
-def build_reference_args(name: str = "lit_pois_mu5_l4_p4_k5"):
+def build_reference_args(name: str = CANONICAL_REFERENCE_NAME):
     instance = get_reference_instance(name)
     args = get_config([])
     for key, value in instance["params"].items():
