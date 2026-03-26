@@ -56,7 +56,9 @@ Policy families:
 
 - base:
   - `linear_categorical_quantity`
+  - `nn_categorical_quantity`
 - improved:
+  - `linear_gated_ordinal_quantity`
   - `nn_gated_ordinal_quantity`
   - `soft_tree_depth2_linear_leaf`
   - `soft_tree_depth1_linear_leaf`
@@ -64,12 +66,14 @@ Policy families:
 Current interpretation:
 
 - this problem already shows that action-space design matters strongly
-- the current stable suite therefore includes both baseline and improved learned policies
-- additional base/improved comparisons such as `linear_gated_ordinal_quantity` can be added later
+- the full stable suite now includes both baseline and improved learned policies
+- the canonical instance establishes the main design conclusion, while the full policy grid suite is
+  the data-generation path for paper tables on the literature-aligned subset
 
 Status:
 
 - canonical benchmark suite is ready
+- full policy grid suite is ready
 
 ### Dual sourcing
 
@@ -129,8 +133,10 @@ Build the environment and native extension on the Linux machine first:
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
+python -m pip install --upgrade pip
 pip install -r requirements.txt
 pip install -e .
+python -m pip install maturin
 python scripts/build_rust_extension.py
 ```
 
@@ -150,6 +156,12 @@ Run one stable suite:
 
 ```bash
 python numerical_experiments/run.py --suite fixed_cost_canonical_paperlike
+```
+
+Run the full fixed-cost grid suite:
+
+```bash
+python numerical_experiments/run.py --suite fixed_cost_full_policy_grid
 ```
 
 Run all stable suites:

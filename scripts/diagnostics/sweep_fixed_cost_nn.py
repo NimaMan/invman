@@ -43,7 +43,7 @@ EXPERIMENTS = [
 def build_command(experiment):
     cmd = [
         sys.executable,
-        "invman/scripts/run_experiment.py",
+        "scripts/run_experiment.py",
         "--problem",
         "lost_sales_fixed_order_cost",
         "--policy_type",
@@ -104,8 +104,8 @@ def load_result(results_dir: Path, experiment_name: str):
 
 
 def main():
-    workspace_root = Path(__file__).resolve().parents[2]
-    package_root = Path(__file__).resolve().parents[1]
+    package_root = Path(__file__).resolve().parents[2]
+    workspace_root = package_root
     results_dir = package_root / "outputs" / "results"
     log_dir = package_root / "outputs" / "logs" / "fixed_cost_sweep"
     summary_path = results_dir / "diag_fixed_cost_nn_sweep_summary.json"

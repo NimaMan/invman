@@ -10,67 +10,12 @@ if str(PACKAGE_ROOT) not in sys.path:
 
 from invman.experiment_runner import run_experiment
 from invman.problems.lost_sales_fixed_order_cost.benchmark import benchmark_reference_instance
-from invman.problems.lost_sales_fixed_order_cost.reference_instances import build_reference_args
-
-
-COMMON_BUDGET = {
-    "training_episodes": 5000,
-    "es_population": 50,
-    "horizon": 2000,
-    "eval_horizon": int(1e6),
-    "eval_seeds": 10,
-    "sigma_init": 5.0,
-}
-
-
-EXPERIMENT_SPECS = [
-    {
-        "id": "linear_categorical_quantity",
-        "policy_type": "linear",
-        "policy_head": "categorical_quantity",
-        "rollout_backend": "rust",
-    },
-    {
-        "id": "linear_gated_ordinal_quantity",
-        "policy_type": "linear",
-        "policy_head": "gated_ordinal_quantity",
-        "rollout_backend": "python",
-    },
-    {
-        "id": "nn_categorical_quantity",
-        "policy_type": "nn",
-        "policy_head": "categorical_quantity",
-        "rollout_backend": "rust",
-        "hidden_dim": [50],
-        "activation": "selu",
-    },
-    {
-        "id": "nn_gated_ordinal_quantity",
-        "policy_type": "nn",
-        "policy_head": "gated_ordinal_quantity",
-        "rollout_backend": "python",
-        "hidden_dim": [50],
-        "activation": "selu",
-    },
-    {
-        "id": "soft_tree_depth2_linear_leaf",
-        "policy_type": "soft_tree",
-        "rollout_backend": "rust",
-        "tree_depth": 2,
-        "tree_temperature": 0.25,
-        "tree_split_type": "oblique",
-        "tree_leaf_type": "linear",
-    },
-    {
-        "id": "soft_tree_depth1_linear_leaf",
-        "policy_type": "soft_tree",
-        "rollout_backend": "rust",
-        "tree_depth": 1,
-        "tree_temperature": 0.25,
-        "tree_split_type": "oblique",
-        "tree_leaf_type": "linear",
-    },
-]
+from invman.problems.lost_sales_fixed_order_cost.experiment_spec import (
+    COMMON_BUDGET,
+    EXPERIMENT_SPECS,
+    configure_run_args,
+    result_path_for,
+)
 
 
 def parse_args():
@@ -112,44 +57,6 @@ def _ensure_dirs(root: Path):
     (root / "results").mkdir(parents=True, exist_ok=True)
     (root / "logs").mkdir(parents=True, exist_ok=True)
     (root / "models").mkdir(parents=True, exist_ok=True)
-
-
-def _configure_run_args(parsed, spec, root: Path):
-    args = build_reference_args(parsed.reference)
-    args.problem = "lost_sales_fixed_order_cost"
-    args.seed = parsed.seed
-    args.same_seed = parsed.same_seed
-    args.mp_num_processors = parsed.mp_num_processors
-    args.training_method = "cma"
-    args.training_episodes = COMMON_BUDGET["training_episodes"]
-    args.es_population = COMMON_BUDGET["es_population"]
-    args.horizon = COMMON_BUDGET["horizon"]
-    args.eval_horizon = parsed.eval_horizon
-    args.eval_seeds = parsed.eval_seeds
-    args.sigma_init = COMMON_BUDGET["sigma_init"]
-    args.policy_type = spec["policy_type"]
-    args.rollout_backend = spec["rollout_backend"]
-    args.results_dir = str(root / "results")
-    args.log_dir = str(root / "logs")
-    args.trained_models_dir = str(root / "models")
-    args.experiment_name = f"{parsed.run_tag}_{spec['id']}"
-
-    if args.policy_type == "linear":
-        args.policy_head = spec["policy_head"]
-    elif args.policy_type == "nn":
-        args.policy_head = spec["policy_head"]
-        args.hidden_dim = spec["hidden_dim"]
-        args.activation = spec["activation"]
-    elif args.policy_type == "soft_tree":
-        args.policy_head = "categorical_quantity"
-        args.tree_depth = spec["tree_depth"]
-        args.tree_temperature = spec["tree_temperature"]
-        args.tree_split_type = spec["tree_split_type"]
-        args.tree_leaf_type = spec["tree_leaf_type"]
-    else:  # pragma: no cover
-        raise NotImplementedError(spec["policy_type"])
-
-    return args
 
 
 def _render_markdown(summary):
@@ -203,7 +110,7 @@ def _render_markdown(summary):
 
 
 def _result_path_for(args) -> Path:
-    return Path(args.results_dir) / f"{args.experiment_name}.json"
+    return result_path_for(args)
 
 
 def _load_or_run_experiment(args, *, reuse_existing: bool):
@@ -242,7 +149,13 @@ def main():
     for spec in EXPERIMENT_SPECS:
         if selected_ids is not None and spec["id"] not in selected_ids:
             continue
-        args = _configure_run_args(parsed, spec, root)
+        args = configure_run_args(
+            parsed,
+            spec,
+            root,
+            parsed.reference,
+            include_reference_in_experiment_name=False,
+        )
         payload, result_path = _load_or_run_experiment(args, reuse_existing=parsed.reuse_existing)
         learned_policy_results.append(
             {

@@ -26,7 +26,7 @@ class LostSalesEnv:
         demand_rate: float,
         lead_time: int = 2,
         max_order_size: int = 25,
-        inventory_upper_bound: int = 200,
+        one_hot_inventory_upper_bound: int = 200,
         holding_cost: float = 1.0,
         shortage_cost: float = 4.0,
         horizon: int = int(1e5),
@@ -51,7 +51,7 @@ class LostSalesEnv:
         self.max_order_size = int(max_order_size)
         self.action_space_dim = self.max_order_size + 1
         self.action_spec = build_scalar_action_spec(self.max_order_size)
-        self.inventory_upper_bound = int(inventory_upper_bound)
+        self.one_hot_inventory_upper_bound = int(one_hot_inventory_upper_bound)
         self.lead_time = int(lead_time)
         self.state_features = _normalize_state_features(state_features)
         self.state_space_dim = self.get_state_dim()
@@ -195,10 +195,10 @@ class LostSalesEnv:
         return self.norm_state, epoch_cost, self.done
 
     def get_one_hot_encoded_state(self, state):
-        d = self.inventory_upper_bound + self.max_order_size + 1
+        d = self.one_hot_inventory_upper_bound + self.max_order_size + 1
         s = np.zeros((1, d))
         s[0, state[0]] = 1
-        s[0, self.inventory_upper_bound + state[1]] = 1
+        s[0, self.one_hot_inventory_upper_bound + state[1]] = 1
         return s
 
     @property
@@ -272,7 +272,7 @@ def build_env_from_args(args, horizon=None, track_demand=False):
         lead_time=args.lead_time,
         horizon=args.horizon if horizon is None else horizon,
         max_order_size=args.max_order_size,
-        inventory_upper_bound=getattr(args, "inventory_upper_bound", 200),
+        one_hot_inventory_upper_bound=getattr(args, "one_hot_inventory_upper_bound", 200),
         holding_cost=args.holding_cost,
         shortage_cost=args.shortage_cost,
         procurement_cost=getattr(args, "procurement_cost", 0.0),

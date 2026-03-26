@@ -124,15 +124,19 @@ Create an environment and install the package in editable mode:
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
+python -m pip install --upgrade pip
 pip install -r requirements.txt
 pip install -e .
+python -m pip install maturin
 ```
 
-Build the optional Rust extension into the shared virtualenv:
+Build the optional Rust extension into the active virtualenv:
 
 ```bash
 python scripts/build_rust_extension.py
 ```
+
+For agent-driven runs on another machine, use the repo-local guide in `AGENTS.md`.
 
 Run a small experiment:
 

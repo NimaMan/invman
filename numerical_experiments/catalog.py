@@ -46,15 +46,16 @@ EXPERIMENT_SUITES: tuple[ExperimentSuite, ...] = (
         status="ready",
         purpose="Run the canonical fixed-order-cost benchmark table on the L=4, p=4, K=5 instance.",
         heuristics=("s_s", "s_nq", "modified_s_s_q"),
-        base_policies=("linear_categorical_quantity",),
+        base_policies=("linear_categorical_quantity", "nn_categorical_quantity"),
         improved_policies=(
+            "linear_gated_ordinal_quantity",
             "nn_gated_ordinal_quantity",
             "soft_tree_depth2_linear_leaf",
             "soft_tree_depth1_linear_leaf",
         ),
         script_path="scripts/benchmark_fixed_cost_canonical_suite.py",
         notes=(
-            "Paper-like long-horizon evaluation with the current fixed-cost benchmark protocol.",
+            "Paper-like long-horizon evaluation with the current fixed-cost six-policy matrix.",
             "This is the current main fixed-cost suite.",
         ),
     ),
@@ -70,6 +71,25 @@ EXPERIMENT_SUITES: tuple[ExperimentSuite, ...] = (
         notes=(
             "Grid-level heuristic benchmark only.",
             "Use this to refresh the literature-subset heuristic baseline.",
+        ),
+    ),
+    ExperimentSuite(
+        suite_id="fixed_cost_full_policy_grid",
+        problem="lost_sales_fixed_order_cost",
+        status="ready",
+        purpose="Run the full fixed-cost paper-style grid with heuristics and learned policy families on the literature-aligned 16-instance subset.",
+        heuristics=("s_s", "s_nq", "modified_s_s_q"),
+        base_policies=("linear_categorical_quantity", "nn_categorical_quantity"),
+        improved_policies=(
+            "linear_gated_ordinal_quantity",
+            "nn_gated_ordinal_quantity",
+            "soft_tree_depth2_linear_leaf",
+            "soft_tree_depth1_linear_leaf",
+        ),
+        script_path="scripts/benchmark_fixed_cost_full_suite.py",
+        notes=(
+            "This suite is the full data-generation path for the fixed-cost paper section.",
+            "It emits per-instance JSONs with heuristic parameters, learned-policy results, and benchmark metadata.",
         ),
     ),
     ExperimentSuite(

@@ -1,0 +1,24 @@
+\begin{table}[t]
+\centering
+\caption{Canonical fixed-order-cost lost-sales benchmark for $L=4$, $p=4$, $K=5$, and Poisson demand with mean $5$. All learned policies use $5000$ CMA-ES iterations, population size $50$, training horizon $2000$, and long-run evaluation over $10$ seeds with horizon $10^6$.}
+\label{tab:fixed-cost-canonical}
+\begin{tabular}{lrr}
+\toprule
+Policy family & Mean cost & Gap vs.\ best heuristic \\
+\midrule
+\multicolumn{3}{l}{\textit{Heuristic baselines}} \\
+$(s,S)$ & 9.3715 & 0.1971 \\
+$(s,nQ)$ & 9.1810 & 0.0066 \\
+modified $(s,S,q)$ & 9.1744 & 0.0000 \\
+\midrule
+\multicolumn{3}{l}{\textit{Learned policy families}} \\
+Linear, categorical quantity & 10.2730 & 1.0986 \\
+Linear, gated ordinal quantity & 8.7688 & -0.4056 \\
+NN, categorical quantity$^{\dagger}$ & 10.2730 & 1.0986 \\
+NN, gated ordinal quantity & 8.7328 & -0.4415 \\
+Soft tree, oblique depth-2 linear leaf & 8.7742 & -0.4002 \\
+Soft tree, oblique depth-1 linear leaf & 8.7785 & -0.3959 \\
+\bottomrule
+\end{tabular}
+\par\medskip\footnotesize{$^{\dagger}$ The current NN categorical-quantity baseline matches the linear categorical baseline exactly and should be re-verified before publication claims rely on it.}
+\end{table}

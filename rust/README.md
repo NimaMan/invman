@@ -34,10 +34,10 @@ Current problem modules:
 - `src/problems/dual_sourcing/`
 - `src/problems/multi_echelon/`
 
-Build into the project virtualenv with:
+Build into the active project virtualenv with:
 
 ```bash
-python ../scripts/build_rust_extension.py
+python scripts/build_rust_extension.py
 ```
 
 ## Current best native-backed tree result

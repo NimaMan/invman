@@ -28,7 +28,7 @@ def build_reference_args(horizon: int, state_features: str):
         lead_time=4,
         horizon=horizon,
         max_order_size=50,
-        inventory_upper_bound=200,
+        one_hot_inventory_upper_bound=200,
         holding_cost=1.0,
         shortage_cost=4.0,
         procurement_cost=0.0,

@@ -41,7 +41,7 @@ Key files:
 - `program_lost_sales.md`: agent instructions for the autonomous loop
 - `../scripts/autoresearch_lost_sales.py`: fixed-budget experiment runner and logger
 - `../scripts/autoresearch_tree_structures.py`: focused tree-structure comparison runner
-- `../scripts/build_rust_extension.py`: helper to rebuild the Rust extension in the shared virtualenv
+- `../scripts/build_rust_extension.py`: helper to rebuild the Rust extension in the active virtualenv
 
 The second target is the canonical fixed-order-cost benchmark:
 
