@@ -1,5 +1,7 @@
 import argparse
+import concurrent.futures
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -48,6 +50,17 @@ def parse_args():
     )
     parser.add_argument("--reuse_existing", action="store_true")
     parser.add_argument("--reuse_existing_instance_summary", action="store_true")
+    parser.add_argument(
+        "--instance_jobs",
+        type=int,
+        default=1,
+        help="Number of reference instances to process concurrently.",
+    )
+    parser.add_argument(
+        "--skip_suite_summary",
+        action="store_true",
+        help=argparse.SUPPRESS,
+    )
     return parser.parse_args()
 
 
@@ -170,6 +183,167 @@ def _summarize_instances(instances: list[dict]) -> dict:
     return {"policies": policies}
 
 
+def _build_instance_payload(parsed, root: Path, instance: dict, selected_ids: set[str] | None):
+    reference_name = instance["name"]
+    instance_summary_path = _instance_summary_path(root, reference_name)
+    if parsed.reuse_existing_instance_summary and instance_summary_path.exists():
+        return json.loads(instance_summary_path.read_text(encoding="utf-8"))
+
+    heuristic_summary = benchmark_reference_instance(
+        reference_name,
+        search_horizon=parsed.search_horizon,
+        eval_horizon=parsed.eval_horizon,
+        eval_seeds=parsed.eval_seeds,
+        backend="rust",
+        modified_search_mode="exhaustive",
+    )
+
+    learned_policies = {}
+    for spec in EXPERIMENT_SPECS:
+        if selected_ids is not None and spec["id"] not in selected_ids:
+            continue
+        args = configure_run_args(parsed, spec, root, reference_name)
+        payload, result_path = _load_or_run_experiment(args, reuse_existing=parsed.reuse_existing)
+        learned_policies[spec["id"]] = {
+            "results_path": str(result_path),
+            "policy_spec": spec,
+            "evaluation": payload["evaluation"],
+            "payload": payload,
+            "checkpoint_glob": str((root / "models" / f"{args.experiment_name}_*").resolve()),
+        }
+
+    heuristic_eval = heuristic_summary["evaluation"]
+    best_heuristic_name, best_heuristic_entry = min(
+        heuristic_eval.items(),
+        key=lambda kv: kv[1]["mean_cost"],
+    )
+    best_heuristic_cost = float(best_heuristic_entry["mean_cost"])
+
+    comparative = {
+        "best_heuristic_name": best_heuristic_name,
+        "best_heuristic_cost": best_heuristic_cost,
+        "policy_gaps": {},
+    }
+    for policy_id, item in learned_policies.items():
+        learned_cost = float(item["evaluation"]["learned_policy"]["mean_cost"])
+        comparative["policy_gaps"][policy_id] = {
+            "gap_vs_best_heuristic": learned_cost - best_heuristic_cost,
+            "relative_gap_pct_vs_best_heuristic": 100.0 * (learned_cost - best_heuristic_cost) / best_heuristic_cost,
+        }
+
+    payload = {
+        "reference_instance": reference_name,
+        "reference_description": instance["description"],
+        "params": instance["params"],
+        "literature_metadata": instance["literature_metadata"],
+        "protocol": _instance_protocol(parsed),
+        "optimal_reference": _optimal_reference(reference_name),
+        "heuristics": heuristic_summary,
+        "learned_policies": learned_policies,
+        "comparative_summary": comparative,
+    }
+    instance_summary_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    return payload
+
+
+def _effective_instance_jobs(parsed, num_instances: int) -> int:
+    requested = max(1, int(parsed.instance_jobs))
+    total_rollout_workers = max(1, int(parsed.mp_num_processors))
+    return max(1, min(requested, num_instances, total_rollout_workers))
+
+
+def _shared_child_command_args(parsed, *, mp_num_processors: int) -> list[str]:
+    command = [
+        sys.executable,
+        str(Path(__file__).resolve()),
+        "--grid_name",
+        parsed.grid_name,
+        "--run_tag",
+        parsed.run_tag,
+        "--seed",
+        str(parsed.seed),
+        "--mp_num_processors",
+        str(mp_num_processors),
+        "--eval_horizon",
+        str(parsed.eval_horizon),
+        "--eval_seeds",
+        str(parsed.eval_seeds),
+        "--instance_jobs",
+        "1",
+        "--skip_suite_summary",
+    ]
+    if parsed.same_seed:
+        command.append("--same_seed")
+    if parsed.search_horizon is not None:
+        command.extend(["--search_horizon", str(parsed.search_horizon)])
+    if parsed.reuse_existing:
+        command.append("--reuse_existing")
+    if parsed.reuse_existing_instance_summary:
+        command.append("--reuse_existing_instance_summary")
+    if parsed.only:
+        command.extend(["--only", *parsed.only])
+    return command
+
+
+def _run_instance_subprocess(parsed, reference_name: str, *, mp_num_processors: int):
+    command = _shared_child_command_args(parsed, mp_num_processors=mp_num_processors)
+    command.extend(["--references", reference_name])
+    subprocess.run(command, check=True, cwd=PACKAGE_ROOT)
+
+
+def _collect_instance_payloads(parsed, root: Path, grid_instances: list[dict], selected_ids: set[str] | None):
+    actual_jobs = _effective_instance_jobs(parsed, len(grid_instances))
+    if actual_jobs == 1 or len(grid_instances) <= 1:
+        return [
+            _build_instance_payload(parsed, root, instance, selected_ids)
+            for instance in grid_instances
+        ]
+
+    per_instance_mp_num_processors = max(1, int(parsed.mp_num_processors) // actual_jobs)
+    pending_instances = []
+    instance_payloads = []
+    for instance in grid_instances:
+        instance_summary_path = _instance_summary_path(root, instance["name"])
+        if parsed.reuse_existing_instance_summary and instance_summary_path.exists():
+            instance_payloads.append(json.loads(instance_summary_path.read_text(encoding="utf-8")))
+        else:
+            pending_instances.append(instance)
+
+    print(
+        json.dumps(
+            {
+                "instance_parallelism": {
+                    "instance_jobs": actual_jobs,
+                    "per_instance_mp_num_processors": per_instance_mp_num_processors,
+                    "pending_instances": [instance["name"] for instance in pending_instances],
+                }
+            },
+            indent=2,
+        )
+    )
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=actual_jobs) as executor:
+        futures = {
+            executor.submit(
+                _run_instance_subprocess,
+                parsed,
+                instance["name"],
+                mp_num_processors=per_instance_mp_num_processors,
+            ): instance["name"]
+            for instance in pending_instances
+        }
+        for future in concurrent.futures.as_completed(futures):
+            future.result()
+
+    for instance in pending_instances:
+        instance_summary_path = _instance_summary_path(root, instance["name"])
+        instance_payloads.append(json.loads(instance_summary_path.read_text(encoding="utf-8")))
+
+    order = {instance["name"]: idx for idx, instance in enumerate(grid_instances)}
+    instance_payloads.sort(key=lambda payload: order[payload["reference_instance"]])
+    return instance_payloads
+
+
 def main():
     parsed = parse_args()
     root = _suite_root(parsed.run_tag)
@@ -185,69 +359,7 @@ def main():
 
     selected_ids = set(parsed.only) if parsed.only else None
 
-    instance_payloads = []
-    for instance in grid_instances:
-        reference_name = instance["name"]
-        instance_summary_path = _instance_summary_path(root, reference_name)
-        if parsed.reuse_existing_instance_summary and instance_summary_path.exists():
-            instance_payloads.append(json.loads(instance_summary_path.read_text(encoding="utf-8")))
-            continue
-
-        heuristic_summary = benchmark_reference_instance(
-            reference_name,
-            search_horizon=parsed.search_horizon,
-            eval_horizon=parsed.eval_horizon,
-            eval_seeds=parsed.eval_seeds,
-            backend="rust",
-            modified_search_mode="exhaustive",
-        )
-
-        learned_policies = {}
-        for spec in EXPERIMENT_SPECS:
-            if selected_ids is not None and spec["id"] not in selected_ids:
-                continue
-            args = configure_run_args(parsed, spec, root, reference_name)
-            payload, result_path = _load_or_run_experiment(args, reuse_existing=parsed.reuse_existing)
-            learned_policies[spec["id"]] = {
-                "results_path": str(result_path),
-                "policy_spec": spec,
-                "evaluation": payload["evaluation"],
-                "payload": payload,
-                "checkpoint_glob": str((root / "models" / f"{args.experiment_name}_*").resolve()),
-            }
-
-        heuristic_eval = heuristic_summary["evaluation"]
-        best_heuristic_name, best_heuristic_entry = min(
-            heuristic_eval.items(),
-            key=lambda kv: kv[1]["mean_cost"],
-        )
-        best_heuristic_cost = float(best_heuristic_entry["mean_cost"])
-
-        comparative = {
-            "best_heuristic_name": best_heuristic_name,
-            "best_heuristic_cost": best_heuristic_cost,
-            "policy_gaps": {},
-        }
-        for policy_id, item in learned_policies.items():
-            learned_cost = float(item["evaluation"]["learned_policy"]["mean_cost"])
-            comparative["policy_gaps"][policy_id] = {
-                "gap_vs_best_heuristic": learned_cost - best_heuristic_cost,
-                "relative_gap_pct_vs_best_heuristic": 100.0 * (learned_cost - best_heuristic_cost) / best_heuristic_cost,
-            }
-
-        payload = {
-            "reference_instance": reference_name,
-            "reference_description": instance["description"],
-            "params": instance["params"],
-            "literature_metadata": instance["literature_metadata"],
-            "protocol": _instance_protocol(parsed),
-            "optimal_reference": _optimal_reference(reference_name),
-            "heuristics": heuristic_summary,
-            "learned_policies": learned_policies,
-            "comparative_summary": comparative,
-        }
-        instance_summary_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-        instance_payloads.append(payload)
+    instance_payloads = _collect_instance_payloads(parsed, root, grid_instances, selected_ids)
 
     summary = {
         "run_tag": parsed.run_tag,
@@ -259,6 +371,9 @@ def main():
         "instances": instance_payloads,
         "aggregate": _summarize_instances(instance_payloads),
     }
+
+    if parsed.skip_suite_summary:
+        return
 
     summary_json, summary_md = _summary_paths(root)
     summary_json.write_text(json.dumps(summary, indent=2), encoding="utf-8")

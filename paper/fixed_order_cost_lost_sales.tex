@@ -233,10 +233,10 @@ All learned policies in the current canonical benchmark use the same CMA-ES trai
     \item warm-up ratio $0.2$.
 \end{itemize}
 
-The benchmark runner is
-\texttt{scripts/benchmark\_fixed\_cost\_canonical\_suite.py}. The canonical result table is
-generated directly from the benchmark JSON, so the manuscript table remains synchronized with the
-code and experiment outputs.
+The canonical benchmark runner is
+\texttt{scripts/lost\_sales\_fixed\_order\_cost/benchmark\_canonical\_suite.py}. The canonical
+result table is generated directly from the benchmark JSON, so the manuscript table remains
+synchronized with the code and experiment outputs.
 
 \section{Canonical results}
 
@@ -257,6 +257,27 @@ One baseline should still be treated cautiously: the current
 that row in the benchmark table for completeness, but it should be re-verified before publication
 claims rely on it.
 
+\section{Full-grid results}
+
+To move beyond the canonical instance, we also aggregate performance over the full
+\texttt{literature\_subset\_poisson\_mu5} grid. For each of the $16$ instances in that grid, we
+search the three heuristic families, train the six learned-policy families under the common CMA-ES
+budget, and compare each learned policy against the best heuristic found on that same instance.
+The aggregate metric below is the mean relative gap to that per-instance best heuristic, together
+with the number of instances on which the learned policy beats it.
+
+\IfFileExists{generated/fixed_cost_full_grid_table.tex}{
+\input{generated/fixed_cost_full_grid_table.tex}
+}{
+\begin{quote}\small
+The full-grid fixed-cost table has not been generated yet. Run the full-grid benchmark suite and
+export the paper table artifact to populate this section.
+\end{quote}
+}
+
+Like the canonical table, this full-grid artifact is generated directly from the benchmark JSON so
+the manuscript stays synchronized with the experiment outputs.
+
 \section{Current paper scope}
 
 At this point the fixed-order-cost lost-sales problem is the first extension problem that is mature
@@ -265,12 +286,12 @@ enough for a stand-alone empirical section:
     \item the model is implemented and documented,
     \item the benchmark family and canonical instance are explicit,
     \item the classical heuristics are in place,
-    \item the learned policy matrix has been run on a paper-like benchmark protocol,
-    \item the main design conclusion is already visible in the data.
+    \item the learned policy matrix has a stable paper-like benchmark protocol,
+    \item the manuscript can consume both canonical and full-grid benchmark artifacts directly.
 \end{itemize}
 
-The next step is to extend these canonical-instance results to the literature-aligned subset grid
-before adding the dual-sourcing and multi-echelon problems to the manuscript.
+The next step is to consolidate the fixed-cost section with the dual-sourcing and multi-echelon
+problem sections in the broader manuscript.
 
 \bibliographystyle{plainnat}
 \bibliography{references}
