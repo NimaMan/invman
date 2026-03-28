@@ -19,8 +19,8 @@ Current scope:
 The crate mirrors the Python package structure:
 
 - `src/core/`
-  - shared Rust-native policy/runtime pieces
-  - currently the generic soft-tree implementation
+  - shared Rust-native runtime pieces
+  - `policies/` holds reusable backbone math such as dense networks and soft trees
 - `src/problems/<problem>/`
   - problem-local environment transitions
   - rollout kernels

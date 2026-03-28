@@ -6,7 +6,7 @@ use rand::Rng;
 use rand::SeedableRng;
 use rand_distr::{Distribution, Normal};
 
-use crate::core::soft_tree::{
+use crate::core::policies::soft_tree::{
     action_vector_from_flat_params, SoftTreeActionSpec, SoftTreeLeafType, SoftTreeSplitType,
 };
 use crate::problems::multi_echelon::env::{flattened_policy_state, initialize_state};

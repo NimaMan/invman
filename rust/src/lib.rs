@@ -6,8 +6,8 @@ use rand::rngs::StdRng;
 use rand::SeedableRng;
 use rand_distr::{Distribution, Poisson};
 
-use crate::core::dense::parse_activation;
-use crate::core::soft_tree::{
+use crate::core::policies::dense::parse_activation;
+use crate::core::policies::soft_tree::{
     build_action_spec, parse_leaf_type, parse_split_type, soft_tree_leaf_probabilities,
     validate_soft_tree_shapes,
 };

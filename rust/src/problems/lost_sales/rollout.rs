@@ -5,10 +5,10 @@ use rand::rngs::StdRng;
 use rand::SeedableRng;
 use rand_distr::{Distribution, Poisson};
 
-use crate::core::dense::{
+use crate::core::policies::dense::{
     linear_categorical_action_from_flat_params, mlp_categorical_action_from_flat_params, ActivationKind,
 };
-use crate::core::soft_tree::{action_from_flat_params, SoftTreeLeafType, SoftTreeSplitType};
+use crate::core::policies::soft_tree::{action_from_flat_params, SoftTreeLeafType, SoftTreeSplitType};
 use crate::problems::lost_sales::env::{build_pipeline_state, epoch_cost, initialize_state, LostSalesState};
 
 #[derive(Clone, Copy)]

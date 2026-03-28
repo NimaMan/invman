@@ -5,7 +5,7 @@ use rand::rngs::StdRng;
 use rand::Rng;
 use rand::SeedableRng;
 
-use crate::core::soft_tree::{
+use crate::core::policies::soft_tree::{
     action_vector_from_flat_params, SoftTreeActionSpec, SoftTreeLeafType, SoftTreeSplitType,
 };
 use crate::problems::dual_sourcing::env::{epoch_cost, initialize_state, step_state, validate_action};
