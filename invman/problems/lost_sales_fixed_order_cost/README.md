@@ -81,4 +81,4 @@ Supporting files:
 - [env.py](/Users/nimamanaf/Desktop/code/ML/inventory_management/invman/invman/problems/lost_sales_fixed_order_cost/env.py)
 
 Detailed benchmark notes live in
-[fixed_cost_l4_refresh.md](/Users/nimamanaf/Desktop/code/ML/inventory_management/docs/benchmarks/fixed_cost_l4_refresh.md).
+[fixed_cost_l4_refresh.md](/Users/nimamanaf/Desktop/code/ML/inventory_management/invman/docs/benchmarks/fixed_cost_l4_refresh.md).

@@ -168,13 +168,13 @@ Outputs are written under `outputs/`:
 - `scripts/dual_sourcing/autoresearch_dual_sourcing.py`: dual-sourcing autoresearch runner
 - `scripts/multi_echelon/autoresearch_multi_echelon.py`: multi-echelon autoresearch runner
 - `autoresearch/`: autoresearch-style loop docs for vanilla and fixed-cost benchmarks
-- `../docs/benchmarks/lost_sales_l4_refresh.md`: refreshed vanilla lost-sales benchmark note after
+- `docs/benchmarks/lost_sales_l4_refresh.md`: refreshed vanilla lost-sales benchmark note after
   the Rust refactor
-- `../docs/benchmarks/fixed_cost_l4_refresh.md`: canonical fixed-cost benchmark note
+- `docs/benchmarks/fixed_cost_l4_refresh.md`: canonical fixed-cost benchmark note
 
 ## Fixed Ordering Cost Variant
 
-The environment already supports an optional `fixed_order_cost` parameter. That gives a clean extension path toward the lost-sales problem with a setup cost on positive orders. The literature note for that variant is tracked in `../docs/lost_sales_fixed_order_cost_literature.md`.
+The environment already supports an optional `fixed_order_cost` parameter. That gives a clean extension path toward the lost-sales problem with a setup cost on positive orders. The literature note for that variant is tracked in `docs/literature/fixed_order_cost_literature.md`.
 
 The fixed-order-cost benchmark layer and heuristic baselines are in place, and the current best
 autoresearch-refined oblique depth-1 soft tree with linear leaves outperforms the benchmark

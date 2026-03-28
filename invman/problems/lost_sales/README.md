@@ -50,7 +50,7 @@ Interpretation:
 - the linear and NN backbones still need retuning or native porting before their fresh reruns should
   replace the older benchmark anchors
 
-For the detailed refresh note, see `../../../../docs/benchmarks/lost_sales_l4_refresh.md`.
+For the detailed refresh note, see `../../../docs/benchmarks/lost_sales_l4_refresh.md`.
 
 ## Experiment surface
 
