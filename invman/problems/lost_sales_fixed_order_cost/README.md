@@ -23,6 +23,20 @@ The grid is derived from the benchmark family of Bijvank, Bhulai, and Huh (2015)
 provides the family and the heuristic classes, but not a clean exact per-instance cost table for
 the canonical instance above, so the benchmark numbers in this repo are repo-native.
 
+Published validation instance:
+
+- name: `bijvank2015_table1_l2_p14_k5`
+- lead time `L=2`
+- shortage cost `p=14`
+- fixed ordering cost `K=5`
+- holding cost `h=1`
+- demand `~ Poisson(5)`
+- published references:
+  - optimal cost `11.46`
+  - best `(s,S)` at `s=17, S=23`, cost `11.62`
+  - best `(s,nQ)` at `s=17, q=7`, cost `11.56`
+  - best modified `(s,S,q)` at `s=17, S=23, q=7`, cost `11.50`
+
 ## Heuristic benchmark anchors
 
 Current canonical long-run heuristic anchors (`1,000,000` periods, `10` seeds, `20%` warm-up):

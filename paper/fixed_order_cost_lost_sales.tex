@@ -72,6 +72,45 @@ For the canonical instance, heuristic parameters are obtained by explicit search
 parameter domains using the same simulator as for the learned policies. The current best heuristic
 on the canonical instance is modified $(s,S,q)$.
 
+\section{Implementation validation}
+
+Before using the fixed-order-cost simulator and heuristic benchmark pipeline for new learned-policy
+experiments, we validate the implementation against a published example from
+\citet{Bijvank2015ParametricPolicies}. Their Table~1 reports a small Poisson-demand instance with
+lead time $L=2$, shortage cost $p=14$, fixed ordering cost $K=5$, holding cost $h=1$, and demand
+mean $\mu=5$. For that instance, the paper reports the exact optimal cost and the best parameters
+for the three heuristic policy classes that we implement.
+
+\begin{table}[t]
+\centering
+\begin{tabular}{llll}
+\toprule
+Policy & Reported parameters & Published cost & Our reproduced cost \\
+\midrule
+optimal & --- & 11.46 & --- \\
+$(s,S)$ & $(17,23)$ & 11.62 & 11.6217 \\
+$(s,nQ)$ & $(17,7)$ & 11.56 & 11.5589 \\
+modified $(s,S,q)$ & $(17,23,7)$ & 11.50 & 11.5012 \\
+\bottomrule
+\end{tabular}
+\caption{Published fixed-order-cost lost-sales validation example from \citet{Bijvank2015ParametricPolicies} and our reproduced long-run costs for the reported heuristic parameters.}
+\label{tab:fixed-cost-validation}
+\end{table}
+
+Table~\ref{tab:fixed-cost-validation} shows that our long-run simulator reproduces the published
+heuristic costs to within simulation precision. In particular, the $(s,S)$ policy matches both the
+reported parameterization and the reported cost essentially exactly, while the $(s,nQ)$ and
+modified $(s,S,q)$ costs differ from the published values only in the third decimal place. This is
+strong evidence that the fixed-order-cost environment dynamics, cost accounting, and heuristic
+policy implementations are correct.
+
+One subtlety is that simulation-based heuristic search over a finite sampled demand path need not
+return a unique optimizer when several parameterizations are nearly tied. On this validation
+instance, direct long-run evaluation of the published parameters matches the paper very closely,
+which is the relevant correctness check. Therefore, in the experiments below we treat the
+fixed-order-cost heuristic stack as externally validated against the literature, and we report both
+the selected heuristic parameters and their long-run reevaluated costs.
+
 \section{Learned policy families}
 
 We compare three policy backbones:

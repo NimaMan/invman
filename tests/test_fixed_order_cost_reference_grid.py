@@ -27,5 +27,18 @@ def test_literature_subset_grid_contains_canonical_instance():
 
 def test_reference_instance_names_are_sorted_and_stable():
     names = list_reference_instances()
-    assert names[0] == "lit_pois_mu5_l1_p19_k25"
+    assert "bijvank2015_table1_l2_p14_k5" in names
+    assert names[0] == "bijvank2015_table1_l2_p14_k5"
     assert names[-1] == "lit_pois_mu5_l4_p4_k5"
+
+
+def test_published_validation_instance_matches_reported_benchmark():
+    instance = get_reference_instance("bijvank2015_table1_l2_p14_k5")
+    assert instance["params"]["lead_time"] == 2
+    assert instance["params"]["shortage_cost"] == 14.0
+    assert instance["params"]["fixed_order_cost"] == 5.0
+    published = instance["benchmark_anchors"]["published_heuristic_references"]
+    assert published["s_s"]["params"] == {"s": 17, "S": 23}
+    assert published["s_nq"]["params"] == {"s": 17, "q": 7}
+    assert published["modified_s_s_q"]["params"] == {"s": 17, "S": 23, "q": 7}
+    assert instance["benchmark_anchors"]["published_optimal_reference"]["mean_cost"] == 11.46

@@ -32,8 +32,39 @@ DEFAULT_EVALUATION_CONFIG = {
 }
 
 CANONICAL_REFERENCE_NAME = "lit_pois_mu5_l4_p4_k5"
+PUBLISHED_VALIDATION_REFERENCE_NAME = "bijvank2015_table1_l2_p14_k5"
 
 BENCHMARK_ANCHORS = {
+    PUBLISHED_VALIDATION_REFERENCE_NAME: {
+        "benchmark_type": "published_validation",
+        "description": (
+            "Published validation example from Bijvank, Bhulai, and Huh (2015), Table 1."
+        ),
+        "literature_source": {
+            "citation_key": "Bijvank2015ParametricPolicies",
+            "notes": (
+                "Example with R=1, L=2, h=1, p=14, K=5, Poisson demand with mean 5."
+            ),
+        },
+        "published_optimal_reference": {
+            "available": True,
+            "mean_cost": 11.46,
+        },
+        "published_heuristic_references": {
+            "s_s": {
+                "params": {"s": 17, "S": 23},
+                "mean_cost": 11.62,
+            },
+            "s_nq": {
+                "params": {"s": 17, "q": 7},
+                "mean_cost": 11.56,
+            },
+            "modified_s_s_q": {
+                "params": {"s": 17, "S": 23, "q": 7},
+                "mean_cost": 11.50,
+            },
+        },
+    },
     CANONICAL_REFERENCE_NAME: {
         "benchmark_type": "repo_canonical",
         "description": (
@@ -158,6 +189,38 @@ BENCHMARK_GRIDS = {
     }
 }
 
+MANUAL_REFERENCE_INSTANCES = {
+    PUBLISHED_VALIDATION_REFERENCE_NAME: {
+        "name": PUBLISHED_VALIDATION_REFERENCE_NAME,
+        "description": (
+            "Published validation example from Bijvank, Bhulai, and Huh (2015), Table 1."
+        ),
+        "params": {
+            "lead_time": 2,
+            "shortage_cost": 14.0,
+            "fixed_order_cost": 5.0,
+        },
+        "search": {
+            "position_upper_bound": 31,
+            "search_horizon": 10000,
+            "search_seed": 123,
+            "top_k_s_s_pairs": 12,
+            "q_window": 8,
+        },
+        "evaluation": {
+            "eval_horizon": 200000,
+            "eval_seeds": 10,
+        },
+        "literature_metadata": {
+            "source": "Bijvank2015ParametricPolicies",
+            "reported_review_period": 1.0,
+            "reported_lead_time": 2,
+            "reported_demand_dist_name": "Poisson",
+            "reported_demand_mean_per_review_period": 5.0,
+        },
+    }
+}
+
 
 def _format_number(value):
     if isinstance(value, float) and value.is_integer():
@@ -199,6 +262,26 @@ def _build_instance_from_params(name, description, params, search, evaluation):
     if name in BENCHMARK_ANCHORS:
         instance["benchmark_anchors"] = deepcopy(BENCHMARK_ANCHORS[name])
     return instance
+
+
+def _build_manual_reference_instances():
+    instances = []
+    for instance in MANUAL_REFERENCE_INSTANCES.values():
+        instance_params = dict(BASE_INSTANCE_PARAMS)
+        instance_params.update(instance["params"])
+        payload = {
+            "name": instance["name"],
+            "description": instance["description"],
+            "params": instance_params,
+            "search": deepcopy(instance["search"]),
+            "evaluation": deepcopy(instance["evaluation"]),
+            "literature_metadata": deepcopy(instance["literature_metadata"]),
+        }
+        payload["literature_metadata"]["order_overlap_indicator"] = get_order_overlap_indicator(instance_params)
+        if payload["name"] in BENCHMARK_ANCHORS:
+            payload["benchmark_anchors"] = deepcopy(BENCHMARK_ANCHORS[payload["name"]])
+        instances.append(payload)
+    return instances
 
 
 def build_grid_instances(grid_name: str = "literature_subset_poisson_mu5"):
@@ -244,7 +327,11 @@ def get_benchmark_grid(grid_name: str = "literature_subset_poisson_mu5"):
 
 
 REFERENCE_INSTANCES = {
-    instance["name"]: instance for grid_name in BENCHMARK_GRIDS for instance in build_grid_instances(grid_name)
+    instance["name"]: instance
+    for instance in [
+        *[instance for grid_name in BENCHMARK_GRIDS for instance in build_grid_instances(grid_name)],
+        *_build_manual_reference_instances(),
+    ]
 }
 
 
