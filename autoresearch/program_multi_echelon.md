@@ -26,7 +26,7 @@ The benchmark heuristic is fixed:
 
 ## Budgets
 
-Use the budgets from `scripts/autoresearch_multi_echelon.py`:
+Use the budgets from `scripts/multi_echelon/autoresearch_multi_echelon.py`:
 
 - `screening`
 - `full`

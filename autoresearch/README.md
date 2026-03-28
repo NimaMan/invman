@@ -39,7 +39,7 @@ Budgets are a default protocol, not a hard restriction. In practice we use:
 Key files:
 
 - `program_lost_sales.md`: agent instructions for the autonomous loop
-- `../scripts/autoresearch_lost_sales.py`: fixed-budget experiment runner and logger
+- `../scripts/lost_sales/autoresearch_lost_sales.py`: fixed-budget experiment runner and logger
 - `../scripts/autoresearch_tree_structures.py`: focused tree-structure comparison runner
 - `../scripts/build_rust_extension.py`: helper to rebuild the Rust extension in the active virtualenv
 
@@ -84,8 +84,8 @@ This came from two stages:
 
 The next targets are the two additional Gijsbrechts (2022) problem classes:
 
-- dual sourcing: `program_dual_sourcing.md`, `../scripts/autoresearch_dual_sourcing.py`
-- multi echelon: `program_multi_echelon.md`, `../scripts/autoresearch_multi_echelon.py`
+- dual sourcing: `program_dual_sourcing.md`, `../scripts/dual_sourcing/autoresearch_dual_sourcing.py`
+- multi echelon: `program_multi_echelon.md`, `../scripts/multi_echelon/autoresearch_multi_echelon.py`
 
 Current smoke results:
 

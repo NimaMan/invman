@@ -11,5 +11,5 @@ These scripts are intentionally kept out of the top-level `scripts/` directory b
 
 Current contents:
 
-- `analyze_fixed_cost_policy.py`: inspect the action pattern of a trained fixed-cost policy
-- `sweep_fixed_cost_nn.py`: run a small diagnostic NN sweep for fixed-cost lost sales
+- `analyze_policy.py`: inspect the action pattern of a trained fixed-cost policy
+- `sweep_nn.py`: run a small diagnostic NN sweep for fixed-cost lost sales

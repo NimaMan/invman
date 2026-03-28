@@ -16,11 +16,11 @@ Main files:
 To refresh the canonical fixed-cost results table from the benchmark JSON:
 
 ```bash
-python scripts/export_fixed_cost_paper_table.py
+python scripts/lost_sales_fixed_order_cost/export_paper_table.py
 ```
 
 To rebuild the canonical benchmark suite first, if needed:
 
 ```bash
-python scripts/benchmark_fixed_cost_canonical_suite.py --reuse_existing --reuse_existing_summary
+python scripts/lost_sales_fixed_order_cost/benchmark_canonical_suite.py --reuse_existing --reuse_existing_summary
 ```

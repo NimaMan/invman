@@ -9,6 +9,7 @@ Core files:
 - `reference_instances.py`: trusted benchmark instance definitions
 - `problem_info.py`: literature-style reference values used by the repo
 - `benchmark.py`: problem-level heuristic benchmarking helpers
+- `experiment_spec.py`: paper-style learned-policy suite definitions for the vanilla problem
 
 ## Canonical benchmark
 
@@ -50,3 +51,17 @@ Interpretation:
   replace the older benchmark anchors
 
 For the detailed refresh note, see `../../../../docs/benchmarks/lost_sales_l4_refresh.md`.
+
+## Experiment surface
+
+Stable vanilla lost-sales benchmark entrypoints now come in two modes:
+
+- `scripts/lost_sales/benchmark_canonical_suite.py`: one canonical preflight instance
+- `scripts/lost_sales/benchmark_full_suite.py`: full 20-instance literature-aligned grid
+
+The full grid follows the instance family from Xin (2020):
+
+- lead times `L in {2,4,6,8,10}`
+- shortage costs `p in {4,19}`
+- demand distributions `{Poisson, Geometric}`
+- mean demand `5`

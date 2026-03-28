@@ -42,7 +42,7 @@ python scripts/build_rust_extension.py
 Run these before long experiments on a fresh machine:
 
 ```bash
-python -m pytest tests/test_fixed_order_cost_reference_grid.py tests/test_numerical_experiments_catalog.py -q
+python -m pytest tests/test_lost_sales_reference_grid.py tests/test_fixed_order_cost_reference_grid.py tests/test_numerical_experiments_catalog.py -q
 python numerical_experiments/run.py --list
 ```
 
@@ -64,6 +64,18 @@ Run the canonical fixed-cost benchmark:
 
 ```bash
 python numerical_experiments/run.py --suite fixed_cost_single_instance_check
+```
+
+Run the canonical vanilla lost-sales benchmark:
+
+```bash
+python numerical_experiments/run.py --suite lost_sales_single_instance_check
+```
+
+Run the full vanilla lost-sales paper-style grid:
+
+```bash
+python numerical_experiments/run.py --suite lost_sales_full_policy_grid
 ```
 
 Run the full fixed-cost paper-style grid:
@@ -90,9 +102,9 @@ The fixed-order-cost lost-sales section is the most mature new problem family.
 
 Main scripts:
 
-- single-instance preflight: `scripts/benchmark_fixed_cost_canonical_suite.py`
-- full 16-instance literature-aligned grid: `scripts/benchmark_fixed_cost_full_suite.py`
-- paper table export: `scripts/export_fixed_cost_paper_table.py`
+- single-instance preflight: `scripts/lost_sales_fixed_order_cost/benchmark_canonical_suite.py`
+- full 16-instance literature-aligned grid: `scripts/lost_sales_fixed_order_cost/benchmark_full_suite.py`
+- paper table export: `scripts/lost_sales_fixed_order_cost/export_paper_table.py`
 
 Canonical benchmark outputs:
 
@@ -107,7 +119,7 @@ Use the single-instance preflight first to confirm that the full experiment path
 Refresh the canonical paper table after the benchmark exists:
 
 ```bash
-python scripts/export_fixed_cost_paper_table.py
+python scripts/lost_sales_fixed_order_cost/export_paper_table.py
 ```
 
 Current fixed-cost policy set:
@@ -177,6 +189,8 @@ On a separate Linux machine:
 When in doubt, use these files:
 
 - experiment catalog: `numerical_experiments/catalog.py`
+- lost-sales experiment definitions: `invman/problems/lost_sales/experiment_spec.py`
+- lost-sales instance registry: `invman/problems/lost_sales/reference_instances.py`
 - fixed-cost experiment definitions: `invman/problems/lost_sales_fixed_order_cost/experiment_spec.py`
 - fixed-cost instance registry: `invman/problems/lost_sales_fixed_order_cost/reference_instances.py`
 - core runner: `invman/experiment_runner.py`

@@ -31,7 +31,7 @@ The benchmark heuristics are fixed:
 
 ## Budgets
 
-Use the budgets from `scripts/autoresearch_dual_sourcing.py`:
+Use the budgets from `scripts/dual_sourcing/autoresearch_dual_sourcing.py`:
 
 - `screening`
 - `full`

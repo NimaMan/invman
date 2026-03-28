@@ -27,17 +27,41 @@ class ExperimentSuite:
 
 EXPERIMENT_SUITES: tuple[ExperimentSuite, ...] = (
     ExperimentSuite(
-        suite_id="lost_sales_reference_validation",
+        suite_id="lost_sales_single_instance_check",
         problem="lost_sales",
         status="ready",
-        purpose="Validate the canonical vanilla benchmark against trusted heuristic anchors.",
-        heuristics=("myopic1", "myopic2", "svbs"),
-        base_policies=("linear_categorical_quantity", "nn_categorical_quantity"),
-        improved_policies=("soft_tree_oblique_linear_leaf",),
-        script_path="scripts/validate_reference_instance.py",
+        purpose="Run one canonical vanilla lost-sales instance end-to-end as a preflight check before the full literature grid run.",
+        heuristics=("myopic1", "myopic2", "svbs", "capped_base_stock_literature"),
+        base_policies=(
+            "linear_categorical_quantity_q8",
+            "linear_categorical_quantity_q20",
+            "nn_categorical_quantity_q8",
+            "nn_categorical_quantity_q20",
+        ),
+        improved_policies=("soft_tree_depth2_linear_leaf_q8",),
+        script_path="scripts/lost_sales/benchmark_canonical_suite.py",
         notes=(
-            "Fast sanity check for the canonical lost-sales instance.",
-            "Does not train policies; it validates the benchmark layer.",
+            "Uses the canonical L=4, p=4, Poisson(5) instance.",
+            "This is the quick correctness/performance check before launching the full 20-instance suite.",
+        ),
+    ),
+    ExperimentSuite(
+        suite_id="lost_sales_full_policy_grid",
+        problem="lost_sales",
+        status="ready",
+        purpose="Run the full 20-instance vanilla lost-sales paper-style grid with heuristics and learned policy families.",
+        heuristics=("myopic1", "myopic2", "svbs", "capped_base_stock_literature", "optimal_literature_when_available"),
+        base_policies=(
+            "linear_categorical_quantity_q8",
+            "linear_categorical_quantity_q20",
+            "nn_categorical_quantity_q8",
+            "nn_categorical_quantity_q20",
+        ),
+        improved_policies=("soft_tree_depth2_linear_leaf_q8",),
+        script_path="scripts/lost_sales/benchmark_full_suite.py",
+        notes=(
+            "This suite is the main data-generation path for the vanilla lost-sales paper section.",
+            "It emits per-instance JSONs with heuristic evaluations, literature anchors, and learned-policy results.",
         ),
     ),
     ExperimentSuite(
@@ -53,7 +77,7 @@ EXPERIMENT_SUITES: tuple[ExperimentSuite, ...] = (
             "soft_tree_depth2_linear_leaf",
             "soft_tree_depth1_linear_leaf",
         ),
-        script_path="scripts/benchmark_fixed_cost_canonical_suite.py",
+        script_path="scripts/lost_sales_fixed_order_cost/benchmark_canonical_suite.py",
         notes=(
             "Uses the canonical L=4, p=4, K=5 literature-aligned instance.",
             "This is the quick correctness/performance check before launching the full grid suite.",
@@ -72,7 +96,7 @@ EXPERIMENT_SUITES: tuple[ExperimentSuite, ...] = (
             "soft_tree_depth2_linear_leaf",
             "soft_tree_depth1_linear_leaf",
         ),
-        script_path="scripts/benchmark_fixed_cost_full_suite.py",
+        script_path="scripts/lost_sales_fixed_order_cost/benchmark_full_suite.py",
         notes=(
             "This suite is the main data-generation path for the fixed-cost paper section.",
             "It emits per-instance JSONs with heuristic parameters, learned-policy results, and benchmark metadata.",
@@ -86,7 +110,7 @@ EXPERIMENT_SUITES: tuple[ExperimentSuite, ...] = (
         heuristics=("single_index", "dual_index", "capped_dual_index", "tailored_base_surge", "optimal_dp"),
         base_policies=(),
         improved_policies=(),
-        script_path="scripts/validate_dual_sourcing_reference_grid.py",
+        script_path="scripts/dual_sourcing/validate_reference_grid.py",
         notes=(
             "Fast benchmark-layer validation for the dual-sourcing package.",
         ),
@@ -99,7 +123,7 @@ EXPERIMENT_SUITES: tuple[ExperimentSuite, ...] = (
         heuristics=("single_index", "dual_index", "capped_dual_index", "tailored_base_surge"),
         base_policies=("linear_bounded_quantity_identity", "nn_bounded_quantity_identity"),
         improved_policies=("linear_base_surge_targets", "nn_base_surge_targets"),
-        script_path="scripts/autoresearch_dual_sourcing_backbones.py",
+        script_path="scripts/dual_sourcing/autoresearch_dual_sourcing_backbones.py",
         script_args=("--budget", "full"),
         notes=(
             "This suite is for policy-design work, not yet a final paper table.",
@@ -113,7 +137,7 @@ EXPERIMENT_SUITES: tuple[ExperimentSuite, ...] = (
         heuristics=("single_index", "dual_index", "capped_dual_index", "tailored_base_surge"),
         base_policies=("soft_tree_identity",),
         improved_policies=("soft_tree_base_surge_targets",),
-        script_path="scripts/autoresearch_dual_sourcing.py",
+        script_path="scripts/dual_sourcing/autoresearch_dual_sourcing.py",
         script_args=("--budget", "full", "--description", "numerical_experiments_run"),
         notes=(
             "Current dual-sourcing policy-design suite.",
@@ -127,7 +151,7 @@ EXPERIMENT_SUITES: tuple[ExperimentSuite, ...] = (
         heuristics=("constant_base_stock",),
         base_policies=("soft_tree_constant_leaf",),
         improved_policies=("soft_tree_linear_leaf",),
-        script_path="scripts/autoresearch_multi_echelon.py",
+        script_path="scripts/multi_echelon/autoresearch_multi_echelon.py",
         script_args=("--budget", "full", "--description", "numerical_experiments_run"),
         notes=(
             "Current multi-echelon suite is still exploratory; the final policy family is not frozen.",

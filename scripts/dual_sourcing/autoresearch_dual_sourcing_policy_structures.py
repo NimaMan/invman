@@ -3,7 +3,7 @@ import json
 import sys
 from pathlib import Path
 
-PACKAGE_ROOT = Path(__file__).resolve().parents[1]
+PACKAGE_ROOT = Path(__file__).resolve().parents[2]
 if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
 
@@ -20,8 +20,8 @@ BUDGETS = {
         "eval_seeds": 2,
     },
     "full": {
-        "training_episodes": 800,
-        "es_population": 8,
+        "training_episodes": 1500,
+        "es_population": 10,
         "horizon": 2000,
         "eval_horizon": 10000,
         "eval_seeds": 3,
@@ -30,39 +30,48 @@ BUDGETS = {
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Compare dual-sourcing policy backbones under a fixed training budget.")
-    parser.add_argument("--run_tag", default="dual_sourcing_backbones", help="Namespace used for outputs.")
+    parser = argparse.ArgumentParser(description="Compare candidate learned policy structures on the primary dual-sourcing benchmark.")
+    parser.add_argument("--run_tag", default="dual_sourcing_policy_search", help="Namespace used for outputs.")
     parser.add_argument("--budget", choices=sorted(BUDGETS), default="screening", help="Fixed experiment budget.")
     parser.add_argument("--reference", default="dual_l4_ce110", help="Named dual-sourcing reference instance.")
-    parser.add_argument("--policy_types", nargs="+", choices=["linear", "nn"], default=["linear", "nn"])
     parser.add_argument(
         "--action_adapters",
+        "--tree_action_adapters",
+        dest="action_adapters",
         nargs="+",
-        default=["identity", "base_surge_targets"],
-        help="Structured action adapters to compare for linear/nn policies.",
+        default=[
+            "identity",
+            "single_index_targets",
+            "dual_index_targets",
+            "capped_dual_index_targets",
+            "base_surge_targets",
+        ],
+        help="Structured action adapters to compare.",
     )
-    parser.add_argument("--policy_head", default="bounded_quantity", help="Action head used by linear/nn policies.")
-    parser.add_argument("--hidden_dim", nargs="+", type=int, default=[16, 16], help="Hidden layers for the neural policy.")
-    parser.add_argument("--activation", choices=["selu", "gelu", "relu"], default="selu")
+    parser.add_argument("--tree_depths", nargs="+", type=int, default=[2], help="Tree depths to compare.")
+    parser.add_argument("--tree_temperature", type=float, default=0.25)
+    parser.add_argument("--tree_split_type", choices=["oblique", "axis_aligned"], default="oblique")
+    parser.add_argument("--tree_leaf_type", choices=["constant", "linear"], default="linear")
     parser.add_argument("--sigma_init", type=float, default=3.0)
     parser.add_argument("--seed", type=int, default=123)
     parser.add_argument("--mp_num_processors", type=int, default=4)
-    parser.add_argument("--same_seed", action="store_true", help="Use common random numbers within a CMA batch.")
+    parser.add_argument("--same_seed", action="store_true", help="Use common random numbers within an ES batch.")
     return parser.parse_args()
 
 
-def _prepare_args(parsed, root, policy_type, action_adapter):
+def _prepare_args(parsed, root, action_adapter, depth):
     budget = BUDGETS[parsed.budget]
     args = build_reference_args(parsed.reference)
     args.problem = "dual_sourcing"
-    args.policy_type = policy_type
-    args.policy_head = parsed.policy_head
+    args.policy_type = "soft_tree"
+    args.rollout_backend = "rust"
+    args.training_method = "cma"
+    args.tree_depth = depth
+    args.tree_temperature = parsed.tree_temperature
+    args.tree_split_type = parsed.tree_split_type
+    args.tree_leaf_type = parsed.tree_leaf_type
     args.action_adapter = action_adapter
     args.tree_action_adapter = action_adapter
-    args.hidden_dim = parsed.hidden_dim
-    args.activation = parsed.activation
-    args.rollout_backend = "python"
-    args.training_method = "cma"
     args.sigma_init = parsed.sigma_init
     args.seed = parsed.seed
     args.mp_num_processors = parsed.mp_num_processors
@@ -75,7 +84,10 @@ def _prepare_args(parsed, root, policy_type, action_adapter):
     args.results_dir = str(root / "results")
     args.log_dir = str(root / "logs")
     args.trained_models_dir = str(root / "models")
-    args.experiment_name = f"{parsed.run_tag}_{parsed.budget}_{policy_type}_{parsed.policy_head}_{action_adapter}"
+    args.experiment_name = (
+        f"{parsed.run_tag}_{parsed.budget}_{action_adapter}_"
+        f"d{depth}_{parsed.tree_split_type}_{parsed.tree_leaf_type}"
+    )
     return args
 
 
@@ -88,10 +100,11 @@ def _summarize_result(payload):
     )
     return {
         "experiment_name": payload["experiment_name"],
-        "policy_type": payload["policy_type"],
         "policy_architecture": payload["policy_architecture"],
-        "policy_head": payload["policy_head"],
         "action_adapter": payload.get("action_adapter", "identity"),
+        "tree_depth": payload["tree_depth"],
+        "tree_split_type": payload["tree_split_type"],
+        "tree_leaf_type": payload["tree_leaf_type"],
         "learned_mean_cost": learned_cost,
         "best_heuristic_cost": heuristic_cost,
         "heuristic_gap": learned_cost - heuristic_cost,
@@ -105,9 +118,9 @@ def main():
     root.mkdir(parents=True, exist_ok=True)
 
     results = []
-    for policy_type in parsed.policy_types:
-        for action_adapter in parsed.action_adapters:
-            args = _prepare_args(parsed, root, policy_type, action_adapter)
+    for action_adapter in parsed.action_adapters:
+        for depth in parsed.tree_depths:
+            args = _prepare_args(parsed, root, action_adapter, depth)
             payload, results_path = run_experiment(args)
             payload["results_file"] = str(results_path)
             results.append(_summarize_result(payload))
@@ -117,14 +130,15 @@ def main():
         "run_tag": parsed.run_tag,
         "budget": parsed.budget,
         "reference": parsed.reference,
-        "policy_types": parsed.policy_types,
         "action_adapters": parsed.action_adapters,
-        "policy_head": parsed.policy_head,
+        "tree_depths": parsed.tree_depths,
+        "tree_split_type": parsed.tree_split_type,
+        "tree_leaf_type": parsed.tree_leaf_type,
         "results": results,
         "best_result": results[0] if results else None,
     }
 
-    summary_path = root / f"dual_sourcing_backbones_{parsed.budget}.json"
+    summary_path = root / f"dual_sourcing_policy_search_{parsed.budget}.json"
     summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
     print(json.dumps(summary, indent=2))
 

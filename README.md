@@ -162,11 +162,11 @@ Outputs are written under `outputs/`:
 - `invman/es.py`, `invman/es_mp.py`: evolution-strategy optimizers and training loop
 - `scripts/run_experiment.py`: single entry point for training and evaluation
 - `numerical_experiments/`: curated experiment catalog and launcher for Linux-scale benchmark runs
-- `scripts/autoresearch_tree_structures.py`: vanilla lost-sales tree-architecture comparison runner
-- `scripts/autoresearch_fixed_order_cost.py`: fixed-cost autoresearch runner
-- `scripts/autoresearch_fixed_order_tree_structures.py`: fixed-cost tree-architecture screening runner
-- `scripts/autoresearch_dual_sourcing.py`: dual-sourcing autoresearch runner
-- `scripts/autoresearch_multi_echelon.py`: multi-echelon autoresearch runner
+- `scripts/lost_sales/autoresearch_tree_structures.py`: vanilla lost-sales tree-architecture comparison runner
+- `scripts/lost_sales_fixed_order_cost/autoresearch_fixed_order_cost.py`: fixed-cost autoresearch runner
+- `scripts/lost_sales_fixed_order_cost/autoresearch_fixed_order_tree_structures.py`: fixed-cost tree-architecture screening runner
+- `scripts/dual_sourcing/autoresearch_dual_sourcing.py`: dual-sourcing autoresearch runner
+- `scripts/multi_echelon/autoresearch_multi_echelon.py`: multi-echelon autoresearch runner
 - `autoresearch/`: autoresearch-style loop docs for vanilla and fixed-cost benchmarks
 - `../docs/benchmarks/lost_sales_l4_refresh.md`: refreshed vanilla lost-sales benchmark note after
   the Rust refactor

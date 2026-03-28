@@ -30,19 +30,31 @@ Heuristics:
 - `myopic1`
 - `myopic2`
 - `svbs`
+- literature `capped_base_stock`
+- literature `optimal` when reported
 
 Policy families:
 
 - base:
-  - `linear_categorical_quantity`
-  - `nn_categorical_quantity`
+  - `linear_categorical_quantity_q8`
+  - `linear_categorical_quantity_q20`
+  - `nn_categorical_quantity_q8`
+  - `nn_categorical_quantity_q20`
 - improved:
-  - `soft_tree_oblique_linear_leaf`
+  - `soft_tree_depth2_linear_leaf_q8`
+
+Current interpretation:
+
+- the stable setup is intentionally split into only two modes:
+  - one single-instance preflight run
+  - one full literature-aligned grid run
+- the single-instance run is only for checking that the full experiment path behaves as intended
+- the full policy grid suite is the data-generation path for paper tables
 
 Status:
 
-- benchmark layer is trusted
-- ready for paper-style reporting
+- single-instance preflight suite is ready
+- full policy grid suite is ready
 
 ### Fixed-order-cost lost sales
 
@@ -157,7 +169,13 @@ python numerical_experiments/run.py --all-ready --dry-run
 Run one stable suite:
 
 ```bash
-python numerical_experiments/run.py --suite fixed_cost_single_instance_check
+python numerical_experiments/run.py --suite lost_sales_single_instance_check
+```
+
+Run the full vanilla lost-sales grid suite:
+
+```bash
+python numerical_experiments/run.py --suite lost_sales_full_policy_grid
 ```
 
 Run the full fixed-cost grid suite:

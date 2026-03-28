@@ -18,7 +18,7 @@ To set up a new run:
 3. Rebuild the Rust extension if any Rust files changed:
    - `python scripts/build_rust_extension.py`
 4. Verify the baseline code path works:
-   - `python scripts/validate_reference_instance.py --num_seeds 3`
+   - `python scripts/lost_sales/validate_reference_instance.py --num_seeds 3`
 
 ## Scope
 
@@ -32,7 +32,7 @@ The benchmark is fixed to the trusted vanilla lost-sales instance:
 The evaluation harness is fixed. Do not modify:
 
 - `invman/problems/lost_sales/reference_instances.py`
-- `scripts/validate_reference_instance.py`
+- `scripts/lost_sales/validate_reference_instance.py`
 - heuristic implementations used as the benchmark baseline
 
 The intended search surface is:
@@ -44,7 +44,7 @@ The intended search surface is:
 
 ## Experiment budgets
 
-Use the fixed budgets from `scripts/autoresearch_lost_sales.py`:
+Use the fixed budgets from `scripts/lost_sales/autoresearch_lost_sales.py`:
 
 - `screening`: fast search budget
 - `full`: trusted benchmark budget
@@ -59,7 +59,7 @@ For each experiment:
 
 1. Make one policy-focused change.
 2. Run:
-   - `python scripts/autoresearch_lost_sales.py --run_tag <tag> --budget screening --description "<what changed>" ...`
+   - `python scripts/lost_sales/autoresearch_lost_sales.py --run_tag <tag> --budget screening --description "<what changed>" ...`
 3. The script writes:
    - experiment JSON under `outputs/autoresearch/<tag>/results/`
    - logs under `outputs/autoresearch/<tag>/logs/`

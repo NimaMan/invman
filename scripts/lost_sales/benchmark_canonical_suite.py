@@ -1,16 +1,15 @@
 import argparse
 import json
 import sys
-from copy import copy
 from pathlib import Path
 
-PACKAGE_ROOT = Path(__file__).resolve().parents[1]
+PACKAGE_ROOT = Path(__file__).resolve().parents[2]
 if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
 
 from invman.experiment_runner import run_experiment
-from invman.problems.lost_sales_fixed_order_cost.benchmark import benchmark_reference_instance
-from invman.problems.lost_sales_fixed_order_cost.experiment_spec import (
+from invman.problems.lost_sales.benchmark import benchmark_reference_instance
+from invman.problems.lost_sales.experiment_spec import (
     COMMON_BUDGET,
     EXPERIMENT_SPECS,
     configure_run_args,
@@ -20,32 +19,18 @@ from invman.problems.lost_sales_fixed_order_cost.experiment_spec import (
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Run the canonical fixed-order-cost benchmark suite and render a paper-style summary table."
+        description="Run the canonical vanilla lost-sales benchmark suite and render a paper-style summary table."
     )
-    parser.add_argument("--reference", default="lit_pois_mu5_l4_p4_k5")
-    parser.add_argument("--run_tag", default="fixed_cost_l4_canonical_suite_5k_paperlike")
+    parser.add_argument("--reference", default="vanilla_l4_p4_poisson5")
+    parser.add_argument("--run_tag", default="lost_sales_l4_canonical_suite_paperlike")
     parser.add_argument("--seed", type=int, default=123)
     parser.add_argument("--same_seed", action="store_true")
     parser.add_argument("--mp_num_processors", type=int, default=4)
-    parser.add_argument("--search_horizon", type=int, default=10000)
     parser.add_argument("--eval_horizon", type=int, default=int(1e6))
     parser.add_argument("--eval_seeds", type=int, default=10)
-    parser.add_argument(
-        "--only",
-        nargs="+",
-        default=None,
-        help="Optional subset of experiment ids to run.",
-    )
-    parser.add_argument(
-        "--reuse_existing",
-        action="store_true",
-        help="Reuse existing per-policy result JSONs when present instead of rerunning them.",
-    )
-    parser.add_argument(
-        "--reuse_existing_summary",
-        action="store_true",
-        help="Reuse the existing suite summary heuristics block when present instead of recomputing it.",
-    )
+    parser.add_argument("--only", nargs="+", default=None)
+    parser.add_argument("--reuse_existing", action="store_true")
+    parser.add_argument("--reuse_existing_summary", action="store_true")
     return parser.parse_args()
 
 
@@ -54,42 +39,56 @@ def _suite_root(run_tag: str) -> Path:
 
 
 def _ensure_dirs(root: Path):
-    (root / "results").mkdir(parents=True, exist_ok=True)
-    (root / "logs").mkdir(parents=True, exist_ok=True)
-    (root / "models").mkdir(parents=True, exist_ok=True)
+    for dirname in ("results", "logs", "models"):
+        (root / dirname).mkdir(parents=True, exist_ok=True)
+
+
+def _summary_paths(root: Path):
+    return root / "lost_sales_canonical_suite.json", root / "lost_sales_canonical_suite.md"
+
+
+def _load_or_run_experiment(args, *, reuse_existing: bool):
+    result_path = result_path_for(args)
+    if reuse_existing and result_path.exists():
+        payload = json.loads(result_path.read_text(encoding="utf-8"))
+        return payload, result_path
+    return run_experiment(args)
 
 
 def _render_markdown(summary):
     heuristic = summary["heuristics"]["evaluation"]
-    best_heuristic_cost = min(
-        heuristic[name]["mean_cost"] for name in ("s_s", "s_nq", "modified_s_s_q")
-    )
+    best_heuristic_cost = min(heuristic[name]["mean_cost"] for name in ("myopic1", "myopic2", "svbs"))
     lines = [
-        "# Canonical Fixed-Cost Benchmark Suite",
+        "# Canonical Vanilla Lost-Sales Benchmark Suite",
         "",
         f"Reference instance: `{summary['reference']}`",
         "",
+        "## Literature Anchors",
+        "",
+        f"- optimal: `{summary['heuristics']['optimal_reference']['mean_cost']}`",
+        f"- capped base-stock: `{summary['heuristics']['capped_base_stock_reference']['mean_cost']}`",
+        "",
         "## Heuristic Baseline",
         "",
-        "| Policy | Params | Mean cost |",
-        "| --- | --- | ---: |",
-        f"| `s,S` | `{heuristic['s_s']['params']}` | `{heuristic['s_s']['mean_cost']:.5f}` |",
-        f"| `s,nQ` | `{heuristic['s_nq']['params']}` | `{heuristic['s_nq']['mean_cost']:.5f}` |",
-        f"| modified `s,S,q` | `{heuristic['modified_s_s_q']['params']}` | `{heuristic['modified_s_s_q']['mean_cost']:.5f}` |",
+        "| Policy | Mean cost | Max order observed |",
+        "| --- | ---: | ---: |",
+        f"| `myopic1` | `{heuristic['myopic1']['mean_cost']:.5f}` | `{heuristic['myopic1']['max_order_observed']}` |",
+        f"| `myopic2` | `{heuristic['myopic2']['mean_cost']:.5f}` | `{heuristic['myopic2']['max_order_observed']}` |",
+        f"| `svbs` | `{heuristic['svbs']['mean_cost']:.5f}` | `{heuristic['svbs']['max_order_observed']}` |",
         "",
         "## Policy Function Approximators",
         "",
-        "| Approximator | Architecture | Backend | Eval horizon | Mean cost | Gap vs best heuristic |",
-        "| --- | --- | --- | ---: | ---: | ---: |",
+        "| Approximator | Architecture | qbar | Backend | Mean cost | Gap vs best heuristic |",
+        "| --- | --- | ---: | --- | ---: | ---: |",
     ]
     for result in summary["learned_policies"]:
         learned_cost = result["evaluation"]["learned_policy"]["mean_cost"]
         lines.append(
-            "| {name} | `{arch}` | `{backend}` | `{horizon}` | `{cost:.5f}` | `{gap:.5f}` |".format(
+            "| {name} | `{arch}` | `{qbar}` | `{backend}` | `{cost:.5f}` | `{gap:.5f}` |".format(
                 name=result["label"],
                 arch=result["payload"]["policy_architecture"],
+                qbar=result["payload"]["max_order_size"],
                 backend=result["payload"]["rollout_backend"],
-                horizon=result["payload"]["evaluation_horizon"],
                 cost=learned_cost,
                 gap=learned_cost - best_heuristic_cost,
             )
@@ -99,30 +98,16 @@ def _render_markdown(summary):
             "",
             "## Protocol",
             "",
-            f"- training episodes: `{COMMON_BUDGET['training_episodes']}`",
+            f"- training episodes (default): `{COMMON_BUDGET['training_episodes_default']}`",
+            f"- training episodes for `L=2`: `{COMMON_BUDGET['training_episodes_lead_time_2']}`",
             f"- ES population: `{COMMON_BUDGET['es_population']}`",
-            f"- training horizon: `{COMMON_BUDGET['horizon']}`",
+            f"- training horizon (default): `{COMMON_BUDGET['horizon_default']}`",
+            f"- training horizon for `L=2`: `{COMMON_BUDGET['horizon_lead_time_2']}`",
             f"- evaluation horizon: `{summary['eval_horizon']}`",
             f"- evaluation seeds: `{summary['eval_seeds']}`",
         ]
     )
     return "\n".join(lines) + "\n"
-
-
-def _result_path_for(args) -> Path:
-    return result_path_for(args)
-
-
-def _load_or_run_experiment(args, *, reuse_existing: bool):
-    result_path = _result_path_for(args)
-    if reuse_existing and result_path.exists():
-        payload = json.loads(result_path.read_text(encoding="utf-8"))
-        return payload, result_path
-    return run_experiment(args)
-
-
-def _summary_paths(root: Path):
-    return root / "fixed_cost_canonical_suite.json", root / "fixed_cost_canonical_suite.md"
 
 
 def main():
@@ -138,11 +123,8 @@ def main():
     else:
         heuristic_summary = benchmark_reference_instance(
             parsed.reference,
-            search_horizon=parsed.search_horizon,
             eval_horizon=parsed.eval_horizon,
             eval_seeds=parsed.eval_seeds,
-            backend="rust",
-            modified_search_mode="exhaustive",
         )
 
     learned_policy_results = []
@@ -169,7 +151,6 @@ def main():
 
     summary = {
         "reference": parsed.reference,
-        "search_horizon": parsed.search_horizon,
         "eval_horizon": parsed.eval_horizon,
         "eval_seeds": parsed.eval_seeds,
         "heuristics": heuristic_summary,
@@ -178,7 +159,6 @@ def main():
 
     summary_json.write_text(json.dumps(summary, indent=2), encoding="utf-8")
     summary_md.write_text(_render_markdown(summary), encoding="utf-8")
-
     print(json.dumps({"summary_json": str(summary_json), "summary_md": str(summary_md)}, indent=2))
 
 

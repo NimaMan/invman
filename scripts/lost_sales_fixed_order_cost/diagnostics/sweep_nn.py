@@ -104,7 +104,7 @@ def load_result(results_dir: Path, experiment_name: str):
 
 
 def main():
-    package_root = Path(__file__).resolve().parents[2]
+    package_root = Path(__file__).resolve().parents[3]
     workspace_root = package_root
     results_dir = package_root / "outputs" / "results"
     log_dir = package_root / "outputs" / "logs" / "fixed_cost_sweep"
