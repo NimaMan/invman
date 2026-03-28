@@ -63,7 +63,7 @@ python numerical_experiments/run.py --list --status ready
 Run the canonical fixed-cost benchmark:
 
 ```bash
-python numerical_experiments/run.py --suite fixed_cost_canonical_paperlike
+python numerical_experiments/run.py --suite fixed_cost_single_instance_check
 ```
 
 Run the full fixed-cost paper-style grid:
@@ -90,7 +90,7 @@ The fixed-order-cost lost-sales section is the most mature new problem family.
 
 Main scripts:
 
-- canonical benchmark: `scripts/benchmark_fixed_cost_canonical_suite.py`
+- single-instance preflight: `scripts/benchmark_fixed_cost_canonical_suite.py`
 - full 16-instance literature-aligned grid: `scripts/benchmark_fixed_cost_full_suite.py`
 - paper table export: `scripts/export_fixed_cost_paper_table.py`
 
@@ -101,6 +101,8 @@ Canonical benchmark outputs:
 Full grid outputs:
 
 - `outputs/benchmarks/fixed_cost_full_grid_suite_5k_paperlike/`
+
+Use the single-instance preflight first to confirm that the full experiment path is behaving as expected.
 
 Refresh the canonical paper table after the benchmark exists:
 

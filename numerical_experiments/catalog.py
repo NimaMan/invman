@@ -41,10 +41,10 @@ EXPERIMENT_SUITES: tuple[ExperimentSuite, ...] = (
         ),
     ),
     ExperimentSuite(
-        suite_id="fixed_cost_canonical_paperlike",
+        suite_id="fixed_cost_single_instance_check",
         problem="lost_sales_fixed_order_cost",
         status="ready",
-        purpose="Run the canonical fixed-order-cost benchmark table on the L=4, p=4, K=5 instance.",
+        purpose="Run one fixed-cost literature-aligned instance end-to-end as a preflight check before the full grid run.",
         heuristics=("s_s", "s_nq", "modified_s_s_q"),
         base_policies=("linear_categorical_quantity", "nn_categorical_quantity"),
         improved_policies=(
@@ -55,29 +55,15 @@ EXPERIMENT_SUITES: tuple[ExperimentSuite, ...] = (
         ),
         script_path="scripts/benchmark_fixed_cost_canonical_suite.py",
         notes=(
-            "Paper-like long-horizon evaluation with the current fixed-cost six-policy matrix.",
-            "This is the current main fixed-cost suite.",
-        ),
-    ),
-    ExperimentSuite(
-        suite_id="fixed_cost_grid_benchmark",
-        problem="lost_sales_fixed_order_cost",
-        status="ready",
-        purpose="Benchmark heuristic policies on the 16-instance literature subset grid.",
-        heuristics=("s_s", "s_nq", "modified_s_s_q"),
-        base_policies=(),
-        improved_policies=(),
-        script_path="scripts/benchmark_fixed_order_cost_grid.py",
-        notes=(
-            "Grid-level heuristic benchmark only.",
-            "Use this to refresh the literature-subset heuristic baseline.",
+            "Uses the canonical L=4, p=4, K=5 literature-aligned instance.",
+            "This is the quick correctness/performance check before launching the full grid suite.",
         ),
     ),
     ExperimentSuite(
         suite_id="fixed_cost_full_policy_grid",
         problem="lost_sales_fixed_order_cost",
         status="ready",
-        purpose="Run the full fixed-cost paper-style grid with heuristics and learned policy families on the literature-aligned 16-instance subset.",
+        purpose="Run the full fixed-cost paper-style grid with heuristics and learned policy families on the literature-aligned instance set.",
         heuristics=("s_s", "s_nq", "modified_s_s_q"),
         base_policies=("linear_categorical_quantity", "nn_categorical_quantity"),
         improved_policies=(
@@ -88,7 +74,7 @@ EXPERIMENT_SUITES: tuple[ExperimentSuite, ...] = (
         ),
         script_path="scripts/benchmark_fixed_cost_full_suite.py",
         notes=(
-            "This suite is the full data-generation path for the fixed-cost paper section.",
+            "This suite is the main data-generation path for the fixed-cost paper section.",
             "It emits per-instance JSONs with heuristic parameters, learned-policy results, and benchmark metadata.",
         ),
     ),

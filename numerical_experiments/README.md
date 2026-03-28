@@ -66,13 +66,15 @@ Policy families:
 Current interpretation:
 
 - this problem already shows that action-space design matters strongly
-- the full stable suite now includes both baseline and improved learned policies
-- the canonical instance establishes the main design conclusion, while the full policy grid suite is
-  the data-generation path for paper tables on the literature-aligned subset
+- the stable setup is intentionally split into only two modes:
+  - one single-instance preflight run
+  - one full literature-aligned grid run
+- the single-instance run is only for checking that the full experiment path behaves as intended
+- the full policy grid suite is the data-generation path for paper tables
 
 Status:
 
-- canonical benchmark suite is ready
+- single-instance preflight suite is ready
 - full policy grid suite is ready
 
 ### Dual sourcing
@@ -155,7 +157,7 @@ python numerical_experiments/run.py --all-ready --dry-run
 Run one stable suite:
 
 ```bash
-python numerical_experiments/run.py --suite fixed_cost_canonical_paperlike
+python numerical_experiments/run.py --suite fixed_cost_single_instance_check
 ```
 
 Run the full fixed-cost grid suite:
@@ -185,7 +187,8 @@ For each problem, we want:
 - a fixed benchmark problem set
 - a fixed heuristic set
 - a fixed learned-policy family set
-- one stable suite that can generate paper-style tables
+- one preflight suite for a single instance
+- one stable suite that can generate the paper-style tables over the full problem set
 
 Exploratory suites are allowed, but they should be clearly labeled as exploratory until the policy
 family for that problem is frozen.
