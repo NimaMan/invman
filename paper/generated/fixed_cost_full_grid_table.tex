@@ -1,0 +1,18 @@
+\begin{table}[t]
+\centering
+\caption{Aggregate fixed-order-cost lost-sales results over the literature-aligned subset grid with $L \in \{1,2,3,4\}$, $p \in \{4,19\}$, $K \in \{5,25\}$, and Poisson demand with mean $5$. Each row reports the mean relative gap to the best heuristic found on each instance and the number of instances on which the learned policy beats that best heuristic. Lower is better.}
+\label{tab:fixed-cost-full-grid}
+\begin{tabular}{lrrl}
+\toprule
+Policy family & Mean relative gap (\%) & Better than best heuristic & Status \\
+\midrule
+Linear, categorical quantity & 692842.158 & 0/16 & trusted \\
+Linear, gated ordinal quantity & 5.984 & 8/16 & trusted \\
+NN, categorical quantity$^{\dagger}$ & 15.475 & 2/16 & provisional \\
+NN, gated ordinal quantity & -0.809 & 11/16 & trusted \\
+Soft tree, oblique depth-2 linear leaf & 16.833 & 0/16 & trusted \\
+Soft tree, oblique depth-1 linear leaf & 13.960 & 1/16 & trusted \\
+\bottomrule
+\end{tabular}
+\par\medskip\footnotesize{Best trusted aggregate row: NN, gated ordinal quantity with mean relative gap -0.809\% and wins on 11/16 instances. $^{\dagger}$ The current NN categorical-quantity baseline remains provisional and should be re-verified before publication claims rely on it.}
+\end{table}

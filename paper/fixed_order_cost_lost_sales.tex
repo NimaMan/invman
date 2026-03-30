@@ -278,6 +278,37 @@ export the paper table artifact to populate this section.
 Like the canonical table, this full-grid artifact is generated directly from the benchmark JSON so
 the manuscript stays synchronized with the experiment outputs.
 
+The completed $16$-instance run strengthens the canonical-instance conclusion. Among the trusted
+families, the neural network with the gated ordinal quantity head is best in aggregate, with mean
+relative gap $-0.809\%$ versus the best heuristic found on each instance and wins on $11/16$
+instances. The linear policy with the same gated ordinal head is the next strongest trusted family
+at $5.984\%$ mean relative gap and wins on $8/16$ instances. Thus the main structural result
+survives the move from one canonical instance to the full literature-aligned grid: separating the
+decision to order from the positive-order quantity score matters more than moving from a linear
+backbone to a more expressive one.
+
+The instance-level pattern is also informative. On the lower setup-cost half of the grid
+($K=5$), every instance is won by one of the gated ordinal policies, split $5$ wins for the neural
+policy and $3$ wins for the linear policy. At lead time $L=3$, the neural gated ordinal policy is
+the best learned family on all four grid instances. By contrast, the provisional
+\texttt{nn\_categorical\_quantity} row only looks competitive on two $p=4$, $K=25$ cases, so we do
+not use it for publication-critical conclusions.
+
+Two caveats from the completed run should remain visible. First, the flat linear categorical
+quantity policy is not merely weak on average; it fails catastrophically on some instances. The
+worst case is \texttt{lit\_pois\_mu5\_l3\_p19\_k5}, where its long-run mean cost is
+$1{,}440{,}013.70$ against a best-heuristic benchmark of $12.9904$, which drives its aggregate
+mean relative gap up to $692842.2\%$. Second, on the three $p=4$, $K=25$ instances with
+$L \in \{1,2,3\}$, the linear gated policy and both soft-tree baselines all collapse to the same
+long-run cost $19.995229$, producing relative gaps between roughly $29\%$ and $33\%$. That looks
+more like a repeated failure mode than ordinary simulation noise, so those rows should be treated
+as a debugging target rather than a fine-grained modeling conclusion.
+
+With those caveats stated explicitly, the robust empirical takeaway is still clear: the gated
+ordinal action head is the only design change that consistently transfers across the fixed-cost
+grid, and the neural gated ordinal policy is currently the strongest trusted learned policy family
+for this problem class.
+
 \section{Current paper scope}
 
 At this point the fixed-order-cost lost-sales problem is the first extension problem that is mature
