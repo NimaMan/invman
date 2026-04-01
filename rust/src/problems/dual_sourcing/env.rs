@@ -25,7 +25,12 @@ pub fn initialize_state(
     DualSourcingState { reduced_state }
 }
 
-pub fn validate_action(regular_order: usize, expedited_order: usize, max_regular: usize, max_expedited: usize) -> PyResult<()> {
+pub fn validate_action(
+    regular_order: usize,
+    expedited_order: usize,
+    max_regular: usize,
+    max_expedited: usize,
+) -> PyResult<()> {
     if regular_order > max_regular {
         return Err(PyValueError::new_err(format!(
             "regular order {regular_order} exceeds max_regular {max_regular}"
@@ -46,7 +51,9 @@ pub fn step_state(
     demand: usize,
 ) -> Vec<i64> {
     if reduced_state.len() == 1 {
-        return vec![reduced_state[0] + expedited_order as i64 - demand as i64 + regular_order as i64];
+        return vec![
+            reduced_state[0] + expedited_order as i64 - demand as i64 + regular_order as i64,
+        ];
     }
     let end_inventory = reduced_state[0] + expedited_order as i64 - demand as i64;
     let mut next_state = Vec::with_capacity(reduced_state.len());

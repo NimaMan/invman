@@ -1,13 +1,7 @@
 import argparse
 from pathlib import Path
 
-from invman.policies.common import (
-    normalize_action_adapter,
-    normalize_policy_head,
-    normalize_tree_action_adapter,
-    normalize_tree_leaf_type,
-    normalize_tree_split_type,
-)
+from invman.policies.registry import apply_policy_name, resolve_policy_name
 
 try:
     from dotenv import load_dotenv
@@ -126,51 +120,10 @@ def get_config(argv=None):
         choices=["python", "rust"],
         help="Simulator backend used for policy rollouts when supported.",
     )
-
-    parser.add_argument("--policy_type", default="nn", choices=["nn", "linear", "soft_tree"], help="Policy backbone.")
     parser.add_argument(
-        "--policy_head",
-        "--action_output_mode",
-        dest="policy_head",
-        default="categorical_quantity",
-        help="Action head used by the policy approximator.",
-    )
-    parser.add_argument(
-        "--hidden_dim",
-        nargs="+",
-        type=int,
-        default=[32, 32],
-        help="Hidden-layer widths for the neural policy.",
-    )
-    parser.add_argument(
-        "--activation",
-        default="selu",
-        choices=["selu", "gelu", "relu"],
-        help="Activation used by the neural policy.",
-    )
-    parser.add_argument("--tree_depth", default=2, type=int, help="Depth of the soft tree policy.")
-    parser.add_argument(
-        "--tree_temperature",
-        default=0.25,
-        type=float,
-        help="Temperature used by soft tree split sigmoids.",
-    )
-    parser.add_argument(
-        "--tree_split_type",
-        default="oblique",
-        help="Tree split structure used by the soft tree policy.",
-    )
-    parser.add_argument(
-        "--tree_leaf_type",
-        default="constant",
-        help="Leaf output type used by the soft tree policy.",
-    )
-    parser.add_argument(
-        "--action_adapter",
-        "--tree_action_adapter",
-        dest="action_adapter",
-        default="identity",
-        help="Structured action adapter used by learned policies.",
+        "--policy_name",
+        default=None,
+        help="Unique identifier of the learned policy architecture to run.",
     )
 
     parser.add_argument("--experiment_name", default="lost_sales", help="Name used for saved artifacts.")
@@ -186,36 +139,22 @@ def get_config(argv=None):
     args.log_dir = str(Path(args.log_dir).expanduser())
     args.trained_models_dir = str(Path(args.trained_models_dir).expanduser())
     try:
-        args.policy_head = normalize_policy_head(args.policy_head)
-    except ValueError as exc:
-        parser.error(str(exc))
-    try:
         args.state_features = _normalize_state_features(args.state_features)
     except ValueError as exc:
         parser.error(str(exc))
-    try:
-        args.tree_split_type = normalize_tree_split_type(args.tree_split_type)
-    except ValueError as exc:
-        parser.error(str(exc))
-    try:
-        args.tree_leaf_type = normalize_tree_leaf_type(args.tree_leaf_type)
-    except ValueError as exc:
-        parser.error(str(exc))
-    try:
-        args.action_adapter = normalize_action_adapter(args.action_adapter)
-    except ValueError as exc:
-        parser.error(str(exc))
-    args.tree_action_adapter = args.action_adapter
-    # Backward-compatible alias retained for older scripts.
-    args.action_output_mode = args.policy_head
+    if args.policy_name is not None:
+        try:
+            resolve_policy_name(args.policy_name)
+        except ValueError as exc:
+            parser.error(str(exc))
 
     if args.problem == "lost_sales_fixed_order_cost" and args.fixed_order_cost <= 0:
         parser.error("--fixed_order_cost must be positive when --problem=lost_sales_fixed_order_cost")
     if args.problem == "dual_sourcing" and args.expedited_lead_time > args.regular_lead_time:
         parser.error("--expedited_lead_time must be <= --regular_lead_time for dual_sourcing")
-    if args.tree_depth < 1:
-        parser.error("--tree_depth must be at least 1")
-    if args.tree_temperature <= 0:
-        parser.error("--tree_temperature must be positive")
+    if argv != [] and args.policy_name is None:
+        parser.error("--policy_name is required")
+    if args.policy_name is not None:
+        apply_policy_name(args)
 
     return args

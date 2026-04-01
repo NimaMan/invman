@@ -8,6 +8,7 @@ if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
 
 from invman.experiment_runner import run_experiment
+from invman.policies.registry import apply_policy_name, make_soft_tree_policy_name
 from invman.problems.dual_sourcing.reference_instances import build_reference_args
 
 
@@ -36,8 +37,6 @@ def parse_args():
     parser.add_argument("--reference", default="dual_l4_ce110", help="Named dual-sourcing reference instance.")
     parser.add_argument(
         "--action_adapters",
-        "--tree_action_adapters",
-        dest="action_adapters",
         nargs="+",
         default=[
             "identity",
@@ -63,15 +62,16 @@ def _prepare_args(parsed, root, action_adapter, depth):
     budget = BUDGETS[parsed.budget]
     args = build_reference_args(parsed.reference)
     args.problem = "dual_sourcing"
-    args.policy_type = "soft_tree"
+    args.policy_name = make_soft_tree_policy_name(
+        depth=depth,
+        temperature=parsed.tree_temperature,
+        split_type=parsed.tree_split_type,
+        leaf_type=parsed.tree_leaf_type,
+        action_adapter=action_adapter,
+    )
+    apply_policy_name(args)
     args.rollout_backend = "rust"
     args.training_method = "cma"
-    args.tree_depth = depth
-    args.tree_temperature = parsed.tree_temperature
-    args.tree_split_type = parsed.tree_split_type
-    args.tree_leaf_type = parsed.tree_leaf_type
-    args.action_adapter = action_adapter
-    args.tree_action_adapter = action_adapter
     args.sigma_init = parsed.sigma_init
     args.seed = parsed.seed
     args.mp_num_processors = parsed.mp_num_processors
@@ -84,10 +84,7 @@ def _prepare_args(parsed, root, action_adapter, depth):
     args.results_dir = str(root / "results")
     args.log_dir = str(root / "logs")
     args.trained_models_dir = str(root / "models")
-    args.experiment_name = (
-        f"{parsed.run_tag}_{parsed.budget}_{action_adapter}_"
-        f"d{depth}_{parsed.tree_split_type}_{parsed.tree_leaf_type}"
-    )
+    args.experiment_name = f"{parsed.run_tag}_{parsed.budget}_{args.policy_name}"
     return args
 
 

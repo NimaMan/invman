@@ -1,14 +1,16 @@
 use pyo3::exceptions::PyValueError;
 use pyo3::PyResult;
-use rayon::prelude::*;
 use rand::rngs::StdRng;
 use rand::Rng;
 use rand::SeedableRng;
+use rayon::prelude::*;
 
 use crate::core::policies::soft_tree::{
     action_vector_from_flat_params, SoftTreeActionSpec, SoftTreeLeafType, SoftTreeSplitType,
 };
-use crate::problems::dual_sourcing::env::{epoch_cost, initialize_state, step_state, validate_action};
+use crate::problems::dual_sourcing::env::{
+    epoch_cost, initialize_state, step_state, validate_action,
+};
 use crate::problems::dual_sourcing::policies::{action_from_controls, DualSourcingActionAdapter};
 
 #[derive(Clone)]
@@ -44,9 +46,15 @@ fn mean_after_warmup(epoch_costs: &[f64], warm_up_periods_ratio: f64) -> f64 {
     active_costs.iter().sum::<f64>() / active_costs.len() as f64
 }
 
-pub fn rollout(flat_params: &[f32], config: &DualSourcingRolloutConfig, seed: u64) -> PyResult<f64> {
+pub fn rollout(
+    flat_params: &[f32],
+    config: &DualSourcingRolloutConfig,
+    seed: u64,
+) -> PyResult<f64> {
     if config.input_dim != config.regular_lead_time {
-        return Err(PyValueError::new_err("dual-sourcing rollout expects input_dim == regular_lead_time"));
+        return Err(PyValueError::new_err(
+            "dual-sourcing rollout expects input_dim == regular_lead_time",
+        ));
     }
     let mut rng = StdRng::seed_from_u64(seed);
     let mut env_state = initialize_state(
@@ -101,10 +109,18 @@ pub fn rollout(flat_params: &[f32], config: &DualSourcingRolloutConfig, seed: u6
             config.holding_cost,
             config.shortage_cost,
         ));
-        env_state.reduced_state = step_state(&env_state.reduced_state, regular_order, expedited_order, demand);
+        env_state.reduced_state = step_state(
+            &env_state.reduced_state,
+            regular_order,
+            expedited_order,
+            demand,
+        );
     }
 
-    Ok(mean_after_warmup(&epoch_costs, config.warm_up_periods_ratio))
+    Ok(mean_after_warmup(
+        &epoch_costs,
+        config.warm_up_periods_ratio,
+    ))
 }
 
 pub fn rollout_from_demands(
@@ -157,12 +173,21 @@ pub fn rollout_from_demands(
         ));
         reduced_state = step_state(&reduced_state, regular_order, expedited_order, demand);
     }
-    Ok(mean_after_warmup(&epoch_costs, config.warm_up_periods_ratio))
+    Ok(mean_after_warmup(
+        &epoch_costs,
+        config.warm_up_periods_ratio,
+    ))
 }
 
-pub fn population_rollout(params_batch: &[Vec<f32>], config: &DualSourcingRolloutConfig, seeds: &[u64]) -> PyResult<Vec<f64>> {
+pub fn population_rollout(
+    params_batch: &[Vec<f32>],
+    config: &DualSourcingRolloutConfig,
+    seeds: &[u64],
+) -> PyResult<Vec<f64>> {
     if params_batch.len() != seeds.len() {
-        return Err(PyValueError::new_err("params batch size must match seeds size"));
+        return Err(PyValueError::new_err(
+            "params batch size must match seeds size",
+        ));
     }
     let results: Vec<PyResult<f64>> = params_batch
         .par_iter()

@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from invman.policies.registry import apply_policy_name
 from invman.problems.lost_sales_fixed_order_cost.reference_instances import build_reference_args
 
 
@@ -16,25 +17,17 @@ COMMON_BUDGET = {
 EXPERIMENT_SPECS = [
     {
         "id": "linear_categorical_quantity",
-        "policy_type": "linear",
-        "policy_head": "categorical_quantity",
         "rollout_backend": "rust",
         "status": "trusted",
     },
     {
         "id": "linear_gated_ordinal_quantity",
-        "policy_type": "linear",
-        "policy_head": "gated_ordinal_quantity",
-        "rollout_backend": "python",
+        "rollout_backend": "rust",
         "status": "trusted",
     },
     {
         "id": "nn_categorical_quantity",
-        "policy_type": "nn",
-        "policy_head": "categorical_quantity",
         "rollout_backend": "rust",
-        "hidden_dim": [50],
-        "activation": "selu",
         "status": "provisional",
         "note": (
             "Current canonical run matches the linear categorical baseline exactly and should be "
@@ -43,31 +36,17 @@ EXPERIMENT_SPECS = [
     },
     {
         "id": "nn_gated_ordinal_quantity",
-        "policy_type": "nn",
-        "policy_head": "gated_ordinal_quantity",
-        "rollout_backend": "python",
-        "hidden_dim": [50],
-        "activation": "selu",
+        "rollout_backend": "rust",
         "status": "trusted",
     },
     {
         "id": "soft_tree_depth2_linear_leaf",
-        "policy_type": "soft_tree",
         "rollout_backend": "rust",
-        "tree_depth": 2,
-        "tree_temperature": 0.25,
-        "tree_split_type": "oblique",
-        "tree_leaf_type": "linear",
         "status": "trusted",
     },
     {
         "id": "soft_tree_depth1_linear_leaf",
-        "policy_type": "soft_tree",
         "rollout_backend": "rust",
-        "tree_depth": 1,
-        "tree_temperature": 0.25,
-        "tree_split_type": "oblique",
-        "tree_leaf_type": "linear",
         "status": "trusted",
     },
 ]
@@ -93,7 +72,8 @@ def configure_run_args(
     args.eval_horizon = parsed.eval_horizon
     args.eval_seeds = parsed.eval_seeds
     args.sigma_init = COMMON_BUDGET["sigma_init"]
-    args.policy_type = spec["policy_type"]
+    args.policy_name = spec["id"]
+    apply_policy_name(args)
     args.rollout_backend = spec["rollout_backend"]
     args.results_dir = str(root / "results")
     args.log_dir = str(root / "logs")
@@ -102,21 +82,6 @@ def configure_run_args(
         args.experiment_name = f"{parsed.run_tag}_{reference_name}_{spec['id']}"
     else:
         args.experiment_name = f"{parsed.run_tag}_{spec['id']}"
-
-    if args.policy_type == "linear":
-        args.policy_head = spec["policy_head"]
-    elif args.policy_type == "nn":
-        args.policy_head = spec["policy_head"]
-        args.hidden_dim = spec["hidden_dim"]
-        args.activation = spec["activation"]
-    elif args.policy_type == "soft_tree":
-        args.policy_head = "categorical_quantity"
-        args.tree_depth = spec["tree_depth"]
-        args.tree_temperature = spec["tree_temperature"]
-        args.tree_split_type = spec["tree_split_type"]
-        args.tree_leaf_type = spec["tree_leaf_type"]
-    else:  # pragma: no cover
-        raise NotImplementedError(spec["policy_type"])
 
     return args
 

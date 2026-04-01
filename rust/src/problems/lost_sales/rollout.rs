@@ -1,15 +1,19 @@
 use pyo3::exceptions::PyValueError;
 use pyo3::PyResult;
-use rayon::prelude::*;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
 use rand_distr::{Distribution, Poisson};
+use rayon::prelude::*;
 
 use crate::core::policies::dense::{
-    linear_categorical_action_from_flat_params, mlp_categorical_action_from_flat_params, ActivationKind,
+    linear_action_from_flat_params, mlp_action_from_flat_params, ActivationKind, DensePolicyHead,
 };
-use crate::core::policies::soft_tree::{action_from_flat_params, SoftTreeLeafType, SoftTreeSplitType};
-use crate::problems::lost_sales::env::{build_pipeline_state, epoch_cost, initialize_state, LostSalesState};
+use crate::core::policies::soft_tree::{
+    action_from_flat_params, SoftTreeLeafType, SoftTreeSplitType,
+};
+use crate::problems::lost_sales::env::{
+    build_pipeline_state, epoch_cost, initialize_state, LostSalesState,
+};
 
 #[derive(Clone, Copy)]
 pub struct LostSalesRolloutConfig {
@@ -34,6 +38,7 @@ pub struct LostSalesLinearRolloutConfig {
     pub input_dim: usize,
     pub output_dim: usize,
     pub max_order_size: usize,
+    pub policy_head: DensePolicyHead,
     pub demand_rate: f64,
     pub lead_time: usize,
     pub holding_cost: f64,
@@ -50,6 +55,7 @@ pub struct LostSalesNeuralRolloutConfig {
     pub hidden_dims: Vec<usize>,
     pub output_dim: usize,
     pub max_order_size: usize,
+    pub policy_head: DensePolicyHead,
     pub demand_rate: f64,
     pub lead_time: usize,
     pub holding_cost: f64,
@@ -66,10 +72,14 @@ fn validate_config(config: &LostSalesRolloutConfig) -> PyResult<()> {
         return Err(PyValueError::new_err("lead_time must be at least 1"));
     }
     if config.input_dim != config.lead_time {
-        return Err(PyValueError::new_err("input_dim must match lead_time for pipeline state"));
+        return Err(PyValueError::new_err(
+            "input_dim must match lead_time for pipeline state",
+        ));
     }
     if !(0.0..=1.0).contains(&config.warm_up_periods_ratio) {
-        return Err(PyValueError::new_err("warm_up_periods_ratio must be in [0, 1]"));
+        return Err(PyValueError::new_err(
+            "warm_up_periods_ratio must be in [0, 1]",
+        ));
     }
     Ok(())
 }
@@ -79,13 +89,19 @@ fn validate_linear_config(config: &LostSalesLinearRolloutConfig) -> PyResult<()>
         return Err(PyValueError::new_err("lead_time must be at least 1"));
     }
     if config.input_dim != config.lead_time {
-        return Err(PyValueError::new_err("input_dim must match lead_time for pipeline state"));
+        return Err(PyValueError::new_err(
+            "input_dim must match lead_time for pipeline state",
+        ));
     }
     if config.output_dim != config.max_order_size + 1 {
-        return Err(PyValueError::new_err("output_dim must equal max_order_size + 1"));
+        return Err(PyValueError::new_err(
+            "output_dim must equal max_order_size + 1",
+        ));
     }
     if !(0.0..=1.0).contains(&config.warm_up_periods_ratio) {
-        return Err(PyValueError::new_err("warm_up_periods_ratio must be in [0, 1]"));
+        return Err(PyValueError::new_err(
+            "warm_up_periods_ratio must be in [0, 1]",
+        ));
     }
     Ok(())
 }
@@ -98,6 +114,7 @@ fn validate_neural_config(config: &LostSalesNeuralRolloutConfig) -> PyResult<()>
         input_dim: config.input_dim,
         output_dim: config.output_dim,
         max_order_size: config.max_order_size,
+        policy_head: config.policy_head,
         demand_rate: config.demand_rate,
         lead_time: config.lead_time,
         holding_cost: config.holding_cost,
@@ -120,18 +137,19 @@ fn mean_after_warmup(epoch_costs: &[f64], warm_up_periods_ratio: f64) -> f64 {
     active_costs.iter().sum::<f64>() / active_costs.len() as f64
 }
 
-pub fn rollout(
-    flat_params: &[f32],
-    config: &LostSalesRolloutConfig,
-    seed: u64,
-) -> PyResult<f64> {
+pub fn rollout(flat_params: &[f32], config: &LostSalesRolloutConfig, seed: u64) -> PyResult<f64> {
     validate_config(config)?;
 
     let mut rng = StdRng::seed_from_u64(seed);
     let demand_dist = Poisson::new(config.demand_rate)
         .map_err(|err| PyValueError::new_err(format!("invalid demand_rate: {err}")))?;
-    let mut env_state =
-        initialize_state(config.demand_rate, config.lead_time, config.max_order_size, &mut rng, &demand_dist);
+    let mut env_state = initialize_state(
+        config.demand_rate,
+        config.lead_time,
+        config.max_order_size,
+        &mut rng,
+        &demand_dist,
+    );
     let mut epoch_costs = Vec::with_capacity(config.horizon);
 
     for _ in 0..config.horizon {
@@ -168,7 +186,10 @@ pub fn rollout(
         epoch_costs.push(cost);
     }
 
-    Ok(mean_after_warmup(&epoch_costs, config.warm_up_periods_ratio))
+    Ok(mean_after_warmup(
+        &epoch_costs,
+        config.warm_up_periods_ratio,
+    ))
 }
 
 pub fn rollout_from_demands(
@@ -181,10 +202,14 @@ pub fn rollout_from_demands(
         return Err(PyValueError::new_err("lead_time_orders must be non-empty"));
     }
     if config.input_dim != env_state.lead_time_orders.len() {
-        return Err(PyValueError::new_err("input_dim must match lead_time_orders length"));
+        return Err(PyValueError::new_err(
+            "input_dim must match lead_time_orders length",
+        ));
     }
     if !(0.0..=1.0).contains(&config.warm_up_periods_ratio) {
-        return Err(PyValueError::new_err("warm_up_periods_ratio must be in [0, 1]"));
+        return Err(PyValueError::new_err(
+            "warm_up_periods_ratio must be in [0, 1]",
+        ));
     }
 
     let mut epoch_costs = Vec::with_capacity(demands.len());
@@ -221,7 +246,10 @@ pub fn rollout_from_demands(
         epoch_costs.push(cost);
     }
 
-    Ok(mean_after_warmup(&epoch_costs, config.warm_up_periods_ratio))
+    Ok(mean_after_warmup(
+        &epoch_costs,
+        config.warm_up_periods_ratio,
+    ))
 }
 
 pub fn population_rollout(
@@ -260,8 +288,13 @@ pub fn linear_rollout(
     let mut rng = StdRng::seed_from_u64(seed);
     let demand_dist = Poisson::new(config.demand_rate)
         .map_err(|err| PyValueError::new_err(format!("invalid demand_rate: {err}")))?;
-    let mut env_state =
-        initialize_state(config.demand_rate, config.lead_time, config.max_order_size, &mut rng, &demand_dist);
+    let mut env_state = initialize_state(
+        config.demand_rate,
+        config.lead_time,
+        config.max_order_size,
+        &mut rng,
+        &demand_dist,
+    );
     let mut epoch_costs = Vec::with_capacity(config.horizon);
 
     for _ in 0..config.horizon {
@@ -270,11 +303,13 @@ pub fn linear_rollout(
             &env_state.lead_time_orders,
             config.max_order_size,
         );
-        let action = linear_categorical_action_from_flat_params(
+        let action = linear_action_from_flat_params(
             &state,
             flat_params,
             config.input_dim,
             config.output_dim,
+            config.policy_head,
+            config.max_order_size,
         )?;
         let arriving_order = env_state.lead_time_orders.remove(0);
         env_state.lead_time_orders.push(action);
@@ -292,7 +327,10 @@ pub fn linear_rollout(
         epoch_costs.push(cost);
     }
 
-    Ok(mean_after_warmup(&epoch_costs, config.warm_up_periods_ratio))
+    Ok(mean_after_warmup(
+        &epoch_costs,
+        config.warm_up_periods_ratio,
+    ))
 }
 
 pub fn linear_rollout_from_demands(
@@ -303,7 +341,9 @@ pub fn linear_rollout_from_demands(
 ) -> PyResult<f64> {
     validate_linear_config(config)?;
     if env_state.lead_time_orders.len() != config.input_dim {
-        return Err(PyValueError::new_err("lead_time_orders length must match input_dim"));
+        return Err(PyValueError::new_err(
+            "lead_time_orders length must match input_dim",
+        ));
     }
 
     let mut epoch_costs = Vec::with_capacity(demands.len());
@@ -313,11 +353,13 @@ pub fn linear_rollout_from_demands(
             &env_state.lead_time_orders,
             config.max_order_size,
         );
-        let action = linear_categorical_action_from_flat_params(
+        let action = linear_action_from_flat_params(
             &state,
             flat_params,
             config.input_dim,
             config.output_dim,
+            config.policy_head,
+            config.max_order_size,
         )?;
         let arriving_order = env_state.lead_time_orders.remove(0);
         env_state.lead_time_orders.push(action);
@@ -334,7 +376,10 @@ pub fn linear_rollout_from_demands(
         epoch_costs.push(cost);
     }
 
-    Ok(mean_after_warmup(&epoch_costs, config.warm_up_periods_ratio))
+    Ok(mean_after_warmup(
+        &epoch_costs,
+        config.warm_up_periods_ratio,
+    ))
 }
 
 pub fn linear_population_rollout(
@@ -371,8 +416,13 @@ pub fn neural_rollout(
     let mut rng = StdRng::seed_from_u64(seed);
     let demand_dist = Poisson::new(config.demand_rate)
         .map_err(|err| PyValueError::new_err(format!("invalid demand_rate: {err}")))?;
-    let mut env_state =
-        initialize_state(config.demand_rate, config.lead_time, config.max_order_size, &mut rng, &demand_dist);
+    let mut env_state = initialize_state(
+        config.demand_rate,
+        config.lead_time,
+        config.max_order_size,
+        &mut rng,
+        &demand_dist,
+    );
     let mut epoch_costs = Vec::with_capacity(config.horizon);
 
     for _ in 0..config.horizon {
@@ -381,13 +431,15 @@ pub fn neural_rollout(
             &env_state.lead_time_orders,
             config.max_order_size,
         );
-        let action = mlp_categorical_action_from_flat_params(
+        let action = mlp_action_from_flat_params(
             &state,
             flat_params,
             config.input_dim,
             &config.hidden_dims,
             config.output_dim,
             config.activation,
+            config.policy_head,
+            config.max_order_size,
         )?;
         let arriving_order = env_state.lead_time_orders.remove(0);
         env_state.lead_time_orders.push(action);
@@ -405,7 +457,10 @@ pub fn neural_rollout(
         epoch_costs.push(cost);
     }
 
-    Ok(mean_after_warmup(&epoch_costs, config.warm_up_periods_ratio))
+    Ok(mean_after_warmup(
+        &epoch_costs,
+        config.warm_up_periods_ratio,
+    ))
 }
 
 pub fn neural_rollout_from_demands(
@@ -416,7 +471,9 @@ pub fn neural_rollout_from_demands(
 ) -> PyResult<f64> {
     validate_neural_config(config)?;
     if env_state.lead_time_orders.len() != config.input_dim {
-        return Err(PyValueError::new_err("lead_time_orders length must match input_dim"));
+        return Err(PyValueError::new_err(
+            "lead_time_orders length must match input_dim",
+        ));
     }
 
     let mut epoch_costs = Vec::with_capacity(demands.len());
@@ -426,13 +483,15 @@ pub fn neural_rollout_from_demands(
             &env_state.lead_time_orders,
             config.max_order_size,
         );
-        let action = mlp_categorical_action_from_flat_params(
+        let action = mlp_action_from_flat_params(
             &state,
             flat_params,
             config.input_dim,
             &config.hidden_dims,
             config.output_dim,
             config.activation,
+            config.policy_head,
+            config.max_order_size,
         )?;
         let arriving_order = env_state.lead_time_orders.remove(0);
         env_state.lead_time_orders.push(action);
@@ -449,7 +508,10 @@ pub fn neural_rollout_from_demands(
         epoch_costs.push(cost);
     }
 
-    Ok(mean_after_warmup(&epoch_costs, config.warm_up_periods_ratio))
+    Ok(mean_after_warmup(
+        &epoch_costs,
+        config.warm_up_periods_ratio,
+    ))
 }
 
 pub fn neural_population_rollout(

@@ -68,14 +68,20 @@ pub fn build_action_spec(
 ) -> PyResult<SoftTreeActionSpec> {
     let parsed_action_mode = parse_action_mode(action_mode)?;
     if min_values.len() != max_values.len() {
-        return Err(PyValueError::new_err("min_values and max_values must have the same length"));
+        return Err(PyValueError::new_err(
+            "min_values and max_values must have the same length",
+        ));
     }
     if min_values.is_empty() {
-        return Err(PyValueError::new_err("action specs must contain at least one dimension"));
+        return Err(PyValueError::new_err(
+            "action specs must contain at least one dimension",
+        ));
     }
     if let Some(ref values) = allowed_values {
         if values.len() != min_values.len() {
-            return Err(PyValueError::new_err("allowed_values must match action dimensionality"));
+            return Err(PyValueError::new_err(
+                "allowed_values must match action dimensionality",
+            ));
         }
         if parsed_action_mode != SoftTreeActionMode::DiscreteGrid {
             return Err(PyValueError::new_err(
@@ -84,7 +90,9 @@ pub fn build_action_spec(
         }
         for allowed in values.iter() {
             if allowed.is_empty() {
-                return Err(PyValueError::new_err("each allowed_values entry must be non-empty"));
+                return Err(PyValueError::new_err(
+                    "each allowed_values entry must be non-empty",
+                ));
             }
         }
     }
@@ -242,7 +250,8 @@ fn leaf_output_from_flat_params(
             let bias_start = bias_end + weights_len;
             let mut outputs = vec![0.0f32; action_dim];
             for action_idx in 0..action_dim {
-                let row_start = weights_start + leaf_idx * action_dim * input_dim + action_idx * input_dim;
+                let row_start =
+                    weights_start + leaf_idx * action_dim * input_dim + action_idx * input_dim;
                 let mut raw = flat_params[bias_start + leaf_idx * action_dim + action_idx];
                 for feat_idx in 0..input_dim {
                     raw += flat_params[row_start + feat_idx] * state[feat_idx];
@@ -266,7 +275,10 @@ fn project_action_value(action_value: &[f32], action_spec: &SoftTreeActionSpec) 
             }
         }
         SoftTreeActionMode::DiscreteGrid => {
-            let allowed_values = action_spec.allowed_values.as_ref().expect("discrete grid requires allowed values");
+            let allowed_values = action_spec
+                .allowed_values
+                .as_ref()
+                .expect("discrete grid requires allowed values");
             for (dim_idx, value) in action_value.iter().enumerate() {
                 let mut best = allowed_values[dim_idx][0];
                 let mut best_distance = (best as f32 - *value).abs();

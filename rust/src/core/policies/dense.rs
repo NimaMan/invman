@@ -19,6 +19,24 @@ pub fn parse_activation(activation: &str) -> PyResult<ActivationKind> {
     }
 }
 
+#[derive(Clone, Copy)]
+pub enum DensePolicyHead {
+    CategoricalQuantity,
+    GatedOrdinalQuantity,
+    TwoStageOrdinalQuantity,
+}
+
+pub fn parse_policy_head(policy_head: &str) -> PyResult<DensePolicyHead> {
+    match policy_head {
+        "categorical_quantity" => Ok(DensePolicyHead::CategoricalQuantity),
+        "gated_ordinal_quantity" => Ok(DensePolicyHead::GatedOrdinalQuantity),
+        "two_stage_ordinal_quantity" => Ok(DensePolicyHead::TwoStageOrdinalQuantity),
+        other => Err(PyValueError::new_err(format!(
+            "unsupported dense policy head '{other}', expected one of: categorical_quantity, gated_ordinal_quantity, two_stage_ordinal_quantity"
+        ))),
+    }
+}
+
 fn apply_activation(x: f32, activation: ActivationKind) -> f32 {
     match activation {
         ActivationKind::Relu => x.max(0.0),
@@ -51,6 +69,10 @@ fn argmax_first(values: &[f32]) -> usize {
     best_idx
 }
 
+fn sigmoid(x: f32) -> f32 {
+    1.0 / (1.0 + (-x).exp())
+}
+
 fn dense_forward(input: &[f32], weights: &[f32], bias: &[f32], out_dim: usize) -> Vec<f32> {
     let in_dim = input.len();
     let mut output = vec![0.0_f32; out_dim];
@@ -65,11 +87,54 @@ fn dense_forward(input: &[f32], weights: &[f32], bias: &[f32], out_dim: usize) -
     output
 }
 
-pub fn linear_categorical_action_from_flat_params(
+fn dense_action_from_logits(
+    logits: &[f32],
+    policy_head: DensePolicyHead,
+    max_order_size: usize,
+) -> PyResult<usize> {
+    match policy_head {
+        DensePolicyHead::CategoricalQuantity => Ok(argmax_first(logits)),
+        DensePolicyHead::GatedOrdinalQuantity => {
+            if logits.len() != max_order_size + 1 {
+                return Err(PyValueError::new_err(format!(
+                    "gated ordinal logits length {} does not match expected {}",
+                    logits.len(),
+                    max_order_size + 1
+                )));
+            }
+            let gate_prob = sigmoid(logits[0]);
+            let quantity_score: f32 = logits[1..].iter().map(|value| sigmoid(*value)).sum();
+            let action = (gate_prob * quantity_score)
+                .round()
+                .clamp(0.0, max_order_size as f32) as usize;
+            Ok(action)
+        }
+        DensePolicyHead::TwoStageOrdinalQuantity => {
+            if logits.len() != max_order_size + 1 {
+                return Err(PyValueError::new_err(format!(
+                    "two-stage ordinal logits length {} does not match expected {}",
+                    logits.len(),
+                    max_order_size + 1
+                )));
+            }
+            let gate_prob = sigmoid(logits[0]);
+            if gate_prob < 0.5 {
+                return Ok(0);
+            }
+            let quantity_score: f32 = logits[1..].iter().map(|value| sigmoid(*value)).sum();
+            let action = quantity_score.round().clamp(1.0, max_order_size as f32) as usize;
+            Ok(action)
+        }
+    }
+}
+
+pub fn linear_action_from_flat_params(
     state: &[f32],
     flat_params: &[f32],
     input_dim: usize,
     output_dim: usize,
+    policy_head: DensePolicyHead,
+    max_order_size: usize,
 ) -> PyResult<usize> {
     if state.len() != input_dim {
         return Err(PyValueError::new_err(format!(
@@ -87,17 +152,24 @@ pub fn linear_categorical_action_from_flat_params(
         )));
     }
     let split = output_dim * input_dim;
-    let logits = dense_forward(state, &flat_params[..split], &flat_params[split..], output_dim);
-    Ok(argmax_first(&logits))
+    let logits = dense_forward(
+        state,
+        &flat_params[..split],
+        &flat_params[split..],
+        output_dim,
+    );
+    dense_action_from_logits(&logits, policy_head, max_order_size)
 }
 
-pub fn mlp_categorical_action_from_flat_params(
+pub fn mlp_action_from_flat_params(
     state: &[f32],
     flat_params: &[f32],
     input_dim: usize,
     hidden_dims: &[usize],
     output_dim: usize,
     activation: ActivationKind,
+    policy_head: DensePolicyHead,
+    max_order_size: usize,
 ) -> PyResult<usize> {
     if state.len() != input_dim {
         return Err(PyValueError::new_err(format!(
@@ -107,7 +179,9 @@ pub fn mlp_categorical_action_from_flat_params(
         )));
     }
     if hidden_dims.is_empty() {
-        return Err(PyValueError::new_err("hidden_dims must be non-empty for mlp policy"));
+        return Err(PyValueError::new_err(
+            "hidden_dims must be non-empty for mlp policy",
+        ));
     }
 
     let mut expected = 0usize;
@@ -150,5 +224,5 @@ pub fn mlp_categorical_action_from_flat_params(
         &flat_params[cursor + weight_len..cursor + weight_len + output_dim],
         output_dim,
     );
-    Ok(argmax_first(&logits))
+    dense_action_from_logits(&logits, policy_head, max_order_size)
 }

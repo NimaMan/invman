@@ -1,7 +1,6 @@
 import argparse
 import json
 import sys
-from copy import copy
 from pathlib import Path
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[2]
@@ -16,6 +15,7 @@ from invman.problems.lost_sales_fixed_order_cost.experiment_spec import (
     configure_run_args,
     result_path_for,
 )
+from invman.problems.lost_sales_fixed_order_cost.reference_instances import get_reference_instance
 
 
 def parse_args():
@@ -64,35 +64,63 @@ def _render_markdown(summary):
     best_heuristic_cost = min(
         heuristic[name]["mean_cost"] for name in ("s_s", "s_nq", "modified_s_s_q")
     )
+    optimal_reference = summary.get("optimal_reference")
+    has_optimal = bool(optimal_reference and optimal_reference.get("available"))
     lines = [
-        "# Canonical Fixed-Cost Benchmark Suite",
+        "# Fixed-Cost Benchmark Suite",
         "",
         f"Reference instance: `{summary['reference']}`",
         "",
-        "## Heuristic Baseline",
-        "",
-        "| Policy | Params | Mean cost |",
-        "| --- | --- | ---: |",
-        f"| `s,S` | `{heuristic['s_s']['params']}` | `{heuristic['s_s']['mean_cost']:.5f}` |",
-        f"| `s,nQ` | `{heuristic['s_nq']['params']}` | `{heuristic['s_nq']['mean_cost']:.5f}` |",
-        f"| modified `s,S,q` | `{heuristic['modified_s_s_q']['params']}` | `{heuristic['modified_s_s_q']['mean_cost']:.5f}` |",
-        "",
-        "## Policy Function Approximators",
-        "",
-        "| Approximator | Architecture | Backend | Eval horizon | Mean cost | Gap vs best heuristic |",
-        "| --- | --- | --- | ---: | ---: | ---: |",
     ]
+    if has_optimal:
+        lines.extend(
+            [
+                "## Literature Anchor",
+                "",
+                f"- optimal: `{optimal_reference['mean_cost']:.5f}`",
+                "",
+            ]
+        )
+    lines.extend(
+        [
+            "## Heuristic Baseline",
+            "",
+            "| Policy | Params | Mean cost |",
+            "| --- | --- | ---: |",
+            f"| `s,S` | `{heuristic['s_s']['params']}` | `{heuristic['s_s']['mean_cost']:.5f}` |",
+            f"| `s,nQ` | `{heuristic['s_nq']['params']}` | `{heuristic['s_nq']['mean_cost']:.5f}` |",
+            f"| modified `s,S,q` | `{heuristic['modified_s_s_q']['params']}` | `{heuristic['modified_s_s_q']['mean_cost']:.5f}` |",
+            "",
+            "## Policy Function Approximators",
+            "",
+            (
+                "| Approximator | Architecture | Backend | Eval horizon | Mean cost | Gap vs best heuristic | Gap vs optimal |"
+                if has_optimal
+                else "| Approximator | Architecture | Backend | Eval horizon | Mean cost | Gap vs best heuristic |"
+            ),
+            (
+                "| --- | --- | --- | ---: | ---: | ---: | ---: |"
+                if has_optimal
+                else "| --- | --- | --- | ---: | ---: | ---: |"
+            ),
+        ]
+    )
     for result in summary["learned_policies"]:
         learned_cost = result["evaluation"]["learned_policy"]["mean_cost"]
+        row = [
+            result["label"],
+            f"`{result['payload']['policy_architecture']}`",
+            f"`{result['payload']['rollout_backend']}`",
+            f"`{result['payload']['evaluation_horizon']}`",
+            f"`{learned_cost:.5f}`",
+            f"`{learned_cost - best_heuristic_cost:.5f}`",
+        ]
+        if has_optimal:
+            row.append(f"`{learned_cost - float(optimal_reference['mean_cost']):.5f}`")
         lines.append(
-            "| {name} | `{arch}` | `{backend}` | `{horizon}` | `{cost:.5f}` | `{gap:.5f}` |".format(
-                name=result["label"],
-                arch=result["payload"]["policy_architecture"],
-                backend=result["payload"]["rollout_backend"],
-                horizon=result["payload"]["evaluation_horizon"],
-                cost=learned_cost,
-                gap=learned_cost - best_heuristic_cost,
-            )
+            "| " + " | ".join(
+                [row[0], *row[1:]]
+            ) + " |"
         )
     lines.extend(
         [
@@ -131,10 +159,16 @@ def main():
     _ensure_dirs(root)
     selected_ids = set(parsed.only) if parsed.only else None
     summary_json, summary_md = _summary_paths(root)
+    optimal_reference = (
+        get_reference_instance(parsed.reference)
+        .get("benchmark_anchors", {})
+        .get("published_optimal_reference", {"available": False})
+    )
 
     if parsed.reuse_existing_summary and summary_json.exists():
         existing_summary = json.loads(summary_json.read_text(encoding="utf-8"))
         heuristic_summary = existing_summary["heuristics"]
+        optimal_reference = existing_summary.get("optimal_reference", optimal_reference)
     else:
         heuristic_summary = benchmark_reference_instance(
             parsed.reference,
@@ -172,6 +206,7 @@ def main():
         "search_horizon": parsed.search_horizon,
         "eval_horizon": parsed.eval_horizon,
         "eval_seeds": parsed.eval_seeds,
+        "optimal_reference": optimal_reference,
         "heuristics": heuristic_summary,
         "learned_policies": learned_policy_results,
     }

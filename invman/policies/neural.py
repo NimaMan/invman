@@ -32,6 +32,7 @@ class PolicyNet(ESModule):
         self.input_dim = input_dim
         self.hidden_dim = hidden_layers
         self.output_dim = output_dim
+        self.activation_name = str(activation)
         self.activation = get_activation_function(activation)
         self.action_output_mode = normalize_policy_head(action_output_mode)
         self.max_order_size = max_order_size

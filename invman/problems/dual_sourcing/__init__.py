@@ -22,7 +22,7 @@ from invman.problems.dual_sourcing.heuristics import (
     search_best_tailored_base_surge_policy,
 )
 from invman.problems.dual_sourcing.policies import (
-    SUPPORTED_POLICY_TYPES,
+    SUPPORTED_POLICY_BACKBONES,
     apply_action_adapter,
     build_action_adapter_config,
     build_control_spec,
@@ -43,7 +43,7 @@ __all__ = [
     "DualSourcingEnv",
     "DUAL_SOURCING_BENCHMARK_REFERENCE",
     "DUAL_SOURCING_REFERENCE_INSTANCES",
-    "SUPPORTED_POLICY_TYPES",
+    "SUPPORTED_POLICY_BACKBONES",
     "apply_action_adapter",
     "build_action_adapter_config",
     "build_control_spec",

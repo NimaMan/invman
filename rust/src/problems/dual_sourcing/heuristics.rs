@@ -14,30 +14,66 @@ fn mean_after_warmup(epoch_costs: &[f64], warm_up_periods_ratio: f64) -> f64 {
     active_costs.iter().sum::<f64>() / active_costs.len() as f64
 }
 
-fn single_index_action(regular_inventory_position: i64, s_e: usize, s_r: usize, max_regular: usize, max_expedited: usize) -> (usize, usize) {
-    let expedited = s_e.saturating_sub(regular_inventory_position.max(0) as usize).min(max_expedited);
+fn single_index_action(
+    regular_inventory_position: i64,
+    s_e: usize,
+    s_r: usize,
+    max_regular: usize,
+    max_expedited: usize,
+) -> (usize, usize) {
+    let expedited = s_e
+        .saturating_sub(regular_inventory_position.max(0) as usize)
+        .min(max_expedited);
     let regular = s_r
         .saturating_sub(regular_inventory_position.max(0) as usize + expedited)
         .min(max_regular);
     (regular, expedited)
 }
 
-fn dual_index_action(expedited_inventory_position: i64, regular_inventory_position: i64, s_e: usize, s_r: usize, max_regular: usize, max_expedited: usize) -> (usize, usize) {
-    let expedited = s_e.saturating_sub(expedited_inventory_position.max(0) as usize).min(max_expedited);
+fn dual_index_action(
+    expedited_inventory_position: i64,
+    regular_inventory_position: i64,
+    s_e: usize,
+    s_r: usize,
+    max_regular: usize,
+    max_expedited: usize,
+) -> (usize, usize) {
+    let expedited = s_e
+        .saturating_sub(expedited_inventory_position.max(0) as usize)
+        .min(max_expedited);
     let regular = s_r
         .saturating_sub(regular_inventory_position.max(0) as usize + expedited)
         .min(max_regular);
     (regular, expedited)
 }
 
-fn capped_dual_index_action(expedited_inventory_position: i64, regular_inventory_position: i64, s_e: usize, s_r: usize, cap_r: usize, max_regular: usize, max_expedited: usize) -> (usize, usize) {
-    let expedited = s_e.saturating_sub(expedited_inventory_position.max(0) as usize).min(max_expedited);
-    let desired_regular = s_r.saturating_sub(regular_inventory_position.max(0) as usize + expedited);
+fn capped_dual_index_action(
+    expedited_inventory_position: i64,
+    regular_inventory_position: i64,
+    s_e: usize,
+    s_r: usize,
+    cap_r: usize,
+    max_regular: usize,
+    max_expedited: usize,
+) -> (usize, usize) {
+    let expedited = s_e
+        .saturating_sub(expedited_inventory_position.max(0) as usize)
+        .min(max_expedited);
+    let desired_regular =
+        s_r.saturating_sub(regular_inventory_position.max(0) as usize + expedited);
     (desired_regular.min(cap_r).min(max_regular), expedited)
 }
 
-fn tailored_base_surge_action(expedited_inventory_position: i64, surge_level: usize, regular_qty: usize, max_regular: usize, max_expedited: usize) -> (usize, usize) {
-    let expedited = surge_level.saturating_sub(expedited_inventory_position.max(0) as usize).min(max_expedited);
+fn tailored_base_surge_action(
+    expedited_inventory_position: i64,
+    surge_level: usize,
+    regular_qty: usize,
+    max_regular: usize,
+    max_expedited: usize,
+) -> (usize, usize) {
+    let expedited = surge_level
+        .saturating_sub(expedited_inventory_position.max(0) as usize)
+        .min(max_expedited);
     (regular_qty.min(max_regular), expedited)
 }
 
@@ -91,7 +127,11 @@ fn rollout_policy_from_demands(
                 regular_max_order_size,
                 expedited_max_order_size,
             ),
-            _ => return Err(PyValueError::new_err(format!("unknown dual-sourcing policy '{policy_name}'"))),
+            _ => {
+                return Err(PyValueError::new_err(format!(
+                    "unknown dual-sourcing policy '{policy_name}'"
+                )))
+            }
         };
         epoch_costs.push(epoch_cost(
             &reduced_state,

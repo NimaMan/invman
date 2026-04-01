@@ -5,6 +5,7 @@ from numerical_experiments.catalog import get_suite, list_suites
 
 def test_ready_suites_include_lost_sales_and_fixed_cost_preflight_and_full_grid():
     ready_ids = {suite.suite_id for suite in list_suites(status="ready")}
+    assert "fixed_cost_known_optimum_validation" in ready_ids
     assert "fixed_cost_single_instance_check" in ready_ids
     assert "fixed_cost_full_policy_grid" in ready_ids
     assert "lost_sales_single_instance_check" in ready_ids
@@ -22,6 +23,12 @@ def test_can_build_command_for_lost_sales_and_fixed_cost_full_grid_suites():
     suite = get_suite("lost_sales_full_policy_grid")
     command = suite.command(Path("/tmp/project"), "python3")
     assert command[1].endswith("scripts/lost_sales/benchmark_full_suite.py")
+
+    suite = get_suite("fixed_cost_known_optimum_validation")
+    command = suite.command(Path("/tmp/project"), "python3")
+    assert command[1].endswith("scripts/lost_sales_fixed_order_cost/benchmark_canonical_suite.py")
+    assert "--reference" in command
+    assert "bijvank2015_table1_l2_p14_k5" in command
 
     suite = get_suite("fixed_cost_full_policy_grid")
     command = suite.command(Path("/tmp/project"), "python3")

@@ -3,36 +3,30 @@ import subprocess
 import sys
 from pathlib import Path
 
+from invman.policies.registry import make_dense_policy_name
+
 
 EXPERIMENTS = [
     {
-        "experiment_name": "diag_fixed_cost_nn_h8x8_sig5_pop10_1k",
-        "policy_type": "nn",
-        "hidden_dim": [8, 8],
+        "policy_name": make_dense_policy_name("nn", "categorical_quantity", hidden_dim=[8, 8], activation="selu"),
         "sigma_init": 5.0,
         "es_population": 10,
         "training_episodes": 1000,
     },
     {
-        "experiment_name": "diag_fixed_cost_nn_h16x16_sig5_pop10_1k",
-        "policy_type": "nn",
-        "hidden_dim": [16, 16],
+        "policy_name": make_dense_policy_name("nn", "categorical_quantity", hidden_dim=[16, 16], activation="selu"),
         "sigma_init": 5.0,
         "es_population": 10,
         "training_episodes": 1000,
     },
     {
-        "experiment_name": "diag_fixed_cost_nn_h16x16x16_sig5_pop10_1k",
-        "policy_type": "nn",
-        "hidden_dim": [16, 16, 16],
+        "policy_name": make_dense_policy_name("nn", "categorical_quantity", hidden_dim=[16, 16, 16], activation="selu"),
         "sigma_init": 5.0,
         "es_population": 10,
         "training_episodes": 1000,
     },
     {
-        "experiment_name": "diag_fixed_cost_nn_h16x16x16_sig1_pop10_1k",
-        "policy_type": "nn",
-        "hidden_dim": [16, 16, 16],
+        "policy_name": make_dense_policy_name("nn", "categorical_quantity", hidden_dim=[16, 16, 16], activation="selu"),
         "sigma_init": 1.0,
         "es_population": 10,
         "training_episodes": 1000,
@@ -41,13 +35,18 @@ EXPERIMENTS = [
 
 
 def build_command(experiment):
+    experiment_name = (
+        f"diag_fixed_cost_{experiment['policy_name']}_"
+        f"sig{str(experiment['sigma_init']).replace('.', 'p')}_"
+        f"pop{experiment['es_population']}_{int(experiment['training_episodes'] / 1000)}k"
+    )
     cmd = [
         sys.executable,
         "scripts/run_experiment.py",
         "--problem",
         "lost_sales_fixed_order_cost",
-        "--policy_type",
-        experiment["policy_type"],
+        "--policy_name",
+        experiment["policy_name"],
         "--training_episodes",
         str(experiment["training_episodes"]),
         "--es_population",
@@ -77,10 +76,8 @@ def build_command(experiment):
         "--track_demand",
         "--same_seed",
         "--experiment_name",
-        experiment["experiment_name"],
+        experiment_name,
     ]
-    if experiment["policy_type"] == "nn":
-        cmd.extend(["--hidden_dim", *[str(width) for width in experiment["hidden_dim"]]])
     return cmd
 
 
@@ -113,10 +110,15 @@ def main():
     summaries = []
 
     for experiment in EXPERIMENTS:
-        result_path = results_dir / f"{experiment['experiment_name']}.json"
+        experiment_name = (
+            f"diag_fixed_cost_{experiment['policy_name']}_"
+            f"sig{str(experiment['sigma_init']).replace('.', 'p')}_"
+            f"pop{experiment['es_population']}_{int(experiment['training_episodes'] / 1000)}k"
+        )
+        result_path = results_dir / f"{experiment_name}.json"
         if not result_path.exists():
             cmd = build_command(experiment)
-            log_path = log_dir / f"{experiment['experiment_name']}.log"
+            log_path = log_dir / f"{experiment_name}.log"
             print(f"running: {' '.join(cmd)}")
             print(f"log: {log_path}")
             with log_path.open("w", encoding="utf-8") as log_file:
@@ -129,7 +131,7 @@ def main():
                 )
         else:
             print(f"reusing existing result: {result_path}")
-        summaries.append(load_result(results_dir, experiment["experiment_name"]))
+        summaries.append(load_result(results_dir, experiment_name))
 
     summaries.sort(key=lambda item: item["learned_policy_mean_cost"])
     summary_path.write_text(json.dumps(summaries, indent=2), encoding="utf-8")

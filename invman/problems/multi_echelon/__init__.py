@@ -14,7 +14,7 @@ from invman.problems.multi_echelon.heuristics import (
     search_best_constant_base_stock_policy,
 )
 from invman.problems.multi_echelon.policies import (
-    SUPPORTED_POLICY_TYPES,
+    SUPPORTED_POLICY_BACKBONES,
     build_policy_context,
 )
 from invman.problems.multi_echelon.reference_instances import (
@@ -31,7 +31,7 @@ __all__ = [
     "MULTI_ECHELON_REFERENCE_INSTANCES",
     "MULTI_ECHELON_BENCHMARK_REFERENCE",
     "MultiEchelonEnv",
-    "SUPPORTED_POLICY_TYPES",
+    "SUPPORTED_POLICY_BACKBONES",
     "build_env_from_args",
     "build_fixed_demand_path",
     "build_policy_context",

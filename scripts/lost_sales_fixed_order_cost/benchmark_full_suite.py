@@ -89,6 +89,15 @@ def _load_or_run_experiment(args, *, reuse_existing: bool):
 
 
 def _optimal_reference(reference_name: str) -> dict:
+    reference = get_reference_instance(reference_name)
+    published = reference.get("benchmark_anchors", {}).get("published_optimal_reference")
+    if published is not None:
+        return {
+            "available": bool(published.get("available", True)),
+            "reference_instance": reference_name,
+            "source": "Bijvank2015ParametricPolicies",
+            "mean_cost": float(published["mean_cost"]),
+        }
     return {
         "available": False,
         "reference_instance": reference_name,

@@ -20,17 +20,33 @@ fn mean_after_warmup(epoch_costs: &[f64], warm_up_periods_ratio: f64) -> PyResul
 }
 
 fn inventory_position(current_inventory: i64, lead_time_orders: &[usize]) -> i64 {
-    current_inventory + lead_time_orders.iter().map(|order| *order as i64).sum::<i64>()
+    current_inventory
+        + lead_time_orders
+            .iter()
+            .map(|order| *order as i64)
+            .sum::<i64>()
 }
 
-pub fn s_s_order_quantity(inventory_position: i64, s: usize, s_up_to: usize, max_order_size: usize) -> usize {
+pub fn s_s_order_quantity(
+    inventory_position: i64,
+    s: usize,
+    s_up_to: usize,
+    max_order_size: usize,
+) -> usize {
     if inventory_position > s as i64 {
         return 0;
     }
-    s_up_to.saturating_sub(inventory_position.max(0) as usize).min(max_order_size)
+    s_up_to
+        .saturating_sub(inventory_position.max(0) as usize)
+        .min(max_order_size)
 }
 
-pub fn s_nq_order_quantity(inventory_position: i64, s: usize, q: usize, max_order_size: usize) -> PyResult<usize> {
+pub fn s_nq_order_quantity(
+    inventory_position: i64,
+    s: usize,
+    q: usize,
+    max_order_size: usize,
+) -> PyResult<usize> {
     if q == 0 {
         return Err(PyValueError::new_err("q must be positive"));
     }
@@ -55,7 +71,10 @@ pub fn modified_s_s_q_order_quantity(
     if inventory_position > s as i64 {
         return Ok(0);
     }
-    Ok(q.min(s_up_to.saturating_sub(inventory_position.max(0) as usize)).min(max_order_size))
+    Ok(
+        q.min(s_up_to.saturating_sub(inventory_position.max(0) as usize))
+            .min(max_order_size),
+    )
 }
 
 pub fn fixed_policy_rollout_from_demands(
@@ -96,7 +115,9 @@ pub fn fixed_policy_rollout_from_demands(
             }
             "modified_s_s_q" => {
                 if params.len() != 3 {
-                    return Err(PyValueError::new_err("modified_s_s_q expects params [s, S, q]"));
+                    return Err(PyValueError::new_err(
+                        "modified_s_s_q expects params [s, S, q]",
+                    ));
                 }
                 modified_s_s_q_order_quantity(
                     inventory_position,
@@ -216,7 +237,11 @@ pub fn search_modified_s_s_q_from_demands(
     fixed_order_cost: f64,
     warm_up_periods_ratio: f64,
     top_k: usize,
-) -> PyResult<((usize, usize, usize, f64), Vec<(usize, usize, usize, f64)>, usize)> {
+) -> PyResult<(
+    (usize, usize, usize, f64),
+    Vec<(usize, usize, usize, f64)>,
+    usize,
+)> {
     let mut results = Vec::new();
     for s in 0..position_upper_bound {
         for s_up_to in (s + 1)..=position_upper_bound {

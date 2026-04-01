@@ -1,10 +1,10 @@
 use pyo3::exceptions::PyValueError;
 use pyo3::PyResult;
-use rayon::prelude::*;
 use rand::rngs::StdRng;
 use rand::Rng;
 use rand::SeedableRng;
 use rand_distr::{Distribution, Normal};
+use rayon::prelude::*;
 
 use crate::core::policies::soft_tree::{
     action_vector_from_flat_params, SoftTreeActionSpec, SoftTreeLeafType, SoftTreeSplitType,
@@ -69,9 +69,15 @@ pub fn rollout(
     let mut epoch_costs = Vec::with_capacity(config.horizon);
 
     for _ in 0..config.horizon {
-        let policy_state = flattened_policy_state(&state, config.warehouse_inventory_cap, config.retailer_inventory_cap);
+        let policy_state = flattened_policy_state(
+            &state,
+            config.warehouse_inventory_cap,
+            config.retailer_inventory_cap,
+        );
         if policy_state.len() != config.input_dim {
-            return Err(PyValueError::new_err("policy state length does not match input_dim"));
+            return Err(PyValueError::new_err(
+                "policy state length does not match input_dim",
+            ));
         }
         let action = action_vector_from_flat_params(
             &policy_state,
@@ -91,14 +97,20 @@ pub fn rollout(
         for retailer_idx in 0..config.num_retailers {
             retailer_available[retailer_idx] += state.retailer_pipeline[retailer_idx][0] as i64;
         }
-        let warehouse_future = state.warehouse_pipeline.iter().copied().skip(1).collect::<Vec<_>>();
+        let warehouse_future = state
+            .warehouse_pipeline
+            .iter()
+            .copied()
+            .skip(1)
+            .collect::<Vec<_>>();
         let retailer_future = state
             .retailer_pipeline
             .iter()
             .map(|row| row.iter().copied().skip(1).collect::<Vec<_>>())
             .collect::<Vec<_>>();
 
-        let warehouse_ip = warehouse_available + warehouse_future.iter().copied().sum::<usize>() as i64;
+        let warehouse_ip =
+            warehouse_available + warehouse_future.iter().copied().sum::<usize>() as i64;
         let warehouse_order = warehouse_target
             .saturating_sub(warehouse_ip.max(0) as usize)
             .min(config.warehouse_capacity);
@@ -106,12 +118,15 @@ pub fn rollout(
         let retailer_ip = retailer_available
             .iter()
             .enumerate()
-            .map(|(idx, inventory)| *inventory + retailer_future[idx].iter().copied().sum::<usize>() as i64)
+            .map(|(idx, inventory)| {
+                *inventory + retailer_future[idx].iter().copied().sum::<usize>() as i64
+            })
             .collect::<Vec<_>>();
 
         let mut desired_retail_orders = vec![0usize; config.num_retailers];
         for retailer_idx in 0..config.num_retailers {
-            desired_retail_orders[retailer_idx] = retailer_target.saturating_sub(retailer_ip[retailer_idx].max(0) as usize);
+            desired_retail_orders[retailer_idx] =
+                retailer_target.saturating_sub(retailer_ip[retailer_idx].max(0) as usize);
         }
 
         let mut remaining_warehouse_inventory = warehouse_available.max(0) as usize;
@@ -157,13 +172,21 @@ pub fn rollout(
         epoch_costs.push(
             config.warehouse_holding_cost * state.warehouse_inventory.max(0) as f64
                 + config.retailer_holding_cost
-                    * state.retailer_inventory.iter().copied().map(|value| value.max(0) as f64).sum::<f64>()
+                    * state
+                        .retailer_inventory
+                        .iter()
+                        .copied()
+                        .map(|value| value.max(0) as f64)
+                        .sum::<f64>()
                 + config.warehouse_expedited_cost * expedited_shipped as f64
                 + config.warehouse_lost_sale_cost * (lost_at_retailer + lost_at_warehouse) as f64,
         );
     }
 
-    Ok(mean_after_warmup(&epoch_costs, config.warm_up_periods_ratio))
+    Ok(mean_after_warmup(
+        &epoch_costs,
+        config.warm_up_periods_ratio,
+    ))
 }
 
 pub fn population_rollout(
@@ -174,7 +197,9 @@ pub fn population_rollout(
     retailer_levels: &[usize],
 ) -> PyResult<Vec<f64>> {
     if params_batch.len() != seeds.len() {
-        return Err(PyValueError::new_err("params batch size must match seeds size"));
+        return Err(PyValueError::new_err(
+            "params batch size must match seeds size",
+        ));
     }
     let results: Vec<PyResult<f64>> = params_batch
         .par_iter()

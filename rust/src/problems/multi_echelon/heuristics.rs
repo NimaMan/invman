@@ -43,13 +43,18 @@ fn rollout_constant_base_stock_from_demands(
         for retailer_idx in 0..num_retailers {
             retailer_available[retailer_idx] += retailer_pipeline[retailer_idx][0] as i64;
         }
-        let warehouse_future = warehouse_pipeline.iter().copied().skip(1).collect::<Vec<_>>();
+        let warehouse_future = warehouse_pipeline
+            .iter()
+            .copied()
+            .skip(1)
+            .collect::<Vec<_>>();
         let retailer_future = retailer_pipeline
             .iter()
             .map(|row| row.iter().copied().skip(1).collect::<Vec<_>>())
             .collect::<Vec<_>>();
 
-        let warehouse_ip = warehouse_available + warehouse_future.iter().copied().sum::<usize>() as i64;
+        let warehouse_ip =
+            warehouse_available + warehouse_future.iter().copied().sum::<usize>() as i64;
         let warehouse_order = warehouse_level
             .min(warehouse_inventory_cap)
             .saturating_sub(warehouse_ip.max(0) as usize)
@@ -58,7 +63,9 @@ fn rollout_constant_base_stock_from_demands(
         let retailer_ip = retailer_available
             .iter()
             .enumerate()
-            .map(|(idx, inventory)| *inventory + retailer_future[idx].iter().copied().sum::<usize>() as i64)
+            .map(|(idx, inventory)| {
+                *inventory + retailer_future[idx].iter().copied().sum::<usize>() as i64
+            })
             .collect::<Vec<_>>();
         let mut desired_orders = vec![0usize; num_retailers];
         for retailer_idx in 0..num_retailers {
@@ -108,7 +115,12 @@ fn rollout_constant_base_stock_from_demands(
 
         epoch_costs.push(
             warehouse_holding_cost * warehouse_inventory.max(0) as f64
-                + retailer_holding_cost * retailer_inventory.iter().copied().map(|value| value.max(0) as f64).sum::<f64>()
+                + retailer_holding_cost
+                    * retailer_inventory
+                        .iter()
+                        .copied()
+                        .map(|value| value.max(0) as f64)
+                        .sum::<f64>()
                 + warehouse_expedited_cost * expedited_shipped as f64
                 + warehouse_lost_sale_cost * (lost_at_retailer + lost_at_warehouse) as f64,
         );

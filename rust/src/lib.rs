@@ -6,7 +6,7 @@ use rand::rngs::StdRng;
 use rand::SeedableRng;
 use rand_distr::{Distribution, Poisson};
 
-use crate::core::policies::dense::parse_activation;
+use crate::core::policies::dense::{parse_activation, parse_policy_head};
 use crate::core::policies::soft_tree::{
     build_action_spec, parse_leaf_type, parse_split_type, soft_tree_leaf_probabilities,
     validate_soft_tree_shapes,
@@ -17,10 +17,8 @@ use crate::problems::dual_sourcing::heuristics::{
 };
 use crate::problems::dual_sourcing::policies::parse_action_adapter;
 use crate::problems::dual_sourcing::rollout::{
-    population_rollout as dual_sourcing_population_rollout,
-    rollout_from_demands as dual_sourcing_rollout_from_demands,
-    rollout as dual_sourcing_rollout,
-    DualSourcingRolloutConfig,
+    population_rollout as dual_sourcing_population_rollout, rollout as dual_sourcing_rollout,
+    rollout_from_demands as dual_sourcing_rollout_from_demands, DualSourcingRolloutConfig,
 };
 use crate::problems::lost_sales::env::{epoch_cost, initialize_state, LostSalesState};
 use crate::problems::lost_sales::rollout::{
@@ -30,12 +28,9 @@ use crate::problems::lost_sales::rollout::{
     neural_population_rollout as lost_sales_neural_population_rollout_impl,
     neural_rollout as lost_sales_neural_rollout_impl,
     neural_rollout_from_demands as lost_sales_neural_rollout_from_demands_impl,
-    population_rollout as lost_sales_population_rollout,
-    rollout as lost_sales_rollout,
-    rollout_from_demands as lost_sales_rollout_from_demands,
-    LostSalesLinearRolloutConfig,
-    LostSalesNeuralRolloutConfig,
-    LostSalesRolloutConfig,
+    population_rollout as lost_sales_population_rollout, rollout as lost_sales_rollout,
+    rollout_from_demands as lost_sales_rollout_from_demands, LostSalesLinearRolloutConfig,
+    LostSalesNeuralRolloutConfig, LostSalesRolloutConfig,
 };
 use crate::problems::lost_sales_fixed_order_cost::heuristics::{
     fixed_policy_rollout_from_demands, search_modified_s_s_q_from_demands,
@@ -43,8 +38,7 @@ use crate::problems::lost_sales_fixed_order_cost::heuristics::{
 };
 use crate::problems::multi_echelon::heuristics::search_constant_base_stock_from_demands;
 use crate::problems::multi_echelon::rollout::{
-    population_rollout as multi_echelon_population_rollout,
-    rollout as multi_echelon_rollout,
+    population_rollout as multi_echelon_population_rollout, rollout as multi_echelon_rollout,
     MultiEchelonRolloutConfig,
 };
 
@@ -130,9 +124,16 @@ fn lost_sales_constant_action_rollout(
     }
 
     let mut rng = StdRng::seed_from_u64(seed);
-    let demand_dist = Poisson::new(demand_rate)
-        .map_err(|err| pyo3::exceptions::PyValueError::new_err(format!("invalid demand_rate: {err}")))?;
-    let mut env_state = initialize_state(demand_rate, lead_time, max_order_size, &mut rng, &demand_dist);
+    let demand_dist = Poisson::new(demand_rate).map_err(|err| {
+        pyo3::exceptions::PyValueError::new_err(format!("invalid demand_rate: {err}"))
+    })?;
+    let mut env_state = initialize_state(
+        demand_rate,
+        lead_time,
+        max_order_size,
+        &mut rng,
+        &demand_dist,
+    );
     let warm_up_periods = ((warm_up_periods_ratio * horizon as f64).floor() as usize).min(horizon);
     let mut epoch_costs = Vec::with_capacity(horizon);
 
@@ -427,7 +428,11 @@ fn lost_sales_fixed_modified_s_s_q_search_from_demands(
     fixed_order_cost: f64,
     warm_up_periods_ratio: f64,
     top_k: usize,
-) -> PyResult<((usize, usize, usize, f64), Vec<(usize, usize, usize, f64)>, usize)> {
+) -> PyResult<(
+    (usize, usize, usize, f64),
+    Vec<(usize, usize, usize, f64)>,
+    usize,
+)> {
     search_modified_s_s_q_from_demands(
         current_inventory,
         &lead_time_orders,
@@ -506,6 +511,7 @@ fn lost_sales_soft_tree_population_rollout(
     output_dim,
     max_order_size,
     demand_rate,
+    policy_head="categorical_quantity",
     lead_time=4,
     holding_cost=1.0,
     shortage_cost=4.0,
@@ -521,6 +527,7 @@ fn lost_sales_linear_rollout(
     output_dim: usize,
     max_order_size: usize,
     demand_rate: f64,
+    policy_head: &str,
     lead_time: usize,
     holding_cost: f64,
     shortage_cost: f64,
@@ -534,6 +541,7 @@ fn lost_sales_linear_rollout(
         input_dim,
         output_dim,
         max_order_size,
+        policy_head: parse_policy_head(policy_head)?,
         demand_rate,
         lead_time,
         holding_cost,
@@ -555,6 +563,7 @@ fn lost_sales_linear_rollout(
     current_inventory,
     lead_time_orders,
     demands,
+    policy_head="categorical_quantity",
     holding_cost=1.0,
     shortage_cost=4.0,
     procurement_cost=0.0,
@@ -569,6 +578,7 @@ fn lost_sales_linear_rollout_from_demands(
     current_inventory: i64,
     lead_time_orders: Vec<usize>,
     demands: Vec<usize>,
+    policy_head: &str,
     holding_cost: f64,
     shortage_cost: f64,
     procurement_cost: f64,
@@ -579,6 +589,7 @@ fn lost_sales_linear_rollout_from_demands(
         input_dim,
         output_dim,
         max_order_size,
+        policy_head: parse_policy_head(policy_head)?,
         demand_rate: 0.0,
         lead_time: lead_time_orders.len(),
         holding_cost,
@@ -603,6 +614,7 @@ fn lost_sales_linear_rollout_from_demands(
     max_order_size,
     demand_rate,
     seeds,
+    policy_head="categorical_quantity",
     lead_time=4,
     holding_cost=1.0,
     shortage_cost=4.0,
@@ -618,6 +630,7 @@ fn lost_sales_linear_population_rollout(
     max_order_size: usize,
     demand_rate: f64,
     seeds: Vec<u64>,
+    policy_head: &str,
     lead_time: usize,
     holding_cost: f64,
     shortage_cost: f64,
@@ -630,6 +643,7 @@ fn lost_sales_linear_population_rollout(
         input_dim,
         output_dim,
         max_order_size,
+        policy_head: parse_policy_head(policy_head)?,
         demand_rate,
         lead_time,
         holding_cost,
@@ -651,6 +665,7 @@ fn lost_sales_linear_population_rollout(
     max_order_size,
     activation,
     demand_rate,
+    policy_head="categorical_quantity",
     lead_time=4,
     holding_cost=1.0,
     shortage_cost=4.0,
@@ -668,6 +683,7 @@ fn lost_sales_nn_rollout(
     max_order_size: usize,
     activation: &str,
     demand_rate: f64,
+    policy_head: &str,
     lead_time: usize,
     holding_cost: f64,
     shortage_cost: f64,
@@ -682,6 +698,7 @@ fn lost_sales_nn_rollout(
         hidden_dims,
         output_dim,
         max_order_size,
+        policy_head: parse_policy_head(policy_head)?,
         demand_rate,
         lead_time,
         holding_cost,
@@ -706,6 +723,7 @@ fn lost_sales_nn_rollout(
     current_inventory,
     lead_time_orders,
     demands,
+    policy_head="categorical_quantity",
     holding_cost=1.0,
     shortage_cost=4.0,
     procurement_cost=0.0,
@@ -722,6 +740,7 @@ fn lost_sales_nn_rollout_from_demands(
     current_inventory: i64,
     lead_time_orders: Vec<usize>,
     demands: Vec<usize>,
+    policy_head: &str,
     holding_cost: f64,
     shortage_cost: f64,
     procurement_cost: f64,
@@ -733,6 +752,7 @@ fn lost_sales_nn_rollout_from_demands(
         hidden_dims,
         output_dim,
         max_order_size,
+        policy_head: parse_policy_head(policy_head)?,
         demand_rate: 0.0,
         lead_time: lead_time_orders.len(),
         holding_cost,
@@ -760,6 +780,7 @@ fn lost_sales_nn_rollout_from_demands(
     activation,
     demand_rate,
     seeds,
+    policy_head="categorical_quantity",
     lead_time=4,
     holding_cost=1.0,
     shortage_cost=4.0,
@@ -777,6 +798,7 @@ fn lost_sales_nn_population_rollout(
     activation: &str,
     demand_rate: f64,
     seeds: Vec<u64>,
+    policy_head: &str,
     lead_time: usize,
     holding_cost: f64,
     shortage_cost: f64,
@@ -790,6 +812,7 @@ fn lost_sales_nn_population_rollout(
         hidden_dims,
         output_dim,
         max_order_size,
+        policy_head: parse_policy_head(policy_head)?,
         demand_rate,
         lead_time,
         holding_cost,
@@ -1246,16 +1269,22 @@ fn multi_echelon_soft_tree_rollout(
 ) -> PyResult<f64> {
     let warehouse_levels = allowed_values
         .as_ref()
-        .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("multi-echelon rollouts require allowed_values"))?
+        .ok_or_else(|| {
+            pyo3::exceptions::PyValueError::new_err("multi-echelon rollouts require allowed_values")
+        })?
         .get(0)
         .cloned()
-        .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("missing warehouse allowed_values"))?;
+        .ok_or_else(|| {
+            pyo3::exceptions::PyValueError::new_err("missing warehouse allowed_values")
+        })?;
     let retailer_levels = allowed_values
         .as_ref()
         .unwrap()
         .get(1)
         .cloned()
-        .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("missing retailer allowed_values"))?;
+        .ok_or_else(|| {
+            pyo3::exceptions::PyValueError::new_err("missing retailer allowed_values")
+        })?;
     let config = MultiEchelonRolloutConfig {
         input_dim,
         depth,
@@ -1279,7 +1308,13 @@ fn multi_echelon_soft_tree_rollout(
         split_type: parse_split_type(split_type)?,
         leaf_type: parse_leaf_type(leaf_type)?,
     };
-    multi_echelon_rollout(&flat_params, &config, seed, &warehouse_levels, &retailer_levels)
+    multi_echelon_rollout(
+        &flat_params,
+        &config,
+        seed,
+        &warehouse_levels,
+        &retailer_levels,
+    )
 }
 
 #[pyfunction]
@@ -1341,16 +1376,22 @@ fn multi_echelon_soft_tree_population_rollout(
 ) -> PyResult<Vec<f64>> {
     let warehouse_levels = allowed_values
         .as_ref()
-        .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("multi-echelon rollouts require allowed_values"))?
+        .ok_or_else(|| {
+            pyo3::exceptions::PyValueError::new_err("multi-echelon rollouts require allowed_values")
+        })?
         .get(0)
         .cloned()
-        .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("missing warehouse allowed_values"))?;
+        .ok_or_else(|| {
+            pyo3::exceptions::PyValueError::new_err("missing warehouse allowed_values")
+        })?;
     let retailer_levels = allowed_values
         .as_ref()
         .unwrap()
         .get(1)
         .cloned()
-        .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("missing retailer allowed_values"))?;
+        .ok_or_else(|| {
+            pyo3::exceptions::PyValueError::new_err("missing retailer allowed_values")
+        })?;
     let config = MultiEchelonRolloutConfig {
         input_dim,
         depth,
@@ -1374,7 +1415,13 @@ fn multi_echelon_soft_tree_population_rollout(
         split_type: parse_split_type(split_type)?,
         leaf_type: parse_leaf_type(leaf_type)?,
     };
-    multi_echelon_population_rollout(&params_batch, &config, &seeds, &warehouse_levels, &retailer_levels)
+    multi_echelon_population_rollout(
+        &params_batch,
+        &config,
+        &seeds,
+        &warehouse_levels,
+        &retailer_levels,
+    )
 }
 
 #[pyfunction]
@@ -1446,27 +1493,69 @@ fn invman_rust(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(soft_tree_action, m)?)?;
     m.add_function(wrap_pyfunction!(lost_sales_constant_action_rollout, m)?)?;
     m.add_function(wrap_pyfunction!(lost_sales_soft_tree_rollout, m)?)?;
-    m.add_function(wrap_pyfunction!(lost_sales_soft_tree_rollout_from_demands, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        lost_sales_soft_tree_rollout_from_demands,
+        m
+    )?)?;
     m.add_function(wrap_pyfunction!(lost_sales_linear_rollout, m)?)?;
     m.add_function(wrap_pyfunction!(lost_sales_linear_rollout_from_demands, m)?)?;
     m.add_function(wrap_pyfunction!(lost_sales_linear_population_rollout, m)?)?;
     m.add_function(wrap_pyfunction!(lost_sales_nn_rollout, m)?)?;
     m.add_function(wrap_pyfunction!(lost_sales_nn_rollout_from_demands, m)?)?;
     m.add_function(wrap_pyfunction!(lost_sales_nn_population_rollout, m)?)?;
-    m.add_function(wrap_pyfunction!(lost_sales_fixed_policy_rollout_from_demands, m)?)?;
-    m.add_function(wrap_pyfunction!(lost_sales_fixed_s_s_search_from_demands, m)?)?;
-    m.add_function(wrap_pyfunction!(lost_sales_fixed_s_nq_search_from_demands, m)?)?;
-    m.add_function(wrap_pyfunction!(lost_sales_fixed_modified_s_s_q_search_from_demands, m)?)?;
-    m.add_function(wrap_pyfunction!(lost_sales_soft_tree_population_rollout, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        lost_sales_fixed_policy_rollout_from_demands,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        lost_sales_fixed_s_s_search_from_demands,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        lost_sales_fixed_s_nq_search_from_demands,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        lost_sales_fixed_modified_s_s_q_search_from_demands,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        lost_sales_soft_tree_population_rollout,
+        m
+    )?)?;
     m.add_function(wrap_pyfunction!(dual_sourcing_soft_tree_rollout, m)?)?;
-    m.add_function(wrap_pyfunction!(dual_sourcing_soft_tree_population_rollout, m)?)?;
-    m.add_function(wrap_pyfunction!(dual_sourcing_soft_tree_rollout_from_demands, m)?)?;
-    m.add_function(wrap_pyfunction!(dual_sourcing_single_index_search_from_demands, m)?)?;
-    m.add_function(wrap_pyfunction!(dual_sourcing_dual_index_search_from_demands, m)?)?;
-    m.add_function(wrap_pyfunction!(dual_sourcing_capped_dual_index_search_from_demands, m)?)?;
-    m.add_function(wrap_pyfunction!(dual_sourcing_tailored_base_surge_search_from_demands, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        dual_sourcing_soft_tree_population_rollout,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        dual_sourcing_soft_tree_rollout_from_demands,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        dual_sourcing_single_index_search_from_demands,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        dual_sourcing_dual_index_search_from_demands,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        dual_sourcing_capped_dual_index_search_from_demands,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        dual_sourcing_tailored_base_surge_search_from_demands,
+        m
+    )?)?;
     m.add_function(wrap_pyfunction!(multi_echelon_soft_tree_rollout, m)?)?;
-    m.add_function(wrap_pyfunction!(multi_echelon_soft_tree_population_rollout, m)?)?;
-    m.add_function(wrap_pyfunction!(multi_echelon_constant_base_stock_search_from_demands, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        multi_echelon_soft_tree_population_rollout,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        multi_echelon_constant_base_stock_search_from_demands,
+        m
+    )?)?;
     Ok(())
 }

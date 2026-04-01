@@ -283,7 +283,6 @@ def build_env_from_args(args, horizon=None, track_demand=False):
         state_features=getattr(args, "state_features", "pipeline"),
     )
 
-
 def _rust_lost_sales_policy_mode(model, args, track_demand=False, return_env=False):
     if return_env or track_demand:
         return None
@@ -297,9 +296,14 @@ def _rust_lost_sales_policy_mode(model, args, track_demand=False, return_env=Fal
     model_name = type(model).__name__
     if model_name == "SoftTreePolicy":
         return "soft_tree"
-    if model_name == "LinearPolicyNet" and getattr(model, "action_output_mode", None) == "categorical_quantity":
+    dense_rust_heads = {
+        "categorical_quantity",
+        "gated_ordinal_quantity",
+        "two_stage_ordinal_quantity",
+    }
+    if model_name == "LinearPolicyNet" and getattr(model, "action_output_mode", None) in dense_rust_heads:
         return "linear"
-    if model_name == "PolicyNet" and getattr(model, "action_output_mode", None) == "categorical_quantity":
+    if model_name == "PolicyNet" and getattr(model, "action_output_mode", None) in dense_rust_heads:
         return "nn"
     return None
 
@@ -355,11 +359,13 @@ def get_model_fitness(
         import invman_rust
 
         flat_params = model_params if model_params is not None else model.get_model_flat_params()
+        policy_head = str(getattr(model, "action_output_mode", "categorical_quantity"))
         avg_cost = invman_rust.lost_sales_linear_rollout(
             flat_params=np.asarray(flat_params, dtype=np.float32).tolist(),
             input_dim=int(model.input_dim),
             output_dim=int(model.output_dim),
             max_order_size=int(model.max_order_size),
+            policy_head=policy_head,
             demand_rate=float(args.demand_rate),
             lead_time=int(args.lead_time),
             holding_cost=float(args.holding_cost),
@@ -378,13 +384,15 @@ def get_model_fitness(
         import invman_rust
 
         flat_params = model_params if model_params is not None else model.get_model_flat_params()
+        policy_head = str(getattr(model, "action_output_mode", "categorical_quantity"))
         avg_cost = invman_rust.lost_sales_nn_rollout(
             flat_params=np.asarray(flat_params, dtype=np.float32).tolist(),
             input_dim=int(model.input_dim),
             hidden_dims=[int(width) for width in model.hidden_dim],
             output_dim=int(model.output_dim),
             max_order_size=int(model.max_order_size),
-            activation=str(getattr(args, "activation", "selu")),
+            policy_head=policy_head,
+            activation=str(getattr(model, "activation_name", "selu")),
             demand_rate=float(args.demand_rate),
             lead_time=int(args.lead_time),
             holding_cost=float(args.holding_cost),
@@ -445,11 +453,13 @@ def get_population_fitness(model, args, model_params_batch, seeds):
             temperature=float(model.temperature),
         )
     elif rust_mode == "linear":
+        policy_head = str(getattr(model, "action_output_mode", "categorical_quantity"))
         costs = invman_rust.lost_sales_linear_population_rollout(
             params_batch=params_batch,
             input_dim=int(model.input_dim),
             output_dim=int(model.output_dim),
             max_order_size=int(model.max_order_size),
+            policy_head=policy_head,
             demand_rate=float(args.demand_rate),
             seeds=[int(seed) for seed in seeds],
             lead_time=int(args.lead_time),
@@ -461,13 +471,15 @@ def get_population_fitness(model, args, model_params_batch, seeds):
             warm_up_periods_ratio=float(getattr(args, "warm_up_periods_ratio", 0.2)),
         )
     else:
+        policy_head = str(getattr(model, "action_output_mode", "categorical_quantity"))
         costs = invman_rust.lost_sales_nn_population_rollout(
             params_batch=params_batch,
             input_dim=int(model.input_dim),
             hidden_dims=[int(width) for width in model.hidden_dim],
             output_dim=int(model.output_dim),
             max_order_size=int(model.max_order_size),
-            activation=str(getattr(args, "activation", "selu")),
+            policy_head=policy_head,
+            activation=str(getattr(model, "activation_name", "selu")),
             demand_rate=float(args.demand_rate),
             seeds=[int(seed) for seed in seeds],
             lead_time=int(args.lead_time),

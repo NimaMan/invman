@@ -6,11 +6,13 @@ import numpy as np
 
 from invman.es_mp import train
 from invman.policies import build_policy
+from invman.policies.registry import apply_policy_name, get_policy_spec
 from invman.problems import get_problem_module
 from invman.utils import set_global_seeds
 
 
 def build_model(args):
+    apply_policy_name(args)
     problem_module = get_problem_module(args.problem)
     env = problem_module.build_env_from_args(args, track_demand=False)
     return build_policy(args, env)
@@ -55,19 +57,8 @@ def ensure_output_dirs(args):
 
 
 def build_result_payload(args, learned_policy_results, heuristic_results):
-    action_adapter = getattr(args, "action_adapter", getattr(args, "tree_action_adapter", "identity"))
-    effective_policy_head = (
-        args.policy_head
-        if args.policy_type != "soft_tree"
-        else f"tree_{args.tree_leaf_type}_leaf_quantity"
-    )
-    adapter_suffix = ""
-    if action_adapter != "identity":
-        adapter_suffix = f"_{action_adapter}"
-    if args.policy_type == "soft_tree":
-        policy_architecture = f"{args.policy_type}_{args.tree_split_type}_{effective_policy_head}{adapter_suffix}_{args.state_features}"
-    else:
-        policy_architecture = f"{args.policy_type}_{effective_policy_head}{adapter_suffix}_{args.state_features}"
+    policy_spec = get_policy_spec(args)
+    policy_architecture = policy_spec.architecture_label(args.state_features)
     problem_params = {
         "lead_time": getattr(args, "lead_time", None),
         "fixed_order_cost": getattr(args, "fixed_order_cost", None),
@@ -92,18 +83,18 @@ def build_result_payload(args, learned_policy_results, heuristic_results):
         "experiment_name": args.experiment_name,
         "problem": args.problem,
         "problem_params": problem_params,
-        "policy_type": args.policy_type,
-        "policy_backbone": args.policy_type,
-        "policy_head": effective_policy_head,
+        "policy_name": policy_spec.policy_name,
+        "policy_backbone": policy_spec.policy_backbone,
+        "policy_decoder": policy_spec.action_output_mode,
         "policy_architecture": policy_architecture,
-        "action_output_mode": effective_policy_head,
         "state_features": args.state_features,
-        "tree_depth": args.tree_depth,
-        "tree_temperature": args.tree_temperature,
-        "tree_split_type": args.tree_split_type,
-        "tree_leaf_type": args.tree_leaf_type,
-        "action_adapter": action_adapter,
-        "tree_action_adapter": action_adapter,
+        "hidden_dim": list(policy_spec.hidden_dim) if policy_spec.hidden_dim else None,
+        "activation": policy_spec.activation,
+        "tree_depth": policy_spec.tree_depth,
+        "tree_temperature": policy_spec.tree_temperature,
+        "tree_split_type": policy_spec.tree_split_type,
+        "tree_leaf_type": policy_spec.tree_leaf_type,
+        "action_adapter": policy_spec.action_adapter,
         "rollout_backend": args.rollout_backend,
         "demand_dist_name": args.demand_dist_name,
         "demand_rate": args.demand_rate,
@@ -128,6 +119,7 @@ def save_result_payload(args, payload):
 
 
 def run_experiment(args):
+    apply_policy_name(args)
     ensure_output_dirs(args)
     set_global_seeds(getattr(args, "seed", 0))
     problem_module = get_problem_module(args.problem)

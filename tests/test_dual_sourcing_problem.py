@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 import torch
 
+from invman.policies import apply_policy_name, make_soft_tree_policy_name
 from invman.policies import SoftTreePolicy
 from invman.problems.dual_sourcing import (
     get_benchmark_reference,
@@ -139,7 +140,14 @@ def test_dual_sourcing_structured_tree_rust_matches_python_rollout():
     args.horizon = 50
     args.warm_up_periods_ratio = 0.0
     args.problem = "dual_sourcing"
-    args.policy_type = "soft_tree"
+    args.policy_name = make_soft_tree_policy_name(
+        depth=2,
+        temperature=0.25,
+        split_type="oblique",
+        leaf_type="linear",
+        action_adapter="capped_dual_index_targets",
+    )
+    apply_policy_name(args)
     fixed_path = build_fixed_demand_path(args, seed=91, horizon=50)
     env = DualSourcingEnv(
         regular_lead_time=args.regular_lead_time,
@@ -155,8 +163,6 @@ def test_dual_sourcing_structured_tree_rust_matches_python_rollout():
         track_demand=True,
         warm_up_periods_ratio=args.warm_up_periods_ratio,
     )
-    args.tree_action_adapter = "capped_dual_index_targets"
-    args.tree_leaf_type = "linear"
     from invman.policies.factory import build_policy
 
     model = build_policy(args, env)

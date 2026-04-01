@@ -10,6 +10,7 @@ if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
 
 from invman.experiment_runner import run_experiment
+from invman.policies.registry import apply_policy_name
 from invman.problems.lost_sales.reference_instances import VANILLA_L4_P4_POISSON5, build_reference_args
 
 
@@ -37,20 +38,12 @@ def parse_args():
     parser.add_argument("--budget", choices=sorted(BUDGETS), default="screening", help="Fixed experiment budget.")
     parser.add_argument("--description", required=True, help="Short description of the policy change being tested.")
     parser.add_argument("--reference", default=VANILLA_L4_P4_POISSON5.name, help="Named reference instance.")
-    parser.add_argument("--policy_type", choices=["linear", "nn", "soft_tree"], default="soft_tree")
-    parser.add_argument("--policy_head", default="categorical_quantity", help="Policy head for nn/linear backbones.")
+    parser.add_argument("--policy_name", required=True, help="Unique learned-policy identifier.")
     parser.add_argument("--rollout_backend", choices=["python", "rust"], default="python")
-    parser.add_argument("--tree_depth", type=int, default=3)
-    parser.add_argument("--tree_temperature", type=float, default=0.25)
-    parser.add_argument("--tree_split_type", choices=["oblique", "axis_aligned"], default="oblique")
-    parser.add_argument("--tree_leaf_type", choices=["constant", "linear"], default="constant")
-    parser.add_argument("--hidden_dim", nargs="+", type=int, default=[32, 32])
-    parser.add_argument("--activation", choices=["selu", "gelu", "relu"], default="selu")
     parser.add_argument("--sigma_init", type=float, default=5.0)
     parser.add_argument("--seed", type=int, default=123)
     parser.add_argument("--mp_num_processors", type=int, default=4)
     parser.add_argument("--same_seed", action="store_true", help="Use common random numbers within an ES batch.")
-    parser.add_argument("--max_order_size", type=int, default=None, help="Override the reference max order size.")
     return parser.parse_args()
 
 
@@ -122,16 +115,10 @@ def _configure_args(parsed):
     args = build_reference_args(parsed.reference)
     budget = BUDGETS[parsed.budget]
     args.problem = "lost_sales"
-    args.policy_type = parsed.policy_type
-    args.policy_head = parsed.policy_head
+    args.policy_name = parsed.policy_name
+    apply_policy_name(args)
     args.rollout_backend = parsed.rollout_backend
     args.training_method = "cma"
-    args.tree_depth = parsed.tree_depth
-    args.tree_temperature = parsed.tree_temperature
-    args.tree_split_type = parsed.tree_split_type
-    args.tree_leaf_type = parsed.tree_leaf_type
-    args.hidden_dim = parsed.hidden_dim
-    args.activation = parsed.activation
     args.sigma_init = parsed.sigma_init
     args.seed = parsed.seed
     args.mp_num_processors = parsed.mp_num_processors
@@ -141,9 +128,7 @@ def _configure_args(parsed):
     args.horizon = budget["horizon"]
     args.eval_horizon = budget["eval_horizon"]
     args.eval_seeds = budget["eval_seeds"]
-    if parsed.max_order_size is not None:
-        args.max_order_size = parsed.max_order_size
-    if args.policy_type == "soft_tree":
+    if args.policy_backbone == "soft_tree":
         args.rollout_backend = "rust"
     return args
 
@@ -158,14 +143,7 @@ def main():
     args.results_dir = str(paths["results"])
     args.log_dir = str(paths["logs"])
     args.trained_models_dir = str(paths["models"])
-    args.experiment_name = (
-        f"{parsed.run_tag}_{parsed.budget}_{args.policy_type}_{args.policy_head}"
-        if args.policy_type != "soft_tree"
-        else (
-            f"{parsed.run_tag}_{parsed.budget}_soft_tree_"
-            f"{args.tree_split_type}_{args.tree_leaf_type}_d{args.tree_depth}"
-        )
-    )
+    args.experiment_name = f"{parsed.run_tag}_{parsed.budget}_{args.policy_name}"
 
     payload, results_path = run_experiment(args)
     learned_cost = payload["evaluation"]["learned_policy"]["mean_cost"]

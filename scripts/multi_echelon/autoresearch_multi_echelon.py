@@ -10,6 +10,7 @@ if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
 
 from invman.experiment_runner import run_experiment
+from invman.policies.registry import apply_policy_name, make_soft_tree_policy_name
 from invman.problems.multi_echelon.reference_instances import build_reference_args
 
 
@@ -45,13 +46,15 @@ def main():
     args = build_reference_args(parsed.reference)
     budget = BUDGETS[parsed.budget]
     args.problem = "multi_echelon"
-    args.policy_type = "soft_tree"
+    args.policy_name = make_soft_tree_policy_name(
+        depth=parsed.tree_depth,
+        temperature=parsed.tree_temperature,
+        split_type=parsed.tree_split_type,
+        leaf_type=parsed.tree_leaf_type,
+    )
+    apply_policy_name(args)
     args.rollout_backend = "rust"
     args.training_method = "cma"
-    args.tree_depth = parsed.tree_depth
-    args.tree_temperature = parsed.tree_temperature
-    args.tree_split_type = parsed.tree_split_type
-    args.tree_leaf_type = parsed.tree_leaf_type
     args.sigma_init = parsed.sigma_init
     args.seed = parsed.seed
     args.mp_num_processors = parsed.mp_num_processors
@@ -60,7 +63,7 @@ def main():
     args.horizon = budget["horizon"]
     args.eval_horizon = budget["eval_horizon"]
     args.eval_seeds = budget["eval_seeds"]
-    args.experiment_name = f"{parsed.run_tag}_{parsed.budget}_d{args.tree_depth}_{args.tree_split_type}_{args.tree_leaf_type}"
+    args.experiment_name = f"{parsed.run_tag}_{parsed.budget}_{args.policy_name}"
 
     root = PACKAGE_ROOT / "outputs" / "autoresearch" / parsed.run_tag
     results_tsv = root / "results.tsv"

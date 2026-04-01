@@ -65,6 +65,31 @@ EXPERIMENT_SUITES: tuple[ExperimentSuite, ...] = (
         ),
     ),
     ExperimentSuite(
+        suite_id="fixed_cost_known_optimum_validation",
+        problem="lost_sales_fixed_order_cost",
+        status="ready",
+        purpose="Run the published Bijvank-Bhulai-Huh Table 1 validation instance end-to-end and compare heuristics and learned policies to the known exact optimum.",
+        heuristics=("s_s", "s_nq", "modified_s_s_q", "optimal_literature_when_available"),
+        base_policies=("linear_categorical_quantity", "nn_categorical_quantity"),
+        improved_policies=(
+            "linear_gated_ordinal_quantity",
+            "nn_gated_ordinal_quantity",
+            "soft_tree_depth2_linear_leaf",
+            "soft_tree_depth1_linear_leaf",
+        ),
+        script_path="scripts/lost_sales_fixed_order_cost/benchmark_canonical_suite.py",
+        script_args=(
+            "--reference",
+            "bijvank2015_table1_l2_p14_k5",
+            "--run_tag",
+            "fixed_cost_known_optimum_validation_5k",
+        ),
+        notes=(
+            "Uses the single published validation instance with exact optimal cost 11.46.",
+            "This suite is the fixed-cost analogue of the vanilla lost-sales known-optimum comparisons.",
+        ),
+    ),
+    ExperimentSuite(
         suite_id="fixed_cost_single_instance_check",
         problem="lost_sales_fixed_order_cost",
         status="ready",

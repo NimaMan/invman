@@ -23,12 +23,20 @@ pub fn initialize_state(
     let warehouse_level = *warehouse_levels.last().unwrap_or(&100);
     let retailer_level = *retailer_levels.last().unwrap_or(&40);
     let warehouse_pipeline = (0..warehouse_lead_time)
-        .map(|_| *warehouse_levels.get(rng.gen_range(0..warehouse_levels.len())).unwrap_or(&warehouse_level))
+        .map(|_| {
+            *warehouse_levels
+                .get(rng.gen_range(0..warehouse_levels.len()))
+                .unwrap_or(&warehouse_level)
+        })
         .collect::<Vec<_>>();
     let retailer_pipeline = (0..num_retailers)
         .map(|_| {
             (0..retailer_lead_time)
-                .map(|_| *retailer_levels.get(rng.gen_range(0..retailer_levels.len())).unwrap_or(&retailer_level))
+                .map(|_| {
+                    *retailer_levels
+                        .get(rng.gen_range(0..retailer_levels.len()))
+                        .unwrap_or(&retailer_level)
+                })
                 .collect::<Vec<_>>()
         })
         .collect::<Vec<_>>();
@@ -55,7 +63,11 @@ pub fn flattened_policy_state(
         output.push(available as f32 / retailer_inventory_cap.max(1) as f32);
     }
     for retailer_idx in 0..state.retailer_inventory.len() {
-        for value in state.retailer_pipeline[retailer_idx].iter().copied().skip(1) {
+        for value in state.retailer_pipeline[retailer_idx]
+            .iter()
+            .copied()
+            .skip(1)
+        {
             output.push(value as f32 / retailer_inventory_cap.max(1) as f32);
         }
     }

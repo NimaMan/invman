@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from invman.policies.registry import apply_policy_name
 from invman.problems.lost_sales.reference_instances import build_reference_args
 
 
@@ -19,49 +20,27 @@ COMMON_BUDGET = {
 EXPERIMENT_SPECS = [
     {
         "id": "linear_categorical_quantity_q8",
-        "policy_type": "linear",
-        "policy_head": "categorical_quantity",
         "rollout_backend": "rust",
-        "max_order_size": 8,
         "status": "trusted",
     },
     {
         "id": "linear_categorical_quantity_q20",
-        "policy_type": "linear",
-        "policy_head": "categorical_quantity",
         "rollout_backend": "rust",
-        "max_order_size": 20,
         "status": "trusted",
     },
     {
         "id": "nn_categorical_quantity_q8",
-        "policy_type": "nn",
-        "policy_head": "categorical_quantity",
         "rollout_backend": "rust",
-        "max_order_size": 8,
-        "hidden_dim": [50],
-        "activation": "selu",
         "status": "trusted",
     },
     {
         "id": "nn_categorical_quantity_q20",
-        "policy_type": "nn",
-        "policy_head": "categorical_quantity",
         "rollout_backend": "rust",
-        "max_order_size": 20,
-        "hidden_dim": [50],
-        "activation": "selu",
         "status": "trusted",
     },
     {
         "id": "soft_tree_depth2_linear_leaf_q8",
-        "policy_type": "soft_tree",
         "rollout_backend": "rust",
-        "max_order_size": 8,
-        "tree_depth": 2,
-        "tree_temperature": 0.25,
-        "tree_split_type": "oblique",
-        "tree_leaf_type": "linear",
         "status": "trusted",
     },
 ]
@@ -102,9 +81,9 @@ def configure_run_args(
     args.eval_seeds = parsed.eval_seeds
     args.sigma_init = COMMON_BUDGET["sigma_init"]
     args.save_every = COMMON_BUDGET["save_every"]
-    args.policy_type = spec["policy_type"]
+    args.policy_name = spec["id"]
+    apply_policy_name(args)
     args.rollout_backend = spec["rollout_backend"]
-    args.max_order_size = spec["max_order_size"]
     if args.demand_dist_name != "Poisson":
         args.rollout_backend = "python"
     args.results_dir = str(root / "results")
@@ -114,21 +93,6 @@ def configure_run_args(
         args.experiment_name = f"{parsed.run_tag}_{reference_name}_{spec['id']}"
     else:
         args.experiment_name = f"{parsed.run_tag}_{spec['id']}"
-
-    if args.policy_type == "linear":
-        args.policy_head = spec["policy_head"]
-    elif args.policy_type == "nn":
-        args.policy_head = spec["policy_head"]
-        args.hidden_dim = spec["hidden_dim"]
-        args.activation = spec["activation"]
-    elif args.policy_type == "soft_tree":
-        args.policy_head = "categorical_quantity"
-        args.tree_depth = spec["tree_depth"]
-        args.tree_temperature = spec["tree_temperature"]
-        args.tree_split_type = spec["tree_split_type"]
-        args.tree_leaf_type = spec["tree_leaf_type"]
-    else:  # pragma: no cover
-        raise NotImplementedError(spec["policy_type"])
 
     return args
 

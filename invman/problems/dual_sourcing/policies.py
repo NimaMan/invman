@@ -6,7 +6,7 @@ from typing import Iterable
 
 from invman.policies.common import normalize_action_spec
 
-SUPPORTED_POLICY_TYPES = ("linear", "nn", "soft_tree")
+SUPPORTED_POLICY_BACKBONES = ("linear", "nn", "soft_tree")
 
 
 def normalize_action_adapter(action_adapter: str) -> str:
@@ -166,8 +166,10 @@ def apply_action_adapter(action_adapter: str, controls, normalized_state, action
 
 
 def build_policy_context(args, env):
+    from invman.policies.registry import get_policy_spec
+
     action_spec = normalize_action_spec(getattr(env, "action_spec", None))
-    action_adapter = normalize_action_adapter(getattr(args, "action_adapter", getattr(args, "tree_action_adapter", "identity")))
+    action_adapter = get_policy_spec(args).action_adapter
     control_spec = None
     action_adapter_config = None
     if action_adapter != "identity":
@@ -185,7 +187,7 @@ def build_policy_context(args, env):
             state_scale=float(max(1, env.regular_max_order_size + env.expedited_max_order_size)),
         )
     return {
-        "supported_policy_types": SUPPORTED_POLICY_TYPES,
+        "supported_policy_backbones": SUPPORTED_POLICY_BACKBONES,
         "action_spec": action_spec,
         "control_spec": control_spec,
         "action_adapter": action_adapter,

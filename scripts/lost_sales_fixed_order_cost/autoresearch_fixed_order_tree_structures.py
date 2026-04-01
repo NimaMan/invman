@@ -8,6 +8,7 @@ if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
 
 from invman.experiment_runner import run_experiment
+from invman.policies.registry import apply_policy_name, make_soft_tree_policy_name
 from invman.problems.lost_sales_fixed_order_cost.reference_instances import build_reference_args
 
 
@@ -75,13 +76,15 @@ def _prepare_args(parsed, root, split_type, leaf_type, depth, temperature, sigma
     budget = BUDGETS[parsed.budget]
     args = build_reference_args(parsed.reference)
     args.problem = "lost_sales_fixed_order_cost"
-    args.policy_type = "soft_tree"
+    args.policy_name = make_soft_tree_policy_name(
+        depth=depth,
+        temperature=temperature,
+        split_type=split_type,
+        leaf_type=leaf_type,
+    )
+    apply_policy_name(args)
     args.rollout_backend = "rust"
     args.training_method = "cma"
-    args.tree_depth = depth
-    args.tree_temperature = temperature
-    args.tree_split_type = split_type
-    args.tree_leaf_type = leaf_type
     args.sigma_init = sigma_init
     args.seed = parsed.seed
     args.mp_num_processors = parsed.mp_num_processors
@@ -94,10 +97,7 @@ def _prepare_args(parsed, root, split_type, leaf_type, depth, temperature, sigma
     args.results_dir = str(root / "results")
     args.log_dir = str(root / "logs")
     args.trained_models_dir = str(root / "models")
-    args.experiment_name = (
-        f"{parsed.run_tag}_{parsed.budget}_{split_type}_{leaf_type}_"
-        f"d{depth}_t{str(temperature).replace('.', 'p')}_s{str(sigma_init).replace('.', 'p')}"
-    )
+    args.experiment_name = f"{parsed.run_tag}_{parsed.budget}_{args.policy_name}_s{str(sigma_init).replace('.', 'p')}"
     return args
 
 

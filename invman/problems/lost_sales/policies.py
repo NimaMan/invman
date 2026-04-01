@@ -2,7 +2,7 @@
 
 from invman.policies.common import normalize_action_spec
 
-SUPPORTED_POLICY_TYPES = ("linear", "nn", "soft_tree")
+SUPPORTED_POLICY_BACKBONES = ("linear", "nn", "soft_tree")
 
 
 def build_policy_context(args, env):
@@ -12,7 +12,7 @@ def build_policy_context(args, env):
         default_max_order_size=getattr(env, "max_order_size", None),
     )
     return {
-        "supported_policy_types": SUPPORTED_POLICY_TYPES,
+        "supported_policy_backbones": SUPPORTED_POLICY_BACKBONES,
         "action_spec": action_spec,
         "control_spec": None,
         "action_adapter": "identity",

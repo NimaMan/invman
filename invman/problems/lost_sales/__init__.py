@@ -17,7 +17,7 @@ from invman.problems.lost_sales.heuristics import (
     get_heuristic_policy_cost,
 )
 from invman.problems.lost_sales.policies import (
-    SUPPORTED_POLICY_TYPES,
+    SUPPORTED_POLICY_BACKBONES,
     build_policy_context,
 )
 from invman.problems.lost_sales.problem_info import problem_info
@@ -35,7 +35,7 @@ __all__ = [
     "LostSalesEnv",
     "LostSalesHeuristicPolicies",
     "REFERENCE_INSTANCES",
-    "SUPPORTED_POLICY_TYPES",
+    "SUPPORTED_POLICY_BACKBONES",
     "VANILLA_L4_P4_POISSON5",
     "benchmark_grid",
     "benchmark_reference_instance",
