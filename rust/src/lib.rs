@@ -4,7 +4,6 @@ mod problems;
 use pyo3::prelude::*;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
-use rand_distr::{Distribution, Poisson};
 
 use crate::core::policies::dense::{parse_activation, parse_policy_head};
 use crate::core::policies::soft_tree::{
@@ -20,7 +19,10 @@ use crate::problems::dual_sourcing::rollout::{
     population_rollout as dual_sourcing_population_rollout, rollout as dual_sourcing_rollout,
     rollout_from_demands as dual_sourcing_rollout_from_demands, DualSourcingRolloutConfig,
 };
-use crate::problems::lost_sales::env::{epoch_cost, initialize_state, LostSalesState};
+use crate::problems::lost_sales::env::{
+    build_demand_distribution, epoch_cost, initialize_state, parse_demand_kind, sample_demand,
+    LostSalesDemandKind, LostSalesState,
+};
 use crate::problems::lost_sales::rollout::{
     linear_population_rollout as lost_sales_linear_population_rollout_impl,
     linear_rollout as lost_sales_linear_rollout_impl,
@@ -45,6 +47,10 @@ use crate::problems::multi_echelon::rollout::{
 #[pyfunction]
 fn version() -> &'static str {
     env!("CARGO_PKG_VERSION")
+}
+
+fn parse_lost_sales_demand_kind(demand_dist_name: &str) -> PyResult<LostSalesDemandKind> {
+    parse_demand_kind(demand_dist_name).map_err(pyo3::exceptions::PyValueError::new_err)
 }
 
 #[pyfunction]
@@ -87,6 +93,7 @@ fn soft_tree_action(
 #[pyfunction]
 #[pyo3(signature = (
     demand_rate,
+    demand_dist_name="Poisson",
     lead_time=4,
     max_order_size=20,
     holding_cost=1.0,
@@ -98,6 +105,7 @@ fn soft_tree_action(
 ))]
 fn lost_sales_constant_action_rollout(
     demand_rate: f64,
+    demand_dist_name: &str,
     lead_time: usize,
     max_order_size: usize,
     holding_cost: f64,
@@ -124,9 +132,9 @@ fn lost_sales_constant_action_rollout(
     }
 
     let mut rng = StdRng::seed_from_u64(seed);
-    let demand_dist = Poisson::new(demand_rate).map_err(|err| {
-        pyo3::exceptions::PyValueError::new_err(format!("invalid demand_rate: {err}"))
-    })?;
+    let demand_dist =
+        build_demand_distribution(parse_lost_sales_demand_kind(demand_dist_name)?, demand_rate)
+            .map_err(pyo3::exceptions::PyValueError::new_err)?;
     let mut env_state = initialize_state(
         demand_rate,
         lead_time,
@@ -142,7 +150,7 @@ fn lost_sales_constant_action_rollout(
         env_state.lead_time_orders.push(action);
         env_state.current_inventory += arriving_order as i64;
 
-        let demand = demand_dist.sample(&mut rng) as i64;
+        let demand = sample_demand(&mut rng, &demand_dist);
         epoch_costs.push(epoch_cost(
             &mut env_state.current_inventory,
             demand,
@@ -169,6 +177,7 @@ fn lost_sales_constant_action_rollout(
     depth,
     max_order_size,
     demand_rate,
+    demand_dist_name="Poisson",
     lead_time=4,
     holding_cost=1.0,
     shortage_cost=4.0,
@@ -187,6 +196,7 @@ fn lost_sales_soft_tree_rollout(
     depth: usize,
     max_order_size: usize,
     demand_rate: f64,
+    demand_dist_name: &str,
     lead_time: usize,
     holding_cost: f64,
     shortage_cost: f64,
@@ -203,6 +213,7 @@ fn lost_sales_soft_tree_rollout(
         input_dim,
         depth,
         max_order_size,
+        demand_kind: parse_lost_sales_demand_kind(demand_dist_name)?,
         demand_rate,
         lead_time,
         holding_cost,
@@ -257,6 +268,7 @@ fn lost_sales_soft_tree_rollout_from_demands(
         input_dim,
         depth,
         max_order_size,
+        demand_kind: LostSalesDemandKind::Poisson,
         demand_rate: 0.0,
         lead_time: lead_time_orders.len(),
         holding_cost,
@@ -456,6 +468,7 @@ fn lost_sales_fixed_modified_s_s_q_search_from_demands(
     max_order_size,
     demand_rate,
     seeds,
+    demand_dist_name="Poisson",
     lead_time=4,
     holding_cost=1.0,
     shortage_cost=4.0,
@@ -474,6 +487,7 @@ fn lost_sales_soft_tree_population_rollout(
     max_order_size: usize,
     demand_rate: f64,
     seeds: Vec<u64>,
+    demand_dist_name: &str,
     lead_time: usize,
     holding_cost: f64,
     shortage_cost: f64,
@@ -489,6 +503,7 @@ fn lost_sales_soft_tree_population_rollout(
         input_dim,
         depth,
         max_order_size,
+        demand_kind: parse_lost_sales_demand_kind(demand_dist_name)?,
         demand_rate,
         lead_time,
         holding_cost,
@@ -511,6 +526,7 @@ fn lost_sales_soft_tree_population_rollout(
     output_dim,
     max_order_size,
     demand_rate,
+    demand_dist_name="Poisson",
     policy_head="categorical_quantity",
     lead_time=4,
     holding_cost=1.0,
@@ -527,6 +543,7 @@ fn lost_sales_linear_rollout(
     output_dim: usize,
     max_order_size: usize,
     demand_rate: f64,
+    demand_dist_name: &str,
     policy_head: &str,
     lead_time: usize,
     holding_cost: f64,
@@ -542,6 +559,7 @@ fn lost_sales_linear_rollout(
         output_dim,
         max_order_size,
         policy_head: parse_policy_head(policy_head)?,
+        demand_kind: parse_lost_sales_demand_kind(demand_dist_name)?,
         demand_rate,
         lead_time,
         holding_cost,
@@ -590,6 +608,7 @@ fn lost_sales_linear_rollout_from_demands(
         output_dim,
         max_order_size,
         policy_head: parse_policy_head(policy_head)?,
+        demand_kind: LostSalesDemandKind::Poisson,
         demand_rate: 0.0,
         lead_time: lead_time_orders.len(),
         holding_cost,
@@ -614,6 +633,7 @@ fn lost_sales_linear_rollout_from_demands(
     max_order_size,
     demand_rate,
     seeds,
+    demand_dist_name="Poisson",
     policy_head="categorical_quantity",
     lead_time=4,
     holding_cost=1.0,
@@ -630,6 +650,7 @@ fn lost_sales_linear_population_rollout(
     max_order_size: usize,
     demand_rate: f64,
     seeds: Vec<u64>,
+    demand_dist_name: &str,
     policy_head: &str,
     lead_time: usize,
     holding_cost: f64,
@@ -644,6 +665,7 @@ fn lost_sales_linear_population_rollout(
         output_dim,
         max_order_size,
         policy_head: parse_policy_head(policy_head)?,
+        demand_kind: parse_lost_sales_demand_kind(demand_dist_name)?,
         demand_rate,
         lead_time,
         holding_cost,
@@ -665,6 +687,7 @@ fn lost_sales_linear_population_rollout(
     max_order_size,
     activation,
     demand_rate,
+    demand_dist_name="Poisson",
     policy_head="categorical_quantity",
     lead_time=4,
     holding_cost=1.0,
@@ -683,6 +706,7 @@ fn lost_sales_nn_rollout(
     max_order_size: usize,
     activation: &str,
     demand_rate: f64,
+    demand_dist_name: &str,
     policy_head: &str,
     lead_time: usize,
     holding_cost: f64,
@@ -699,6 +723,7 @@ fn lost_sales_nn_rollout(
         output_dim,
         max_order_size,
         policy_head: parse_policy_head(policy_head)?,
+        demand_kind: parse_lost_sales_demand_kind(demand_dist_name)?,
         demand_rate,
         lead_time,
         holding_cost,
@@ -753,6 +778,7 @@ fn lost_sales_nn_rollout_from_demands(
         output_dim,
         max_order_size,
         policy_head: parse_policy_head(policy_head)?,
+        demand_kind: LostSalesDemandKind::Poisson,
         demand_rate: 0.0,
         lead_time: lead_time_orders.len(),
         holding_cost,
@@ -780,6 +806,7 @@ fn lost_sales_nn_rollout_from_demands(
     activation,
     demand_rate,
     seeds,
+    demand_dist_name="Poisson",
     policy_head="categorical_quantity",
     lead_time=4,
     holding_cost=1.0,
@@ -798,6 +825,7 @@ fn lost_sales_nn_population_rollout(
     activation: &str,
     demand_rate: f64,
     seeds: Vec<u64>,
+    demand_dist_name: &str,
     policy_head: &str,
     lead_time: usize,
     holding_cost: f64,
@@ -813,6 +841,7 @@ fn lost_sales_nn_population_rollout(
         output_dim,
         max_order_size,
         policy_head: parse_policy_head(policy_head)?,
+        demand_kind: parse_lost_sales_demand_kind(demand_dist_name)?,
         demand_rate,
         lead_time,
         holding_cost,

@@ -84,8 +84,6 @@ def configure_run_args(
     args.policy_name = spec["id"]
     apply_policy_name(args)
     args.rollout_backend = spec["rollout_backend"]
-    if args.demand_dist_name != "Poisson":
-        args.rollout_backend = "python"
     args.results_dir = str(root / "results")
     args.log_dir = str(root / "logs")
     args.trained_models_dir = str(root / "models")

@@ -288,8 +288,6 @@ def _rust_lost_sales_policy_mode(model, args, track_demand=False, return_env=Fal
         return None
     if getattr(args, "rollout_backend", "python") != "rust":
         return None
-    if getattr(args, "demand_dist_name", "Poisson") != "Poisson":
-        return None
     if getattr(args, "state_features", "pipeline") != "pipeline":
         return None
 
@@ -341,6 +339,7 @@ def get_model_fitness(
             split_type=str(getattr(model, "split_type", "oblique")),
             leaf_type=str(getattr(model, "leaf_type", "constant")),
             demand_rate=float(args.demand_rate),
+            demand_dist_name=str(getattr(args, "demand_dist_name", "Poisson")),
             lead_time=int(args.lead_time),
             holding_cost=float(args.holding_cost),
             shortage_cost=float(args.shortage_cost),
@@ -367,6 +366,7 @@ def get_model_fitness(
             max_order_size=int(model.max_order_size),
             policy_head=policy_head,
             demand_rate=float(args.demand_rate),
+            demand_dist_name=str(getattr(args, "demand_dist_name", "Poisson")),
             lead_time=int(args.lead_time),
             holding_cost=float(args.holding_cost),
             shortage_cost=float(args.shortage_cost),
@@ -394,6 +394,7 @@ def get_model_fitness(
             policy_head=policy_head,
             activation=str(getattr(model, "activation_name", "selu")),
             demand_rate=float(args.demand_rate),
+            demand_dist_name=str(getattr(args, "demand_dist_name", "Poisson")),
             lead_time=int(args.lead_time),
             holding_cost=float(args.holding_cost),
             shortage_cost=float(args.shortage_cost),
@@ -443,6 +444,7 @@ def get_population_fitness(model, args, model_params_batch, seeds):
             leaf_type=str(getattr(model, "leaf_type", "constant")),
             demand_rate=float(args.demand_rate),
             seeds=[int(seed) for seed in seeds],
+            demand_dist_name=str(getattr(args, "demand_dist_name", "Poisson")),
             lead_time=int(args.lead_time),
             holding_cost=float(args.holding_cost),
             shortage_cost=float(args.shortage_cost),
@@ -462,6 +464,7 @@ def get_population_fitness(model, args, model_params_batch, seeds):
             policy_head=policy_head,
             demand_rate=float(args.demand_rate),
             seeds=[int(seed) for seed in seeds],
+            demand_dist_name=str(getattr(args, "demand_dist_name", "Poisson")),
             lead_time=int(args.lead_time),
             holding_cost=float(args.holding_cost),
             shortage_cost=float(args.shortage_cost),
@@ -482,6 +485,7 @@ def get_population_fitness(model, args, model_params_batch, seeds):
             activation=str(getattr(model, "activation_name", "selu")),
             demand_rate=float(args.demand_rate),
             seeds=[int(seed) for seed in seeds],
+            demand_dist_name=str(getattr(args, "demand_dist_name", "Poisson")),
             lead_time=int(args.lead_time),
             holding_cost=float(args.holding_cost),
             shortage_cost=float(args.shortage_cost),
