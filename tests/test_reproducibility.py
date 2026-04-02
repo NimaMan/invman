@@ -1,6 +1,6 @@
 import numpy as np
 
-from invman.es import CMAES
+from invman.cmaes import CMAES
 from invman.utils import Seeder, set_global_seeds
 
 

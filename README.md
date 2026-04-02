@@ -159,7 +159,7 @@ Outputs are written under `outputs/`:
 - `invman/problems/multi_echelon/`: two-echelon env, constant base-stock benchmark, and literature settings
 - `invman/policies/`: canonical linear, neural, and tree policy parameterizations
 - `rust/`: native rollout kernels used by the Rust-backed policy path
-- `invman/es.py`, `invman/es_mp.py`: evolution-strategy optimizers and training loop
+- `invman/cmaes.py`, `invman/es_mp.py`: evolution-strategy optimizers and training loop
 - `scripts/run_experiment.py`: single entry point for training and evaluation
 - `numerical_experiments/`: curated experiment catalog and launcher for Linux-scale benchmark runs
 - `scripts/lost_sales/autoresearch_tree_structures.py`: vanilla lost-sales tree-architecture comparison runner
