@@ -22,7 +22,7 @@ def parse_args():
     parser.add_argument("--search_horizon", type=int, default=10000)
     parser.add_argument("--eval_horizon", type=int, default=int(1e6))
     parser.add_argument("--eval_seeds", type=int, default=10)
-    parser.add_argument("--seed", type=int, default=123)
+    parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--same_seed", action="store_true")
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--references", nargs="+", default=None)

@@ -4,10 +4,9 @@
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{booktabs}
+\usepackage{graphicx}
 \usepackage{hyperref}
 \usepackage[numbers]{natbib}
-\usepackage{tikz}
-\usetikzlibrary{arrows.meta,positioning}
 
 \title{Fixed-Order-Cost Lost-Sales Control with CMA-ES-Trained Policy Families}
 \author{Working manuscript}
@@ -111,6 +110,44 @@ which is the relevant correctness check. Therefore, in the experiments below we 
 fixed-order-cost heuristic stack as externally validated against the literature, and we report both
 the selected heuristic parameters and their long-run reevaluated costs.
 
+We also ran the full learned-policy suite on this same known-optimum instance. Because the exact
+optimal cost is available here, this is the cleanest place to compare learned policies to the true
+benchmark rather than only to the best heuristic.
+
+\begin{table}[t]
+\centering
+\caption{Known-optimum validation benchmark on the published Table~1 instance
+\texttt{bijvank2015\_table1\_l2\_p14\_k5}. Since the exact optimum is available, the main
+comparison is gap to that optimum.}
+\label{tab:fixed-cost-validation-suite}
+\begin{tabular}{lrr}
+\toprule
+Policy family & Mean cost & Gap vs.\ optimum \\
+\midrule
+\multicolumn{3}{l}{\textit{Exact and heuristic baselines}} \\
+optimal & 11.4600 & 0.0000 \\
+$(s,S)$ & 11.6192 & 0.1592 \\
+$(s,nQ)$ & 11.6317 & 0.1717 \\
+modified $(s,S,q)$ & 11.5038 & 0.0438 \\
+\midrule
+\multicolumn{3}{l}{\textit{Learned policy families}} \\
+Linear, categorical quantity & 12.5219 & 1.0619 \\
+Linear, gated ordinal quantity & 11.5260 & 0.0660 \\
+NN, categorical quantity & 12.2939 & 0.8339 \\
+NN, gated ordinal quantity & 11.5436 & 0.0836 \\
+Soft tree, oblique depth-2 linear leaf & 12.1070 & 0.6470 \\
+Soft tree, oblique depth-1 linear leaf & 12.1252 & 0.6652 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:fixed-cost-validation-suite} shows that the best learned policy on the published
+instance is the linear policy with the gated ordinal quantity head, at cost $11.5260$, only
+$0.0660$ above the exact optimum and $0.0222$ above the best heuristic. The neural gated ordinal
+policy is close behind at $11.5436$. Thus the known-optimum validation instance supports the same
+qualitative conclusion as the canonical benchmark: the gated ordinal head is the only learned
+parameterization that gets close to the correct order/no-order structure of the fixed-cost problem.
+
 \section{Learned policy families}
 
 We compare three policy backbones:
@@ -134,92 +171,44 @@ quantity should improve both the linear and neural policies materially.
 
 The categorical quantity baseline is the same flat action parameterization that worked well for the
 plain lost-sales problem: the policy emits $\bar q+1$ logits and chooses a single order quantity by
-argmax. The fixed-cost results show that this action space is a poor fit once a setup cost creates
-an explicit no-order region.
+argmax:
+\[
+a_t = \arg\max_{a \in \{0,1,\ldots,\bar q\}} z_a(s_t),
+\]
+where $z_0(s_t),\ldots,z_{\bar q}(s_t)$ are the logits emitted by the policy. The fixed-cost
+results show that this flat action space is a poor fit once a setup cost creates an explicit
+no-order region.
 
-\begin{figure}[t]
-\centering
-\begin{tikzpicture}[
-  >=Latex,
-  box/.style={draw, rounded corners, minimum width=2.5cm, minimum height=0.9cm, align=center},
-  smallbox/.style={draw, rounded corners, minimum width=2.1cm, minimum height=0.8cm, align=center},
-  note/.style={align=center, font=\small},
-  arr/.style={->, thick}
-]
-  \node[box, fill=green!12] (state) at (0,0) {state vector\\$s_t$};
-  \node[box, fill=blue!10] (backbone) at (3.2,0) {shared backbone\\linear or NN};
-  \node[smallbox, fill=orange!14] (gate) at (6.5,1.1) {gate head\\$g(s_t)$};
-  \node[smallbox, fill=orange!14] (ordinal) at (6.5,-1.1) {ordinal head\\$o_1(s_t),\ldots,o_{\bar q}(s_t)$};
-  \node[smallbox, fill=purple!10] (gateact) at (9.4,1.1) {$\sigma(g(s_t))$\\order propensity};
-  \node[smallbox, fill=purple!10] (score) at (9.4,-1.1) {$\sum_{k=1}^{\bar q}\sigma(o_k(s_t))$\\quantity score};
-  \node[box, fill=red!12] (action) at (12.6,0) {$a_t=\mathrm{round}\!\left(\sigma(g(s_t))\sum_{k=1}^{\bar q}\sigma(o_k(s_t))\right)$};
+For the gated ordinal quantity head, the policy backbone produces one scalar gate score $g(s_t)$
+and $\bar q$ ordinal scores $o_1(s_t),\ldots,o_{\bar q}(s_t)$. We then define
+\[
+\hat m(s_t) = \sum_{k=1}^{\bar q} \sigma(o_k(s_t)),
+\qquad
+a_t = \mathrm{round}\!\left(\sigma(g(s_t)) \, \hat m(s_t)\right),
+\]
+where $\sigma(\cdot)$ is the logistic sigmoid. The gate $\sigma(g(s_t))$ represents the tendency
+to place any positive order, while $\hat m(s_t)$ represents the magnitude of the positive-order
+decision. This is still a general learned policy, not a hand-coded $(s,S)$-type rule, but it
+searches in a control space that is much closer to the economics of the problem.
 
-  \draw[arr] (state) -- (backbone);
-  \draw[arr] (backbone) -- (gate);
-  \draw[arr] (backbone) -- (ordinal);
-  \draw[arr] (gate) -- (gateact);
-  \draw[arr] (ordinal) -- (score);
-  \draw[arr] (gateact) -- (action);
-  \draw[arr] (score) -- (action);
-
-  \node[note] at (6.5,-2.25) {separates the decision to order\\from the positive-order quantity score};
-\end{tikzpicture}
-\caption{Gated ordinal quantity policy used for the fixed-order-cost lost-sales benchmark. The key structural change relative to a flat categorical quantity head is the explicit separation between a no-order tendency and a positive-order quantity score.}
-\label{fig:gated-ordinal-policy}
-\end{figure}
-
-Figure~\ref{fig:gated-ordinal-policy} shows the improved head that proved most effective in our
-fixed-cost benchmark. The gate represents the tendency to place any positive order, while the
-ordinal head represents the magnitude of the positive order. This is still a general learned policy,
-not a hand-coded $(s,S)$-type rule, but it searches in a control space that is much closer to the
-economics of the problem.
-
-\begin{figure}[t]
-\centering
-\begin{tikzpicture}[
-  >=Latex,
-  box/.style={draw, rounded corners, minimum width=2.2cm, minimum height=0.85cm, align=center},
-  leaf/.style={draw, rounded corners, minimum width=2.3cm, minimum height=0.85cm, align=center},
-  arr/.style={->, thick},
-  node distance=0.9cm and 1.0cm,
-  font=\small
-]
-  \node[box, fill=green!12] (state) at (0,0) {state vector\\$s_t$};
-  \node[box, fill=blue!10] (split1) at (3.4,0) {soft split 1\\$\sigma(w_1^\top s_t-b_1)$};
-  \node[box, fill=blue!10] (split2) at (6.8,1.5) {soft split 2\\$\sigma(w_2^\top s_t-b_2)$};
-  \node[box, fill=blue!10] (split3) at (6.8,-1.5) {soft split 3\\$\sigma(w_3^\top s_t-b_3)$};
-
-  \node[leaf, fill=orange!12] (leaf1) at (10.4,2.7) {leaf 1\\linear quantity map};
-  \node[leaf, fill=orange!12] (leaf2) at (10.4,0.9) {leaf 2\\linear quantity map};
-  \node[leaf, fill=orange!12] (leaf3) at (10.4,-0.9) {leaf 3\\linear quantity map};
-  \node[leaf, fill=orange!12] (leaf4) at (10.4,-2.7) {leaf 4\\linear quantity map};
-
-  \node[box, fill=red!12] (mix) at (13.7,0) {path-probability-weighted\\leaf mixture, then round};
-
-  \draw[arr] (state) -- (split1);
-  \draw[arr] (split1) -- (split2);
-  \draw[arr] (split1) -- (split3);
-  \draw[arr] (split2) -- (leaf1);
-  \draw[arr] (split2) -- (leaf2);
-  \draw[arr] (split3) -- (leaf3);
-  \draw[arr] (split3) -- (leaf4);
-
-  \draw[arr] (leaf1) -- (mix);
-  \draw[arr] (leaf2) -- (mix);
-  \draw[arr] (leaf3) -- (mix);
-  \draw[arr] (leaf4) -- (mix);
-
-  \node[align=center] at (13.7,-1.7) {$a_t=\mathrm{round}\!\left(\sum_{\ell} p_\ell(s_t)\,q_\ell(s_t)\right)$};
-\end{tikzpicture}
-\caption{Soft oblique decision-tree policy with linear leaves. Each internal node computes a soft split, which induces path probabilities over the leaves; each leaf emits a small linear quantity model, and the final action is the rounded weighted mixture.}
-\label{fig:soft-tree-policy}
-\end{figure}
-
-Figure~\ref{fig:soft-tree-policy} shows the soft-tree family that also performs strongly on the
-canonical instance. The tree does not commit to a hard branch during training; instead, soft splits
-induce path probabilities over leaf models, which keeps the policy differentiable-free yet smooth
-enough for stable CMA-ES search. The depth-1 and depth-2 oblique trees with linear leaves form the
-strongest tree baselines in the current benchmark.
+The soft-tree family uses a different backbone but the same underlying idea of a structured action
+map. Each internal node computes a soft split
+\[
+p_j(s_t) = \sigma(w_j^\top s_t - b_j),
+\]
+which induces path probabilities $\pi_\ell(s_t)$ over the leaves. Each leaf $\ell$ emits a small
+linear quantity model
+\[
+q_\ell(s_t) = \alpha_\ell^\top s_t + \beta_\ell,
+\]
+and the final action is the rounded weighted mixture
+\[
+a_t = \mathrm{round}\!\left(\sum_{\ell} \pi_\ell(s_t)\, q_\ell(s_t)\right).
+\]
+The tree does not commit to a hard branch during training; instead, soft splits induce path
+probabilities over leaf models, which keeps the policy differentiable-free yet smooth enough for
+stable CMA-ES search. The depth-1 and depth-2 oblique trees with linear leaves form the strongest
+tree baselines in the current benchmark.
 
 \section{Benchmark protocol}
 
@@ -310,6 +299,81 @@ Soft tree, oblique depth-1 linear leaf & 13.960 & 1/16 & trusted \\
 
 Like the canonical table, this full-grid artifact is generated directly from the benchmark JSON so
 the manuscript stays synchronized with the experiment outputs.
+
+To make the instance-level picture explicit in the same style as the plain lost-sales paper,
+Tables~\ref{tab:fixed-cost-k5-slice} and~\ref{tab:fixed-cost-k25-slice} report the actual mean
+costs on the $L \in \{2,4\}$ slice of the fixed-cost grid. These are the costs from the full-grid
+run itself, so the canonical $L=4$, $p=4$, $K=5$ entry need not match the separate canonical-suite
+table exactly. The Geometric columns are left blank for now because we have not yet run the
+aligned fixed-cost Geometric benchmark.
+
+\begin{table}[t]
+\caption{Average cost of policy function approximators on the fixed-order-cost lost-sales problem
+with fixed order cost $K=5$ and lead times in $\{2,4\}$. Geometric columns are left empty because
+those runs have not yet been executed for the fixed-cost benchmark.}
+\label{tab:fixed-cost-k5-slice}
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|l|l|c|c||c|c|}
+\hline
+ & & \multicolumn{2}{c||}{Lead Time = 2} & \multicolumn{2}{c|}{Lead Time = 4} \\
+Shortage & Policy & Geometric & Poisson & Geometric & Poisson \\
+Cost & & & & & \\ \hline
+4 & $(s,S)$ &  & 8.8695 &  & 9.5619 \\
+  & $(s,nQ)$ &  & 8.8071 &  & 9.2123 \\
+  & modified $(s,S,q)$ &  & 8.8021 &  & 9.2032 \\
+  & Linear, categorical &  & 9.6582 &  & 10.2730 \\
+  & Linear, gated ordinal &  & 8.5974 &  & 8.7723 \\
+  & NN, categorical &  & 9.4855 &  & 10.2730 \\
+  & NN, gated ordinal &  & 8.5173 &  & 8.7929 \\
+  & Soft tree, depth-2 &  & 9.2744 &  & 9.7519 \\
+  & Soft tree, depth-1 &  & 9.4218 &  & 9.7530 \\ \hline
+19 & $(s,S)$ &  & 12.2996 &  & 13.7219 \\
+   & $(s,nQ)$ &  & 12.2365 &  & 13.6427 \\
+   & modified $(s,S,q)$ &  & 12.1976 &  & 13.5483 \\
+   & Linear, categorical &  & 13.2537 &  & 14.9028 \\
+   & Linear, gated ordinal &  & 12.1783 &  & 13.6092 \\
+   & NN, categorical &  & 12.9253 &  & 14.3474 \\
+   & NN, gated ordinal &  & 12.2043 &  & 13.4420 \\
+   & Soft tree, depth-2 &  & 12.7438 &  & 13.9892 \\
+   & Soft tree, depth-1 &  & 12.7433 &  & 14.0448 \\ \hline
+\end{tabular}%
+}
+\end{table}
+
+\begin{table}[t]
+\caption{Average cost of policy function approximators on the fixed-order-cost lost-sales problem
+with fixed order cost $K=25$ and lead times in $\{2,4\}$. Geometric columns are left empty because
+those runs have not yet been executed for the fixed-cost benchmark.}
+\label{tab:fixed-cost-k25-slice}
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{|l|l|c|c||c|c|}
+\hline
+ & & \multicolumn{2}{c||}{Lead Time = 2} & \multicolumn{2}{c|}{Lead Time = 4} \\
+Shortage & Policy & Geometric & Poisson & Geometric & Poisson \\
+Cost & & & & & \\ \hline
+4 & $(s,S)$ &  & 15.4044 &  & 15.9471 \\
+  & $(s,nQ)$ &  & 15.3194 &  & 15.8247 \\
+  & modified $(s,S,q)$ &  & 15.3319 &  & 15.8625 \\
+  & Linear, categorical &  & 15.3194 &  & 19.9952 \\
+  & Linear, gated ordinal &  & 19.9952 &  & 15.6355 \\
+  & NN, categorical &  & 15.3410 &  & 15.5593 \\
+  & NN, gated ordinal &  & 15.3204 &  & 15.5705 \\
+  & Soft tree, depth-2 &  & 19.9952 &  & 19.9952 \\
+  & Soft tree, depth-1 &  & 19.9952 &  & 19.9952 \\ \hline
+19 & $(s,S)$ &  & 19.5629 &  & 21.1835 \\
+   & $(s,nQ)$ &  & 19.6401 &  & 21.0192 \\
+   & modified $(s,S,q)$ &  & 19.6538 &  & 20.9927 \\
+   & Linear, categorical &  & 34.3710 &  & 34.4796 \\
+   & Linear, gated ordinal &  & 19.5581 &  & 21.7506 \\
+   & NN, categorical &  & 19.6040 &  & 21.1661 \\
+   & NN, gated ordinal &  & 19.5766 &  & 20.7843 \\
+   & Soft tree, depth-2 &  & 25.0137 &  & 26.4984 \\
+   & Soft tree, depth-1 &  & 19.5571 &  & 26.4972 \\ \hline
+\end{tabular}%
+}
+\end{table}
 
 The completed $16$-instance run strengthens the canonical-instance conclusion. Among the trusted
 families, the neural network with the gated ordinal quantity head is best in aggregate, with mean

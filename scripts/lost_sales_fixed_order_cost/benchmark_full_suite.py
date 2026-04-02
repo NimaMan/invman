@@ -29,7 +29,7 @@ def parse_args():
     )
     parser.add_argument("--grid_name", default="literature_subset_poisson_mu5")
     parser.add_argument("--run_tag", default="fixed_cost_full_grid_suite_5k_paperlike")
-    parser.add_argument("--seed", type=int, default=123)
+    parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--same_seed", action="store_true")
     parser.add_argument("--mp_num_processors", type=int, default=4)
     parser.add_argument("--limit", type=int, default=None)

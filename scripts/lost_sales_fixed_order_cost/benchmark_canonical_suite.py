@@ -24,7 +24,7 @@ def parse_args():
     )
     parser.add_argument("--reference", default="lit_pois_mu5_l4_p4_k5")
     parser.add_argument("--run_tag", default="fixed_cost_l4_canonical_suite_5k_paperlike")
-    parser.add_argument("--seed", type=int, default=123)
+    parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--same_seed", action="store_true")
     parser.add_argument("--mp_num_processors", type=int, default=4)
     parser.add_argument("--search_horizon", type=int, default=10000)

@@ -14,13 +14,13 @@ BASE_INSTANCE_PARAMS = {
     "horizon": 3000,
     "eval_horizon": 50000,
     "warm_up_periods_ratio": 0.2,
-    "seed": 123,
+    "seed": 42,
 }
 
 DEFAULT_SEARCH_CONFIG = {
     "position_upper_bound": 45,
     "search_horizon": 3000,
-    "search_seed": 123,
+    "search_seed": 42,
     "top_k_s_s_pairs": 12,
     "q_window": 8,
 }
@@ -196,7 +196,7 @@ MANUAL_REFERENCE_INSTANCES = {
         "search": {
             "position_upper_bound": 31,
             "search_horizon": 10000,
-            "search_seed": 123,
+            "search_seed": 42,
             "top_k_s_s_pairs": 12,
             "q_window": 8,
         },
