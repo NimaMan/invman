@@ -13,7 +13,6 @@ BASE_INSTANCE_PARAMS = {
     "max_order_size": 50,
     "horizon": 3000,
     "eval_horizon": 50000,
-    "track_demand": True,
     "warm_up_periods_ratio": 0.2,
     "seed": 123,
 }

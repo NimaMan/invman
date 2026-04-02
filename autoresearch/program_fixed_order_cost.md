@@ -54,6 +54,12 @@ Use the fixed budgets from `scripts/autoresearch_fixed_order_cost.py`:
 The first runs in any new `run_tag` should re-establish the current tree baseline before trying
 new policy structure changes. Promising ideas may then be promoted beyond the screening budget.
 
+For soft-tree investigations, do not rely on a single seed. Use
+`scripts/lost_sales_fixed_order_cost/autoresearch_fixed_order_tree_structures.py` with multiple
+training seeds and compare aggregate stability statistics such as mean, median, best, worst, and
+range across seeds. A candidate only counts as an improvement if it improves the aggregate picture,
+not just one lucky run.
+
 ## Experiment loop
 
 For each experiment:

@@ -226,6 +226,39 @@ def test_rust_linear_leaf_soft_tree_rollout_matches_python_on_fixed_path():
     assert rust_cost == pytest.approx(env.avg_total_cost)
 
 
+def test_rust_linear_leaf_soft_tree_action_matches_python():
+    torch.manual_seed(23)
+    model = SoftTreePolicy(
+        input_dim=4,
+        max_order_size=20,
+        depth=2,
+        temperature=0.25,
+        split_type="oblique",
+        leaf_type="linear",
+    )
+    flat_params = model.get_model_flat_params().astype(np.float32)
+
+    for state_values in (
+        [0.1, 0.2, 0.0, 0.5],
+        [0.8, 0.1, 0.3, 0.2],
+        [0.0, 0.0, 0.0, 0.0],
+        [1.0, 0.0, 0.0, 0.0],
+    ):
+        state = torch.tensor(np.array(state_values, dtype=np.float32))
+        python_action = int(model(state))
+        rust_action = invman_rust.soft_tree_action_from_flat_params(
+            state=state.tolist(),
+            flat_params=flat_params.tolist(),
+            input_dim=model.input_dim,
+            depth=model.depth,
+            max_order_size=model.max_order_size,
+            temperature=model.temperature,
+            split_type="oblique",
+            leaf_type="linear",
+        )
+        assert rust_action == python_action
+
+
 def test_rust_soft_tree_population_rollout_matches_single_rollouts():
     torch.manual_seed(13)
     model_a = SoftTreePolicy(input_dim=4, max_order_size=20, depth=3, temperature=0.25)

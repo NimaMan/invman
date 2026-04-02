@@ -1,4 +1,5 @@
 from invman.problems.lost_sales_fixed_order_cost.reference_instances import (
+    build_reference_args,
     build_grid_instances,
     get_reference_instance,
     list_reference_instances,
@@ -42,3 +43,8 @@ def test_published_validation_instance_matches_reported_benchmark():
     assert published["s_nq"]["params"] == {"s": 17, "q": 7}
     assert published["modified_s_s_q"]["params"] == {"s": 17, "S": 23, "q": 7}
     assert instance["benchmark_anchors"]["published_optimal_reference"]["mean_cost"] == 11.46
+
+
+def test_fixed_cost_reference_args_do_not_force_tracked_demands():
+    args = build_reference_args("lit_pois_mu5_l4_p4_k5")
+    assert not getattr(args, "track_demand", False)
