@@ -102,9 +102,9 @@ The fixed-order-cost lost-sales section is the most mature new problem family.
 
 Main scripts:
 
+- known-optimum heuristic validation: `scripts/lost_sales_fixed_order_cost/validate_known_optimum.py`
 - single-instance preflight: `scripts/lost_sales_fixed_order_cost/benchmark_canonical_suite.py`
 - full 16-instance literature-aligned grid: `scripts/lost_sales_fixed_order_cost/benchmark_full_suite.py`
-- paper table export: `scripts/lost_sales_fixed_order_cost/export_paper_table.py`
 
 Canonical benchmark outputs:
 
@@ -115,12 +115,6 @@ Full grid outputs:
 - `outputs/benchmarks/fixed_cost_full_grid_suite_5k_paperlike/`
 
 Use the single-instance preflight first to confirm that the full experiment path is behaving as expected.
-
-Refresh the canonical paper table after the benchmark exists:
-
-```bash
-python scripts/lost_sales_fixed_order_cost/export_paper_table.py
-```
 
 Current fixed-cost policy set:
 
@@ -170,7 +164,6 @@ These per-instance JSON files contain:
 The new manuscript workspace is:
 
 - `paper/fixed_order_cost_lost_sales.tex`
-- `paper/generated/fixed_cost_canonical_table.tex`
 - `paper/references.bib`
 
 LaTeX is optional for experiments. A TeX toolchain is not required to run benchmarks.

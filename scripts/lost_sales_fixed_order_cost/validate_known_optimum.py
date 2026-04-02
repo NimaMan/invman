@@ -8,14 +8,19 @@ if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
 
 from invman.problems.lost_sales_fixed_order_cost.benchmark import benchmark_reference_instance
+from invman.problems.lost_sales_fixed_order_cost.reference_instances import (
+    PUBLISHED_VALIDATION_REFERENCE_NAME,
+)
 
 
 def build_parser():
-    parser = argparse.ArgumentParser(description="Validate fixed-order-cost heuristics on a starter instance.")
+    parser = argparse.ArgumentParser(
+        description="Validate fixed-cost heuristics on the published known-optimum reference instance."
+    )
     parser.add_argument(
         "--reference_instance",
-        default="lit_pois_mu5_l4_p4_k5",
-        help="Named reference instance from the fixed-order-cost problem package.",
+        default=PUBLISHED_VALIDATION_REFERENCE_NAME,
+        help="Named fixed-cost reference instance to validate against the literature anchor.",
     )
     parser.add_argument("--search_horizon", default=None, type=int, help="Override the search horizon.")
     parser.add_argument("--eval_horizon", default=None, type=int, help="Override the evaluation horizon.")
@@ -24,7 +29,12 @@ def build_parser():
     parser.add_argument("--search_seed", default=None, type=int, help="Override the search seed.")
     parser.add_argument("--top_k_s_s_pairs", default=None, type=int, help="Override the number of s,S pairs used for the modified search.")
     parser.add_argument("--q_window", default=None, type=int, help="Override the q search window around the paper heuristic.")
-    parser.add_argument("--backend", default="python", choices=["python", "rust"], help="Search backend for heuristic parameter search.")
+    parser.add_argument(
+        "--backend",
+        default="rust",
+        choices=["python", "rust"],
+        help="Search backend for heuristic parameter search.",
+    )
     parser.add_argument(
         "--modified_search_mode",
         default="guided",

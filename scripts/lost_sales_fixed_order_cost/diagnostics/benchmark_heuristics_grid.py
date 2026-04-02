@@ -3,7 +3,7 @@ import json
 import sys
 from pathlib import Path
 
-PACKAGE_ROOT = Path(__file__).resolve().parents[2]
+PACKAGE_ROOT = Path(__file__).resolve().parents[3]
 if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
 
@@ -11,7 +11,9 @@ from invman.problems.lost_sales_fixed_order_cost.benchmark import benchmark_grid
 
 
 def build_parser():
-    parser = argparse.ArgumentParser(description="Benchmark fixed-order-cost heuristics on the literature subset grid.")
+    parser = argparse.ArgumentParser(
+        description="Benchmark fixed-cost heuristics only on the literature subset grid."
+    )
     parser.add_argument(
         "--grid_name",
         default="literature_subset_poisson_mu5",
