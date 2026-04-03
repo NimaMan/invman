@@ -15,7 +15,6 @@ _DENSE_DECODERS = (
     "categorical_quantity",
     "direct_quantity",
     "sigmoid_direct_quantity",
-    "unbounded_direct_quantity",
     "soft_gated_direct_quantity",
     "gated_sigmoid_direct_quantity",
     "hard_gated_direct_quantity",
@@ -229,11 +228,6 @@ _POLICY_ALIASES = {
         policy_backbone="linear",
         policy_decoder="direct_quantity",
     ),
-    "linear_unbounded_direct_quantity": _dense_spec(
-        "linear_unbounded_direct_quantity",
-        policy_backbone="linear",
-        policy_decoder="unbounded_direct_quantity",
-    ),
     "linear_soft_gated_direct_quantity": _dense_spec(
         "linear_soft_gated_direct_quantity",
         policy_backbone="linear",
@@ -323,13 +317,6 @@ _POLICY_ALIASES = {
         "nn_direct_quantity",
         policy_backbone="nn",
         policy_decoder="direct_quantity",
-        hidden_dim=(50,),
-        activation="selu",
-    ),
-    "nn_unbounded_direct_quantity": _dense_spec(
-        "nn_unbounded_direct_quantity",
-        policy_backbone="nn",
-        policy_decoder="unbounded_direct_quantity",
         hidden_dim=(50,),
         activation="selu",
     ),
@@ -557,11 +544,11 @@ _POLICY_ALIASES = {
 
 
 _LINEAR_RE = re.compile(
-    r"^(?P<decoder>categorical_quantity|direct_quantity|positive_quantity|sigmoid_direct_quantity|scaled_direct_quantity|unbounded_direct_quantity|soft_gated_direct_quantity|gated_direct_quantity|gated_positive_quantity|gated_sigmoid_direct_quantity|scaled_gated_direct_quantity|hard_gated_direct_quantity|two_stage_direct_quantity|two_stage_positive_quantity|bounded_quantity|soft_gated_ordinal_quantity|gated_ordinal_quantity|hard_gated_ordinal_quantity|two_stage_ordinal_quantity)"
+    r"^(?P<decoder>categorical_quantity|direct_quantity|positive_quantity|sigmoid_direct_quantity|scaled_direct_quantity|soft_gated_direct_quantity|gated_direct_quantity|gated_positive_quantity|gated_sigmoid_direct_quantity|scaled_gated_direct_quantity|hard_gated_direct_quantity|two_stage_direct_quantity|two_stage_positive_quantity|bounded_quantity|soft_gated_ordinal_quantity|gated_ordinal_quantity|hard_gated_ordinal_quantity|two_stage_ordinal_quantity)"
     r"(?:_adapter-(?P<adapter>.+?))?(?:_q(?P<q>\d+))?$"
 )
 _NN_RE = re.compile(
-    r"^(?P<decoder>categorical_quantity|direct_quantity|positive_quantity|sigmoid_direct_quantity|scaled_direct_quantity|unbounded_direct_quantity|soft_gated_direct_quantity|gated_direct_quantity|gated_positive_quantity|gated_sigmoid_direct_quantity|scaled_gated_direct_quantity|hard_gated_direct_quantity|two_stage_direct_quantity|two_stage_positive_quantity|bounded_quantity|soft_gated_ordinal_quantity|gated_ordinal_quantity|hard_gated_ordinal_quantity|two_stage_ordinal_quantity)"
+    r"^(?P<decoder>categorical_quantity|direct_quantity|positive_quantity|sigmoid_direct_quantity|scaled_direct_quantity|soft_gated_direct_quantity|gated_direct_quantity|gated_positive_quantity|gated_sigmoid_direct_quantity|scaled_gated_direct_quantity|hard_gated_direct_quantity|two_stage_direct_quantity|two_stage_positive_quantity|bounded_quantity|soft_gated_ordinal_quantity|gated_ordinal_quantity|hard_gated_ordinal_quantity|two_stage_ordinal_quantity)"
     r"_h(?P<hidden>\d+(?:x\d+)*)_(?P<activation>selu|gelu|relu)"
     r"(?:_adapter-(?P<adapter>.+?))?(?:_q(?P<q>\d+))?$"
 )

@@ -54,22 +54,13 @@ def test_build_policy_returns_nn_direct_policy():
     assert 0 <= action <= env.max_order_size
 
 
-def test_build_policy_returns_linear_unbounded_direct_policy():
-    env = LostSalesEnv(demand_rate=5.0, lead_time=4, max_order_size=20, horizon=10, track_demand=True)
-    model = build_policy(_make_args("linear_unbounded_direct_quantity"), env)
-    assert isinstance(model, LinearPolicyNet)
-    action = model(torch.as_tensor(env.policy_state, dtype=torch.float32))
-    assert isinstance(action, int)
-    assert 0 <= action <= env.max_order_size
-
-
-def test_build_policy_returns_nn_unbounded_direct_policy():
-    env = LostSalesEnv(demand_rate=5.0, lead_time=4, max_order_size=20, horizon=10, track_demand=True)
-    model = build_policy(_make_args("nn_unbounded_direct_quantity"), env)
-    assert isinstance(model, PolicyNet)
-    action = model(torch.as_tensor(env.policy_state, dtype=torch.float32))
-    assert isinstance(action, int)
-    assert 0 <= action <= env.max_order_size
+@pytest.mark.parametrize(
+    "policy_name",
+    ["linear_unbounded_direct_quantity", "nn_unbounded_direct_quantity"],
+)
+def test_unbounded_direct_policy_names_are_not_supported(policy_name):
+    with pytest.raises(ValueError, match="Unknown"):
+        _make_args(policy_name)
 
 
 def test_build_policy_returns_linear_gated_direct_policy():

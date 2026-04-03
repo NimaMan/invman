@@ -29,6 +29,11 @@ def train(
     min_steps=100,
     max_steps=5000,
 ):
+    def _log_terminal(message):
+        print(message)
+        history.append(message)
+        write_log(message, model, args)
+
     episodes = args.training_episodes
     history = []
     fitness_hist = []
@@ -104,12 +109,26 @@ def train(
                     args,
                     save_solutions=save_solutions,
                 )
+    except KeyboardInterrupt as exc:
+        elapsed_seconds = time.time() - start
+        _log_terminal(
+            f"the optimization was interrupted after {elapsed_seconds:.2f}s: "
+            f"{exc.__class__.__name__}{f' ({exc})' if str(exc) else ''}"
+        )
+        raise
+    except Exception as exc:
+        elapsed_seconds = time.time() - start
+        _log_terminal(
+            f"the optimization failed after {elapsed_seconds:.2f}s: "
+            f"{exc.__class__.__name__}: {exc}"
+        )
+        raise
     finally:
         if pool is not None:
             pool.close()
             pool.join()
 
-    elapsed_minutes = (time.time() - start) / 60.0
-    print(f"the optimization ended in {elapsed_minutes}")
+    elapsed_seconds = time.time() - start
+    _log_terminal(f"the optimization ended in {elapsed_seconds:.2f}s")
     model = model.set_model_params(es.current_param())
     return model, fitness_hist

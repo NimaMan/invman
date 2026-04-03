@@ -1,7 +1,12 @@
 import gzip
+import json
 import os
 import pickle
 import random
+import signal
+import time
+import traceback
+from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
@@ -40,6 +45,116 @@ def set_global_seeds(seed):
         torch = None
     if torch is not None:
         torch.manual_seed(seed)
+
+
+class RunTerminationRequested(KeyboardInterrupt):
+    pass
+
+
+def _utc_now_iso():
+    return datetime.now(timezone.utc).isoformat()
+
+
+def experiment_status_path(args):
+    return Path(args.results_dir) / f"status_{args.experiment_name}.json"
+
+
+class RunStatusTracker:
+    def __init__(self, status_path, metadata=None):
+        self.status_path = Path(status_path)
+        self.metadata = {} if metadata is None else dict(metadata)
+        self.stage = "initializing"
+        self.started_at = None
+        self.completed = False
+        self.completion_details = {}
+        self._previous_handlers = {}
+
+    def _payload(self, status, reason=None, exception_type=None, traceback_text=None, extra=None):
+        now = time.time()
+        payload = {
+            "status": status,
+            "stage": self.stage,
+            "reason": reason,
+            "exception_type": exception_type,
+            "pid": os.getpid(),
+            "started_at": None if self.started_at is None else datetime.fromtimestamp(self.started_at, tz=timezone.utc).isoformat(),
+            "updated_at": _utc_now_iso(),
+            "elapsed_seconds": None if self.started_at is None else round(now - self.started_at, 6),
+            "metadata": self.metadata,
+        }
+        if traceback_text is not None:
+            payload["traceback"] = traceback_text
+        if extra:
+            payload["details"] = dict(extra)
+        return payload
+
+    def _write(self, status, reason=None, exception_type=None, traceback_text=None, extra=None):
+        self.status_path.parent.mkdir(parents=True, exist_ok=True)
+        payload = self._payload(
+            status=status,
+            reason=reason,
+            exception_type=exception_type,
+            traceback_text=traceback_text,
+            extra=extra,
+        )
+        self.status_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+    def update(self, stage, **details):
+        self.stage = str(stage)
+        self._write("running", reason=f"entered stage '{self.stage}'", extra=details or None)
+
+    def mark_completed(self, **details):
+        self.completed = True
+        self.completion_details = dict(details)
+        self._write("completed", reason="run completed successfully", extra=self.completion_details or None)
+
+    def _signal_handler(self, signum, _frame):
+        signame = signal.Signals(signum).name
+        self._write("interrupted", reason=f"received {signame}")
+        raise RunTerminationRequested(f"received {signame}")
+
+    def __enter__(self):
+        self.started_at = time.time()
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            self._previous_handlers[sig] = signal.getsignal(sig)
+            signal.signal(sig, self._signal_handler)
+        self._write("running", reason="run started")
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        for sig, handler in self._previous_handlers.items():
+            signal.signal(sig, handler)
+
+        if self.completed:
+            return False
+
+        if exc is None:
+            self._write("completed", reason="run completed without explicit completion marker")
+            return False
+
+        if isinstance(exc, (KeyboardInterrupt, RunTerminationRequested)):
+            self._write(
+                "interrupted",
+                reason=str(exc) or exc.__class__.__name__,
+                exception_type=exc.__class__.__name__,
+            )
+            return False
+
+        if isinstance(exc, SystemExit):
+            code = getattr(exc, "code", None)
+            if code in (None, 0):
+                self._write("completed", reason="run exited via SystemExit(0)")
+            else:
+                self._write("failed", reason=f"SystemExit({code})", exception_type="SystemExit")
+            return False
+
+        self._write(
+            "failed",
+            reason=f"{exc.__class__.__name__}: {exc}",
+            exception_type=exc.__class__.__name__,
+            traceback_text="".join(traceback.format_exception(exc_type, exc, tb)),
+        )
+        return False
 
 def save_init_args(init_method):
     def wrapper(self, *args, **kwargs):

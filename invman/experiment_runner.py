@@ -8,7 +8,7 @@ from invman.es_mp import train
 from invman.policies import build_policy
 from invman.policies.registry import apply_policy_name, get_policy_spec
 from invman.problems import get_problem_module
-from invman.utils import set_global_seeds
+from invman.utils import RunStatusTracker, experiment_status_path, set_global_seeds
 
 
 def build_model(args):
@@ -124,22 +124,38 @@ def save_result_payload(args, payload):
 def run_experiment(args):
     apply_policy_name(args)
     ensure_output_dirs(args)
-    set_global_seeds(getattr(args, "seed", 0))
-    problem_module = get_problem_module(args.problem)
-    model = build_model(args)
-    trained_model, _ = train(
-        model=model,
-        get_model_fitness=problem_module.get_model_fitness,
-        get_population_fitness=problem_module.get_population_fitness,
-        args=args,
-        same_seed=args.same_seed,
-        limit_env_time=args.dynamic_horizon,
-        min_steps=args.min_dynamic_horizon,
-        max_steps=args.max_dynamic_horizon,
-    )
+    policy_spec = get_policy_spec(args)
+    status_metadata = {
+        "experiment_name": args.experiment_name,
+        "problem": args.problem,
+        "policy_name": policy_spec.policy_name,
+        "policy_decoder": policy_spec.action_output_mode,
+        "seed": int(getattr(args, "seed", 0)),
+    }
+    with RunStatusTracker(experiment_status_path(args), metadata=status_metadata) as tracker:
+        tracker.update("seeding")
+        set_global_seeds(getattr(args, "seed", 0))
+        tracker.update("building_model")
+        problem_module = get_problem_module(args.problem)
+        model = build_model(args)
+        tracker.update("training")
+        trained_model, _ = train(
+            model=model,
+            get_model_fitness=problem_module.get_model_fitness,
+            get_population_fitness=problem_module.get_population_fitness,
+            args=args,
+            same_seed=args.same_seed,
+            limit_env_time=args.dynamic_horizon,
+            min_steps=args.min_dynamic_horizon,
+            max_steps=args.max_dynamic_horizon,
+        )
 
-    learned_policy_results = evaluate_model(trained_model, args)
-    heuristic_results = evaluate_heuristics(args)
-    payload = build_result_payload(args, learned_policy_results, heuristic_results)
-    results_path = save_result_payload(args, payload)
-    return payload, results_path
+        tracker.update("evaluating_learned_policy")
+        learned_policy_results = evaluate_model(trained_model, args)
+        tracker.update("evaluating_heuristics")
+        heuristic_results = evaluate_heuristics(args)
+        tracker.update("writing_results")
+        payload = build_result_payload(args, learned_policy_results, heuristic_results)
+        results_path = save_result_payload(args, payload)
+        tracker.mark_completed(results_path=str(results_path))
+        return payload, results_path
