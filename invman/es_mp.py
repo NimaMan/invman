@@ -50,7 +50,7 @@ def train(
             if limit_env_time:
                 rollout_horizon = int(
                     env_time_limit(
-                        episode,
+                        episode - 1,
                         min_steps=min_steps,
                         max_steps=max_steps,
                         num_cma_iterations=episodes,

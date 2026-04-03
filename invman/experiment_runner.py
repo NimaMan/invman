@@ -107,6 +107,9 @@ def build_result_payload(args, learned_policy_results, heuristic_results):
         "parameter_optimizer": args.training_method,
         "training_episodes": args.training_episodes,
         "training_horizon": args.horizon,
+        "dynamic_horizon": bool(getattr(args, "dynamic_horizon", False)),
+        "min_dynamic_horizon": int(getattr(args, "min_dynamic_horizon", args.horizon)),
+        "max_dynamic_horizon": int(getattr(args, "max_dynamic_horizon", args.horizon)),
         "evaluation_horizon": args.eval_horizon,
         "evaluation": {"learned_policy": learned_policy_results, "heuristics": heuristic_results},
     }

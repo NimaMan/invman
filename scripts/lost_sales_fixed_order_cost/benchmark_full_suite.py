@@ -28,7 +28,7 @@ def parse_args():
         description="Run the full fixed-cost literature-aligned benchmark suite over the configured instance grid."
     )
     parser.add_argument("--grid_name", default="literature_subset_poisson_mu5")
-    parser.add_argument("--run_tag", default="fixed_cost_full_grid_suite_5k_paperlike")
+    parser.add_argument("--run_tag", default="fixed_cost_full_grid_suite_2k_linear_h1000_3000")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--same_seed", action="store_true")
     parser.add_argument("--mp_num_processors", type=int, default=4)
@@ -111,6 +111,9 @@ def _instance_protocol(parsed) -> dict:
         "training_episodes": COMMON_BUDGET["training_episodes"],
         "es_population": COMMON_BUDGET["es_population"],
         "training_horizon": COMMON_BUDGET["horizon"],
+        "dynamic_horizon": COMMON_BUDGET.get("dynamic_horizon", False),
+        "min_dynamic_horizon": COMMON_BUDGET.get("min_dynamic_horizon", COMMON_BUDGET["horizon"]),
+        "max_dynamic_horizon": COMMON_BUDGET.get("max_dynamic_horizon", COMMON_BUDGET["horizon"]),
         "eval_horizon": parsed.eval_horizon,
         "eval_seeds": parsed.eval_seeds,
         "sigma_init": COMMON_BUDGET["sigma_init"],
@@ -129,7 +132,12 @@ def _render_markdown(summary: dict) -> str:
         "",
         f"- training episodes: `{summary['protocol']['training_episodes']}`",
         f"- ES population: `{summary['protocol']['es_population']}`",
-        f"- training horizon: `{summary['protocol']['training_horizon']}`",
+        (
+            f"- training horizon: linear schedule "
+            f"`{summary['protocol']['min_dynamic_horizon']}` -> `{summary['protocol']['max_dynamic_horizon']}`"
+            if summary['protocol'].get('dynamic_horizon')
+            else f"- training horizon: `{summary['protocol']['training_horizon']}`"
+        ),
         f"- evaluation horizon: `{summary['protocol']['eval_horizon']}`",
         f"- evaluation seeds: `{summary['protocol']['eval_seeds']}`",
         "",

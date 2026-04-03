@@ -11,6 +11,7 @@ pub enum SoftTreeSplitType {
 pub enum SoftTreeLeafType {
     Constant,
     Linear,
+    SigmoidLinear,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -43,8 +44,12 @@ pub fn parse_leaf_type(leaf_type: &str) -> PyResult<SoftTreeLeafType> {
     match leaf_type {
         "constant" => Ok(SoftTreeLeafType::Constant),
         "linear" => Ok(SoftTreeLeafType::Linear),
+        "positive_linear" | "softplus_linear" | "nonnegative_linear" => {
+            Ok(SoftTreeLeafType::Linear)
+        }
+        "sigmoid_linear" | "scaled_linear" => Ok(SoftTreeLeafType::SigmoidLinear),
         _ => Err(PyValueError::new_err(format!(
-            "unknown soft tree leaf type '{leaf_type}'; expected 'constant' or 'linear'"
+            "unknown soft tree leaf type '{leaf_type}'; expected 'constant', 'linear', or 'sigmoid_linear'"
         ))),
     }
 }
@@ -161,7 +166,9 @@ pub fn validate_soft_tree_flat_params(
     let bias_end = weights_end + num_internal_nodes;
     let leaf_param_count = match leaf_type {
         SoftTreeLeafType::Constant => num_leaves * action_dim,
-        SoftTreeLeafType::Linear => num_leaves * action_dim * input_dim + num_leaves * action_dim,
+        SoftTreeLeafType::Linear | SoftTreeLeafType::SigmoidLinear => {
+            num_leaves * action_dim * input_dim + num_leaves * action_dim
+        }
     };
     let expected_len = bias_end + leaf_param_count;
     if flat_params_len != expected_len {
@@ -244,7 +251,7 @@ fn leaf_output_from_flat_params(
             let start = bias_end + leaf_idx * action_dim;
             flat_params[start..start + action_dim].to_vec()
         }
-        SoftTreeLeafType::Linear => {
+        SoftTreeLeafType::Linear | SoftTreeLeafType::SigmoidLinear => {
             let weights_len = num_leaves * action_dim * input_dim;
             let weights_start = bias_end;
             let bias_start = bias_end + weights_len;
@@ -345,9 +352,18 @@ pub fn action_vector_from_flat_params(
         );
         for action_idx in 0..action_dim {
             let min_value = action_spec.min_values[action_idx] as f32;
-            let max_value = action_spec.max_values[action_idx] as f32;
-            let span = max_value - min_value;
-            let scaled = min_value + (1.0 / (1.0 + (-leaf_output[action_idx]).exp())) * span;
+            let scaled = match leaf_type {
+                SoftTreeLeafType::Constant | SoftTreeLeafType::SigmoidLinear => {
+                    let max_value = action_spec.max_values[action_idx] as f32;
+                    let span = max_value - min_value;
+                    min_value + (1.0 / (1.0 + (-leaf_output[action_idx]).exp())) * span
+                }
+                SoftTreeLeafType::Linear => {
+                    let raw = leaf_output[action_idx];
+                    let softplus = raw.max(0.0) + (-(raw.abs())).exp().ln_1p();
+                    min_value + softplus
+                }
+            };
             action_value[action_idx] += leaf_prob * scaled;
         }
     }

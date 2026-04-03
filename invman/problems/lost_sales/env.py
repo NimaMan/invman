@@ -296,14 +296,24 @@ def _rust_lost_sales_policy_mode(model, args, track_demand=False, return_env=Fal
         return "soft_tree"
     dense_rust_heads = {
         "categorical_quantity",
-        "gated_ordinal_quantity",
-        "two_stage_ordinal_quantity",
+        "direct_quantity",
+        "sigmoid_direct_quantity",
+        "unbounded_direct_quantity",
+        "soft_gated_direct_quantity",
+        "gated_sigmoid_direct_quantity",
+        "hard_gated_direct_quantity",
+        "soft_gated_ordinal_quantity",
+        "hard_gated_ordinal_quantity",
     }
     if model_name == "LinearPolicyNet" and getattr(model, "action_output_mode", None) in dense_rust_heads:
         return "linear"
     if model_name == "PolicyNet" and getattr(model, "action_output_mode", None) in dense_rust_heads:
         return "nn"
     return None
+
+
+def _dense_policy_output_dim(model):
+    return int(getattr(model, "policy_output_dim", getattr(model, "output_dim")))
 
 
 def get_model_fitness(
@@ -362,7 +372,7 @@ def get_model_fitness(
         avg_cost = invman_rust.lost_sales_linear_rollout(
             flat_params=np.asarray(flat_params, dtype=np.float32).tolist(),
             input_dim=int(model.input_dim),
-            output_dim=int(model.output_dim),
+            output_dim=_dense_policy_output_dim(model),
             max_order_size=int(model.max_order_size),
             policy_head=policy_head,
             demand_rate=float(args.demand_rate),
@@ -389,7 +399,7 @@ def get_model_fitness(
             flat_params=np.asarray(flat_params, dtype=np.float32).tolist(),
             input_dim=int(model.input_dim),
             hidden_dims=[int(width) for width in model.hidden_dim],
-            output_dim=int(model.output_dim),
+            output_dim=_dense_policy_output_dim(model),
             max_order_size=int(model.max_order_size),
             policy_head=policy_head,
             activation=str(getattr(model, "activation_name", "selu")),
@@ -459,7 +469,7 @@ def get_population_fitness(model, args, model_params_batch, seeds):
         costs = invman_rust.lost_sales_linear_population_rollout(
             params_batch=params_batch,
             input_dim=int(model.input_dim),
-            output_dim=int(model.output_dim),
+            output_dim=_dense_policy_output_dim(model),
             max_order_size=int(model.max_order_size),
             policy_head=policy_head,
             demand_rate=float(args.demand_rate),
@@ -479,7 +489,7 @@ def get_population_fitness(model, args, model_params_batch, seeds):
             params_batch=params_batch,
             input_dim=int(model.input_dim),
             hidden_dims=[int(width) for width in model.hidden_dim],
-            output_dim=int(model.output_dim),
+            output_dim=_dense_policy_output_dim(model),
             max_order_size=int(model.max_order_size),
             policy_head=policy_head,
             activation=str(getattr(model, "activation_name", "selu")),

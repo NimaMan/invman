@@ -54,9 +54,9 @@ Current paper-like benchmark suite on the same canonical instance:
 | Policy family | Mean cost | Status |
 | --- | ---: | --- |
 | `linear_categorical_quantity` | `10.27299` | trusted |
-| `linear_gated_ordinal_quantity` | `8.76878` | trusted |
+| `linear_soft_gated_ordinal_quantity` | `8.76878` | trusted |
 | `nn_categorical_quantity` | `10.27299` | provisional |
-| `nn_gated_ordinal_quantity` | `8.73282` | trusted |
+| `nn_soft_gated_ordinal_quantity` | `8.73282` | trusted |
 | `soft_tree_depth2_linear_leaf` | `8.77418` | trusted |
 | `soft_tree_depth1_linear_leaf` | `8.77846` | trusted |
 

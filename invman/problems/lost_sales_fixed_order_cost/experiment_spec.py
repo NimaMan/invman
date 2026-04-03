@@ -5,9 +5,12 @@ from invman.problems.lost_sales_fixed_order_cost.reference_instances import buil
 
 
 COMMON_BUDGET = {
-    "training_episodes": 5000,
+    "training_episodes": 2000,
     "es_population": 50,
-    "horizon": 2000,
+    "horizon": 1000,
+    "dynamic_horizon": True,
+    "min_dynamic_horizon": 1000,
+    "max_dynamic_horizon": 3000,
     "eval_horizon": int(1e6),
     "eval_seeds": 10,
     "sigma_init": 5.0,
@@ -21,7 +24,7 @@ EXPERIMENT_SPECS = [
         "status": "trusted",
     },
     {
-        "id": "linear_gated_ordinal_quantity",
+        "id": "linear_soft_gated_ordinal_quantity",
         "rollout_backend": "rust",
         "status": "trusted",
     },
@@ -35,7 +38,7 @@ EXPERIMENT_SPECS = [
         ),
     },
     {
-        "id": "nn_gated_ordinal_quantity",
+        "id": "nn_soft_gated_ordinal_quantity",
         "rollout_backend": "rust",
         "status": "trusted",
     },
@@ -69,6 +72,9 @@ def configure_run_args(
     args.training_episodes = COMMON_BUDGET["training_episodes"]
     args.es_population = COMMON_BUDGET["es_population"]
     args.horizon = COMMON_BUDGET["horizon"]
+    args.dynamic_horizon = COMMON_BUDGET["dynamic_horizon"]
+    args.min_dynamic_horizon = COMMON_BUDGET["min_dynamic_horizon"]
+    args.max_dynamic_horizon = COMMON_BUDGET["max_dynamic_horizon"]
     args.eval_horizon = parsed.eval_horizon
     args.eval_seeds = parsed.eval_seeds
     args.sigma_init = COMMON_BUDGET["sigma_init"]

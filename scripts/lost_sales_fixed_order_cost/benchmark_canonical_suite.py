@@ -23,7 +23,7 @@ def parse_args():
         description="Run the canonical fixed-order-cost benchmark suite and render a paper-style summary table."
     )
     parser.add_argument("--reference", default="lit_pois_mu5_l4_p4_k5")
-    parser.add_argument("--run_tag", default="fixed_cost_l4_canonical_suite_5k_paperlike")
+    parser.add_argument("--run_tag", default="fixed_cost_l4_canonical_suite_2k_linear_h1000_3000")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--same_seed", action="store_true")
     parser.add_argument("--mp_num_processors", type=int, default=4)
@@ -129,7 +129,12 @@ def _render_markdown(summary):
             "",
             f"- training episodes: `{COMMON_BUDGET['training_episodes']}`",
             f"- ES population: `{COMMON_BUDGET['es_population']}`",
-            f"- training horizon: `{COMMON_BUDGET['horizon']}`",
+            (
+                f"- training horizon: linear schedule "
+                f"`{COMMON_BUDGET['min_dynamic_horizon']}` -> `{COMMON_BUDGET['max_dynamic_horizon']}`"
+                if COMMON_BUDGET.get("dynamic_horizon")
+                else f"- training horizon: `{COMMON_BUDGET['horizon']}`"
+            ),
             f"- evaluation horizon: `{summary['eval_horizon']}`",
             f"- evaluation seeds: `{summary['eval_seeds']}`",
         ]

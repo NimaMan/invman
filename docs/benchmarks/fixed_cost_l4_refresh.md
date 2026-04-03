@@ -73,14 +73,14 @@ The fixed-cost benchmark now supports a much sharper conclusion than the earlier
 - the main architectural improvement is in the action parameterization, not only in the backbone
 - moving from `categorical_quantity` to `gated_ordinal_quantity` changes the linear policy from
   clearly non-competitive to essentially tied with the best tree variants
-- the best current canonical policy is `nn_gated_ordinal_quantity` at `8.73282`
-- `linear_gated_ordinal_quantity`, `soft_tree_depth2_linear_leaf`, and
+- the best current canonical policy is `nn_soft_gated_ordinal_quantity` at `8.73282`
+- `linear_soft_gated_ordinal_quantity`, `soft_tree_depth2_linear_leaf`, and
   `soft_tree_depth1_linear_leaf` all cluster very tightly around `8.77`
 
 Against the best heuristic `9.17436`, the trusted learned policies improve by roughly:
 
-- `nn_gated_ordinal_quantity`: `4.81%`
-- `linear_gated_ordinal_quantity`: `4.42%`
+- `nn_soft_gated_ordinal_quantity`: `4.81%`
+- `linear_soft_gated_ordinal_quantity`: `4.42%`
 - `soft_tree_depth2_linear_leaf`: `4.36%`
 - `soft_tree_depth1_linear_leaf`: `4.32%`
 

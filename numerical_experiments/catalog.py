@@ -72,8 +72,8 @@ EXPERIMENT_SUITES: tuple[ExperimentSuite, ...] = (
         heuristics=("s_s", "s_nq", "modified_s_s_q", "optimal_literature_when_available"),
         base_policies=("linear_categorical_quantity", "nn_categorical_quantity"),
         improved_policies=(
-            "linear_gated_ordinal_quantity",
-            "nn_gated_ordinal_quantity",
+            "linear_soft_gated_ordinal_quantity",
+            "nn_soft_gated_ordinal_quantity",
             "soft_tree_depth2_linear_leaf",
             "soft_tree_depth1_linear_leaf",
         ),
@@ -97,8 +97,8 @@ EXPERIMENT_SUITES: tuple[ExperimentSuite, ...] = (
         heuristics=("s_s", "s_nq", "modified_s_s_q"),
         base_policies=("linear_categorical_quantity", "nn_categorical_quantity"),
         improved_policies=(
-            "linear_gated_ordinal_quantity",
-            "nn_gated_ordinal_quantity",
+            "linear_soft_gated_ordinal_quantity",
+            "nn_soft_gated_ordinal_quantity",
             "soft_tree_depth2_linear_leaf",
             "soft_tree_depth1_linear_leaf",
         ),
@@ -116,8 +116,8 @@ EXPERIMENT_SUITES: tuple[ExperimentSuite, ...] = (
         heuristics=("s_s", "s_nq", "modified_s_s_q"),
         base_policies=("linear_categorical_quantity", "nn_categorical_quantity"),
         improved_policies=(
-            "linear_gated_ordinal_quantity",
-            "nn_gated_ordinal_quantity",
+            "linear_soft_gated_ordinal_quantity",
+            "nn_soft_gated_ordinal_quantity",
             "soft_tree_depth2_linear_leaf",
             "soft_tree_depth1_linear_leaf",
         ),

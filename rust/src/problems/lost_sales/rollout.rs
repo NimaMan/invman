@@ -96,10 +96,21 @@ fn validate_linear_config(config: &LostSalesLinearRolloutConfig) -> PyResult<()>
             "input_dim must match lead_time for pipeline state",
         ));
     }
-    if config.output_dim != config.max_order_size + 1 {
-        return Err(PyValueError::new_err(
-            "output_dim must equal max_order_size + 1",
-        ));
+    let expected_output_dim = match config.policy_head {
+        DensePolicyHead::CategoricalQuantity
+        | DensePolicyHead::SoftGatedOrdinalQuantity
+        | DensePolicyHead::HardGatedOrdinalQuantity => config.max_order_size + 1,
+        DensePolicyHead::DirectQuantity
+        | DensePolicyHead::SigmoidDirectQuantity
+        | DensePolicyHead::UnboundedDirectQuantity => 1,
+        DensePolicyHead::SoftGatedDirectQuantity
+        | DensePolicyHead::GatedSigmoidDirectQuantity
+        | DensePolicyHead::HardGatedDirectQuantity => 2,
+    };
+    if config.output_dim != expected_output_dim {
+        return Err(PyValueError::new_err(format!(
+            "output_dim must equal {expected_output_dim} for the selected policy head"
+        )));
     }
     if !(0.0..=1.0).contains(&config.warm_up_periods_ratio) {
         return Err(PyValueError::new_err(

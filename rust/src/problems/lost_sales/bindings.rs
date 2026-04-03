@@ -621,13 +621,19 @@ fn lost_sales_nn_population_rollout(
 pub fn register_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(lost_sales_constant_action_rollout, m)?)?;
     m.add_function(wrap_pyfunction!(lost_sales_soft_tree_rollout, m)?)?;
-    m.add_function(wrap_pyfunction!(lost_sales_soft_tree_rollout_from_demands, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        lost_sales_soft_tree_rollout_from_demands,
+        m
+    )?)?;
     m.add_function(wrap_pyfunction!(lost_sales_linear_rollout, m)?)?;
     m.add_function(wrap_pyfunction!(lost_sales_linear_rollout_from_demands, m)?)?;
     m.add_function(wrap_pyfunction!(lost_sales_linear_population_rollout, m)?)?;
     m.add_function(wrap_pyfunction!(lost_sales_nn_rollout, m)?)?;
     m.add_function(wrap_pyfunction!(lost_sales_nn_rollout_from_demands, m)?)?;
     m.add_function(wrap_pyfunction!(lost_sales_nn_population_rollout, m)?)?;
-    m.add_function(wrap_pyfunction!(lost_sales_soft_tree_population_rollout, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        lost_sales_soft_tree_population_rollout,
+        m
+    )?)?;
     Ok(())
 }

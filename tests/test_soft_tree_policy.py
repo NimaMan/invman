@@ -52,6 +52,26 @@ def test_linear_leaf_soft_tree_policy_reports_leaf_outputs():
     assert features["leaf_type"] == "linear"
     assert features["raw_leaf_output"].shape == (4,)
     assert features["leaf_quantities"].shape == (4,)
+    assert np.all(features["leaf_quantities"] >= 0.0)
+
+
+def test_sigmoid_linear_leaf_soft_tree_policy_reports_leaf_outputs():
+    model = SoftTreePolicy(
+        input_dim=4,
+        max_order_size=20,
+        depth=2,
+        temperature=0.25,
+        split_type="oblique",
+        leaf_type="sigmoid_linear",
+    )
+    state = torch.tensor(np.array([0.5, 0.1, 0.2, 0.0], dtype=np.float32))
+
+    action, features = model(state, return_features=True)
+
+    assert 0 <= action <= 20
+    assert features["leaf_type"] == "sigmoid_linear"
+    assert features["raw_leaf_output"].shape == (4,)
+    assert features["leaf_quantities"].shape == (4,)
 
 
 def test_structured_dual_sourcing_soft_tree_projects_controls_and_actions():

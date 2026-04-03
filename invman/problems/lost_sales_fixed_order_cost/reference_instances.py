@@ -95,11 +95,11 @@ BENCHMARK_ANCHORS = {
         },
         "paper_like_policy_suite_1m": {
             "linear_categorical_quantity": 10.272988999999999,
-            "linear_gated_ordinal_quantity": 8.768776124999999,
+            "linear_soft_gated_ordinal_quantity": 8.768776124999999,
             "nn_categorical_quantity": 10.272988999999999,
-            "nn_gated_ordinal_quantity": 8.732815500000001,
-            "soft_tree_depth2_linear_leaf": 8.774177125,
-            "soft_tree_depth1_linear_leaf": 8.778456875,
+            "nn_soft_gated_ordinal_quantity": 8.732815500000001,
+            "soft_tree_depth2_linear_leaf": 8.77689475,
+            "soft_tree_depth1_linear_leaf": 8.781105125,
         },
         "policy_approximator_anchors": {
             "linear_categorical_quantity": {
@@ -109,8 +109,8 @@ BENCHMARK_ANCHORS = {
                 "training_episodes": 5000,
                 "verification_status": "trusted",
             },
-            "linear_gated_ordinal_quantity": {
-                "policy_name": "linear_gated_ordinal_quantity",
+            "linear_soft_gated_ordinal_quantity": {
+                "policy_name": "linear_soft_gated_ordinal_quantity",
                 "eval_horizon": int(1e6),
                 "mean_cost": 8.768776124999999,
                 "training_episodes": 5000,
@@ -127,8 +127,8 @@ BENCHMARK_ANCHORS = {
                     "treat as provisional until re-verified."
                 ),
             },
-            "nn_gated_ordinal_quantity": {
-                "policy_name": "nn_gated_ordinal_quantity",
+            "nn_soft_gated_ordinal_quantity": {
+                "policy_name": "nn_soft_gated_ordinal_quantity",
                 "eval_horizon": int(1e6),
                 "mean_cost": 8.732815500000001,
                 "training_episodes": 5000,
@@ -138,7 +138,7 @@ BENCHMARK_ANCHORS = {
                 "policy_name": "soft_tree_depth2_linear_leaf",
                 "tree_depth": 2,
                 "eval_horizon": int(1e6),
-                "mean_cost": 8.774177125,
+                "mean_cost": 8.77689475,
                 "training_episodes": 5000,
                 "verification_status": "trusted",
             },
@@ -146,7 +146,7 @@ BENCHMARK_ANCHORS = {
                 "policy_name": "soft_tree_depth1_linear_leaf",
                 "tree_depth": 1,
                 "eval_horizon": int(1e6),
-                "mean_cost": 8.778456875,
+                "mean_cost": 8.781105125,
                 "training_episodes": 5000,
                 "verification_status": "trusted",
             },

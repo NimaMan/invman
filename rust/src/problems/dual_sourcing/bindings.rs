@@ -398,11 +398,29 @@ fn dual_sourcing_tailored_base_surge_search_from_demands(
 
 pub fn register_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(dual_sourcing_soft_tree_rollout, m)?)?;
-    m.add_function(wrap_pyfunction!(dual_sourcing_soft_tree_population_rollout, m)?)?;
-    m.add_function(wrap_pyfunction!(dual_sourcing_soft_tree_rollout_from_demands, m)?)?;
-    m.add_function(wrap_pyfunction!(dual_sourcing_single_index_search_from_demands, m)?)?;
-    m.add_function(wrap_pyfunction!(dual_sourcing_dual_index_search_from_demands, m)?)?;
-    m.add_function(wrap_pyfunction!(dual_sourcing_capped_dual_index_search_from_demands, m)?)?;
-    m.add_function(wrap_pyfunction!(dual_sourcing_tailored_base_surge_search_from_demands, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        dual_sourcing_soft_tree_population_rollout,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        dual_sourcing_soft_tree_rollout_from_demands,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        dual_sourcing_single_index_search_from_demands,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        dual_sourcing_dual_index_search_from_demands,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        dual_sourcing_capped_dual_index_search_from_demands,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        dual_sourcing_tailored_base_surge_search_from_demands,
+        m
+    )?)?;
     Ok(())
 }

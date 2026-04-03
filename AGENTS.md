@@ -119,9 +119,9 @@ Use the single-instance preflight first to confirm that the full experiment path
 Current fixed-cost policy set:
 
 - `linear_categorical_quantity`
-- `linear_gated_ordinal_quantity`
+- `linear_soft_gated_ordinal_quantity`
 - `nn_categorical_quantity`
-- `nn_gated_ordinal_quantity`
+- `nn_soft_gated_ordinal_quantity`
 - `soft_tree_depth2_linear_leaf`
 - `soft_tree_depth1_linear_leaf`
 

@@ -39,22 +39,47 @@ class LinearPolicyNet(ESModule):
         self.max_values = [int(value) for value in self.control_spec["max_values"]]
         self.action_adapter = str(action_adapter)
         self.action_adapter_config = None if action_adapter_config is None else dict(action_adapter_config)
-        out_features = (
-            output_dim
-            if self.action_output_mode in {"categorical_quantity", "gated_ordinal_quantity", "two_stage_ordinal_quantity"}
-            else self.control_dim
-        )
-        if self.action_output_mode == "direct_quantity" and max_order_size is None:
-            raise ValueError("max_order_size is required when action_output_mode='direct_quantity'")
-        if self.action_output_mode in {"gated_ordinal_quantity", "two_stage_ordinal_quantity"} and max_order_size is None:
+        if self.action_output_mode in {
+            "categorical_quantity",
+            "soft_gated_ordinal_quantity",
+            "hard_gated_ordinal_quantity",
+        }:
+            out_features = output_dim
+        elif self.action_output_mode in {
+            "gated_sigmoid_direct_quantity",
+            "soft_gated_direct_quantity",
+            "hard_gated_direct_quantity",
+        }:
+            out_features = 2
+        else:
+            out_features = self.control_dim
+        self.policy_output_dim = int(out_features)
+        if self.action_output_mode in {
+            "direct_quantity",
+            "sigmoid_direct_quantity",
+            "gated_sigmoid_direct_quantity",
+            "soft_gated_direct_quantity",
+            "soft_gated_ordinal_quantity",
+            "hard_gated_ordinal_quantity",
+            "hard_gated_direct_quantity",
+        } and max_order_size is None:
             raise ValueError(
-                "max_order_size is required when action_output_mode is an ordinal quantity head"
+                "max_order_size is required when action_output_mode uses bounded quantity outputs"
             )
         if self.action_output_mode == "categorical_quantity" and (
             self.control_dim != 1 or self.control_mode != "scalar_quantity"
         ):
             raise ValueError("categorical_quantity requires a scalar_quantity control spec.")
-        if self.action_output_mode in {"direct_quantity", "gated_ordinal_quantity", "two_stage_ordinal_quantity"} and (
+        if self.action_output_mode in {
+            "direct_quantity",
+            "sigmoid_direct_quantity",
+            "unbounded_direct_quantity",
+            "gated_sigmoid_direct_quantity",
+            "soft_gated_direct_quantity",
+            "soft_gated_ordinal_quantity",
+            "hard_gated_ordinal_quantity",
+            "hard_gated_direct_quantity",
+        } and (
             self.control_dim != 1 or self.control_mode != "scalar_quantity"
         ):
             raise ValueError(f"{self.action_output_mode} requires a scalar_quantity control spec.")
@@ -103,10 +128,43 @@ class LinearPolicyNet(ESModule):
             action = torch.argmax(raw_output, dim=-1)
             projected_controls = [int(action.item())]
         elif self.action_output_mode == "direct_quantity":
-            scaled_quantity = torch.sigmoid(raw_output.squeeze(-1)) * float(self.max_order_size)
-            action = torch.round(scaled_quantity).to(dtype=torch.int64)
+            quantity_value = torch.nn.functional.softplus(raw_output.squeeze(-1))
+            _, projected_controls = self._project_controls(quantity_value.reshape(-1))
+            action = self._finalize_action(projected_controls, state)
+        elif self.action_output_mode == "sigmoid_direct_quantity":
+            quantity_value = torch.sigmoid(raw_output.squeeze(-1)) * float(self.max_order_size)
+            action = torch.round(quantity_value).to(dtype=torch.int64)
             projected_controls = [int(action.item())]
-        elif self.action_output_mode == "gated_ordinal_quantity":
+        elif self.action_output_mode == "unbounded_direct_quantity":
+            _, projected_controls = self._project_controls(raw_output.reshape(-1))
+            action = self._finalize_action(projected_controls, state)
+        elif self.action_output_mode == "soft_gated_direct_quantity":
+            gate_logit = raw_output[..., 0]
+            quantity_logit = raw_output[..., 1]
+            gate_prob = torch.sigmoid(gate_logit)
+            quantity_value = torch.nn.functional.softplus(quantity_logit)
+            action = torch.round(gate_prob * quantity_value).to(dtype=torch.int64)
+            action = torch.clamp(action, min=0, max=int(self.max_order_size))
+            projected_controls = [int(action.item())]
+        elif self.action_output_mode == "gated_sigmoid_direct_quantity":
+            gate_logit = raw_output[..., 0]
+            quantity_logit = raw_output[..., 1]
+            gate_prob = torch.sigmoid(gate_logit)
+            quantity_value = torch.sigmoid(quantity_logit) * float(self.max_order_size)
+            action = torch.round(gate_prob * quantity_value).to(dtype=torch.int64)
+            action = torch.clamp(action, min=0, max=int(self.max_order_size))
+            projected_controls = [int(action.item())]
+        elif self.action_output_mode == "hard_gated_direct_quantity":
+            gate_logit = raw_output[..., 0]
+            quantity_logit = raw_output[..., 1]
+            gate_prob = torch.sigmoid(gate_logit)
+            order_flag = gate_prob >= 0.5
+            quantity_value = torch.nn.functional.softplus(quantity_logit)
+            positive_action = torch.round(quantity_value).to(dtype=torch.int64)
+            positive_action = torch.clamp(positive_action, min=1, max=int(self.max_order_size))
+            action = torch.where(order_flag, positive_action, torch.zeros_like(positive_action))
+            projected_controls = [int(action.item())]
+        elif self.action_output_mode == "soft_gated_ordinal_quantity":
             gate_logit = raw_output[..., 0]
             ordinal_logits = raw_output[..., 1:]
             gate_prob = torch.sigmoid(gate_logit)
@@ -114,7 +172,7 @@ class LinearPolicyNet(ESModule):
             action = torch.round(gate_prob * quantity_score).to(dtype=torch.int64)
             action = torch.clamp(action, min=0, max=int(self.max_order_size))
             projected_controls = [int(action.item())]
-        elif self.action_output_mode == "two_stage_ordinal_quantity":
+        elif self.action_output_mode == "hard_gated_ordinal_quantity":
             gate_logit = raw_output[..., 0]
             ordinal_logits = raw_output[..., 1:]
             gate_prob = torch.sigmoid(gate_logit)
@@ -135,18 +193,39 @@ class LinearPolicyNet(ESModule):
 
         if return_features:
             self.features["linear"] = raw_output.detach().cpu().numpy()
-            if self.action_output_mode in {"gated_ordinal_quantity", "two_stage_ordinal_quantity"}:
+            if self.action_output_mode in {
+                "gated_sigmoid_direct_quantity",
+                "soft_gated_direct_quantity",
+                "soft_gated_ordinal_quantity",
+                "hard_gated_ordinal_quantity",
+                "hard_gated_direct_quantity",
+            }:
                 self.features["gate_prob"] = gate_prob.detach().cpu().numpy()
-                self.features["quantity_score"] = quantity_score.detach().cpu().numpy()
-                if self.action_output_mode == "two_stage_ordinal_quantity":
+                if self.action_output_mode in {
+                    "soft_gated_direct_quantity",
+                    "gated_sigmoid_direct_quantity",
+                }:
+                    self.features["quantity_value"] = quantity_value.detach().cpu().numpy()
+                elif self.action_output_mode == "hard_gated_direct_quantity":
+                    self.features["quantity_value"] = quantity_value.detach().cpu().numpy()
                     self.features["order_flag"] = order_flag.detach().cpu().numpy()
-            if self.action_output_mode == "bounded_quantity":
+                else:
+                    self.features["quantity_score"] = quantity_score.detach().cpu().numpy()
+                if self.action_output_mode == "hard_gated_ordinal_quantity":
+                    self.features["order_flag"] = order_flag.detach().cpu().numpy()
+            if self.action_output_mode in {"bounded_quantity", "direct_quantity", "unbounded_direct_quantity"}:
                 self.features["projected_controls"] = projected_controls
-                self.features["action_adapter"] = self.action_adapter
+            if self.action_output_mode == "direct_quantity":
+                self.features["quantity_value"] = quantity_value.detach().cpu().numpy()
+                self.features["projected_action"] = action
+            if self.action_output_mode == "unbounded_direct_quantity":
                 self.features["projected_action"] = action
             if self.action_output_mode == "bounded_quantity":
+                self.features["action_adapter"] = self.action_adapter
+                self.features["projected_action"] = action
+            if self.action_output_mode in {"bounded_quantity", "direct_quantity", "unbounded_direct_quantity"}:
                 return action, self.features
             return int(action.item()), self.features
-        if self.action_output_mode == "bounded_quantity":
+        if self.action_output_mode in {"bounded_quantity", "direct_quantity", "unbounded_direct_quantity"}:
             return action
         return int(action.item())

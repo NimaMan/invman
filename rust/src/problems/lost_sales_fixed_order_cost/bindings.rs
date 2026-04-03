@@ -179,9 +179,18 @@ fn lost_sales_fixed_modified_s_s_q_search_from_demands(
 }
 
 pub fn register_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(lost_sales_fixed_policy_rollout_from_demands, m)?)?;
-    m.add_function(wrap_pyfunction!(lost_sales_fixed_s_s_search_from_demands, m)?)?;
-    m.add_function(wrap_pyfunction!(lost_sales_fixed_s_nq_search_from_demands, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        lost_sales_fixed_policy_rollout_from_demands,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        lost_sales_fixed_s_s_search_from_demands,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        lost_sales_fixed_s_nq_search_from_demands,
+        m
+    )?)?;
     m.add_function(wrap_pyfunction!(
         lost_sales_fixed_modified_s_s_q_search_from_demands,
         m

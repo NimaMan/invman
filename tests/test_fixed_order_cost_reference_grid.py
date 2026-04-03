@@ -18,12 +18,12 @@ def test_literature_subset_grid_contains_canonical_instance():
     assert instance["params"]["fixed_order_cost"] == 5.0
     anchors = instance["benchmark_anchors"]
     approximators = anchors["policy_approximator_anchors"]
-    assert approximators["linear_categorical_quantity"]["mean_cost"] > approximators["linear_gated_ordinal_quantity"]["mean_cost"]
+    assert approximators["linear_categorical_quantity"]["mean_cost"] > approximators["linear_soft_gated_ordinal_quantity"]["mean_cost"]
     assert approximators["nn_categorical_quantity"]["verification_status"] == "needs_verification"
-    assert approximators["nn_gated_ordinal_quantity"]["mean_cost"] < approximators["linear_gated_ordinal_quantity"]["mean_cost"]
-    assert approximators["linear_gated_ordinal_quantity"]["mean_cost"] < approximators["soft_tree_depth1_linear_leaf"]["mean_cost"]
+    assert approximators["nn_soft_gated_ordinal_quantity"]["mean_cost"] < approximators["linear_soft_gated_ordinal_quantity"]["mean_cost"]
+    assert approximators["linear_soft_gated_ordinal_quantity"]["mean_cost"] < approximators["soft_tree_depth1_linear_leaf"]["mean_cost"]
     assert anchors["heuristic_anchors_1m"]["modified_s_s_q"]["mean_cost"] < 9.2
-    assert approximators["nn_gated_ordinal_quantity"]["mean_cost"] < anchors["heuristic_anchors_1m"]["modified_s_s_q"]["mean_cost"]
+    assert approximators["nn_soft_gated_ordinal_quantity"]["mean_cost"] < anchors["heuristic_anchors_1m"]["modified_s_s_q"]["mean_cost"]
 
 
 def test_reference_instance_names_are_sorted_and_stable():

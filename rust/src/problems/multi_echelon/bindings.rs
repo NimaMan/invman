@@ -287,7 +287,10 @@ fn multi_echelon_constant_base_stock_search_from_demands(
 
 pub fn register_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(multi_echelon_soft_tree_rollout, m)?)?;
-    m.add_function(wrap_pyfunction!(multi_echelon_soft_tree_population_rollout, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        multi_echelon_soft_tree_population_rollout,
+        m
+    )?)?;
     m.add_function(wrap_pyfunction!(
         multi_echelon_constant_base_stock_search_from_demands,
         m

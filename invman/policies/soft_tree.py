@@ -62,7 +62,7 @@ class SoftTreePolicy(ESModule):
             self.leaf_logits = nn.Parameter(torch.empty(self.num_leaves, self.control_dim))
             self.leaf_weights = None
             self.leaf_bias = None
-        elif self.leaf_type == "linear":
+        elif self.leaf_type in {"linear", "sigmoid_linear"}:
             self.leaf_weights = nn.Parameter(torch.empty(self.num_leaves, self.control_dim, self.input_dim))
             self.leaf_bias = nn.Parameter(torch.empty(self.num_leaves, self.control_dim))
             self.leaf_logits = None
@@ -76,7 +76,7 @@ class SoftTreePolicy(ESModule):
         nn.init.normal_(self.split_bias, mean=0.0, std=0.15)
         if self.leaf_type == "constant":
             nn.init.normal_(self.leaf_logits, mean=0.0, std=0.15)
-        elif self.leaf_type == "linear":
+        elif self.leaf_type in {"linear", "sigmoid_linear"}:
             nn.init.normal_(self.leaf_weights, mean=0.0, std=0.15)
             nn.init.normal_(self.leaf_bias, mean=0.0, std=0.15)
         else:
@@ -123,9 +123,13 @@ class SoftTreePolicy(ESModule):
         if self.leaf_type == "constant":
             scaled = min_tensor + torch.sigmoid(self.leaf_logits) * action_span
             return scaled, None
-        if self.leaf_type == "linear":
+        if self.leaf_type == "sigmoid_linear":
             raw_leaf_output = torch.einsum("lai,i->la", self.leaf_weights, state) + self.leaf_bias
             scaled = min_tensor + torch.sigmoid(raw_leaf_output) * action_span
+            return scaled, raw_leaf_output
+        if self.leaf_type == "linear":
+            raw_leaf_output = torch.einsum("lai,i->la", self.leaf_weights, state) + self.leaf_bias
+            scaled = min_tensor + F.softplus(raw_leaf_output)
             return scaled, raw_leaf_output
         raise NotImplementedError(f"Unknown tree leaf type: {self.leaf_type}")
 
