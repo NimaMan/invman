@@ -1,584 +1,305 @@
 # Replenishment Geometry Search
 
-This note tracks a reusable replenishment-policy geometry investigation rather than a
-fixed-cost-only benchmark.
+This note tracks the current architecture study for the `L=4`, `p=4` lost-sales family.
+The goal is to understand which policy parameterizations are easy enough for CMA-ES to search,
+and how that answer changes between:
 
-The current testbed is the canonical fixed-order-cost lost-sales instance `lit_pois_mu5_l4_p4_k5`.
-The most important thing we know now is not "gating works" or "Q-free works". The strongest local
-fact is behavioral:
+- vanilla lost sales
+- fixed-cost lost sales
+- different demand families with the same mean demand
 
-- the good learned controllers behave like thresholded replenishment rules;
-- the bad raw unbounded direct head does not.
+The current focus is linear policies and soft trees. We are not trying to settle the final
+benchmark surface here; we are trying to understand what kinds of replenishment maps are easy to
+find.
 
-More concretely, on saved good controllers:
+## Current Protocol
 
-- `linear_direct_quantity` orders zero in `50.0%` of post-warmup periods and, conditional on
-  ordering, moves the inventory position into a tight band around `27.55` with std `1.24`;
-- `linear_soft_gated_direct_quantity` also orders zero in `50.0%` of post-warmup periods and,
-  conditional on ordering, moves the inventory position to about `27.15` with std `1.27`;
-- on the visited states of that good `linear_soft_gated_direct_quantity` model, the learned gate is
-  saturated at `1.0`, so the final controller behaves almost exactly like a direct positive
-  quantity map rather than an actively used gate;
-- `soft_tree_depth2_linear_leaf` orders zero in `50.0%` of post-warmup periods and, conditional on
-  ordering, moves the inventory position to about `27.59` with std `1.45`;
-- the same depth-2 tree routes essentially all positive-order states to one leaf and all zero-order
-  states to another leaf;
-- `linear_unbounded_direct_quantity` has access to the same action space, including zero, but on
-  the same probe it does not learn to use that region at all: it mostly places orders `4` or `5`
-  and only restores the post-order inventory position to about `24.13`, which is exactly the weak
-  `~9.75` basin.
+Unless stated otherwise, the current single-instance runs use:
 
-So the best current interpretation is:
+- `training_episodes = 2000`
+- `es_population = 64`
+- `training_horizon = 2000`
+- `eval_horizon = 10^6`
+- `eval_seeds = 10`
+- seed `42`
 
-- the winning property is not "has a gate";
-- it is not "uses `Q` inside the head";
-- it is not even "has two heads";
-- it is that the parameterization makes it easy to realize a no-order region together with a
-  positive replenishment branch that behaves like a smooth order-up-to / deficit-correction map.
+Demand cases used in the current demand-robustness sweep:
 
-For the current `Q`-free direct head,
+- `Poisson`, mean demand `5`
+- `Geometric`, mean demand `5`
+- positive `MarkovModulatedPoisson2`, mean-preserving:
+  - `lambda_low = 3`
+  - `lambda_high = 7`
+  - `p00 = p11 = 0.9`
+- negative `MarkovModulatedPoisson2`, mean-preserving:
+  - `lambda_low = 3`
+  - `lambda_high = 7`
+  - `p00 = p11 = 0.1`
 
-- `a = clip(round(softplus(w^\top x + b)), 0, Q_env)`,
+These demand extensions are implemented in:
 
-the `softplus` nonlinearity is a smooth analog of `max(0, \cdot)`. This makes the architecture a
-natural way to encode the rule:
+- [mod.rs](/home/nima/code/ml/invman/rust/src/problems/lost_sales/demand/mod.rs)
+- [__init__.py](/home/nima/code/ml/invman/invman/problems/lost_sales/demand/__init__.py)
 
-- "order nothing when the state is above a threshold-like surface";
-- "otherwise order a positive amount that increases as the state falls below that surface."
+## Policy Equations
 
-That is much closer to the classical geometry of setup-cost inventory control than a raw unbounded
-scalar `round(w^\top x + b)`, which in our current search setup keeps converging to small positive
-orders and pays the fixed cost too often.
+Let `z = w^T x + b` denote the scalar logit of a linear policy, and let `Q_env` be the environment
+action cap.
 
-## Related Literature
+The policy family currently under study is:
 
-This interpretation is consistent with several distinct strands of prior work:
+| Policy | Quantity map |
+| --- | --- |
+| `linear_categorical_quantity` | `a = argmax_k z_k` |
+| `linear_sigmoid_direct_quantity` | `a = round(Q_env * sigmoid(z))` |
+| `linear_direct_quantity` | `a = clip(round(softplus(z)), 0, Q_env)` |
+| `linear_gated_sigmoid_direct_quantity` | `a = round(sigmoid(g) * sigmoid(q) * Q_env)` |
+| `linear_soft_gated_direct_quantity` | `a = clip(round(sigmoid(g) * softplus(q)), 0, Q_env)` |
+| `linear_hard_gated_direct_quantity` | `a = 0` if `sigmoid(g) < 0.5`, else `clip(round(softplus(q)), 1, Q_env)` |
+| `linear_soft_gated_ordinal_quantity` | `a = round(sigmoid(g) * sum_{k=1}^{Q_env} sigmoid(o_k))` |
+| `soft_tree_depth1_linear_leaf` | `a = clip(round(sum_l pi_l(x) * softplus(alpha_l^T x + beta_l))), 0, Q_env)` |
+| `soft_tree_depth2_linear_leaf` | same as above with depth `2` routing |
 
-- Bijvank, Bhulai, and Huh (2015) show that for lost sales with fixed order cost and positive lead
-  times there is no simple optimal replenishment policy, but simple parametric policies such as
-  `(s, S)`, `(s, nQ)`, and their modified capped `(s, S)` variant can still be near-optimal.
-  Their introduction explicitly frames the problem as one where simple replenishment maps remain
-  useful even when the exact optimum has no clean closed form.
-- The same paper also recalls the classical fixed-cost story: in periodic review models with fixed
-  order cost, the natural benchmark geometry is an `(s, S)`-type policy with a no-order region and
-  an order-up-to response once the state falls below a reorder threshold.
-- In the lost-sales literature without fixed order cost, Zipkin's structural results are summarized
-  by Bijvank et al. as implying that optimal order quantities are monotone decreasing in inventory
-  position and more sensitive to recent orders. That is exactly the kind of monotone deficit
-  correction that the successful softplus direct head can express.
-- Huh et al. (2009) show that order-up-to policies are asymptotically optimal when the lost-sales
-  penalty becomes large, and Bijvank et al. note that such policies remain popular because they are
-  simple and robust.
-- In the mixture-of-experts literature, Jordan and Jacobs (1993) describe hierarchical mixtures as
-  trees with gating networks at the internal nodes and linear experts at the leaves, i.e. smoothed
-  piecewise generalized linear models. Nowlan and Hinton (1991) emphasize that competing expert
-  architectures can uncover useful decompositions and often generalize better than a single global
-  network.
+Two important distinctions:
 
-Taken together, these papers suggest a plausible architectural story:
+- `sigmoid_direct_quantity` is still `Q`-dependent inside the head.
+- `direct_quantity` is `Q`-free inside the head; `Q_env` only appears in the final projection.
 
-- fixed-cost inventory wants a thresholded replenishment geometry;
-- local linear rules are a natural fit once that geometry is exposed;
-- tree routing or expert decomposition can help if the policy really needs multiple local regimes;
-- but if a single smooth positive-part map already captures the main thresholded replenishment
-  behavior, then the extra gate may help search without being essential in the final policy.
-
-## Current Working Hypothesis
-
-The live question is therefore no longer "does factorization work?" The sharper question is:
-
-- which policy parameterizations make the thresholded replenishment geometry easy enough for CMA-ES
-  to find under realistic budgets?
-
-What we should and should not claim at this point:
-
-- We should claim that raw unbounded direct quantity is a bad optimizer-parameterization pair for
-  this problem family under our current CMA-ES setup.
-- We should claim that the good heads all make exact zero and large positive replenishment easy to
-  represent.
-- We should claim that the good direct and tree policies are behaving like smooth parametric
-  replenishment rules rather than arbitrary neural controllers.
-- We should not claim that an explicit gate is necessary, because the best saved soft-gated direct
-  controller saturates the gate to `1.0` on the visited states.
-- We should not claim that removing `Q` from the head is always free, because search robustness
-  still depends on the training budget and CMA population size.
-
-## Migration Status
-
-The named/default policies have now been migrated where we had enough evidence:
-
-- `linear_direct_quantity` now resolves to the `Q`-free softplus direct head
-- `linear_soft_gated_direct_quantity` is the `Q`-free soft-gated direct head
-- `linear_hard_gated_direct_quantity` is the `Q`-free hard-gated direct head
-- `soft_tree_depth1_linear_leaf` now resolves to the `Q`-free softplus linear leaf
-- `soft_tree_depth2_linear_leaf` now resolves to the `Q`-free softplus linear leaf
-
-The legacy `Q`-scaled variants are still available explicitly:
-
-- `linear_sigmoid_direct_quantity`
-- `linear_gated_sigmoid_direct_quantity`
-- `soft_tree_depth1_sigmoid_linear_leaf`
-- `soft_tree_depth2_sigmoid_linear_leaf`
-
-This migration is intentionally narrow:
-
-- categorical and ordinal heads remain unchanged because they are structurally `Q`-dependent
-- generic generated soft-tree `linear_leaf` names were globally repointed to the `Q`-free leaf
-- the old sigmoid-to-span leaf map remains available explicitly as `sigmoid_linear_leaf`
-
-## Current Fixed-Cost Evidence
-
-The heads currently tested on the canonical fixed-cost instance are:
-
-- categorical quantity:
-  - `a = argmax_k z_k`
-- sigmoid direct quantity:
-  - `a = round(sigmoid(q) * Q)`
-- direct quantity:
-  - head output: `\tilde a = round(softplus(q))`
-  - env projection: `a = clip(\tilde a, 0, Q)`
-- unbounded direct quantity:
-  - head output: `\tilde a = round(q)`
-  - env projection: `a = clip(\tilde a, 0, Q)`
-  - status: historical negative ablation only; removed from the active experiment set
-- soft-gated sigmoid direct quantity:
-  - `a = round(sigmoid(g) * sigmoid(q) * Q)`
-- soft-gated direct quantity:
-  - head output: `\tilde a = round(sigmoid(g) * softplus(q))`
-  - env projection: `a = clip(\tilde a, 0, Q)`
-- hard-gated direct quantity:
-  - head output: `\tilde a = 0` if `sigmoid(g) < 0.5`
-  - otherwise `\tilde a = round(softplus(q))`
-  - env projection: `a = clip(\tilde a, 0, Q)`
-- soft-gated ordinal quantity:
-  - `a = round(sigmoid(g) * \sum_{k=1}^{Q} sigmoid(o_k))`
-- hard-gated ordinal quantity:
-  - `a = 0` if `sigmoid(g) < 0.5`
-  - otherwise `a = round(\sum_{k=1}^{Q} sigmoid(o_k))`
-- linear soft tree leaf:
-  - leaf head output: `\tilde q_\ell(s) = \alpha_\ell^\top s + \beta_\ell`
-  - leaf quantity map: `q_\ell(s) = softplus(\tilde q_\ell(s))`
-  - tree mixture: `\tilde a = round(\sum_\ell \pi_\ell(s) q_\ell(s))`
-  - env projection: `a = clip(\tilde a, 0, Q)`
-
-Here `Q` is the environment action cap `max_order_size`. The important distinction is whether `Q`
-appears inside the head parameterization itself, or only in the final projection back into the
-environment action range. For the `direct`, `soft_gated_direct`, and `hard_gated_direct` heads,
-`Q` is not part of the head formula itself. It only appears because the current benchmark problem
-still uses the bounded environment action space `0..Q`.
-
-### Canonical Single-Instance Table
-
-The table below is the clean single-instance comparison for
-`lit_pois_mu5_l4_p4_k5` under the stable seed-42 protocol:
-
-- learned policies trained with `5000` CMA iterations and training horizon `2000`
-- evaluation over `10` seeds with horizon `10^6`
-- absolute costs only, to avoid mixing cross-run heuristic reevaluations
-- the later `2000`-iteration dynamic-horizon rename check is intentionally excluded here
-
-| Group | Policy | Mean cost | Std. dev. | Notes |
-| --- | --- | ---: | ---: | --- |
-| Heuristic | modified `(s,S,q)` | 9.18235 | 0.00591 | best heuristic from canonical heuristic summary |
-| Heuristic | `(s,nQ)` | 9.21099 | 0.00743 | canonical heuristic summary |
-| Heuristic | `(s,S)` | 9.36945 | 0.01009 | canonical heuristic summary |
-| Q-dependent baseline | `linear_categorical_quantity` | 9.87591 | 0.01036 | flat categorical baseline |
-| Historical ablation | `linear_unbounded_direct_quantity` | 9.75131 | 0.00753 | raw scalar before projection; excluded from active experiment set |
-| Q-dependent baseline | `linear_gated_sigmoid_direct_quantity` | 8.77993 | 0.00681 | soft gate with `sigmoid(q) * Q` |
-| Q-dependent baseline | `linear_soft_gated_ordinal_quantity` | 8.77502 | 0.00698 | ordinal head with `Q` outputs |
-| Q-dependent baseline | `linear_sigmoid_direct_quantity` | 8.77331 | 0.00818 | direct head with `sigmoid(q) * Q` |
-| Q-dependent baseline | `soft_tree_depth1_sigmoid_linear_leaf` | 8.77345 | 0.00772 | tree with sigmoid-to-span leaves |
-| Q-dependent baseline | `soft_tree_depth2_sigmoid_linear_leaf` | 8.77725 | 0.00726 | tree with sigmoid-to-span leaves |
-| Q-free candidate | `linear_hard_gated_direct_quantity` | 8.77462 | 0.00717 | hard zero gate plus softplus direct quantity |
-| Q-free candidate | `linear_direct_quantity` | 8.77164 | 0.00818 | softplus direct head |
-| Q-free candidate | `linear_soft_gated_direct_quantity` | 8.76964 | 0.00681 | soft gate plus softplus direct quantity |
-| Q-free candidate | `soft_tree_depth1_linear_leaf` | 8.78111 | 0.00810 | tree with softplus leaves |
-| Q-free candidate | `soft_tree_depth2_linear_leaf` | 8.77689 | 0.00729 | tree with softplus leaves |
-
-### Summary So Far
-
-- The clearly bad cases are `linear_categorical_quantity` and `linear_unbounded_direct_quantity`.
-- Raw unbounded direct quantity is the actual failure mode; it settles into mediocre positive orders and does not recover the good policy class.
-- Because it never reaches the best region on this instance, `linear_unbounded_direct_quantity` is
-  documented here only as a failed ablation and is not part of the active experiment policy set.
-- Explicit `Q` inside the head is not necessary for good performance on this canonical instance.
-- The Q-free linear heads all land in essentially the same good regime as the old Q-dependent direct and tree baselines.
-- The strongest Q-free linear result so far is `linear_soft_gated_direct_quantity` at `8.76964`.
-- The Q-free tree replacement is also viable: depth-2 softplus leaves are effectively tied with the old sigmoid-to-span depth-2 tree.
-- So the current takeaway is: remove `Q` from the scalar direct/leaf parameterization where possible, but do not conclude yet that every `Q`-dependent family is obsolete.
-
-## Vanilla vs Fixed-Cost Direct-Head Transfer
-
-The cleanest new transfer test is on the plain lost-sales canonical instance
-`vanilla_l4_p4_poisson5`:
-
-- `L = 4`
-- `p = 4`
-- Poisson demand with mean `5`
-- best heuristic in the current rerun: `myopic2 = 4.81862`
-- literature optimum: `4.73`
-
-Completed direct-head results so far from
-`lost_sales_l4_p4_direct_policy_suite_seed42`:
-
-| Problem | Policy | Mean cost | Interpretation |
-| --- | --- | ---: | --- |
-| Fixed cost | `linear_sigmoid_direct_quantity` | 8.77331 | good |
-| Fixed cost | `linear_direct_quantity` | 8.77164 | good |
-| Fixed cost | `linear_gated_sigmoid_direct_quantity` | 8.77993 | good |
-| Fixed cost | `linear_soft_gated_direct_quantity` | 8.76964 | good |
-| Vanilla | `linear_sigmoid_direct_quantity` | 9.22404 | bad |
-| Vanilla | `linear_direct_quantity` | 4.76055 | good |
-| Vanilla | `linear_gated_sigmoid_direct_quantity` | 4.75174 | good |
-| Vanilla | `linear_soft_gated_direct_quantity` | 4.74920 | good |
-
-This sharpens the direct-head story:
-
-- the bad transfer is not "anything with `Q` in the head fails";
-- the bad transfer is specifically the one-head `linear_sigmoid_direct_quantity` map;
-- once the same sigmoid quantity map is given an extra gate, it becomes competitive again on
-  vanilla lost sales;
-- the one-head `softplus` direct map also transfers cleanly.
-
-So the direct-head question is no longer just "`Q` or no `Q`?" The more precise question is:
-
-- what scalar response shape does the optimizer see as a function of the latent logit?
-
-### Why The S-Shape Matters
-
-For a linear direct policy, the learned state only enters through a scalar latent score
-`z = w^\top x + b`. The difference between the two one-head direct policies is exactly the map from
-`z` to quantity.
-
-`linear_sigmoid_direct_quantity`:
-
-- `a(z) = round(Q * sigmoid(z))`
-- this is an S-shaped map
-- it is flat near `0`
-- it is flat again near `Q`
-- it changes most quickly in the middle
-
-`linear_direct_quantity`:
-
-- `a(z) = clip(round(softplus(z)), 0, Q)`
-- this is a smooth positive-part map
-- it has an easy zero region
-- once `z > 0`, it grows almost linearly
-
-The geometry difference is concrete for `Q = 20`:
-
-- action `0` requires `z < -3.66` for the sigmoid head
-- action `0` requires only `z < -0.43` for the softplus head
-
-So the softplus head makes the no-order region much easier to realize.
-
-The integer action bins are also very different in logit space. For a few representative actions:
-
-| Action `k` | Sigmoid-head bin width in `z` | Softplus-head bin width in `z` |
-| --- | ---: | ---: |
-| `1` | 1.1513 | 1.6803 |
-| `3` | 0.3953 | 1.0550 |
-| `5` | 0.2674 | 1.0071 |
-| `10` | 0.2002 | 1.0000 |
-| `15` | 0.2674 | 1.0000 |
-| `19` | 1.1513 | 1.0000 |
-
-This is the clearest visualization-friendly explanation we currently have:
-
-- the sigmoid direct head compresses the middle actions into narrow logit bands;
-- the softplus direct head gives roughly unit-width positive-order bands once it is in the linear
-  regime;
-- that makes the softplus head look much more like a smooth deficit-correction / order-up-to map.
-
-That is probably why `linear_direct_quantity` works so well on vanilla lost sales: the vanilla
-problem seems to want a monotone positive-part replenishment map more than a bounded S-curve.
-
-By contrast, fixed-cost lost sales is more compatible with threshold-plus-target behavior, which is
-why the one-head sigmoid map can still work there. That is still a hypothesis, but it is at least
-consistent with the current transfer matrix.
-
-The visualization script for these scalar head maps lives in:
+The visualization script for the scalar head maps lives at:
 
 - [visualize_linear_head_geometry.py](/home/nima/code/ml/invman/autoresearch/replenishment_geometry_search/visualize_linear_head_geometry.py)
 
 and generates:
 
 - [scalar_head_shapes_q20.svg](/home/nima/code/ml/invman/autoresearch/replenishment_geometry_search/artifacts/scalar_head_shapes_q20.svg)
+- [scalar_head_shapes_q20.png](/home/nima/code/ml/invman/autoresearch/replenishment_geometry_search/artifacts/scalar_head_shapes_q20.png)
 - [scalar_head_action_bins_q20.json](/home/nima/code/ml/invman/autoresearch/replenishment_geometry_search/artifacts/scalar_head_action_bins_q20.json)
 
-### Canonical Single-Instance Table Under The 2k / 1000 -> 3000 Schedule
+## Canonical Poisson Results
 
-The table below is the targeted rerun of the direct/tree family on the same canonical instance
-under the shorter dynamic-horizon protocol:
+The cleanest comparison is still the canonical Poisson case:
 
-- `2000` CMA iterations
-- linear training horizon schedule `1000 -> 3000`
-- evaluation over `10` seeds with horizon `10^6`
-- rows normalized to the current canonical policy names; the underlying completed run predates the
-  final naming cleanup
+- vanilla: `vanilla_l4_p4_poisson5`
+- fixed cost: `lit_pois_mu5_l4_p4_k5`
 
-| Group | Policy | Mean cost | Std. dev. | Delta vs stable 5k | Notes |
-| --- | --- | ---: | ---: | ---: | --- |
-| Heuristic | modified `(s,S,q)` | 9.18235 | 0.00591 | 0.00000 | same heuristic baseline |
-| Heuristic | `(s,nQ)` | 9.21099 | 0.00743 | 0.00000 | same heuristic baseline |
-| Heuristic | `(s,S)` | 9.36945 | 0.01009 | 0.00000 | same heuristic baseline |
-| Q-dependent baseline | `linear_sigmoid_direct_quantity` | 8.77835 | 0.00786 | +0.00504 | still strong under the shorter schedule |
-| Q-dependent baseline | `linear_gated_sigmoid_direct_quantity` | 8.77415 | 0.00746 | -0.00578 | still strong under the shorter schedule |
-| Q-dependent baseline | `soft_tree_depth1_sigmoid_linear_leaf` | 9.74866 | 0.00666 | +0.97521 | collapses under the shorter schedule |
-| Q-dependent baseline | `soft_tree_depth2_sigmoid_linear_leaf` | 8.77689 | 0.00759 | -0.00036 | remains robust |
-| Q-free candidate | `linear_direct_quantity` | 9.74297 | 0.00709 | +0.97133 | collapses under the shorter schedule |
-| Q-free candidate | `linear_soft_gated_direct_quantity` | 8.77804 | 0.00668 | +0.00840 | remains competitive |
-| Q-free candidate | `linear_hard_gated_direct_quantity` | 9.74736 | 0.00670 | +0.97274 | collapses under the shorter schedule |
-| Q-free candidate | `soft_tree_depth1_linear_leaf` | 9.76153 | 0.00643 | +0.98042 | collapses under the shorter schedule |
-| Q-free candidate | `soft_tree_depth2_linear_leaf` | 9.74911 | 0.00687 | +0.97222 | collapses under the shorter schedule |
+### Vanilla Lost Sales, Poisson
 
-### What The 2k Schedule Changes
+Results from:
 
-- The earlier `5k` conclusion "the good solution class is not tied to putting `Q` inside the
-  head" is still true at the level of representational capacity, but it is no longer enough for a
-  default recommendation.
-- Under the shorter `2k` dynamic-horizon schedule, most of the `Q`-free heads that looked good
-  under `5k` lose the good solution class entirely and fall back to the weak `~9.74` basin.
-- The strongest budget-robust policies in this comparison are now:
+- [lost_sales_l4_p4_demand_policy_suite.json](/home/nima/code/ml/invman/outputs/benchmarks/lost_sales_l4_p4_demand_policy_suite_pop64_seed42/lost_sales_l4_p4_demand_policy_suite.json)
+
+Heuristic baselines:
+
+- `myopic1 = 5.06266`
+- `myopic2 = 4.81677`
+- `svbs = 5.83442`
+
+Learned policies:
+
+| Policy | Mean cost | Std. dev. |
+| --- | ---: | ---: |
+| `linear_categorical_quantity` | 4.87516 | 0.00865 |
+| `linear_sigmoid_direct_quantity` | 4.75568 | 0.00727 |
+| `linear_direct_quantity` | 4.74666 | 0.00746 |
+| `linear_gated_sigmoid_direct_quantity` | 4.74505 | 0.00816 |
+| `linear_soft_gated_direct_quantity` | 4.74807 | 0.00800 |
+| `linear_hard_gated_direct_quantity` | 4.74797 | 0.00760 |
+| `linear_soft_gated_ordinal_quantity` | 4.75027 | 0.00769 |
+| `soft_tree_depth1_linear_leaf` | 4.74812 | 0.00748 |
+| `soft_tree_depth2_linear_leaf` | 4.75182 | 0.00783 |
+
+Takeaway:
+
+- categorical is clearly worse
+- everything else is tightly clustered in the good regime
+- under `pop64`, `linear_sigmoid_direct_quantity` is competitive on vanilla
+
+This is important because it corrects an earlier overstatement: the one-head sigmoid direct policy
+is not fundamentally bad on vanilla. It is search-sensitive at smaller populations.
+
+### Fixed-Cost Lost Sales, Poisson
+
+Results from:
+
+- [fixed_cost_l4_p4_k5_demand_policy_suite.json](/home/nima/code/ml/invman/outputs/benchmarks/fixed_cost_l4_p4_k5_demand_policy_suite_pop64_seed42/fixed_cost_l4_p4_k5_demand_policy_suite.json)
+
+Heuristic baselines:
+
+- `(s,S) = 9.36774`
+- `(s,nQ) = 9.20936`
+- `modified (s,S,q) = 9.20032`
+
+Learned policies:
+
+| Policy | Mean cost | Std. dev. |
+| --- | ---: | ---: |
+| `linear_categorical_quantity` | 10.27542 | 0.00906 |
+| `linear_sigmoid_direct_quantity` | 8.77280 | 0.00775 |
+| `linear_direct_quantity` | 9.74819 | 0.00719 |
+| `linear_gated_sigmoid_direct_quantity` | 9.74745 | 0.00737 |
+| `linear_soft_gated_direct_quantity` | 8.77148 | 0.00684 |
+| `linear_hard_gated_direct_quantity` | 9.74779 | 0.00720 |
+| `linear_soft_gated_ordinal_quantity` | 8.77832 | 0.00741 |
+| `soft_tree_depth1_linear_leaf` | 8.77083 | 0.00754 |
+| `soft_tree_depth2_linear_leaf` | 8.77001 | 0.00759 |
+
+Takeaway:
+
+- the fixed-cost problem is much more sensitive
+- `linear_direct_quantity` is not robust here under the current `2k / pop64` protocol
+- good fixed-cost Poisson policies are:
   - `linear_sigmoid_direct_quantity`
-  - `linear_gated_sigmoid_direct_quantity`
   - `linear_soft_gated_direct_quantity`
-  - `soft_tree_depth2_sigmoid_linear_leaf`
-- So the latest evidence points to search geometry, not just expressivity. Several heads can
-  represent the strong policy class, but only some parameterizations let CMA-ES find it reliably
-  when the budget is tighter.
-- The most interesting survivor in this specific dynamic-horizon comparison is
-  `linear_soft_gated_direct_quantity`: it stays strong without putting `Q` directly inside the
-  quantity branch. Combined with the later `pop50` recheck, this suggests that the extra gate may
-  help the search path even if it is not essential in the final good controller.
+  - `linear_soft_gated_ordinal_quantity`
+  - the trees
 
-### Short-Budget A/B On Horizon Schedule And Population Size
+So the current fixed-cost story is not “Q-free direct wins.” The stronger current statement is:
 
-To decide whether the fixed-cost experiments should keep the dynamic horizon schedule, we reran
-the canonical instance `lit_pois_mu5_l4_p4_k5` with a single strong policy,
-`linear_soft_gated_direct_quantity`, under the short-budget protocol:
+- some parameterizations make the fixed-cost replenishment geometry easy to search
+- some do not
 
-- `2000` CMA iterations
-- seed `42`
-- evaluation over `10` seeds with horizon `10^6`
+## Demand-Robustness Sweep
 
-First, with population `32`, the horizon schedule comparison was:
+### Fixed-Cost Sweep: Complete
 
-| Training schedule | Mean cost | Std. dev. | Result |
-| --- | ---: | ---: | --- |
-| dynamic `1000 -> 3000`, `pop32` | 9.75483 | 0.00687 | no improvement |
-| constant `2000`, `pop32` | 9.74971 | 0.00737 | slightly better |
+Full fixed-cost sweep root:
 
-So the `1000 -> 3000` schedule did not help even on a policy we already know can perform well.
+- [fixed_cost_l4_p4_k5_demand_policy_suite_pop64_seed42](/home/nima/code/ml/invman/outputs/benchmarks/fixed_cost_l4_p4_k5_demand_policy_suite_pop64_seed42)
 
-Second, with the better constant horizon `2000`, the population-size comparison was:
+Best policy by demand case:
 
-| Training setup | Mean cost | Std. dev. | Result |
-| --- | ---: | ---: | --- |
-| constant `2000`, `pop32` | 9.74971 | 0.00737 | weak basin |
-| constant `2000`, `pop50` | 8.76964 | 0.00681 | good basin |
+| Demand case | Best learned policy | Mean cost | Best heuristic | Mean cost |
+| --- | --- | ---: | --- | ---: |
+| `Poisson` | `soft_tree_depth2_linear_leaf` | 8.77001 | `modified (s,S,q)` | 9.20032 |
+| `Geometric` | `linear_hard_gated_direct_quantity` | 13.62760 | `modified (s,S,q)` | 14.00227 |
+| positive `MMPP2` | `linear_hard_gated_direct_quantity` | 11.87871 | `modified (s,S,q)` | 12.09351 |
+| negative `MMPP2` | `linear_soft_gated_direct_quantity` | 9.06558 | `modified (s,S,q)` | 9.65013 |
 
-So the critical short-budget change was not the horizon schedule. It was the reduction from
-population `50` to `32`.
+This is the clearest architecture result we currently have:
 
-The active fixed-cost experiment protocol therefore uses:
+- there is no single winner across all fixed-cost demand families
+- the best head depends on the demand geometry
+- direct, gated-direct, ordinal, and tree policies are all useful candidates
 
-- `training_episodes = 2000`
-- `es_population = 50`
-- constant training horizon `2000`
-- seed `42`
-- evaluation over `10` seeds with horizon `10^6`
+More specifically:
 
-Seed-42 canonical benchmark on `lit_pois_mu5_l4_p4_k5`:
+- positively correlated and overdispersed fixed-cost demand favor harder thresholded direct heads
+- negatively correlated fixed-cost demand favors the soft-gated direct head
+- Poisson fixed-cost demand still slightly favors trees
 
-- best heuristic: `9.18235`
-- `linear_categorical_quantity`: `9.87591`
-- `linear_sigmoid_direct_quantity`: `8.77331`
-- `linear_direct_quantity`: `8.77164`
-- `linear_unbounded_direct_quantity`: `9.75131`
-- `linear_gated_sigmoid_direct_quantity`: `8.77993`
-- `linear_soft_gated_direct_quantity`: `8.76964`
-- `linear_hard_gated_direct_quantity`: `8.77462`
-- `linear_soft_gated_ordinal_quantity`: `8.77502`
-- `soft_tree_depth1_sigmoid_linear_leaf`: `8.77345`
-- `soft_tree_depth2_sigmoid_linear_leaf`: `8.77725`
-- `soft_tree_depth1_linear_leaf`: `8.78111`
-- `soft_tree_depth2_linear_leaf`: `8.77689`
+### Vanilla Sweep: In Progress
 
-Direct `Q`-dependent vs `Q`-free replacements:
+Vanilla sweep root:
 
-- `linear_sigmoid_direct_quantity` (`sigmoid(q) * Q`): `8.77331`
-- `linear_direct_quantity` (`softplus(q)` + env projection): `8.77164`
-- delta: `-0.00167` in favor of the `Q`-free head
+- [lost_sales_l4_p4_demand_policy_suite_pop64_seed42](/home/nima/code/ml/invman/outputs/benchmarks/lost_sales_l4_p4_demand_policy_suite_pop64_seed42)
 
-- `linear_gated_sigmoid_direct_quantity` (`sigmoid(g) * sigmoid(q) * Q`): `8.77993`
-- `linear_soft_gated_direct_quantity` (`sigmoid(g) * softplus(q)` + env projection): `8.76964`
-- delta: `-0.01029` in favor of the `Q`-free head
+Completed so far:
 
-- `linear_soft_gated_ordinal_quantity` (`Q`-dimensional ordinal head): `8.77502`
-- `linear_hard_gated_direct_quantity` (hard zero gate + `softplus(q)` + env projection): `8.77462`
-- delta: `-0.00040` in favor of the `Q`-free scalar head
+| Demand case | Current best learned policy | Mean cost | Best heuristic | Mean cost | Status |
+| --- | --- | ---: | --- | ---: | --- |
+| `Poisson` | `linear_gated_sigmoid_direct_quantity` | 4.74505 | `myopic2` | 4.81677 | complete |
+| `Geometric` | `soft_tree_depth1_linear_leaf` | 10.63912 | `myopic2` | 10.80254 | partial: `soft_tree_depth2_linear_leaf` still evaluating |
+| positive `MMPP2` | pending | — | — | — | not started yet |
+| negative `MMPP2` | pending | — | — | — | not started yet |
 
-Tree `Q`-dependent vs `Q`-free leaf map:
+Current vanilla read:
 
-- `soft_tree_depth1_sigmoid_linear_leaf` (`sigmoid(raw) * span` in each leaf): `8.77345`
-- `soft_tree_depth1_linear_leaf` (`softplus(raw)` in each leaf + env projection): `8.78111`
-- delta: `+0.00765`, effectively tied
+- vanilla is much less architecture-sensitive than fixed cost
+- once we move away from categorical, almost every direct/tree policy lands in the same good basin
+- the main thing we have not finished yet is whether correlated vanilla demand breaks that picture
 
-- `soft_tree_depth2_sigmoid_linear_leaf` (`sigmoid(raw) * span` in each leaf): `8.77725`
-- `soft_tree_depth2_linear_leaf` (`softplus(raw)` in each leaf + env projection): `8.77689`
-- delta: `-0.00035` in favor of the `Q`-free leaf
+## What We Know Right Now
 
-Observed behavior from longer diagnostic rollouts of saved good controllers:
+The current local facts are:
 
-- `linear_direct_quantity` orders zero in `50.0%` of post-warmup periods and, conditional on
-  ordering, moves the inventory position to `27.55 ± 1.24`;
-- `linear_soft_gated_direct_quantity` also orders zero in `50.0%` of post-warmup periods and,
-  conditional on ordering, moves the inventory position to `27.15 ± 1.27`;
-- on the probed states of that good `linear_soft_gated_direct_quantity` controller, the learned
-  gate is saturated at `1.0`, so the deployed policy is effectively a direct positive-part map;
-- `linear_unbounded_direct_quantity` still has zero available in the environment action space, but
-  on the saved run it orders zero in `0.0%` of post-warmup periods, mostly places orders `4` or
-  `5`, and only restores the inventory position to `24.13 ± 1.47`;
-- `soft_tree_depth2_linear_leaf` orders zero in `50.0%` of post-warmup periods, moves the
-  inventory position to `27.59 ± 1.45` when it orders, and routes zero-order states and
-  positive-order states to different leaves almost perfectly.
+1. `linear_unbounded_direct_quantity` is still the bad policy family.
+   - it remains excluded from active experiments
+   - the problem is not expressivity; it is a bad search parameterization
 
-So the direct head is not the problem by itself. The bad result is more plausibly a search-space
-issue tied to the raw unbounded quantity parameterization.
+2. `linear_sigmoid_direct_quantity` is not fundamentally bad.
+   - on vanilla Poisson it becomes good at `pop64`
+   - earlier bad vanilla results were mainly a search-budget issue
 
-## Current Migration Read
+3. The fixed-cost problem is still the stricter test.
+   - different heads win under different demand families
+   - the current best family is “structured direct or tree,” not one single architecture
 
-The migration is no longer settled. The `5k` evidence was strong enough to justify trying a
-`Q`-free default, but the `2k` schedule shows that this is not yet robust enough to treat as a
-finished conclusion.
+4. The vanilla problem is easier.
+   - categorical is still weak
+   - but most non-categorical direct/tree heads are tightly clustered once the population is large enough
 
-What is still safe:
+5. The main question is still search geometry.
+   - this note is not evidence that one head is universally optimal
+   - it is evidence that some heads expose the replenishment map more cleanly to CMA-ES than others
 
-- keep `unbounded_direct_quantity` only as a historical negative ablation in this note, not as an
-  active named policy or an experiment candidate;
-- keep the Q-free scalar family in the codebase, because it clearly can represent the strong policy
-  class;
-- keep the old sigmoid/Q-scaled scalar family available explicitly, because it is currently more
-  budget-robust.
+## Why The Sigmoid-vs-Softplus Discussion Still Matters
 
-What is not safe to recommend yet:
+The earlier shape discussion was directionally useful, but too strong when it was phrased as a hard
+success/failure claim.
 
-- switching the scalar dense defaults entirely to the `Q`-free family;
-- replacing all sigmoid/Q-scaled tree leaves with Q-free leaves by default.
+The better current interpretation is:
 
-What we should **not** claim yet:
+- `softplus` gives a more search-friendly positive-part geometry
+- `Q * sigmoid(z)` gives a more compressed and population-sensitive geometry
+- that does **not** make sigmoid direct impossible
+- it makes it less robust at smaller CMA populations
 
-- that every policy family can become `Q`-free
-- that `categorical_quantity` or `soft_gated_ordinal_quantity` have been fully superseded in general
-- that the `Q`-free direct/tree family is as easy for CMA-ES to optimize under shorter budgets
+This is exactly what the pop-size probes showed on vanilla Poisson:
 
-Those families are structurally `Q`-dependent because `Q` determines either:
+- `pop50`: `linear_sigmoid_direct_quantity` failed badly
+- `pop64`: it recovered the good basin
+- `pop200`: it also recovered the good basin
 
-- the output dimensionality, or
-- the ordinal action construction itself
+So the shape argument is now a search-robustness argument, not an expressivity argument.
 
-So the immediate task is no longer migration. It is to understand which parameterizations are
-search-robust enough to justify becoming defaults.
+## Verification Example
 
-## Bounded vs Unbounded Clarification
+We keep one published verification anchor in the repo:
 
-The current successful `soft_gated_direct_quantity` head is not raw-unbounded:
+- reference instance: `bijvank2015_table1_l2_p14_k5`
 
-- `gate = sigmoid(g)`
-- `quantity = softplus(q)`
-- `\tilde a = round(gate * quantity)`
-- `action = clip(\tilde a, 0, Q)`
+This is taken from:
 
-So the current evidence does **not** say that unbounded quantity outputs help. The stronger claim is:
+- Marco Bijvank, Sandjai Bhulai, Woonghee Tim Huh (2015),
+  *Parametric replenishment policies for inventory systems with lost sales and fixed order cost*,
+  *European Journal of Operational Research*, 241(2):381-390.
 
-- raw unbounded quantity is harmful here under the current CMA-ES search setup
-- bounded direct quantity already works very well
-- direct quantity without explicit `Q` in the head also works very well
-- multiple threshold-compatible constructions also work very well
-- a soft-gated direct branch `round(sigmoid(g) * softplus(q))` also works very well
+The repo encodes this validation case in:
 
-There is also an important implementation detail in the current benchmark pipeline:
+- [reference_instances.py](/home/nima/code/ml/invman/invman/problems/lost_sales_fixed_order_cost/reference_instances.py)
 
-- `unbounded_direct_quantity` is only unbounded at the raw-logit level
-- the environment still clips final actions into the existing `0..Q` action space
+The paper-aligned parameters are:
 
-So the real comparison is between:
+- review-period demand mean `5`
+- Poisson demand
+- lead time `L = 2`
+- shortage cost `p = 14`
+- fixed order cost `K = 5`
+- holding cost `h = 1`
 
-- bounded quantity parameterization in the head
-- raw/unbounded quantity parameterization before projection
+Published values recorded in the repo:
 
-It is **not** a comparison between a bounded-action problem and a truly unbounded-action problem.
+| Quantity | Value |
+| --- | ---: |
+| reported optimum | 11.46 |
+| reported `(s,S)` | 11.62 |
+| reported `(s,nQ)` | 11.56 |
+| reported modified `(s,S,q)` | 11.50 |
 
-## Current Interpretation
+Reported heuristic parameters:
 
-What we know:
+- `(s,S) = (17, 23)`
+- `(s,nQ) = (17, 7)`
+- modified `(s,S,q) = (17, 23, 7)`
 
-- under the longer `5k` protocol, one-head bounded direct quantity is enough on this instance
-- under the longer `5k` protocol, one-head `Q`-free direct quantity is also enough on this
-  instance
-- one-head categorical quantity is not enough
-- raw unbounded direct quantity is not enough in practice here, even though zero remains in the
-  action space
-- under the shorter-budget ablations, CMA population size matters materially: `pop50` restores
-  `linear_soft_gated_direct_quantity` to the good `~8.77` basin while `pop32` does not
-- the good saved linear controllers all behave like smooth thresholded replenishment maps
-- the good saved depth-2 tree behaves like an explicit two-regime controller with one leaf for the
-  no-order region and one leaf for the positive-order region
+This validation example is not the main architecture benchmark. It is the literature-backed
+correctness anchor we use to make sure the fixed-cost environment and heuristic evaluation still
+match the published reference family.
 
-What we do not know yet:
+## Files
 
-- whether factorization adds anything systematic once the scalar head is already `Q`-free under
-  the longer protocol, or whether its real benefit is budget-robust searchability
-- whether the ordinal quantity representation matters beyond the scalar heads
-- how much extra value the richer tree routing adds beyond a simple gate or scalar positive head
-- whether the same factorization also helps on the plain lost-sales problem
+Main experiment outputs referenced in this note:
 
-## Next Ablation
-
-The next clean comparisons are now:
-
-- rerun the surviving heads on more than one fixed-cost instance before changing defaults
-- isolate why `soft_gated_direct_quantity` survives the `2k` schedule while
-  `direct_quantity` and `hard_gated_direct_quantity` do not
-- compare the same survivors on plain lost sales once the fixed-cost picture is stable
-
-The fixed-cost linear result is now clear enough to state more narrowly:
-
-- explicit `Q` inside the scalar head is not necessary for *representing* the good solution class
-- raw unbounded direct quantity is the bad search-space case
-- under a tighter budget, some parameterizations remain searchable and others do not
-- so the next question is optimization robustness, not just expressivity
-
-## Emerging Structural Hypothesis
-
-The current results suggest a more concrete structural pattern than "just gating":
-
-- good heads implement a smooth positive-part affine map, or a piecewise version of one
-- that map creates a no-order region and a positive replenishment branch
-- when the policy orders, it tends to push the system toward a fairly tight post-order inventory
-  position band around `27`
-- bad heads fall into a middling-order regime that keeps paying setup cost without restoring the
-  system aggressively enough
-
-So the most plausible current hypothesis is:
-
-- explicit `* Q` scaling is not the essential ingredient
-- raw unbounded direct quantity is clearly harmful under the current optimizer/parameterization pair
-- the real winning structure is a search-friendly parameterization of a thresholded
-  deficit-correction / order-up-to-like rule
-- tree routing can realize this by separating local regimes, while softplus direct heads can realize
-  it with a single smooth positive-part map
-- any benefit from soft gating is likely about searchability rather than the final deployed policy,
-  because the best saved soft-gated direct controller saturates the gate on the visited states
-
-## Primary References
-
-- Marco Bijvank, Sandjai Bhulai, Woonghee Tim Huh (2015), *Parametric replenishment policies for inventory systems with lost sales and fixed order cost*:
-  https://www.math.vu.nl/~sbhulai/publications/ejor2015b.pdf
-- Woonghee Tim Huh, Ganesh Janakiraman, John A. Muckstadt, Paat Rusmevichientong (2009), *Asymptotic Optimality of Order-Up-To Policies in Lost Sales Inventory Systems*:
-  https://www.columbia.edu/~th2113/files/MS_LostSales_Asymptotic_09.pdf
-- Michael I. Jordan, Robert A. Jacobs (1993), *Hierarchical Mixtures of Experts and the EM Algorithm*:
-  https://www.cs.toronto.edu/~hinton/absps/hme.pdf
-- Steven Nowlan, Geoffrey E. Hinton (1991), *Evaluation of Adaptive Mixtures of Competing Experts*:
-  https://www.cs.toronto.edu/~hinton/absps/nh91.html
+- [lost_sales_l4_p4_demand_policy_suite.json](/home/nima/code/ml/invman/outputs/benchmarks/lost_sales_l4_p4_demand_policy_suite_pop64_seed42/lost_sales_l4_p4_demand_policy_suite.json)
+- [fixed_cost_l4_p4_k5_demand_policy_suite.json](/home/nima/code/ml/invman/outputs/benchmarks/fixed_cost_l4_p4_k5_demand_policy_suite_pop64_seed42/fixed_cost_l4_p4_k5_demand_policy_suite.json)
+- [visualize_linear_head_geometry.py](/home/nima/code/ml/invman/autoresearch/replenishment_geometry_search/visualize_linear_head_geometry.py)

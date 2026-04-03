@@ -8,80 +8,358 @@
 \usepackage{hyperref}
 \usepackage[numbers]{natbib}
 
-\title{Fixed-Order-Cost Lost-Sales Control with CMA-ES-Trained Policy Families}
+\title{Replenishment Geometry in Vanilla and Fixed-Cost Lost-Sales Control}
 \author{Working manuscript}
 \date{\today}
 
 \begin{document}
 \maketitle
 
-\section{Problem description}
+\section{Problem focus}
 
-We study a single-item, periodic-review lost-sales inventory problem with positive lead time and a
-fixed setup cost for every positive order. In each period $t$, the controller observes the current
-inventory state and chooses an integer order quantity $q_t \in \{0,1,\ldots,\bar q\}$. Demand is
-stochastic, unmet demand is lost, and the one-period cost contains three components:
-\begin{enumerate}
-    \item inventory holding cost,
-    \item lost-sales penalty,
-    \item fixed ordering cost $K \mathbf{1}\{q_t > 0\}$.
-\end{enumerate}
+This note records the current architecture study for the $L=4$, $p=4$ lost-sales family. The
+central question is not whether one policy class is universally optimal, but which policy
+parameterizations expose a replenishment rule that CMA-ES can search reliably.
 
-Relative to the classical lost-sales problem, the fixed ordering cost changes the economics of the
-decision problem substantially. The controller must not only determine how much to order, but also
-whether ordering at all is worth paying the setup cost. This creates a natural no-order region and
-a separate positive-order region, which in turn makes the action parameterization of learned
-policies much more important than in the fixed-cost-free benchmark.
-
-\section{Reference instance and benchmark grid}
-
-Our immediate focus is the canonical fixed-cost instance
-\texttt{lit\_pois\_mu5\_l4\_p4\_k5}, which has:
+We study two closely related problems:
 \begin{itemize}
-    \item lead time $L=4$,
-    \item shortage cost $p=4$,
-    \item holding cost $h=1$,
-    \item fixed ordering cost $K=5$,
-    \item Poisson demand with mean $\mu=5$.
+    \item \textbf{vanilla lost sales}: no fixed setup cost,
+    \item \textbf{fixed-cost lost sales}: a positive fixed ordering cost $K$ is charged whenever
+    $q_t > 0$.
 \end{itemize}
 
-This instance is part of the benchmark family of \citet{Bijvank2015ParametricPolicies}. In the
-codebase, the first literature-aligned subset grid is
-\texttt{literature\_subset\_poisson\_mu5}, which spans:
+In both cases the controller observes the current inventory state and chooses an integer order
+quantity $q_t \in \{0,1,\ldots,\bar q\}$. Demand is stochastic and unmet demand is lost. The
+fixed-cost version adds the term $K\mathbf{1}\{q_t>0\}$ to the one-period cost, which makes the
+order/no-order boundary much more important.
+
+\section{Current benchmark instances and protocol}
+
+The current single-instance study uses:
+\begin{itemize}
+    \item vanilla instance \texttt{vanilla\_l4\_p4\_poisson5},
+    \item fixed-cost instance \texttt{lit\_pois\_mu5\_l4\_p4\_k5}.
+\end{itemize}
+
+Their shared core parameters are:
 \[
-L \in \{1,2,3,4\}, \qquad p \in \{4,19\}, \qquad K \in \{5,25\},
+L = 4, \qquad p = 4, \qquad h = 1, \qquad \mu = 5.
 \]
-with Poisson demand of mean $5$ and holding cost $1$ throughout.
+The fixed-cost instance additionally uses $K=5$.
 
-The literature provides the benchmark family and the heuristic classes, but it does not publish a
-clean exact per-instance table for our canonical instance. Therefore, the numerical values reported
-here are repo-native benchmark values computed on that published instance family.
-
-\section{Heuristic baselines}
-
-Following \citet{Bijvank2015ParametricPolicies}, we benchmark against three classical parametric
-policy classes:
+All current runs in this note use the same training budget:
 \begin{itemize}
-    \item $(s,S)$,
-    \item $(s,nQ)$,
-    \item modified $(s,S,q)$.
+    \item $2000$ CMA-ES iterations,
+    \item population size $64$,
+    \item training horizon $2000$,
+    \item evaluation horizon $10^6$,
+    \item $10$ evaluation seeds,
+    \item seed $42$.
 \end{itemize}
 
-For the canonical instance, heuristic parameters are obtained by explicit search over bounded
-parameter domains using the same simulator as for the learned policies. The current best heuristic
-on the canonical instance is modified $(s,S,q)$.
+For the demand-robustness sweep we use four mean-preserving demand families:
+\begin{itemize}
+    \item Poisson demand with mean $5$,
+    \item Geometric demand with mean $5$,
+    \item positively correlated two-state Markov-modulated Poisson demand with
+    $(\lambda_{\mathrm{low}}, \lambda_{\mathrm{high}})=(3,7)$ and $p_{00}=p_{11}=0.9$,
+    \item negatively correlated two-state Markov-modulated Poisson demand with
+    $(\lambda_{\mathrm{low}}, \lambda_{\mathrm{high}})=(3,7)$ and $p_{00}=p_{11}=0.1$.
+\end{itemize}
 
-\section{Implementation validation}
+\section{Policy families and action equations}
 
-Before using the fixed-order-cost simulator and heuristic benchmark pipeline for new learned-policy
-experiments, we validate the implementation against a published example from
-\citet{Bijvank2015ParametricPolicies}. Their Table~1 reports a small Poisson-demand instance with
-lead time $L=2$, shortage cost $p=14$, fixed ordering cost $K=5$, holding cost $h=1$, and demand
-mean $\mu=5$. For that instance, the paper reports the exact optimal cost and the best parameters
-for the three heuristic policy classes that we implement.
+The current study is intentionally narrow: it focuses on linear policies and soft trees. Let
+$z = w^\top x + b$ denote the scalar latent score of a linear head, and let $Q_{\mathrm{env}}$ be
+the environment action cap.
+
+We study the following action parameterizations:
+
+\paragraph{Categorical quantity.}
+The policy emits $Q_{\mathrm{env}}+1$ logits and chooses
+\[
+a_t = \arg\max_{a \in \{0,1,\ldots,Q_{\mathrm{env}}\}} z_a(x_t).
+\]
+
+\paragraph{Sigmoid direct quantity.}
+The policy emits one scalar and maps it as
+\[
+a_t = \mathrm{round}\!\left(Q_{\mathrm{env}} \, \sigma(z)\right).
+\]
+This is a one-head bounded S-curve map.
+
+\paragraph{Direct quantity.}
+The policy emits one scalar and maps it as
+\[
+\tilde a_t = \mathrm{round}\!\left(\mathrm{softplus}(z)\right),
+\qquad
+a_t = \mathrm{clip}(\tilde a_t, 0, Q_{\mathrm{env}}).
+\]
+This is a one-head positive-part map with no explicit $Q_{\mathrm{env}}$ inside the head.
+
+\paragraph{Soft-gated sigmoid direct quantity.}
+The policy emits a gate score $g(x_t)$ and a quantity score $q(x_t)$, then sets
+\[
+a_t = \mathrm{round}\!\left(\sigma(g(x_t)) \, \sigma(q(x_t)) \, Q_{\mathrm{env}}\right).
+\]
+
+\paragraph{Soft-gated direct quantity.}
+The policy emits $g(x_t)$ and $q(x_t)$, then sets
+\[
+\tilde a_t = \mathrm{round}\!\left(\sigma(g(x_t)) \, \mathrm{softplus}(q(x_t))\right),
+\qquad
+a_t = \mathrm{clip}(\tilde a_t, 0, Q_{\mathrm{env}}).
+\]
+
+\paragraph{Hard-gated direct quantity.}
+The policy emits $g(x_t)$ and $q(x_t)$, and uses
+\[
+a_t =
+\begin{cases}
+0, & \sigma(g(x_t)) < 0.5, \\
+\mathrm{clip}(\mathrm{round}(\mathrm{softplus}(q(x_t))), 1, Q_{\mathrm{env}}),
+& \sigma(g(x_t)) \ge 0.5.
+\end{cases}
+\]
+
+\paragraph{Soft-gated ordinal quantity.}
+The policy emits one gate score $g(x_t)$ and ordinal scores
+$o_1(x_t),\ldots,o_{Q_{\mathrm{env}}}(x_t)$, and sets
+\[
+\hat m(x_t) = \sum_{k=1}^{Q_{\mathrm{env}}} \sigma(o_k(x_t)),
+\qquad
+a_t = \mathrm{round}\!\left(\sigma(g(x_t)) \, \hat m(x_t)\right).
+\]
+
+\paragraph{Soft trees with linear leaves.}
+A soft tree computes path probabilities $\pi_\ell(x_t)$ over leaves, and each leaf emits a local
+linear quantity model
+\[
+q_\ell(x_t) = \mathrm{softplus}(\alpha_\ell^\top x_t + \beta_\ell).
+\]
+The final action is the rounded mixture
+\[
+\tilde a_t = \mathrm{round}\!\left(\sum_\ell \pi_\ell(x_t) q_\ell(x_t)\right),
+\qquad
+a_t = \mathrm{clip}(\tilde a_t, 0, Q_{\mathrm{env}}).
+\]
+We use depth-$1$ and depth-$2$ oblique soft trees.
+
+The policy family that is \emph{not} part of the active benchmark surface is the raw unbounded
+direct head
+\[
+a_t = \mathrm{clip}(\mathrm{round}(z), 0, Q_{\mathrm{env}}),
+\]
+which repeatedly converged to weak basins in earlier runs and is now treated as a negative ablation
+rather than a serious candidate.
+
+\section{Canonical Poisson results}
+
+\subsection{Vanilla lost sales}
+
+For the canonical vanilla Poisson instance, the heuristic baselines are:
+\[
+\text{myopic1} = 5.0627,\qquad
+\text{myopic2} = 4.8168,\qquad
+\text{SVBS} = 5.8344.
+\]
 
 \begin{table}[t]
 \centering
+\caption{Canonical vanilla lost-sales benchmark for $L=4$, $p=4$, Poisson demand with mean $5$,
+and the current $2000$-iteration / population-$64$ CMA-ES protocol.}
+\label{tab:vanilla-poisson-canonical}
+\begin{tabular}{lrr}
+\toprule
+Policy family & Mean cost & Std. dev. \\
+\midrule
+\multicolumn{3}{l}{\textit{Heuristic baselines}} \\
+myopic1 & 5.0627 & --- \\
+myopic2 & 4.8168 & --- \\
+SVBS & 5.8344 & --- \\
+\midrule
+\multicolumn{3}{l}{\textit{Learned policies}} \\
+Linear, categorical quantity & 4.8752 & 0.0087 \\
+Linear, sigmoid direct quantity & 4.7557 & 0.0073 \\
+Linear, direct quantity & 4.7467 & 0.0075 \\
+Linear, gated sigmoid direct quantity & 4.7451 & 0.0082 \\
+Linear, soft-gated direct quantity & 4.7481 & 0.0080 \\
+Linear, hard-gated direct quantity & 4.7480 & 0.0076 \\
+Linear, soft-gated ordinal quantity & 4.7503 & 0.0077 \\
+Soft tree, depth-1 linear leaf & 4.7481 & 0.0075 \\
+Soft tree, depth-2 linear leaf & 4.7518 & 0.0078 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:vanilla-poisson-canonical} shows that once we leave the flat categorical head, the
+vanilla problem is relatively forgiving. Every non-categorical direct/tree policy lands in almost
+the same cost band, all below the best heuristic.
+
+This corrects an earlier overstatement in our local notes: the one-head sigmoid direct policy is
+not fundamentally bad on vanilla lost sales. At smaller CMA populations it was search-sensitive,
+but under the current population-$64$ protocol it is competitive.
+
+\subsection{Fixed-cost lost sales}
+
+For the canonical fixed-cost Poisson instance, the heuristic baselines are:
+\[
+(s,S)=9.3677,\qquad
+(s,nQ)=9.2094,\qquad
+\text{modified }(s,S,q)=9.2003.
+\]
+
+\begin{table}[t]
+\centering
+\caption{Canonical fixed-cost lost-sales benchmark for $L=4$, $p=4$, $K=5$, Poisson demand with
+mean $5$, and the current $2000$-iteration / population-$64$ CMA-ES protocol.}
+\label{tab:fixed-cost-poisson-canonical}
+\begin{tabular}{lrr}
+\toprule
+Policy family & Mean cost & Std. dev. \\
+\midrule
+\multicolumn{3}{l}{\textit{Heuristic baselines}} \\
+$(s,S)$ & 9.3677 & --- \\
+$(s,nQ)$ & 9.2094 & --- \\
+modified $(s,S,q)$ & 9.2003 & --- \\
+\midrule
+\multicolumn{3}{l}{\textit{Learned policies}} \\
+Linear, categorical quantity & 10.2754 & 0.0091 \\
+Linear, sigmoid direct quantity & 8.7728 & 0.0077 \\
+Linear, direct quantity & 9.7482 & 0.0072 \\
+Linear, gated sigmoid direct quantity & 9.7474 & 0.0074 \\
+Linear, soft-gated direct quantity & 8.7715 & 0.0068 \\
+Linear, hard-gated direct quantity & 9.7478 & 0.0072 \\
+Linear, soft-gated ordinal quantity & 8.7783 & 0.0074 \\
+Soft tree, depth-1 linear leaf & 8.7708 & 0.0075 \\
+Soft tree, depth-2 linear leaf & 8.7700 & 0.0076 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:fixed-cost-poisson-canonical} is much sharper. The fixed-cost problem is still the
+harder search test. The plain direct head is not robust here under the current protocol, whereas
+the best structured heads and the trees all land in the same strong basin around $8.77$.
+
+The key point is that this is no longer a simple ``Q-free versus Q-dependent'' story:
+\begin{itemize}
+    \item the $Q$-dependent one-head sigmoid direct policy is good,
+    \item the $Q$-free one-head softplus direct policy is not,
+    \item the $Q$-free soft-gated direct policy is good,
+    \item the trees are good.
+\end{itemize}
+So the real issue is search geometry, not a single symbolic design choice.
+
+\section{Demand-family robustness}
+
+\subsection{Fixed-cost sweep}
+
+The fixed-cost $L=4$, $p=4$, $K=5$ demand sweep is complete for all four demand families.
+
+\begin{table}[t]
+\centering
+\caption{Best learned policy by demand family on the fixed-cost $L=4$, $p=4$, $K=5$ benchmark.}
+\label{tab:fixed-cost-demand-sweep}
+\begin{tabular}{lrrrr}
+\toprule
+Demand family & Best learned policy & Learned cost & Best heuristic & Heuristic cost \\
+\midrule
+Poisson & Soft tree, depth-2 linear leaf & 8.7700 & modified $(s,S,q)$ & 9.2003 \\
+Geometric & Linear, hard-gated direct quantity & 13.6276 & modified $(s,S,q)$ & 14.0023 \\
+Positive MMPP2 & Linear, hard-gated direct quantity & 11.8787 & modified $(s,S,q)$ & 12.0935 \\
+Negative MMPP2 & Linear, soft-gated direct quantity & 9.0656 & modified $(s,S,q)$ & 9.6501 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+This is the clearest current architecture result in the fixed-cost setting:
+
+\begin{itemize}
+    \item there is no single winner across all fixed-cost demand families,
+    \item the best head depends on the demand geometry,
+    \item structured direct heads and trees consistently beat the best heuristic,
+    \item flat categorical quantity remains weak.
+\end{itemize}
+
+The pattern is also suggestive:
+\begin{itemize}
+    \item positively correlated and overdispersed fixed-cost demand favor harder thresholded direct
+    heads,
+    \item negatively correlated fixed-cost demand favors the soft-gated direct head,
+    \item Poisson fixed-cost demand still slightly favors the trees.
+\end{itemize}
+
+\subsection{Vanilla sweep}
+
+The vanilla demand sweep is still in progress. At the time of writing:
+\begin{itemize}
+    \item Poisson is complete,
+    \item Geometric is complete,
+    \item the positively correlated MMPP2 case has started,
+    \item the negatively correlated MMPP2 case has not yet been summarized into the current
+    manuscript snapshot.
+\end{itemize}
+
+For the completed vanilla demand cases:
+\begin{itemize}
+    \item Poisson best learned policy: linear gated sigmoid direct, cost $4.7451$ versus heuristic
+    $4.8168$,
+    \item Geometric best learned policy so far: depth-$1$ soft tree, cost $10.6391$ versus
+    heuristic $10.8025$.
+\end{itemize}
+
+The vanilla side is therefore currently much less architecture-sensitive than the fixed-cost side.
+Once we move away from the flat categorical head, almost all of the direct/tree families appear to
+reach essentially the same good basin.
+
+\section{Interpretation}
+
+The original local hypothesis was that \emph{factorization} or \emph{gating} might be the main
+winning ingredient. The current evidence is weaker and more precise than that.
+
+What we can say now is:
+\begin{enumerate}
+    \item The raw unbounded direct head is a bad search parameterization and should remain excluded
+    from the active benchmark surface.
+    \item The one-head sigmoid direct map is not fundamentally broken; it is search-sensitive. It
+    can be bad at smaller populations and good at larger ones.
+    \item The fixed-cost problem remains much more architecture-sensitive than the vanilla problem.
+    \item The most stable current interpretation is that these policy families differ mainly in the
+    replenishment geometry they expose to CMA-ES, not only in raw expressivity.
+\end{enumerate}
+
+So the best current reading is:
+\begin{quote}
+Good policies are the ones whose parameterization makes the relevant replenishment map easy enough
+for CMA-ES to find under the available budget.
+\end{quote}
+
+That map need not always be represented in the same way. In vanilla lost sales it can be realized
+by many non-categorical direct and tree heads. In fixed-cost lost sales it is still much more
+dependent on the action-head geometry and the demand family.
+
+\section{Published verification anchor}
+
+Before relying on the fixed-cost simulator and heuristic stack for learned-policy comparisons, we
+validate the implementation against the published example used in
+\citet{Bijvank2015ParametricPolicies}. Their Table~1 reports a small Poisson-demand instance with:
+\[
+L=2,\qquad p=14,\qquad K=5,\qquad h=1,\qquad \mu=5.
+\]
+
+In the repo, this validation anchor is:
+\begin{itemize}
+    \item \texttt{bijvank2015\_table1\_l2\_p14\_k5}
+\end{itemize}
+and is encoded in
+\texttt{invman/problems/lost\_sales\_fixed\_order\_cost/reference\_instances.py}.
+
+\begin{table}[t]
+\centering
+\caption{Published fixed-cost lost-sales validation example from
+\citet{Bijvank2015ParametricPolicies} and our reproduced long-run costs for the reported heuristic
+parameters.}
+\label{tab:fixed-cost-validation}
 \begin{tabular}{llll}
 \toprule
 Policy & Reported parameters & Published cost & Our reproduced cost \\
@@ -92,334 +370,18 @@ $(s,nQ)$ & $(17,7)$ & 11.56 & 11.5589 \\
 modified $(s,S,q)$ & $(17,23,7)$ & 11.50 & 11.5012 \\
 \bottomrule
 \end{tabular}
-\caption{Published fixed-order-cost lost-sales validation example from \citet{Bijvank2015ParametricPolicies} and our reproduced long-run costs for the reported heuristic parameters.}
-\label{tab:fixed-cost-validation}
 \end{table}
 
-Table~\ref{tab:fixed-cost-validation} shows that our long-run simulator reproduces the published
-heuristic costs to within simulation precision. In particular, the $(s,S)$ policy matches both the
-reported parameterization and the reported cost essentially exactly, while the $(s,nQ)$ and
-modified $(s,S,q)$ costs differ from the published values only in the third decimal place. This is
-strong evidence that the fixed-order-cost environment dynamics, cost accounting, and heuristic
-policy implementations are correct.
+The reproduced costs match the published values to within simulation precision. This is the
+literature-backed correctness anchor for the fixed-cost environment and heuristic implementation.
 
-One subtlety is that simulation-based heuristic search over a finite sampled demand path need not
-return a unique optimizer when several parameterizations are nearly tied. On this validation
-instance, direct long-run evaluation of the published parameters matches the paper very closely,
-which is the relevant correctness check. Therefore, in the experiments below we treat the
-fixed-order-cost heuristic stack as externally validated against the literature, and we report both
-the selected heuristic parameters and their long-run reevaluated costs.
-
-We also ran the full learned-policy suite on this same known-optimum instance. Because the exact
-optimal cost is available here, this is the cleanest place to compare learned policies to the true
-benchmark rather than only to the best heuristic.
-
-\begin{table}[t]
-\centering
-\caption{Known-optimum validation benchmark on the published Table~1 instance
-\texttt{bijvank2015\_table1\_l2\_p14\_k5}. Since the exact optimum is available, the main
-comparison is gap to that optimum.}
-\label{tab:fixed-cost-validation-suite}
-\begin{tabular}{lrr}
-\toprule
-Policy family & Mean cost & Gap vs.\ optimum \\
-\midrule
-\multicolumn{3}{l}{\textit{Exact and heuristic baselines}} \\
-optimal & 11.4600 & 0.0000 \\
-$(s,S)$ & 11.6192 & 0.1592 \\
-$(s,nQ)$ & 11.6317 & 0.1717 \\
-modified $(s,S,q)$ & 11.5038 & 0.0438 \\
-\midrule
-\multicolumn{3}{l}{\textit{Learned policy families}} \\
-Linear, categorical quantity & 12.5219 & 1.0619 \\
-Linear, gated ordinal quantity & 11.5260 & 0.0660 \\
-NN, categorical quantity & 12.2939 & 0.8339 \\
-NN, gated ordinal quantity & 11.5436 & 0.0836 \\
-Soft tree, oblique depth-2 linear leaf & 12.1070 & 0.6470 \\
-Soft tree, oblique depth-1 linear leaf & 12.1252 & 0.6652 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-Table~\ref{tab:fixed-cost-validation-suite} shows that the best learned policy on the published
-instance is the linear policy with the gated ordinal quantity head, at cost $11.5260$, only
-$0.0660$ above the exact optimum and $0.0222$ above the best heuristic. The neural gated ordinal
-policy is close behind at $11.5436$. Thus the known-optimum validation instance supports the same
-qualitative conclusion as the canonical benchmark: the gated ordinal head is the only learned
-parameterization that gets close to the correct order/no-order structure of the fixed-cost problem.
-
-\section{Learned policy families}
-
-We compare three policy backbones:
+It is important to distinguish this validation role from the architecture study above:
 \begin{itemize}
-    \item a linear policy,
-    \item a neural network policy,
-    \item a soft oblique decision tree with linear leaves.
+    \item the validation instance is used to verify that the simulator and heuristic policies match
+    the published benchmark family,
+    \item the canonical $L=4$, $p=4$ studies are where we compare modern learned-policy
+    parameterizations.
 \end{itemize}
-
-The key modeling axis is the action head:
-\begin{itemize}
-    \item \textbf{categorical quantity}: directly chooses one order quantity by categorical
-    argmax;
-    \item \textbf{gated ordinal quantity}: separates the tendency to order from the quantity score,
-    which is much better aligned with the economics of a fixed setup cost.
-\end{itemize}
-
-The central hypothesis for this problem is that the action parameterization matters more than the
-backbone. If that hypothesis is correct, then moving from categorical quantity to gated ordinal
-quantity should improve both the linear and neural policies materially.
-
-The categorical quantity baseline is the same flat action parameterization that worked well for the
-plain lost-sales problem: the policy emits $\bar q+1$ logits and chooses a single order quantity by
-argmax:
-\[
-a_t = \arg\max_{a \in \{0,1,\ldots,\bar q\}} z_a(s_t),
-\]
-where $z_0(s_t),\ldots,z_{\bar q}(s_t)$ are the logits emitted by the policy. The fixed-cost
-results show that this flat action space is a poor fit once a setup cost creates an explicit
-no-order region.
-
-For the gated ordinal quantity head, the policy backbone produces one scalar gate score $g(s_t)$
-and $\bar q$ ordinal scores $o_1(s_t),\ldots,o_{\bar q}(s_t)$. We then define
-\[
-\hat m(s_t) = \sum_{k=1}^{\bar q} \sigma(o_k(s_t)),
-\qquad
-a_t = \mathrm{round}\!\left(\sigma(g(s_t)) \, \hat m(s_t)\right),
-\]
-where $\sigma(\cdot)$ is the logistic sigmoid. The gate $\sigma(g(s_t))$ represents the tendency
-to place any positive order, while $\hat m(s_t)$ represents the magnitude of the positive-order
-decision. This is still a general learned policy, not a hand-coded $(s,S)$-type rule, but it
-searches in a control space that is much closer to the economics of the problem.
-
-The soft-tree family uses a different backbone but the same underlying idea of a structured action
-map. Each internal node computes a soft split
-\[
-p_j(s_t) = \sigma(w_j^\top s_t - b_j),
-\]
-which induces path probabilities $\pi_\ell(s_t)$ over the leaves. Each leaf $\ell$ emits a small
-linear quantity model
-\[
-q_\ell(s_t) = \alpha_\ell^\top s_t + \beta_\ell,
-\]
-and the final action is the rounded weighted mixture
-\[
-a_t = \mathrm{round}\!\left(\sum_{\ell} \pi_\ell(s_t)\, q_\ell(s_t)\right).
-\]
-The tree does not commit to a hard branch during training; instead, soft splits induce path
-probabilities over leaf models, which keeps the policy differentiable-free yet smooth enough for
-stable CMA-ES search. The depth-1 and depth-2 oblique trees with linear leaves form the strongest
-tree baselines in the current benchmark.
-
-\section{Benchmark protocol}
-
-All learned policies in the current canonical benchmark use the same CMA-ES training budget:
-\begin{itemize}
-    \item $5000$ training episodes,
-    \item population size $50$,
-    \item training horizon $2000$,
-    \item evaluation horizon $10^6$,
-    \item $10$ evaluation seeds,
-    \item warm-up ratio $0.2$.
-\end{itemize}
-
-The canonical benchmark runner is
-\texttt{scripts/lost\_sales\_fixed\_order\_cost/benchmark\_canonical\_suite.py}. The canonical
-result table is generated directly from the benchmark JSON, so the manuscript table remains
-synchronized with the code and experiment outputs.
-
-\section{Canonical results}
-
-\begin{table}[t]
-\centering
-\caption{Canonical fixed-order-cost lost-sales benchmark for $L=4$, $p=4$, $K=5$, and Poisson demand with mean $5$. All learned policies use $5000$ CMA-ES iterations, population size $50$, training horizon $2000$, and long-run evaluation over $10$ seeds with horizon $10^6$.}
-\label{tab:fixed-cost-canonical}
-\begin{tabular}{lrr}
-\toprule
-Policy family & Mean cost & Gap vs.\ best heuristic \\
-\midrule
-\multicolumn{3}{l}{\textit{Heuristic baselines}} \\
-$(s,S)$ & 9.3715 & 0.1971 \\
-$(s,nQ)$ & 9.1810 & 0.0066 \\
-modified $(s,S,q)$ & 9.1744 & 0.0000 \\
-\midrule
-\multicolumn{3}{l}{\textit{Learned policy families}} \\
-Linear, categorical quantity & 10.2730 & 1.0986 \\
-Linear, gated ordinal quantity & 8.7688 & -0.4056 \\
-NN, categorical quantity$^{\dagger}$ & 10.2730 & 1.0986 \\
-NN, gated ordinal quantity & 8.7328 & -0.4415 \\
-Soft tree, oblique depth-2 linear leaf & 8.7742 & -0.4002 \\
-Soft tree, oblique depth-1 linear leaf & 8.7785 & -0.3959 \\
-\bottomrule
-\end{tabular}
-\par\medskip\footnotesize{$^{\dagger}$ The current NN categorical-quantity baseline matches the linear categorical baseline exactly and should be re-verified before publication claims rely on it.}
-\end{table}
-
-The best heuristic baseline is modified $(s,S,q)$ at cost $9.1744$. The strongest trusted learned
-policy is the neural network with the gated ordinal quantity head, at cost $8.7328$. The linear
-policy with the same head achieves $8.7688$, which places it essentially on top of the two best
-tree variants at $8.7742$ and $8.7785$.
-
-These results support a clear conclusion: on the fixed-order-cost lost-sales problem, the action
-head is the dominant architectural choice. The plain categorical quantity head performs poorly,
-whereas the gated ordinal quantity head makes even the linear policy competitive with the more
-expressive tree and neural policies.
-
-One baseline should still be treated cautiously: the current
-\texttt{nn\_categorical\_quantity} run matches the linear categorical baseline exactly. We retain
-that row in the benchmark table for completeness, but it should be re-verified before publication
-claims rely on it.
-
-\section{Full-grid results}
-
-To move beyond the canonical instance, we also aggregate performance over the full
-\texttt{literature\_subset\_poisson\_mu5} grid. For each of the $16$ instances in that grid, we
-search the three heuristic families, train the six learned-policy families under the common CMA-ES
-budget, and compare each learned policy against the best heuristic found on that same instance.
-The aggregate metric below is the mean relative gap to that per-instance best heuristic, together
-with the number of instances on which the learned policy beats it.
-
-\begin{table}[t]
-\centering
-\caption{Aggregate fixed-order-cost lost-sales results over the literature-aligned subset grid with $L \in \{1,2,3,4\}$, $p \in \{4,19\}$, $K \in \{5,25\}$, and Poisson demand with mean $5$. Each row reports the mean relative gap to the best heuristic found on each instance and the number of instances on which the learned policy beats that best heuristic. Lower is better.}
-\label{tab:fixed-cost-full-grid}
-\begin{tabular}{lrrl}
-\toprule
-Policy family & Mean relative gap (\%) & Better than best heuristic & Status \\
-\midrule
-Linear, categorical quantity & 692842.158 & 0/16 & trusted \\
-Linear, gated ordinal quantity & 5.984 & 8/16 & trusted \\
-NN, categorical quantity$^{\dagger}$ & 15.475 & 2/16 & provisional \\
-NN, gated ordinal quantity & -0.809 & 11/16 & trusted \\
-Soft tree, oblique depth-2 linear leaf & 16.833 & 0/16 & trusted \\
-Soft tree, oblique depth-1 linear leaf & 13.960 & 1/16 & trusted \\
-\bottomrule
-\end{tabular}
-\par\medskip\footnotesize{Best trusted aggregate row: NN, gated ordinal quantity with mean relative gap -0.809\% and wins on 11/16 instances. $^{\dagger}$ The current NN categorical-quantity baseline remains provisional and should be re-verified before publication claims rely on it.}
-\end{table}
-
-Like the canonical table, this full-grid artifact is generated directly from the benchmark JSON so
-the manuscript stays synchronized with the experiment outputs.
-
-To make the instance-level picture explicit in the same style as the plain lost-sales paper,
-Tables~\ref{tab:fixed-cost-k5-slice} and~\ref{tab:fixed-cost-k25-slice} report the actual mean
-costs on the $L \in \{2,4\}$ slice of the fixed-cost grid. These are the costs from the full-grid
-run itself, so the canonical $L=4$, $p=4$, $K=5$ entry need not match the separate canonical-suite
-table exactly. The Geometric columns are left blank for now because we have not yet run the
-aligned fixed-cost Geometric benchmark.
-
-\begin{table}[t]
-\caption{Average cost of policy function approximators on the fixed-order-cost lost-sales problem
-with fixed order cost $K=5$ and lead times in $\{2,4\}$. Geometric columns are left empty because
-those runs have not yet been executed for the fixed-cost benchmark.}
-\label{tab:fixed-cost-k5-slice}
-\centering
-\resizebox{\textwidth}{!}{%
-\begin{tabular}{|l|l|c|c||c|c|}
-\hline
- & & \multicolumn{2}{c||}{Lead Time = 2} & \multicolumn{2}{c|}{Lead Time = 4} \\
-Shortage & Policy & Geometric & Poisson & Geometric & Poisson \\
-Cost & & & & & \\ \hline
-4 & $(s,S)$ &  & 8.8695 &  & 9.5619 \\
-  & $(s,nQ)$ &  & 8.8071 &  & 9.2123 \\
-  & modified $(s,S,q)$ &  & 8.8021 &  & 9.2032 \\
-  & Linear, categorical &  & 9.6582 &  & 10.2730 \\
-  & Linear, gated ordinal &  & 8.5974 &  & 8.7723 \\
-  & NN, categorical &  & 9.4855 &  & 10.2730 \\
-  & NN, gated ordinal &  & 8.5173 &  & 8.7929 \\
-  & Soft tree, depth-2 &  & 9.2744 &  & 9.7519 \\
-  & Soft tree, depth-1 &  & 9.4218 &  & 9.7530 \\ \hline
-19 & $(s,S)$ &  & 12.2996 &  & 13.7219 \\
-   & $(s,nQ)$ &  & 12.2365 &  & 13.6427 \\
-   & modified $(s,S,q)$ &  & 12.1976 &  & 13.5483 \\
-   & Linear, categorical &  & 13.2537 &  & 14.9028 \\
-   & Linear, gated ordinal &  & 12.1783 &  & 13.6092 \\
-   & NN, categorical &  & 12.9253 &  & 14.3474 \\
-   & NN, gated ordinal &  & 12.2043 &  & 13.4420 \\
-   & Soft tree, depth-2 &  & 12.7438 &  & 13.9892 \\
-   & Soft tree, depth-1 &  & 12.7433 &  & 14.0448 \\ \hline
-\end{tabular}%
-}
-\end{table}
-
-\begin{table}[t]
-\caption{Average cost of policy function approximators on the fixed-order-cost lost-sales problem
-with fixed order cost $K=25$ and lead times in $\{2,4\}$. Geometric columns are left empty because
-those runs have not yet been executed for the fixed-cost benchmark.}
-\label{tab:fixed-cost-k25-slice}
-\centering
-\resizebox{\textwidth}{!}{%
-\begin{tabular}{|l|l|c|c||c|c|}
-\hline
- & & \multicolumn{2}{c||}{Lead Time = 2} & \multicolumn{2}{c|}{Lead Time = 4} \\
-Shortage & Policy & Geometric & Poisson & Geometric & Poisson \\
-Cost & & & & & \\ \hline
-4 & $(s,S)$ &  & 15.4044 &  & 15.9471 \\
-  & $(s,nQ)$ &  & 15.3194 &  & 15.8247 \\
-  & modified $(s,S,q)$ &  & 15.3319 &  & 15.8625 \\
-  & Linear, categorical &  & 15.3194 &  & 19.9952 \\
-  & Linear, gated ordinal &  & 19.9952 &  & 15.6355 \\
-  & NN, categorical &  & 15.3410 &  & 15.5593 \\
-  & NN, gated ordinal &  & 15.3204 &  & 15.5705 \\
-  & Soft tree, depth-2 &  & 19.9952 &  & 19.9952 \\
-  & Soft tree, depth-1 &  & 19.9952 &  & 19.9952 \\ \hline
-19 & $(s,S)$ &  & 19.5629 &  & 21.1835 \\
-   & $(s,nQ)$ &  & 19.6401 &  & 21.0192 \\
-   & modified $(s,S,q)$ &  & 19.6538 &  & 20.9927 \\
-   & Linear, categorical &  & 34.3710 &  & 34.4796 \\
-   & Linear, gated ordinal &  & 19.5581 &  & 21.7506 \\
-   & NN, categorical &  & 19.6040 &  & 21.1661 \\
-   & NN, gated ordinal &  & 19.5766 &  & 20.7843 \\
-   & Soft tree, depth-2 &  & 25.0137 &  & 26.4984 \\
-   & Soft tree, depth-1 &  & 19.5571 &  & 26.4972 \\ \hline
-\end{tabular}%
-}
-\end{table}
-
-The completed $16$-instance run strengthens the canonical-instance conclusion. Among the trusted
-families, the neural network with the gated ordinal quantity head is best in aggregate, with mean
-relative gap $-0.809\%$ versus the best heuristic found on each instance and wins on $11/16$
-instances. The linear policy with the same gated ordinal head is the next strongest trusted family
-at $5.984\%$ mean relative gap and wins on $8/16$ instances. Thus the main structural result
-survives the move from one canonical instance to the full literature-aligned grid: separating the
-decision to order from the positive-order quantity score matters more than moving from a linear
-backbone to a more expressive one.
-
-The instance-level pattern is also informative. On the lower setup-cost half of the grid
-($K=5$), every instance is won by one of the gated ordinal policies, split $5$ wins for the neural
-policy and $3$ wins for the linear policy. At lead time $L=3$, the neural gated ordinal policy is
-the best learned family on all four grid instances. By contrast, the provisional
-\texttt{nn\_categorical\_quantity} row only looks competitive on two $p=4$, $K=25$ cases, so we do
-not use it for publication-critical conclusions.
-
-Two caveats from the completed run should remain visible. First, the flat linear categorical
-quantity policy is not merely weak on average; it fails catastrophically on some instances. The
-worst case is \texttt{lit\_pois\_mu5\_l3\_p19\_k5}, where its long-run mean cost is
-$1{,}440{,}013.70$ against a best-heuristic benchmark of $12.9904$, which drives its aggregate
-mean relative gap up to $692842.2\%$. Second, on the three $p=4$, $K=25$ instances with
-$L \in \{1,2,3\}$, the linear gated policy and both soft-tree baselines all collapse to the same
-long-run cost $19.995229$, producing relative gaps between roughly $29\%$ and $33\%$. That looks
-more like a repeated failure mode than ordinary simulation noise, so those rows should be treated
-as a debugging target rather than a fine-grained modeling conclusion.
-
-With those caveats stated explicitly, the robust empirical takeaway is still clear: the gated
-ordinal action head is the only design change that consistently transfers across the fixed-cost
-grid, and the neural gated ordinal policy is currently the strongest trusted learned policy family
-for this problem class.
-
-\section{Current paper scope}
-
-At this point the fixed-order-cost lost-sales problem is the first extension problem that is mature
-enough for a stand-alone empirical section:
-\begin{itemize}
-    \item the model is implemented and documented,
-    \item the benchmark family and canonical instance are explicit,
-    \item the classical heuristics are in place,
-    \item the learned policy matrix has a stable paper-like benchmark protocol,
-    \item the manuscript can consume both canonical and full-grid benchmark artifacts directly.
-\end{itemize}
-
-The next step is to consolidate the fixed-cost section with the dual-sourcing and multi-echelon
-problem sections in the broader manuscript.
 
 \bibliographystyle{plainnat}
 \bibliography{references}

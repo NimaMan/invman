@@ -96,23 +96,51 @@ Run all stable suites:
 python numerical_experiments/run.py --all-ready
 ```
 
+## Current Defaults
+
+The live benchmark defaults have moved since the original paperlike `5k` runs.
+When in doubt, trust the current experiment spec files over older run tags:
+
+- vanilla lost sales:
+  - [experiment_spec.py](/home/nima/code/ml/invman/invman/problems/lost_sales/experiment_spec.py)
+- fixed-cost lost sales:
+  - [experiment_spec.py](/home/nima/code/ml/invman/invman/problems/lost_sales_fixed_order_cost/experiment_spec.py)
+
+Current defaults:
+
+- `training_episodes = 2000`
+- `es_population = 64`
+- `training_horizon = 2000`
+- `eval_horizon = 1e6`
+- `eval_seeds = 10`
+
+For vanilla lost sales, the lead-time-2 literature cases still use a longer budget:
+
+- `training_episodes = 5000`
+- `training_horizon = 5000`
+
+## Canonical Single Instances
+
+If you need one representative instance before launching a larger sweep, use:
+
+- vanilla lost sales:
+  - `vanilla_l4_p4_poisson5`
+- fixed-cost lost sales:
+  - `lit_pois_mu5_l4_p4_k5`
+
+These are the default single-instance references used throughout the current architecture work.
+
 ## Fixed-Cost Paper Workflow
 
-The fixed-order-cost lost-sales section is the most mature new problem family.
+The fixed-order-cost lost-sales section is still the most mature extension problem family, but the
+active protocol is now the shorter `2k / pop64 / h2000` setup, not the older `5k paperlike`
+workflow.
 
 Main scripts:
 
 - known-optimum heuristic validation: `scripts/lost_sales_fixed_order_cost/validate_known_optimum.py`
 - single-instance preflight: `scripts/lost_sales_fixed_order_cost/benchmark_canonical_suite.py`
 - full 16-instance literature-aligned grid: `scripts/lost_sales_fixed_order_cost/benchmark_full_suite.py`
-
-Canonical benchmark outputs:
-
-- `outputs/benchmarks/fixed_cost_l4_canonical_suite_5k_paperlike/`
-
-Full grid outputs:
-
-- `outputs/benchmarks/fixed_cost_full_grid_suite_5k_paperlike/`
 
 Use the single-instance preflight first to confirm that the full experiment path is behaving as expected.
 
@@ -135,6 +163,56 @@ Important note:
 
 - `nn_categorical_quantity` is still marked provisional on the canonical fixed-cost benchmark because it matched the linear categorical baseline exactly and should be re-verified before publication claims rely on it.
 
+## Current Architecture Work
+
+The active architecture note is:
+
+- [README.md](/home/nima/code/ml/invman/autoresearch/replenishment_geometry_search/README.md)
+
+That note is the current source of truth for:
+
+- direct-head geometry experiments
+- vanilla vs fixed-cost comparisons
+- Poisson / Geometric / correlated-demand single-instance sweeps
+- the published fixed-cost validation anchor from Bijvank, Bhulai, and Huh (2015)
+
+The current linear direct/tree family under study is:
+
+- `linear_categorical_quantity`
+- `linear_sigmoid_direct_quantity`
+- `linear_direct_quantity`
+- `linear_gated_sigmoid_direct_quantity`
+- `linear_soft_gated_direct_quantity`
+- `linear_hard_gated_direct_quantity`
+- `linear_soft_gated_ordinal_quantity`
+- `soft_tree_depth1_linear_leaf`
+- `soft_tree_depth2_linear_leaf`
+
+The raw unbounded direct head is intentionally not part of the active experiment surface anymore.
+
+## Demand Families
+
+Lost-sales demand families currently implemented are:
+
+- `Poisson`
+- `Geometric`
+- `MarkovModulatedPoisson2`
+
+The current correlated-demand sweeps use two mean-preserving `MarkovModulatedPoisson2` settings:
+
+- positive correlation:
+  - `lambda_low = 3`
+  - `lambda_high = 7`
+  - `p00 = p11 = 0.9`
+- negative correlation:
+  - `lambda_low = 3`
+  - `lambda_high = 7`
+  - `p00 = p11 = 0.1`
+
+The Rust implementation is:
+
+- [mod.rs](/home/nima/code/ml/invman/rust/src/problems/lost_sales/demand/mod.rs)
+
 ## Outputs
 
 Ad hoc experiment runs write to:
@@ -146,6 +224,18 @@ Ad hoc experiment runs write to:
 Benchmark suites write to:
 
 - `outputs/benchmarks/<run_tag>/`
+
+Runs launched through `run_experiment(...)` also write a status sidecar:
+
+- `outputs/benchmarks/<run_tag>/results/status_<experiment_name>.json`
+
+Use these files to determine whether a run:
+
+- completed normally
+- is still training
+- is evaluating
+- was interrupted
+- failed with an exception
 
 For the fixed-cost full-grid suite, each instance also gets:
 
@@ -165,6 +255,11 @@ The new manuscript workspace is:
 
 - `paper/fixed_order_cost_lost_sales.tex`
 - `paper/references.bib`
+
+The TeX file is currently a working note aligned with the architecture study, not just the old
+fixed-cost-only paper snapshot. If you update the manuscript, also check:
+
+- [README.md](/home/nima/code/ml/invman/autoresearch/replenishment_geometry_search/README.md)
 
 LaTeX is optional for experiments. A TeX toolchain is not required to run benchmarks.
 

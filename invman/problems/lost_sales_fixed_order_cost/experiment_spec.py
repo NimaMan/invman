@@ -6,7 +6,7 @@ from invman.problems.lost_sales_fixed_order_cost.reference_instances import buil
 
 COMMON_BUDGET = {
     "training_episodes": 2000,
-    "es_population": 50,
+    "es_population": 64,
     "horizon": 2000,
     "dynamic_horizon": False,
     "min_dynamic_horizon": 2000,

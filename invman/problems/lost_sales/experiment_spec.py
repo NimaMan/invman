@@ -7,7 +7,7 @@ from invman.problems.lost_sales.reference_instances import build_reference_args
 COMMON_BUDGET = {
     "training_episodes_default": 2000,
     "training_episodes_lead_time_2": 5000,
-    "es_population": 50,
+    "es_population": 64,
     "horizon_default": 2000,
     "horizon_lead_time_2": 5000,
     "eval_horizon": int(1e6),
