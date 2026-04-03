@@ -3,6 +3,12 @@ from pathlib import Path
 
 from invman.policies.registry import apply_policy_name, resolve_policy_name
 
+SUPPORTED_DEMAND_NAMES = ("Poisson", "Geometric", "MarkovModulatedPoisson2")
+DEFAULT_MMPP2_LAMBDA_LOW = 3.0
+DEFAULT_MMPP2_LAMBDA_HIGH = 7.0
+DEFAULT_MMPP2_POSITIVE_P00 = 0.9
+DEFAULT_MMPP2_POSITIVE_P11 = 0.9
+
 try:
     from dotenv import load_dotenv
 except ImportError:  # pragma: no cover - optional dependency
@@ -62,10 +68,34 @@ def get_config(argv=None):
     parser.add_argument(
         "--demand_dist_name",
         default="Poisson",
-        choices=["Poisson", "Geometric"],
+        choices=list(SUPPORTED_DEMAND_NAMES),
         help="Demand distribution.",
     )
     parser.add_argument("--demand_rate", default=5.0, type=float, help="Mean demand per period.")
+    parser.add_argument(
+        "--demand_lambda_low",
+        default=DEFAULT_MMPP2_LAMBDA_LOW,
+        type=float,
+        help="Low-state Poisson mean for MarkovModulatedPoisson2 demand.",
+    )
+    parser.add_argument(
+        "--demand_lambda_high",
+        default=DEFAULT_MMPP2_LAMBDA_HIGH,
+        type=float,
+        help="High-state Poisson mean for MarkovModulatedPoisson2 demand.",
+    )
+    parser.add_argument(
+        "--demand_p00",
+        default=DEFAULT_MMPP2_POSITIVE_P00,
+        type=float,
+        help="Stay-in-low transition probability for MarkovModulatedPoisson2 demand.",
+    )
+    parser.add_argument(
+        "--demand_p11",
+        default=DEFAULT_MMPP2_POSITIVE_P11,
+        type=float,
+        help="Stay-in-high transition probability for MarkovModulatedPoisson2 demand.",
+    )
     parser.add_argument("--max_order_size", default=20, type=int, help="Maximum feasible order quantity.")
     parser.add_argument("--lead_time", default=2, type=int, help="Lead time in review periods.")
     parser.add_argument("--shortage_cost", default=4.0, type=float, help="Lost-sales penalty.")

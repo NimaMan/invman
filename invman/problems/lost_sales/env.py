@@ -1,9 +1,19 @@
 from collections import deque
 
 import numpy as np
-from scipy.stats import nbinom, poisson
 
 from invman.policies.common import build_scalar_action_spec
+from invman.problems.lost_sales.demand import (
+    DEFAULT_MMPP2_LAMBDA_HIGH,
+    DEFAULT_MMPP2_LAMBDA_LOW,
+    DEFAULT_MMPP2_POSITIVE_P00,
+    DEFAULT_MMPP2_POSITIVE_P11,
+    build_demand_config,
+    build_demand_config_from_args,
+    build_demand_process,
+    get_cumulative_demand_cdf,
+    get_demand_prob_vector,
+)
 
 
 def _normalize_state_features(state_features: str) -> str:
@@ -33,6 +43,10 @@ class LostSalesEnv:
         procurement_cost: float = 0.0,
         fixed_order_cost: float = 0.0,
         demand_dist_name: str = "Poisson",
+        demand_lambda_low: float = DEFAULT_MMPP2_LAMBDA_LOW,
+        demand_lambda_high: float = DEFAULT_MMPP2_LAMBDA_HIGH,
+        demand_p00: float = DEFAULT_MMPP2_POSITIVE_P00,
+        demand_p11: float = DEFAULT_MMPP2_POSITIVE_P11,
         track_demand: bool = True,
         warm_up_periods_ratio: float = 0.2,
         state_features: str = "pipeline",
@@ -62,19 +76,37 @@ class LostSalesEnv:
         self.warm_up_periods = int(warm_up_periods_ratio * self.horizon)
         self.gamma = 0.995
         self.track_demand = track_demand
-        self.demand_probs, self.demand_lb, self.demand_ub = self.get_demand_prob_vector()
+        self.demand_lambda_low = float(demand_lambda_low)
+        self.demand_lambda_high = float(demand_lambda_high)
+        self.demand_p00 = float(demand_p00)
+        self.demand_p11 = float(demand_p11)
+        self.demand_config = build_demand_config(
+            demand_dist_name=self.demand_dist_name,
+            demand_rate=self.demand_rate,
+            demand_lambda_low=self.demand_lambda_low,
+            demand_lambda_high=self.demand_lambda_high,
+            demand_p00=self.demand_p00,
+            demand_p11=self.demand_p11,
+        )
+        self.demand_probs, self.demand_lb, self.demand_ub = get_demand_prob_vector(self.demand_config)
+        self._runtime_demand_process = None
         self.reset()
 
     def initialize_env(self):
         self.current_inventory_level = int(round(2 * self.demand_rate))
         self.lead_time_orders.clear()
+        demand_process = (
+            self._runtime_demand_process
+            if not self.track_demand
+            else build_demand_process(self.demand_config, rng=np.random)
+        )
         for _ in range(self.lead_time):
             if self.max_order_size == 0:
                 order_quantity = 0
             else:
                 order_quantity = np.random.randint(low=1, high=self.action_space_dim)
             self.lead_time_orders.append(int(order_quantity))
-            epoch_demand = self._sample_single_demand()
+            epoch_demand = int(demand_process.sample())
             self.current_inventory_level = max(0, self.current_inventory_level - int(epoch_demand))
 
     def reset(self):
@@ -83,30 +115,26 @@ class LostSalesEnv:
         self.current_epoch = 0
         self.done = False
         self.arriving_order = 0
-        self.horizon_demand = self.get_demand() if self.track_demand else None
+        if self.track_demand:
+            self.horizon_demand = self.get_demand()
+            self._runtime_demand_process = None
+        else:
+            self.horizon_demand = None
+            self._runtime_demand_process = build_demand_process(self.demand_config, rng=np.random)
         self.initialize_env()
         return self.norm_state
 
     def is_valid_action(self, action):
         return 0 <= int(action) <= self.max_order_size
 
-    def generate_random_demand_geometric(self, size):
-        support = np.arange(self.demand_lb, self.demand_ub + 1)
-        return np.random.choice(support, p=self.demand_probs, size=size)
-
     def _sample_single_demand(self):
-        if self.demand_dist_name == "Poisson":
-            return int(np.random.poisson(lam=self.demand_rate))
-        if self.demand_dist_name == "Geometric":
-            return int(self.generate_random_demand_geometric(size=1)[0])
-        raise NotImplementedError(f"Unsupported demand distribution: {self.demand_dist_name}")
+        if self._runtime_demand_process is None:
+            self._runtime_demand_process = build_demand_process(self.demand_config, rng=np.random)
+        return int(self._runtime_demand_process.sample())
 
     def get_demand(self):
-        if self.demand_dist_name == "Poisson":
-            return np.random.poisson(lam=self.demand_rate, size=self.horizon)
-        if self.demand_dist_name == "Geometric":
-            return self.generate_random_demand_geometric(size=self.horizon)
-        raise NotImplementedError(f"Unsupported demand distribution: {self.demand_dist_name}")
+        demand_process = build_demand_process(self.demand_config, rng=np.random)
+        return demand_process.sample_path(self.horizon)
 
     def get_realized_demand(self):
         if self.horizon_demand is not None:
@@ -210,14 +238,16 @@ class LostSalesEnv:
         return float(np.mean(self.epoch_costs))
 
     def get_demand_lower_upper_bound_Poisson(self, eps=1e-14):
-        return poisson.interval(1 - eps, mu=self.demand_rate)
+        _, lb, ub = get_demand_prob_vector(
+            build_demand_config(demand_dist_name="Poisson", demand_rate=self.demand_rate),
+            eps=eps,
+        )
+        return lb, ub
 
     def get_demand_prob_vector_Poisson(self):
-        lb, ub = self.get_demand_lower_upper_bound_Poisson()
-        demand_range = np.arange(int(lb), int(ub) + 1)
-        demand_probs = poisson.pmf(demand_range, self.demand_rate)
-        demand_probs /= demand_probs.sum()
-        return demand_probs, int(lb), int(ub)
+        return get_demand_prob_vector(
+            build_demand_config(demand_dist_name="Poisson", demand_rate=self.demand_rate)
+        )
 
     def get_Geometric_demand_probs_lower_upper_bound(self, eps=1e-14):
         probs = []
@@ -234,24 +264,16 @@ class LostSalesEnv:
         return probs, 0, len(probs) - 1
 
     def get_demand_prob_vector_Geometric(self):
-        return self.get_Geometric_demand_probs_lower_upper_bound()
+        return get_demand_prob_vector(
+            build_demand_config(demand_dist_name="Geometric", demand_rate=self.demand_rate)
+        )
 
     def get_demand_prob_vector(self):
-        if self.demand_dist_name == "Poisson":
-            return self.get_demand_prob_vector_Poisson()
-        if self.demand_dist_name == "Geometric":
-            return self.get_demand_prob_vector_Geometric()
-        raise NotImplementedError(f"Unsupported demand distribution: {self.demand_dist_name}")
+        return get_demand_prob_vector(self.demand_config)
 
     def get_cumulative_demand_l_L(self, k, l=0):
         periods = self.lead_time - l + 1
-        if self.demand_dist_name == "Poisson":
-            rate = periods * self.demand_rate
-            return float(poisson.cdf(k=k, mu=rate))
-        if self.demand_dist_name == "Geometric":
-            success_prob = 1.0 / (1.0 + self.demand_rate)
-            return float(nbinom.cdf(k=k, n=periods, p=success_prob))
-        raise NotImplementedError(f"Unsupported demand distribution: {self.demand_dist_name}")
+        return get_cumulative_demand_cdf(self.demand_config, k=k, periods=periods)
 
     def get_critical_fractile(self):
         return (self.procurement_cost + self.holding_cost) / (self.holding_cost + self.shortage_cost)
@@ -278,10 +300,24 @@ def build_env_from_args(args, horizon=None, track_demand=False):
         procurement_cost=getattr(args, "procurement_cost", 0.0),
         fixed_order_cost=getattr(args, "fixed_order_cost", 0.0),
         demand_dist_name=args.demand_dist_name,
+        demand_lambda_low=float(getattr(args, "demand_lambda_low", DEFAULT_MMPP2_LAMBDA_LOW)),
+        demand_lambda_high=float(getattr(args, "demand_lambda_high", DEFAULT_MMPP2_LAMBDA_HIGH)),
+        demand_p00=float(getattr(args, "demand_p00", DEFAULT_MMPP2_POSITIVE_P00)),
+        demand_p11=float(getattr(args, "demand_p11", DEFAULT_MMPP2_POSITIVE_P11)),
         track_demand=track_demand,
         warm_up_periods_ratio=getattr(args, "warm_up_periods_ratio", 0.2),
         state_features=getattr(args, "state_features", "pipeline"),
     )
+
+
+def _rust_demand_kwargs(args):
+    config = build_demand_config_from_args(args)
+    return {
+        "demand_lambda_low": float(config.demand_lambda_low),
+        "demand_lambda_high": float(config.demand_lambda_high),
+        "demand_p00": float(config.demand_p00),
+        "demand_p11": float(config.demand_p11),
+    }
 
 def _rust_lost_sales_policy_mode(model, args, track_demand=False, return_env=False):
     if return_env or track_demand:
@@ -359,6 +395,7 @@ def get_model_fitness(
             seed=int(seed),
             warm_up_periods_ratio=float(getattr(args, "warm_up_periods_ratio", 0.2)),
             temperature=float(model.temperature),
+            **_rust_demand_kwargs(args),
         )
         if verbose:
             print(f"Seed {seed}: avg cost {avg_cost:.4f}")
@@ -385,6 +422,7 @@ def get_model_fitness(
             horizon=int(args.horizon),
             seed=int(seed),
             warm_up_periods_ratio=float(getattr(args, "warm_up_periods_ratio", 0.2)),
+            **_rust_demand_kwargs(args),
         )
         if verbose:
             print(f"Seed {seed}: avg cost {avg_cost:.4f}")
@@ -413,6 +451,7 @@ def get_model_fitness(
             horizon=int(args.horizon),
             seed=int(seed),
             warm_up_periods_ratio=float(getattr(args, "warm_up_periods_ratio", 0.2)),
+            **_rust_demand_kwargs(args),
         )
         if verbose:
             print(f"Seed {seed}: avg cost {avg_cost:.4f}")
@@ -463,6 +502,7 @@ def get_population_fitness(model, args, model_params_batch, seeds):
             horizon=int(args.horizon),
             warm_up_periods_ratio=float(getattr(args, "warm_up_periods_ratio", 0.2)),
             temperature=float(model.temperature),
+            **_rust_demand_kwargs(args),
         )
     elif rust_mode == "linear":
         policy_head = str(getattr(model, "action_output_mode", "categorical_quantity"))
@@ -482,6 +522,7 @@ def get_population_fitness(model, args, model_params_batch, seeds):
             fixed_order_cost=float(getattr(args, "fixed_order_cost", 0.0)),
             horizon=int(args.horizon),
             warm_up_periods_ratio=float(getattr(args, "warm_up_periods_ratio", 0.2)),
+            **_rust_demand_kwargs(args),
         )
     else:
         policy_head = str(getattr(model, "action_output_mode", "categorical_quantity"))
@@ -503,5 +544,6 @@ def get_population_fitness(model, args, model_params_batch, seeds):
             fixed_order_cost=float(getattr(args, "fixed_order_cost", 0.0)),
             horizon=int(args.horizon),
             warm_up_periods_ratio=float(getattr(args, "warm_up_periods_ratio", 0.2)),
+            **_rust_demand_kwargs(args),
         )
     return [(-float(cost), indiv_idx) for indiv_idx, cost in enumerate(costs)]

@@ -5,6 +5,14 @@ from math import ceil, sqrt
 
 import numpy as np
 
+from invman.problems.lost_sales.demand import (
+    DEFAULT_MMPP2_LAMBDA_HIGH,
+    DEFAULT_MMPP2_LAMBDA_LOW,
+    DEFAULT_MMPP2_POSITIVE_P00,
+    DEFAULT_MMPP2_POSITIVE_P11,
+    build_demand_config,
+    build_demand_config_from_args,
+)
 from invman.problems.lost_sales_fixed_order_cost.env import build_env_from_args
 
 
@@ -58,18 +66,35 @@ class FixedDemandPath:
         }
 
 
-def get_review_period_demand_variance(demand_dist_name: str, demand_rate: float) -> float:
-    if demand_dist_name == "Poisson":
-        return float(demand_rate)
-    if demand_dist_name == "Geometric":
-        return float(demand_rate * (1.0 + demand_rate))
-    raise NotImplementedError(f"Unsupported demand distribution: {demand_dist_name}")
+def get_review_period_demand_variance(
+    demand_dist_name: str,
+    demand_rate: float,
+    *,
+    demand_lambda_low: float = DEFAULT_MMPP2_LAMBDA_LOW,
+    demand_lambda_high: float = DEFAULT_MMPP2_LAMBDA_HIGH,
+    demand_p00: float = DEFAULT_MMPP2_POSITIVE_P00,
+    demand_p11: float = DEFAULT_MMPP2_POSITIVE_P11,
+) -> float:
+    config = build_demand_config(
+        demand_dist_name=demand_dist_name,
+        demand_rate=demand_rate,
+        demand_lambda_low=demand_lambda_low,
+        demand_lambda_high=demand_lambda_high,
+        demand_p00=demand_p00,
+        demand_p11=demand_p11,
+    )
+    return float(config.one_period_variance)
+
+
+def get_protection_period_demand_variance(args, periods: int) -> float:
+    config = build_demand_config_from_args(args)
+    return float(config.cumulative_variance(periods))
 
 
 def get_default_position_upper_bound(args) -> int:
-    review_variance = get_review_period_demand_variance(args.demand_dist_name, args.demand_rate)
     protection_mean = (args.lead_time + 1) * args.demand_rate
-    protection_std = sqrt((args.lead_time + 1) * review_variance)
+    protection_variance = get_protection_period_demand_variance(args, args.lead_time + 1)
+    protection_std = sqrt(protection_variance)
     upper_bound = int(ceil(protection_mean + 4.0 * protection_std))
     return max(1, min(int(args.max_order_size), upper_bound))
 
@@ -108,7 +133,7 @@ def get_paper_q_heuristic(args, s: int, S: int) -> int:
         raise ValueError("S must be greater than s")
 
     demand_mean = float(args.demand_rate)
-    demand_variance = get_review_period_demand_variance(args.demand_dist_name, args.demand_rate)
+    demand_variance = build_demand_config_from_args(args).one_period_variance
     average_undershoot = (demand_variance + demand_mean**2) / (2.0 * demand_mean)
     average_cycle_length = max(1.0, (S - s) / demand_mean + average_undershoot / demand_mean)
     q = int(round(S * average_cycle_length / (args.lead_time + average_cycle_length)))

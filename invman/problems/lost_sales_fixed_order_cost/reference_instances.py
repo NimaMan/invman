@@ -2,6 +2,15 @@ from copy import deepcopy
 from itertools import product
 
 from invman.config import get_config
+from invman.problems.lost_sales.demand import (
+    MMPP2_NEGATIVE_MEAN5,
+    MMPP2_POSITIVE_MEAN5,
+    build_demand_config,
+)
+
+
+_MMPP2_POSITIVE_CONFIG = build_demand_config(**MMPP2_POSITIVE_MEAN5)
+_MMPP2_NEGATIVE_CONFIG = build_demand_config(**MMPP2_NEGATIVE_MEAN5)
 
 
 BASE_INSTANCE_PARAMS = {
@@ -32,6 +41,8 @@ DEFAULT_EVALUATION_CONFIG = {
 
 CANONICAL_REFERENCE_NAME = "lit_pois_mu5_l4_p4_k5"
 PUBLISHED_VALIDATION_REFERENCE_NAME = "bijvank2015_table1_l2_p14_k5"
+CORRELATED_POSITIVE_REFERENCE_NAME = "corr_mmpp2_pos_mu5_l4_p4_k5"
+CORRELATED_NEGATIVE_REFERENCE_NAME = "corr_mmpp2_neg_mu5_l4_p4_k5"
 
 BENCHMARK_ANCHORS = {
     PUBLISHED_VALIDATION_REFERENCE_NAME: {
@@ -179,6 +190,67 @@ BENCHMARK_GRIDS = {
         },
         "search": dict(DEFAULT_SEARCH_CONFIG),
         "evaluation": dict(DEFAULT_EVALUATION_CONFIG),
+    },
+    "correlated_mmpp2_mu5_l4_p4_k5": {
+        "name": "correlated_mmpp2_mu5_l4_p4_k5",
+        "description": (
+            "Two mean-preserving correlated-demand fixed-cost robustness cases based on the canonical "
+            "L=4, p=4, K=5 instance."
+        ),
+        "instances": [
+            {
+                "name": CORRELATED_POSITIVE_REFERENCE_NAME,
+                "description": (
+                    "Canonical fixed-cost instance with mean-preserving positively correlated "
+                    "Markov-modulated Poisson demand."
+                ),
+                "params": {
+                    "lead_time": 4,
+                    "shortage_cost": 4.0,
+                    "fixed_order_cost": 5.0,
+                    **MMPP2_POSITIVE_MEAN5,
+                },
+                "search": {
+                    **DEFAULT_SEARCH_CONFIG,
+                    "position_upper_bound": 50,
+                },
+                "evaluation": dict(DEFAULT_EVALUATION_CONFIG),
+                "literature_metadata": {
+                    "benchmark_family": "repo_correlated_demand_extension",
+                    "notes": (
+                        "Two-state Markov-modulated Poisson demand with lambda_low=3, lambda_high=7, "
+                        "p00=p11=0.9, stationary mean 5, and lag-1 demand autocorrelation "
+                        f"{_MMPP2_POSITIVE_CONFIG.lag_k_autocorrelation(1):.6f}."
+                    ),
+                },
+            },
+            {
+                "name": CORRELATED_NEGATIVE_REFERENCE_NAME,
+                "description": (
+                    "Canonical fixed-cost instance with mean-preserving negatively correlated "
+                    "Markov-modulated Poisson demand."
+                ),
+                "params": {
+                    "lead_time": 4,
+                    "shortage_cost": 4.0,
+                    "fixed_order_cost": 5.0,
+                    **MMPP2_NEGATIVE_MEAN5,
+                },
+                "search": {
+                    **DEFAULT_SEARCH_CONFIG,
+                    "position_upper_bound": 50,
+                },
+                "evaluation": dict(DEFAULT_EVALUATION_CONFIG),
+                "literature_metadata": {
+                    "benchmark_family": "repo_correlated_demand_extension",
+                    "notes": (
+                        "Two-state Markov-modulated Poisson demand with lambda_low=3, lambda_high=7, "
+                        "p00=p11=0.1, stationary mean 5, and lag-1 demand autocorrelation "
+                        f"{_MMPP2_NEGATIVE_CONFIG.lag_k_autocorrelation(1):.6f}."
+                    ),
+                },
+            },
+        ],
     }
 }
 
@@ -283,6 +355,22 @@ def build_grid_instances(grid_name: str = "literature_subset_poisson_mu5"):
     except KeyError as exc:  # pragma: no cover - defensive programming
         known = ", ".join(sorted(BENCHMARK_GRIDS))
         raise KeyError(f"Unknown fixed-order-cost grid '{grid_name}'. Available: {known}") from exc
+
+    explicit_instances = grid.get("instances")
+    if explicit_instances is not None:
+        instances = []
+        for instance in explicit_instances:
+            instances.append(
+                _build_instance_from_params(
+                    name=instance["name"],
+                    description=instance["description"],
+                    params=instance["params"],
+                    search=instance["search"],
+                    evaluation=instance["evaluation"],
+                )
+            )
+            instances[-1]["literature_metadata"].update(deepcopy(instance.get("literature_metadata", {})))
+        return instances
 
     shared_params = dict(grid["shared_params"])
     axes = grid["axes"]

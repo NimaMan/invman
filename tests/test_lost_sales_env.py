@@ -118,3 +118,73 @@ def test_pipeline_plus_summary_state_appends_inventory_summaries():
     assert state.shape == (env.state_space_dim,)
     np.testing.assert_allclose(state[:3], np.array([1.0, 0.2, 0.1], dtype=np.float32))
     np.testing.assert_allclose(state[3:], np.array([0.6, 0.23333333, 0.43333334], dtype=np.float32))
+
+
+def test_markov_modulated_demand_paths_keep_mean_and_flip_correlation_sign():
+    np.random.seed(7)
+    positive_env = LostSalesEnv(
+        demand_rate=5.0,
+        demand_dist_name="MarkovModulatedPoisson2",
+        demand_lambda_low=3.0,
+        demand_lambda_high=7.0,
+        demand_p00=0.9,
+        demand_p11=0.9,
+        lead_time=4,
+        max_order_size=20,
+        horizon=10000,
+        track_demand=True,
+    )
+    np.random.seed(7)
+    negative_env = LostSalesEnv(
+        demand_rate=5.0,
+        demand_dist_name="MarkovModulatedPoisson2",
+        demand_lambda_low=3.0,
+        demand_lambda_high=7.0,
+        demand_p00=0.1,
+        demand_p11=0.1,
+        lead_time=4,
+        max_order_size=20,
+        horizon=10000,
+        track_demand=True,
+    )
+
+    positive_mean = float(np.mean(positive_env.horizon_demand))
+    negative_mean = float(np.mean(negative_env.horizon_demand))
+    positive_corr = float(np.corrcoef(positive_env.horizon_demand[:-1], positive_env.horizon_demand[1:])[0, 1])
+    negative_corr = float(np.corrcoef(negative_env.horizon_demand[:-1], negative_env.horizon_demand[1:])[0, 1])
+
+    assert abs(positive_mean - 5.0) < 0.15
+    assert abs(negative_mean - 5.0) < 0.15
+    assert positive_corr > 0.15
+    assert negative_corr < -0.15
+
+
+def test_markov_modulated_tracked_demand_path_is_independent_of_action_cap():
+    np.random.seed(123)
+    env_small_cap = LostSalesEnv(
+        demand_rate=5.0,
+        demand_dist_name="MarkovModulatedPoisson2",
+        demand_lambda_low=3.0,
+        demand_lambda_high=7.0,
+        demand_p00=0.9,
+        demand_p11=0.9,
+        lead_time=4,
+        max_order_size=20,
+        horizon=50,
+        track_demand=True,
+    )
+    np.random.seed(123)
+    env_large_cap = LostSalesEnv(
+        demand_rate=5.0,
+        demand_dist_name="MarkovModulatedPoisson2",
+        demand_lambda_low=3.0,
+        demand_lambda_high=7.0,
+        demand_p00=0.9,
+        demand_p11=0.9,
+        lead_time=4,
+        max_order_size=40,
+        horizon=50,
+        track_demand=True,
+    )
+
+    assert np.array_equal(env_small_cap.horizon_demand, env_large_cap.horizon_demand)

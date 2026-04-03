@@ -1,22 +1,12 @@
 use rand::rngs::StdRng;
 use rand::Rng;
-use rand_distr::{Distribution, Geometric, Poisson};
+
+use crate::problems::lost_sales::demand::{sample_demand, LostSalesDemandProcess};
 
 #[derive(Clone)]
 pub struct LostSalesState {
     pub current_inventory: i64,
     pub lead_time_orders: Vec<usize>,
-}
-
-#[derive(Clone, Copy)]
-pub enum LostSalesDemandKind {
-    Poisson,
-    Geometric,
-}
-
-pub enum LostSalesDemandDistribution {
-    Poisson(Poisson<f64>),
-    Geometric(Geometric),
 }
 
 pub fn build_pipeline_state(
@@ -56,46 +46,12 @@ pub fn epoch_cost(
     cost
 }
 
-pub fn parse_demand_kind(name: &str) -> Result<LostSalesDemandKind, String> {
-    match name {
-        "Poisson" => Ok(LostSalesDemandKind::Poisson),
-        "Geometric" => Ok(LostSalesDemandKind::Geometric),
-        _ => Err(format!(
-            "unsupported demand_dist_name '{name}'; expected 'Poisson' or 'Geometric'"
-        )),
-    }
-}
-
-pub fn build_demand_distribution(
-    demand_kind: LostSalesDemandKind,
-    demand_rate: f64,
-) -> Result<LostSalesDemandDistribution, String> {
-    match demand_kind {
-        LostSalesDemandKind::Poisson => Poisson::new(demand_rate)
-            .map(LostSalesDemandDistribution::Poisson)
-            .map_err(|err| format!("invalid Poisson demand_rate: {err}")),
-        LostSalesDemandKind::Geometric => {
-            let success_prob = 1.0 / (1.0 + demand_rate);
-            Geometric::new(success_prob)
-                .map(LostSalesDemandDistribution::Geometric)
-                .map_err(|err| format!("invalid Geometric demand_rate: {err}"))
-        }
-    }
-}
-
-pub fn sample_demand(rng: &mut StdRng, demand_dist: &LostSalesDemandDistribution) -> i64 {
-    match demand_dist {
-        LostSalesDemandDistribution::Poisson(dist) => dist.sample(rng) as i64,
-        LostSalesDemandDistribution::Geometric(dist) => dist.sample(rng) as i64,
-    }
-}
-
 pub fn initialize_state(
     demand_rate: f64,
     lead_time: usize,
     max_order_size: usize,
     rng: &mut StdRng,
-    demand_dist: &LostSalesDemandDistribution,
+    demand_process: &mut LostSalesDemandProcess,
 ) -> LostSalesState {
     let mut current_inventory = (2.0 * demand_rate).round() as i64;
     let mut lead_time_orders = vec![0usize; lead_time];
@@ -106,7 +62,7 @@ pub fn initialize_state(
         } else {
             rng.gen_range(1..=max_order_size)
         };
-        let demand = sample_demand(rng, demand_dist);
+        let demand = sample_demand(rng, demand_process);
         current_inventory = (current_inventory - demand).max(0);
     }
 

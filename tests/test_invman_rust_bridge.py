@@ -491,6 +491,31 @@ def test_geometric_population_fitness_uses_rust_backend():
     assert all(isinstance(score, tuple) and len(score) == 2 for score in fitness)
 
 
+def test_markov_modulated_population_fitness_uses_rust_backend():
+    torch.manual_seed(59)
+    model = LinearPolicyNet(
+        input_dim=4,
+        output_dim=21,
+        action_output_mode="categorical_quantity",
+        max_order_size=20,
+    )
+    args = _make_rollout_args(demand_dist_name="MarkovModulatedPoisson2", rollout_backend="rust")
+    args.demand_lambda_low = 3.0
+    args.demand_lambda_high = 7.0
+    args.demand_p00 = 0.9
+    args.demand_p11 = 0.9
+    params_batch = [
+        model.get_model_flat_params().astype(np.float32),
+        model.get_model_flat_params().astype(np.float32) + 0.1,
+    ]
+
+    fitness = get_population_fitness(model, args, params_batch, seeds=[11, 22])
+
+    assert fitness is not None
+    assert len(fitness) == 2
+    assert all(isinstance(score, tuple) and len(score) == 2 for score in fitness)
+
+
 def test_rust_linear_rollout_matches_python_on_fixed_path():
     torch.manual_seed(29)
     model = LinearPolicyNet(

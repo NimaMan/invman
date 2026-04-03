@@ -11,6 +11,19 @@ def test_literature_subset_grid_has_expected_size():
     assert len(instances) == 16
 
 
+def test_correlated_mmpp2_grid_has_positive_and_negative_cases():
+    instances = build_grid_instances("correlated_mmpp2_mu5_l4_p4_k5")
+    assert len(instances) == 2
+    names = {instance["name"] for instance in instances}
+    assert names == {"corr_mmpp2_neg_mu5_l4_p4_k5", "corr_mmpp2_pos_mu5_l4_p4_k5"}
+    for instance in instances:
+        params = instance["params"]
+        assert params["demand_dist_name"] == "MarkovModulatedPoisson2"
+        assert params["demand_rate"] == 5.0
+        assert params["demand_lambda_low"] == 3.0
+        assert params["demand_lambda_high"] == 7.0
+
+
 def test_literature_subset_grid_contains_canonical_instance():
     instance = get_reference_instance("lit_pois_mu5_l4_p4_k5")
     assert instance["params"]["lead_time"] == 4

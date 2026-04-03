@@ -10,9 +10,11 @@ use crate::core::policies::dense::{
 use crate::core::policies::soft_tree::{
     action_from_flat_params, SoftTreeLeafType, SoftTreeSplitType,
 };
+use crate::problems::lost_sales::demand::{
+    build_demand_process, sample_demand, LostSalesDemandConfig,
+};
 use crate::problems::lost_sales::env::{
-    build_demand_distribution, build_pipeline_state, epoch_cost, initialize_state, sample_demand,
-    LostSalesDemandKind, LostSalesState,
+    build_pipeline_state, epoch_cost, initialize_state, LostSalesState,
 };
 
 #[derive(Clone, Copy)]
@@ -20,8 +22,7 @@ pub struct LostSalesRolloutConfig {
     pub input_dim: usize,
     pub depth: usize,
     pub max_order_size: usize,
-    pub demand_kind: LostSalesDemandKind,
-    pub demand_rate: f64,
+    pub demand_config: LostSalesDemandConfig,
     pub lead_time: usize,
     pub holding_cost: f64,
     pub shortage_cost: f64,
@@ -40,8 +41,7 @@ pub struct LostSalesLinearRolloutConfig {
     pub output_dim: usize,
     pub max_order_size: usize,
     pub policy_head: DensePolicyHead,
-    pub demand_kind: LostSalesDemandKind,
-    pub demand_rate: f64,
+    pub demand_config: LostSalesDemandConfig,
     pub lead_time: usize,
     pub holding_cost: f64,
     pub shortage_cost: f64,
@@ -58,8 +58,7 @@ pub struct LostSalesNeuralRolloutConfig {
     pub output_dim: usize,
     pub max_order_size: usize,
     pub policy_head: DensePolicyHead,
-    pub demand_kind: LostSalesDemandKind,
-    pub demand_rate: f64,
+    pub demand_config: LostSalesDemandConfig,
     pub lead_time: usize,
     pub holding_cost: f64,
     pub shortage_cost: f64,
@@ -129,8 +128,7 @@ fn validate_neural_config(config: &LostSalesNeuralRolloutConfig) -> PyResult<()>
         output_dim: config.output_dim,
         max_order_size: config.max_order_size,
         policy_head: config.policy_head,
-        demand_kind: config.demand_kind,
-        demand_rate: config.demand_rate,
+        demand_config: config.demand_config,
         lead_time: config.lead_time,
         holding_cost: config.holding_cost,
         shortage_cost: config.shortage_cost,
@@ -156,14 +154,14 @@ pub fn rollout(flat_params: &[f32], config: &LostSalesRolloutConfig, seed: u64) 
     validate_config(config)?;
 
     let mut rng = StdRng::seed_from_u64(seed);
-    let demand_dist = build_demand_distribution(config.demand_kind, config.demand_rate)
-        .map_err(PyValueError::new_err)?;
+    let mut demand_process =
+        build_demand_process(config.demand_config, &mut rng).map_err(PyValueError::new_err)?;
     let mut env_state = initialize_state(
-        config.demand_rate,
+        config.demand_config.demand_rate,
         config.lead_time,
         config.max_order_size,
         &mut rng,
-        &demand_dist,
+        &mut demand_process,
     );
     let mut epoch_costs = Vec::with_capacity(config.horizon);
 
@@ -188,7 +186,7 @@ pub fn rollout(flat_params: &[f32], config: &LostSalesRolloutConfig, seed: u64) 
         env_state.lead_time_orders.push(action);
         env_state.current_inventory += arriving_order as i64;
 
-        let demand = sample_demand(&mut rng, &demand_dist);
+        let demand = sample_demand(&mut rng, &mut demand_process);
         let cost = epoch_cost(
             &mut env_state.current_inventory,
             demand,
@@ -301,14 +299,14 @@ pub fn linear_rollout(
     validate_linear_config(config)?;
 
     let mut rng = StdRng::seed_from_u64(seed);
-    let demand_dist = build_demand_distribution(config.demand_kind, config.demand_rate)
-        .map_err(PyValueError::new_err)?;
+    let mut demand_process =
+        build_demand_process(config.demand_config, &mut rng).map_err(PyValueError::new_err)?;
     let mut env_state = initialize_state(
-        config.demand_rate,
+        config.demand_config.demand_rate,
         config.lead_time,
         config.max_order_size,
         &mut rng,
-        &demand_dist,
+        &mut demand_process,
     );
     let mut epoch_costs = Vec::with_capacity(config.horizon);
 
@@ -329,7 +327,7 @@ pub fn linear_rollout(
         let arriving_order = env_state.lead_time_orders.remove(0);
         env_state.lead_time_orders.push(action);
         env_state.current_inventory += arriving_order as i64;
-        let demand = sample_demand(&mut rng, &demand_dist);
+        let demand = sample_demand(&mut rng, &mut demand_process);
         let cost = epoch_cost(
             &mut env_state.current_inventory,
             demand,
@@ -429,14 +427,14 @@ pub fn neural_rollout(
     validate_neural_config(config)?;
 
     let mut rng = StdRng::seed_from_u64(seed);
-    let demand_dist = build_demand_distribution(config.demand_kind, config.demand_rate)
-        .map_err(PyValueError::new_err)?;
+    let mut demand_process =
+        build_demand_process(config.demand_config, &mut rng).map_err(PyValueError::new_err)?;
     let mut env_state = initialize_state(
-        config.demand_rate,
+        config.demand_config.demand_rate,
         config.lead_time,
         config.max_order_size,
         &mut rng,
-        &demand_dist,
+        &mut demand_process,
     );
     let mut epoch_costs = Vec::with_capacity(config.horizon);
 
@@ -459,7 +457,7 @@ pub fn neural_rollout(
         let arriving_order = env_state.lead_time_orders.remove(0);
         env_state.lead_time_orders.push(action);
         env_state.current_inventory += arriving_order as i64;
-        let demand = sample_demand(&mut rng, &demand_dist);
+        let demand = sample_demand(&mut rng, &mut demand_process);
         let cost = epoch_cost(
             &mut env_state.current_inventory,
             demand,
