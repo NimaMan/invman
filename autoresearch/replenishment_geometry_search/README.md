@@ -207,6 +207,105 @@ The table below is the clean single-instance comparison for
 - The Q-free tree replacement is also viable: depth-2 softplus leaves are effectively tied with the old sigmoid-to-span depth-2 tree.
 - So the current takeaway is: remove `Q` from the scalar direct/leaf parameterization where possible, but do not conclude yet that every `Q`-dependent family is obsolete.
 
+## Vanilla vs Fixed-Cost Direct-Head Transfer
+
+The cleanest new transfer test is on the plain lost-sales canonical instance
+`vanilla_l4_p4_poisson5`:
+
+- `L = 4`
+- `p = 4`
+- Poisson demand with mean `5`
+- best heuristic in the current rerun: `myopic2 = 4.81862`
+- literature optimum: `4.73`
+
+Completed direct-head results so far from
+`lost_sales_l4_p4_direct_policy_suite_seed42`:
+
+| Problem | Policy | Mean cost | Interpretation |
+| --- | --- | ---: | --- |
+| Fixed cost | `linear_sigmoid_direct_quantity` | 8.77331 | good |
+| Fixed cost | `linear_direct_quantity` | 8.77164 | good |
+| Fixed cost | `linear_gated_sigmoid_direct_quantity` | 8.77993 | good |
+| Fixed cost | `linear_soft_gated_direct_quantity` | 8.76964 | good |
+| Vanilla | `linear_sigmoid_direct_quantity` | 9.22404 | bad |
+| Vanilla | `linear_direct_quantity` | 4.76055 | good |
+| Vanilla | `linear_gated_sigmoid_direct_quantity` | 4.75174 | good |
+| Vanilla | `linear_soft_gated_direct_quantity` | 4.74920 | good |
+
+This sharpens the direct-head story:
+
+- the bad transfer is not "anything with `Q` in the head fails";
+- the bad transfer is specifically the one-head `linear_sigmoid_direct_quantity` map;
+- once the same sigmoid quantity map is given an extra gate, it becomes competitive again on
+  vanilla lost sales;
+- the one-head `softplus` direct map also transfers cleanly.
+
+So the direct-head question is no longer just "`Q` or no `Q`?" The more precise question is:
+
+- what scalar response shape does the optimizer see as a function of the latent logit?
+
+### Why The S-Shape Matters
+
+For a linear direct policy, the learned state only enters through a scalar latent score
+`z = w^\top x + b`. The difference between the two one-head direct policies is exactly the map from
+`z` to quantity.
+
+`linear_sigmoid_direct_quantity`:
+
+- `a(z) = round(Q * sigmoid(z))`
+- this is an S-shaped map
+- it is flat near `0`
+- it is flat again near `Q`
+- it changes most quickly in the middle
+
+`linear_direct_quantity`:
+
+- `a(z) = clip(round(softplus(z)), 0, Q)`
+- this is a smooth positive-part map
+- it has an easy zero region
+- once `z > 0`, it grows almost linearly
+
+The geometry difference is concrete for `Q = 20`:
+
+- action `0` requires `z < -3.66` for the sigmoid head
+- action `0` requires only `z < -0.43` for the softplus head
+
+So the softplus head makes the no-order region much easier to realize.
+
+The integer action bins are also very different in logit space. For a few representative actions:
+
+| Action `k` | Sigmoid-head bin width in `z` | Softplus-head bin width in `z` |
+| --- | ---: | ---: |
+| `1` | 1.1513 | 1.6803 |
+| `3` | 0.3953 | 1.0550 |
+| `5` | 0.2674 | 1.0071 |
+| `10` | 0.2002 | 1.0000 |
+| `15` | 0.2674 | 1.0000 |
+| `19` | 1.1513 | 1.0000 |
+
+This is the clearest visualization-friendly explanation we currently have:
+
+- the sigmoid direct head compresses the middle actions into narrow logit bands;
+- the softplus direct head gives roughly unit-width positive-order bands once it is in the linear
+  regime;
+- that makes the softplus head look much more like a smooth deficit-correction / order-up-to map.
+
+That is probably why `linear_direct_quantity` works so well on vanilla lost sales: the vanilla
+problem seems to want a monotone positive-part replenishment map more than a bounded S-curve.
+
+By contrast, fixed-cost lost sales is more compatible with threshold-plus-target behavior, which is
+why the one-head sigmoid map can still work there. That is still a hypothesis, but it is at least
+consistent with the current transfer matrix.
+
+The visualization script for these scalar head maps lives in:
+
+- [visualize_linear_head_geometry.py](/home/nima/code/ml/invman/autoresearch/replenishment_geometry_search/visualize_linear_head_geometry.py)
+
+and generates:
+
+- [scalar_head_shapes_q20.svg](/home/nima/code/ml/invman/autoresearch/replenishment_geometry_search/artifacts/scalar_head_shapes_q20.svg)
+- [scalar_head_action_bins_q20.json](/home/nima/code/ml/invman/autoresearch/replenishment_geometry_search/artifacts/scalar_head_action_bins_q20.json)
+
 ### Canonical Single-Instance Table Under The 2k / 1000 -> 3000 Schedule
 
 The table below is the targeted rerun of the direct/tree family on the same canonical instance

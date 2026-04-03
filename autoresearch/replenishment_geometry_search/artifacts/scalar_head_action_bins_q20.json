@@ -1,0 +1,113 @@
+{
+  "Q": 20,
+  "zero_thresholds": {
+    "sigmoid_direct_quantity": -3.6635616461296463,
+    "direct_quantity": -0.4327521295671885
+  },
+  "selected_bin_summaries": [
+    {
+      "action": 0,
+      "sigmoid_bin": [
+        -Infinity,
+        -3.6635616461296463
+      ],
+      "softplus_bin": [
+        -Infinity,
+        -0.4327521295671885
+      ],
+      "sigmoid_width": null,
+      "softplus_width": null
+    },
+    {
+      "action": 1,
+      "sigmoid_bin": [
+        -3.6635616461296463,
+        -2.512305623976115
+      ],
+      "softplus_bin": [
+        -0.4327521295671885,
+        1.247517541074546
+      ],
+      "sigmoid_width": 1.1512560221535315,
+      "softplus_width": 1.6802696706417346
+    },
+    {
+      "action": 3,
+      "sigmoid_bin": [
+        -1.9459101490553135,
+        -1.550597412411167
+      ],
+      "softplus_bin": [
+        2.414349516257962,
+        3.46933728374454
+      ],
+      "sigmoid_width": 0.39531273664414646,
+      "softplus_width": 1.0549877674865784
+    },
+    {
+      "action": 5,
+      "sigmoid_bin": [
+        -1.2367626271489267,
+        -0.9694005571881034
+      ],
+      "softplus_bin": [
+        4.488828837731703,
+        5.495904854889164
+      ],
+      "sigmoid_width": 0.26736206996082335,
+      "softplus_width": 1.0070760171574609
+    },
+    {
+      "action": 10,
+      "sigmoid_bin": [
+        -0.10008345855698265,
+        0.10008345855698263
+      ],
+      "softplus_bin": [
+        9.499925145368573,
+        10.499972463171515
+      ],
+      "sigmoid_width": 0.20016691711396528,
+      "softplus_width": 1.0000473178029416
+    },
+    {
+      "action": 15,
+      "sigmoid_bin": [
+        0.9694005571881035,
+        1.2367626271489272
+      ],
+      "softplus_bin": [
+        14.49999949565221,
+        15.499999814460846
+      ],
+      "sigmoid_width": 0.2673620699608237,
+      "softplus_width": 1.0000003188086364
+    },
+    {
+      "action": 19,
+      "sigmoid_bin": [
+        2.5123056239761152,
+        3.6635616461296454
+      ],
+      "softplus_bin": [
+        18.49999999076255,
+        19.499999996601733
+      ],
+      "sigmoid_width": 1.1512560221535302,
+      "softplus_width": 1.0000000058391834
+    },
+    {
+      "action": 20,
+      "sigmoid_bin": [
+        3.6635616461296454,
+        Infinity
+      ],
+      "softplus_bin": [
+        19.499999996601733,
+        Infinity
+      ],
+      "sigmoid_width": null,
+      "softplus_width": null
+    }
+  ]
+}
