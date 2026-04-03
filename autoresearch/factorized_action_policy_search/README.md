@@ -60,16 +60,16 @@ The heads currently tested on the canonical fixed-cost instance are:
 - unbounded direct quantity:
   - head output: `\tilde a = round(q)`
   - env projection: `a = clip(\tilde a, 0, Q)`
-- gated sigmoid direct quantity:
+- soft-gated sigmoid direct quantity:
   - `a = round(sigmoid(g) * sigmoid(q) * Q)`
-- gated direct quantity:
+- soft-gated direct quantity:
   - head output: `\tilde a = round(sigmoid(g) * softplus(q))`
   - env projection: `a = clip(\tilde a, 0, Q)`
 - hard-gated direct quantity:
   - head output: `\tilde a = 0` if `sigmoid(g) < 0.5`
   - otherwise `\tilde a = round(softplus(q))`
   - env projection: `a = clip(\tilde a, 0, Q)`
-- gated ordinal quantity:
+- soft-gated ordinal quantity:
   - `a = round(sigmoid(g) * \sum_{k=1}^{Q} sigmoid(o_k))`
 - hard-gated ordinal quantity:
   - `a = 0` if `sigmoid(g) < 0.5`
@@ -82,9 +82,47 @@ The heads currently tested on the canonical fixed-cost instance are:
 
 Here `Q` is the environment action cap `max_order_size`. The important distinction is whether `Q`
 appears inside the head parameterization itself, or only in the final projection back into the
-environment action range. For the `direct`, `gated_direct`, and `two_stage_direct` heads, `Q` is
-not part of the head formula itself. It only appears because the current benchmark problem still
-uses the bounded environment action space `0..Q`.
+environment action range. For the `direct`, `soft_gated_direct`, and `hard_gated_direct` heads,
+`Q` is not part of the head formula itself. It only appears because the current benchmark problem
+still uses the bounded environment action space `0..Q`.
+
+### Canonical Single-Instance Table
+
+The table below is the clean single-instance comparison for
+`lit_pois_mu5_l4_p4_k5` under the stable seed-42 protocol:
+
+- learned policies trained with `5000` CMA iterations and training horizon `2000`
+- evaluation over `10` seeds with horizon `10^6`
+- absolute costs only, to avoid mixing cross-run heuristic reevaluations
+- the later `2000`-iteration dynamic-horizon rename check is intentionally excluded here
+
+| Group | Policy | Mean cost | Std. dev. | Notes |
+| --- | --- | ---: | ---: | --- |
+| Heuristic | modified `(s,S,q)` | 9.18235 | 0.00591 | best heuristic from canonical heuristic summary |
+| Heuristic | `(s,nQ)` | 9.21099 | 0.00743 | canonical heuristic summary |
+| Heuristic | `(s,S)` | 9.36945 | 0.01009 | canonical heuristic summary |
+| Q-dependent baseline | `linear_categorical_quantity` | 9.87591 | 0.01036 | flat categorical baseline |
+| Q-dependent baseline | `linear_unbounded_direct_quantity` | 9.75131 | 0.00753 | raw scalar before projection |
+| Q-dependent baseline | `linear_gated_sigmoid_direct_quantity` | 8.77993 | 0.00681 | soft gate with `sigmoid(q) * Q` |
+| Q-dependent baseline | `linear_soft_gated_ordinal_quantity` | 8.77502 | 0.00698 | ordinal head with `Q` outputs |
+| Q-dependent baseline | `linear_sigmoid_direct_quantity` | 8.77331 | 0.00818 | direct head with `sigmoid(q) * Q` |
+| Q-dependent baseline | `soft_tree_depth1_sigmoid_linear_leaf` | 8.77345 | 0.00772 | tree with sigmoid-to-span leaves |
+| Q-dependent baseline | `soft_tree_depth2_sigmoid_linear_leaf` | 8.77725 | 0.00726 | tree with sigmoid-to-span leaves |
+| Q-free candidate | `linear_hard_gated_direct_quantity` | 8.77462 | 0.00717 | hard zero gate plus softplus direct quantity |
+| Q-free candidate | `linear_direct_quantity` | 8.77164 | 0.00818 | softplus direct head |
+| Q-free candidate | `linear_soft_gated_direct_quantity` | 8.76964 | 0.00681 | soft gate plus softplus direct quantity |
+| Q-free candidate | `soft_tree_depth1_linear_leaf` | 8.78111 | 0.00810 | tree with softplus leaves |
+| Q-free candidate | `soft_tree_depth2_linear_leaf` | 8.77689 | 0.00729 | tree with softplus leaves |
+
+### Summary So Far
+
+- The clearly bad cases are `linear_categorical_quantity` and `linear_unbounded_direct_quantity`.
+- Raw unbounded direct quantity is the actual failure mode; it settles into mediocre positive orders and does not recover the good policy class.
+- Explicit `Q` inside the head is not necessary for good performance on this canonical instance.
+- The Q-free linear heads all land in essentially the same good regime as the old Q-dependent direct and tree baselines.
+- The strongest Q-free linear result so far is `linear_soft_gated_direct_quantity` at `8.76964`.
+- The Q-free tree replacement is also viable: depth-2 softplus leaves are effectively tied with the old sigmoid-to-span depth-2 tree.
+- So the current takeaway is: remove `Q` from the scalar direct/leaf parameterization where possible, but do not conclude yet that every `Q`-dependent family is obsolete.
 
 Seed-42 canonical benchmark on `lit_pois_mu5_l4_p4_k5`:
 
