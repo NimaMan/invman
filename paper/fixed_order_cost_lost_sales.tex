@@ -54,7 +54,9 @@ All current runs in this note use the same training budget:
     \item training horizon $2000$,
     \item evaluation horizon $10^6$,
     \item $10$ evaluation seeds,
-    \item seed $42$.
+    \item base random seed $42$ for training and heuristic search; reported mean and standard
+    deviation values are evaluated over the consecutive seed set
+    $\{42,43,\ldots,51\}$.
 \end{itemize}
 
 For the demand-robustness sweep we use four mean-preserving demand families:
@@ -67,49 +69,117 @@ For the demand-robustness sweep we use four mean-preserving demand families:
     $(\lambda_{\mathrm{low}}, \lambda_{\mathrm{high}})=(3,7)$ and $p_{00}=p_{11}=0.1$.
 \end{itemize}
 
+For the two-state Markov-modulated Poisson cases, the latent regime $S_t \in \{\mathrm{low},
+\mathrm{high}\}$ evolves as a two-state Markov chain with transition matrix
+\[
+P =
+\begin{bmatrix}
+p_{00} & 1-p_{00} \\
+1-p_{11} & p_{11}
+\end{bmatrix},
+\]
+and demand is then sampled as
+\[
+D_t \mid S_t=\mathrm{low} \sim \mathrm{Poisson}(\lambda_{\mathrm{low}}),
+\qquad
+D_t \mid S_t=\mathrm{high} \sim \mathrm{Poisson}(\lambda_{\mathrm{high}}).
+\]
+Because the reported cases use $p_{00}=p_{11}$, the stationary regime probabilities are
+$\Pr(S_t=\mathrm{low})=\Pr(S_t=\mathrm{high})=1/2$, so both correlated variants preserve the same
+unconditional mean demand:
+\[
+\mathbb{E}[D_t] = \tfrac{1}{2}\lambda_{\mathrm{low}} + \tfrac{1}{2}\lambda_{\mathrm{high}}
+= \tfrac{1}{2}(3+7)=5.
+\]
+The sign and magnitude of temporal dependence come from the lag-one regime eigenvalue
+\[
+\rho_{\mathrm{regime}} = p_{00}+p_{11}-1.
+\]
+In the positive-correlation case this equals $0.8$, so the regime is persistent and the expected
+run length in either state is $1/(1-0.9)=10$ periods. In the negative-correlation case it equals
+$-0.8$, so the latent regime is strongly alternating. After Poisson observation noise is added,
+the implemented lag-one demand autocorrelations become
+\[
+\mathrm{Corr}(D_t,D_{t+1})
+= \frac{\pi_{\mathrm{low}}\pi_{\mathrm{high}}(\lambda_{\mathrm{high}}-\lambda_{\mathrm{low}})^2
+(p_{00}+p_{11}-1)}{\mathrm{Var}(D_t)}
+= \pm \frac{3.2}{9}
+\approx \pm 0.356,
+\]
+with the plus sign for the persistent case and the minus sign for the alternating case. These are
+the first-lag correlations checked explicitly in the Rust demand tests. More generally, the
+implemented lag-$k$ demand autocovariance is proportional to $(p_{00}+p_{11}-1)^k$, so the
+positive case produces geometrically decaying positive dependence and the negative case produces
+geometrically decaying sign-alternating dependence. By contrast, the Poisson and Geometric i.i.d.
+families have zero autocorrelation at every positive lag.
+
 \section{Policy families and action equations}
 
-The current study is intentionally narrow: it focuses on linear policies and soft trees. Let
-$z = w^\top x + b$ denote the scalar latent score of a linear head, and let $Q_{\mathrm{env}}$ be
-the environment action cap.
+The current study is intentionally narrow: the reported experiments use linear policies and soft
+trees on the scalar-quantity action space
+\[
+a_t \in \{0,1,\ldots,Q\},
+\]
+where $Q$ is the environment order cap. Let $x_t \in \mathbb{R}^d$ denote the state feature
+vector. The code implements a \emph{backbone} plus a \emph{decoder}:
+\begin{itemize}
+    \item a linear backbone emits logits by an affine map,
+    \item a one-hidden-layer neural backbone emits logits through an MLP,
+    \item a soft tree emits split probabilities and leaf-local quantity predictions.
+\end{itemize}
+
+For dense policies, let $u_\theta(x_t)$ denote the backbone output. In the linear case,
+\[
+u_\theta(x_t) = W x_t + b.
+\]
+In the one-hidden-layer neural case with width $H$ and activation $\phi$,
+\[
+u_\theta(x_t) = V \phi(Ux_t + c) + e.
+\]
+The decoder formulas below are shared by both dense backbones; only the way the latent outputs are
+produced changes.
 
 We study the following action parameterizations:
 
 \paragraph{Categorical quantity.}
-The policy emits $Q_{\mathrm{env}}+1$ logits and chooses
+The policy emits $Q+1$ logits and chooses
 \[
-a_t = \arg\max_{a \in \{0,1,\ldots,Q_{\mathrm{env}}\}} z_a(x_t).
+a_t = \arg\max_{a \in \{0,1,\ldots,Q\}} u_a(x_t).
 \]
 
 \paragraph{Sigmoid direct quantity.}
 The policy emits one scalar and maps it as
 \[
-a_t = \mathrm{round}\!\left(Q_{\mathrm{env}} \, \sigma(z)\right).
+a_t = \mathrm{round}\!\left(Q \, \sigma(u(x_t))\right).
 \]
-This is a one-head bounded S-curve map.
+This is the code path named \texttt{sigmoid\_direct\_quantity}: a one-head bounded S-curve map.
 
 \paragraph{Direct quantity.}
 The policy emits one scalar and maps it as
 \[
-\tilde a_t = \mathrm{round}\!\left(\mathrm{softplus}(z)\right),
+\tilde a_t = \mathrm{round}\!\left(\mathrm{softplus}(u(x_t))\right),
 \qquad
-a_t = \mathrm{clip}(\tilde a_t, 0, Q_{\mathrm{env}}).
+a_t = \mathrm{clip}(\tilde a_t, 0, Q).
 \]
-This is a one-head positive-part map with no explicit $Q_{\mathrm{env}}$ inside the head.
+This is the code path named \texttt{direct\_quantity}: a one-head positive-part map with no
+explicit factor of $Q$ inside the head.
 
 \paragraph{Soft-gated sigmoid direct quantity.}
-The policy emits a gate score $g(x_t)$ and a quantity score $q(x_t)$, then sets
+The policy emits two latent outputs, a gate score $g(x_t)$ and a quantity score $q(x_t)$, then
+sets
 \[
-a_t = \mathrm{round}\!\left(\sigma(g(x_t)) \, \sigma(q(x_t)) \, Q_{\mathrm{env}}\right).
+a_t = \mathrm{round}\!\left(\sigma(g(x_t)) \, \sigma(q(x_t)) \, Q\right).
 \]
+This is the code path named \texttt{gated\_sigmoid\_direct\_quantity}.
 
 \paragraph{Soft-gated direct quantity.}
 The policy emits $g(x_t)$ and $q(x_t)$, then sets
 \[
 \tilde a_t = \mathrm{round}\!\left(\sigma(g(x_t)) \, \mathrm{softplus}(q(x_t))\right),
 \qquad
-a_t = \mathrm{clip}(\tilde a_t, 0, Q_{\mathrm{env}}).
+a_t = \mathrm{clip}(\tilde a_t, 0, Q).
 \]
+This is the code path named \texttt{soft\_gated\_direct\_quantity}.
 
 \paragraph{Hard-gated direct quantity.}
 The policy emits $g(x_t)$ and $q(x_t)$, and uses
@@ -117,19 +187,23 @@ The policy emits $g(x_t)$ and $q(x_t)$, and uses
 a_t =
 \begin{cases}
 0, & \sigma(g(x_t)) < 0.5, \\
-\mathrm{clip}(\mathrm{round}(\mathrm{softplus}(q(x_t))), 1, Q_{\mathrm{env}}),
+\mathrm{clip}(\mathrm{round}(\mathrm{softplus}(q(x_t))), 1, Q),
 & \sigma(g(x_t)) \ge 0.5.
 \end{cases}
 \]
+This is the code path named \texttt{hard\_gated\_direct\_quantity}.
 
 \paragraph{Soft-gated ordinal quantity.}
 The policy emits one gate score $g(x_t)$ and ordinal scores
-$o_1(x_t),\ldots,o_{Q_{\mathrm{env}}}(x_t)$, and sets
+$o_1(x_t),\ldots,o_Q(x_t)$, and sets
 \[
-\hat m(x_t) = \sum_{k=1}^{Q_{\mathrm{env}}} \sigma(o_k(x_t)),
+\hat m(x_t) = \sum_{k=1}^{Q} \sigma(o_k(x_t)),
 \qquad
 a_t = \mathrm{round}\!\left(\sigma(g(x_t)) \, \hat m(x_t)\right).
 \]
+This is the code path named \texttt{soft\_gated\_ordinal\_quantity}. The implemented but
+currently inactive \texttt{hard\_gated\_ordinal\_quantity} replaces the soft product by the same
+hard gate used in the direct head above.
 
 \paragraph{Soft trees with linear leaves.}
 A soft tree computes path probabilities $\pi_\ell(x_t)$ over leaves, and each leaf emits a local
@@ -141,17 +215,63 @@ The final action is the rounded mixture
 \[
 \tilde a_t = \mathrm{round}\!\left(\sum_\ell \pi_\ell(x_t) q_\ell(x_t)\right),
 \qquad
-a_t = \mathrm{clip}(\tilde a_t, 0, Q_{\mathrm{env}}).
+a_t = \mathrm{clip}(\tilde a_t, 0, Q).
 \]
-We use depth-$1$ and depth-$2$ oblique soft trees.
+This is the active \texttt{soft\_tree\_depth1\_linear\_leaf} /
+\texttt{soft\_tree\_depth2\_linear\_leaf} family. In code, the split network is always oblique in
+the reported runs and the scalar leaf is exactly a softplus-transformed affine quantity rule.
 
 The policy family that is \emph{not} part of the active benchmark surface is the raw unbounded
 direct head
 \[
-a_t = \mathrm{clip}(\mathrm{round}(z), 0, Q_{\mathrm{env}}),
+a_t = \mathrm{clip}(\mathrm{round}(u(x_t)), 0, Q),
 \]
 which repeatedly converged to weak basins in earlier runs and is now treated as a negative ablation
 rather than a serious candidate.
+
+\subsection{Parameter counts}
+
+The active $L=4$ benchmark surface uses linear dense policies and depth-$1$ / depth-$2$ soft
+trees. Table~\ref{tab:policy-parameter-counts} gives their trainable parameter counts as explicit
+functions of the state dimension $d$ and the action cap $Q$.
+
+\begin{table}[t]
+\centering
+\small
+\caption{Trainable parameter counts for the active scalar-quantity policy families. Here $d$ is
+the state dimension and $Q$ is the environment action cap.}
+\label{tab:policy-parameter-counts}
+\begin{tabular}{|l|c|}
+\hline
+Policy family & Trainable parameters \\
+\hline
+Linear categorical quantity & $(d+1)(Q+1)$ \\
+Linear sigmoid direct quantity & $d+1$ \\
+Linear direct quantity & $d+1$ \\
+Linear gated sigmoid direct quantity & $2(d+1)$ \\
+Linear soft-gated direct quantity & $2(d+1)$ \\
+Linear hard-gated direct quantity & $2(d+1)$ \\
+Linear soft-gated ordinal quantity & $(d+1)(Q+1)$ \\
+Soft tree, depth-1 linear leaf & $3(d+1)$ \\
+Soft tree, depth-2 linear leaf & $7(d+1)$ \\
+\hline
+\end{tabular}
+\end{table}
+
+For the one-hidden-layer neural analogue with width $H$, the shared dense-backbone count is
+\[
+N_{\mathrm{NN}}(m; d, H) = H(d+1) + (H+1)m,
+\]
+where $m$ is the decoder output dimension:
+\[
+m=
+\begin{cases}
+Q+1, & \text{categorical or soft-gated ordinal},\\
+1, & \text{direct or sigmoid direct},\\
+2, & \text{gated direct heads}.
+\end{cases}
+\]
+This is exactly the parameterization implemented by \texttt{PolicyNet} in the codebase.
 
 \section{Canonical Poisson results}
 
@@ -252,65 +372,96 @@ So the real issue is search geometry, not a single symbolic design choice.
 
 \section{Demand-family robustness}
 
-\subsection{Fixed-cost sweep}
+\subsection{Vanilla $L=4$ sweep}
 
-The fixed-cost $L=4$, $p=4$, $K=5$ demand sweep is complete for all four demand families.
+Table~\ref{tab:vanilla-l4-demand-table} reports the full $L=4$, $p=4$ vanilla comparison across
+all four demand families. All heuristic baselines are shown explicitly rather than being collapsed
+into a single best-heuristic row.
 
 \begin{table}[t]
 \centering
-\caption{Best learned policy by demand family on the fixed-cost $L=4$, $p=4$, $K=5$ benchmark.}
-\label{tab:fixed-cost-demand-sweep}
-\begin{tabular}{lrrrr}
-\toprule
-Demand family & Best learned policy & Learned cost & Best heuristic & Heuristic cost \\
-\midrule
-Poisson & Soft tree, depth-2 linear leaf & 8.7700 & modified $(s,S,q)$ & 9.2003 \\
-Geometric & Linear, hard-gated direct quantity & 13.6276 & modified $(s,S,q)$ & 14.0023 \\
-Positive MMPP2 & Linear, hard-gated direct quantity & 11.8787 & modified $(s,S,q)$ & 12.0935 \\
-Negative MMPP2 & Linear, soft-gated direct quantity & 9.0656 & modified $(s,S,q)$ & 9.6501 \\
-\bottomrule
+\small
+\caption{Vanilla lost-sales mean costs for the single-instance $L=4$, $p=4$ study across all
+four demand families under the current $2000$-iteration / population-$64$ CMA-ES protocol. Bold
+entries mark the best value in each demand column.}
+\label{tab:vanilla-l4-demand-table}
+\begin{tabular}{|l||c|c||c|c|}
+\hline
+ & \multicolumn{2}{c||}{i.i.d. demand} & \multicolumn{2}{c|}{Correlated demand} \\
+\hline
+Policy / heuristic & Poisson & Geometric & MMPP2+ & MMPP2- \\
+\hline
+myopic1 & 5.0627 & 11.3176 & 9.8925 & 5.7245 \\
+myopic2 & 4.8168 & 10.8025 & 9.5016 & 5.4150 \\
+SVBS & 5.8344 & 13.8596 & 12.2518 & 6.8244 \\
+\hline
+Linear categorical quantity & 4.8752 & 10.8041 & 8.6411 & 5.7431 \\
+Linear sigmoid direct quantity & 4.7557 & 10.6606 & 8.6336 & 5.3673 \\
+Linear direct quantity & 4.7467 & 10.6426 & 8.5899 & 5.3654 \\
+Linear gated sigmoid direct quantity & \textbf{4.7451} & 10.6469 & 8.6206 & 5.3680 \\
+Linear soft-gated direct quantity & 4.7481 & 10.6416 & 8.5819 & 5.3732 \\
+Linear hard-gated direct quantity & 4.7480 & 10.6542 & 8.5799 & 5.3685 \\
+Linear soft-gated ordinal quantity & 4.7503 & 10.6801 & \textbf{8.4776} & \textbf{5.3595} \\
+Soft tree, depth-1 linear leaf & 4.7481 & \textbf{10.6391} & 8.5893 & --- \\
+Soft tree, depth-2 linear leaf & 4.7518 & 10.6453 & 11.9015 & --- \\
+\hline
 \end{tabular}
 \end{table}
 
-This is the clearest current architecture result in the fixed-cost setting:
+The vanilla side is comparatively forgiving:
+\begin{itemize}
+    \item every non-categorical policy beats the best heuristic in the Poisson and Geometric
+    cases,
+    \item the correlated-demand winners are the ordinal direct heads rather than the trees,
+    \item the one-head sigmoid direct policy is competitive at population $64$,
+    \item the currently stored negative-MMPP2 vanilla bundle does not contain the two tree rows,
+    so those cells are marked unavailable.
+\end{itemize}
 
+\subsection{Fixed-cost $L=4$ sweep}
+
+Table~\ref{tab:fixed-cost-l4-demand-table} reports the corresponding fixed-cost $L=4$, $p=4$,
+$K=5$ comparison.
+
+\begin{table}[t]
+\centering
+\small
+\caption{Fixed-cost lost-sales mean costs for the single-instance $L=4$, $p=4$, $K=5$ study
+across all four demand families under the current $2000$-iteration / population-$64$ CMA-ES
+protocol. Bold entries mark the best value in each demand column.}
+\label{tab:fixed-cost-l4-demand-table}
+\begin{tabular}{|l||c|c||c|c|}
+\hline
+ & \multicolumn{2}{c||}{i.i.d. demand} & \multicolumn{2}{c|}{Correlated demand} \\
+\hline
+Policy / heuristic & Poisson & Geometric & MMPP2+ & MMPP2- \\
+\hline
+$(s,S)$ & 9.3677 & 14.1229 & 12.1579 & 9.8755 \\
+$(s,nQ)$ & 9.2094 & 14.0669 & 12.2139 & 9.6925 \\
+modified $(s,S,q)$ & 9.2003 & 14.0023 & 12.0935 & 9.6501 \\
+\hline
+Linear categorical quantity & 10.2754 & 15.9951 & 14.4001 & 10.7435 \\
+Linear sigmoid direct quantity & 8.7728 & 15.6229 & 12.3011 & 9.0772 \\
+Linear direct quantity & 9.7482 & 13.8152 & 12.4235 & 10.3640 \\
+Linear gated sigmoid direct quantity & 9.7474 & 13.7711 & 13.2140 & 10.3766 \\
+Linear soft-gated direct quantity & 8.7715 & 14.2049 & 12.3907 & \textbf{9.0656} \\
+Linear hard-gated direct quantity & 9.7478 & \textbf{13.6276} & \textbf{11.8787} & 10.3620 \\
+Linear soft-gated ordinal quantity & 8.7783 & 13.7504 & 12.2385 & 9.0810 \\
+Soft tree, depth-1 linear leaf & 8.7708 & 13.8218 & 12.3165 & 10.3697 \\
+Soft tree, depth-2 linear leaf & \textbf{8.7700} & 13.7412 & 12.3836 & 10.3675 \\
+\hline
+\end{tabular}
+\end{table}
+
+This is still the sharper architecture test:
 \begin{itemize}
     \item there is no single winner across all fixed-cost demand families,
-    \item the best head depends on the demand geometry,
-    \item structured direct heads and trees consistently beat the best heuristic,
-    \item flat categorical quantity remains weak.
-\end{itemize}
-
-The pattern is also suggestive:
-\begin{itemize}
-    \item positively correlated and overdispersed fixed-cost demand favor harder thresholded direct
-    heads,
+    \item flat categorical quantity remains weak in every case,
+    \item positively correlated and overdispersed fixed-cost demand favor the hard-gated direct
+    head,
     \item negatively correlated fixed-cost demand favors the soft-gated direct head,
-    \item Poisson fixed-cost demand still slightly favors the trees.
+    \item Poisson fixed-cost demand still slightly favors the depth-$2$ tree.
 \end{itemize}
-
-\subsection{Vanilla sweep}
-
-The vanilla demand sweep is still in progress. At the time of writing:
-\begin{itemize}
-    \item Poisson is complete,
-    \item Geometric is complete,
-    \item the positively correlated MMPP2 case has started,
-    \item the negatively correlated MMPP2 case has not yet been summarized into the current
-    manuscript snapshot.
-\end{itemize}
-
-For the completed vanilla demand cases:
-\begin{itemize}
-    \item Poisson best learned policy: linear gated sigmoid direct, cost $4.7451$ versus heuristic
-    $4.8168$,
-    \item Geometric best learned policy so far: depth-$1$ soft tree, cost $10.6391$ versus
-    heuristic $10.8025$.
-\end{itemize}
-
-The vanilla side is therefore currently much less architecture-sensitive than the fixed-cost side.
-Once we move away from the flat categorical head, almost all of the direct/tree families appear to
-reach essentially the same good basin.
 
 \section{Interpretation}
 

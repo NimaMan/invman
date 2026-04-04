@@ -6,10 +6,10 @@ SUPPORTED_POLICY_BACKBONES = ("linear", "nn", "soft_tree")
 
 
 def build_policy_context(args, env):
-    del args
+    del env
     action_spec = normalize_action_spec(
-        getattr(env, "action_spec", None),
-        default_max_order_size=getattr(env, "max_order_size", None),
+        getattr(args, "action_spec", None),
+        default_max_order_size=getattr(args, "max_order_size", None),
     )
     return {
         "supported_policy_backbones": SUPPORTED_POLICY_BACKBONES,

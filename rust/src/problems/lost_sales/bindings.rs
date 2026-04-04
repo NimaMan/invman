@@ -45,6 +45,14 @@ fn build_lost_sales_demand_config(
     })
 }
 
+fn empirical_mean_demand(demands: &[usize]) -> f64 {
+    if demands.is_empty() {
+        return 0.0;
+    }
+    let total: usize = demands.iter().copied().sum();
+    total as f64 / demands.len() as f64
+}
+
 #[pyfunction]
 #[pyo3(signature = (
     demand_rate,
@@ -54,7 +62,6 @@ fn build_lost_sales_demand_config(
     demand_p00=DEFAULT_MMPP2_POSITIVE_P00,
     demand_p11=DEFAULT_MMPP2_POSITIVE_P11,
     lead_time=4,
-    max_order_size=20,
     holding_cost=1.0,
     shortage_cost=4.0,
     horizon=2000,
@@ -70,7 +77,6 @@ fn lost_sales_constant_action_rollout(
     demand_p00: f64,
     demand_p11: f64,
     lead_time: usize,
-    max_order_size: usize,
     holding_cost: f64,
     shortage_cost: f64,
     horizon: usize,
@@ -81,11 +87,6 @@ fn lost_sales_constant_action_rollout(
     if lead_time < 1 {
         return Err(pyo3::exceptions::PyValueError::new_err(
             "lead_time must be at least 1",
-        ));
-    }
-    if action > max_order_size {
-        return Err(pyo3::exceptions::PyValueError::new_err(
-            "action must be <= max_order_size",
         ));
     }
     if !(0.0..=1.0).contains(&warm_up_periods_ratio) {
@@ -108,7 +109,6 @@ fn lost_sales_constant_action_rollout(
     let mut env_state = initialize_state(
         demand_rate,
         lead_time,
-        max_order_size,
         &mut rng,
         &mut demand_process,
     );
@@ -248,13 +248,14 @@ fn lost_sales_soft_tree_rollout_from_demands(
     split_type: &str,
     leaf_type: &str,
 ) -> PyResult<f64> {
+    let empirical_mean = empirical_mean_demand(&demands);
     let config = LostSalesRolloutConfig {
         input_dim,
         depth,
         max_order_size,
         demand_config: LostSalesDemandConfig {
             kind: LostSalesDemandKind::Poisson,
-            demand_rate: 0.0,
+            demand_rate: empirical_mean,
             demand_lambda_low: DEFAULT_MMPP2_LAMBDA_LOW,
             demand_lambda_high: DEFAULT_MMPP2_LAMBDA_HIGH,
             demand_p00: DEFAULT_MMPP2_POSITIVE_P00,
@@ -449,6 +450,7 @@ fn lost_sales_linear_rollout_from_demands(
     fixed_order_cost: f64,
     warm_up_periods_ratio: f64,
 ) -> PyResult<f64> {
+    let empirical_mean = empirical_mean_demand(&demands);
     let config = LostSalesLinearRolloutConfig {
         input_dim,
         output_dim,
@@ -456,7 +458,7 @@ fn lost_sales_linear_rollout_from_demands(
         policy_head: parse_policy_head(policy_head)?,
         demand_config: LostSalesDemandConfig {
             kind: LostSalesDemandKind::Poisson,
-            demand_rate: 0.0,
+            demand_rate: empirical_mean,
             demand_lambda_low: DEFAULT_MMPP2_LAMBDA_LOW,
             demand_lambda_high: DEFAULT_MMPP2_LAMBDA_HIGH,
             demand_p00: DEFAULT_MMPP2_POSITIVE_P00,
@@ -652,6 +654,7 @@ fn lost_sales_nn_rollout_from_demands(
     fixed_order_cost: f64,
     warm_up_periods_ratio: f64,
 ) -> PyResult<f64> {
+    let empirical_mean = empirical_mean_demand(&demands);
     let config = LostSalesNeuralRolloutConfig {
         input_dim,
         hidden_dims,
@@ -660,7 +663,7 @@ fn lost_sales_nn_rollout_from_demands(
         policy_head: parse_policy_head(policy_head)?,
         demand_config: LostSalesDemandConfig {
             kind: LostSalesDemandKind::Poisson,
-            demand_rate: 0.0,
+            demand_rate: empirical_mean,
             demand_lambda_low: DEFAULT_MMPP2_LAMBDA_LOW,
             demand_lambda_high: DEFAULT_MMPP2_LAMBDA_HIGH,
             demand_p00: DEFAULT_MMPP2_POSITIVE_P00,

@@ -100,6 +100,7 @@ fn validate_linear_config(config: &LostSalesLinearRolloutConfig) -> PyResult<()>
         | DensePolicyHead::SoftGatedOrdinalQuantity
         | DensePolicyHead::HardGatedOrdinalQuantity => config.max_order_size + 1,
         DensePolicyHead::DirectQuantity
+        | DensePolicyHead::UncappedDirectQuantity
         | DensePolicyHead::SigmoidDirectQuantity
         | DensePolicyHead::UnboundedDirectQuantity => 1,
         DensePolicyHead::SoftGatedDirectQuantity
@@ -150,16 +151,20 @@ fn mean_after_warmup(epoch_costs: &[f64], warm_up_periods_ratio: f64) -> f64 {
     active_costs.iter().sum::<f64>() / active_costs.len() as f64
 }
 
+fn demand_state_scale(demand_config: &LostSalesDemandConfig) -> PyResult<f64> {
+    Ok(demand_config.implied_mean().map_err(PyValueError::new_err)?.max(1.0))
+}
+
 pub fn rollout(flat_params: &[f32], config: &LostSalesRolloutConfig, seed: u64) -> PyResult<f64> {
     validate_config(config)?;
+    let state_scale = demand_state_scale(&config.demand_config)?;
 
     let mut rng = StdRng::seed_from_u64(seed);
     let mut demand_process =
         build_demand_process(config.demand_config, &mut rng).map_err(PyValueError::new_err)?;
     let mut env_state = initialize_state(
-        config.demand_config.demand_rate,
+        state_scale,
         config.lead_time,
-        config.max_order_size,
         &mut rng,
         &mut demand_process,
     );
@@ -169,7 +174,7 @@ pub fn rollout(flat_params: &[f32], config: &LostSalesRolloutConfig, seed: u64) 
         let state = build_pipeline_state(
             env_state.current_inventory,
             &env_state.lead_time_orders,
-            config.max_order_size,
+            state_scale,
         );
         let action = action_from_flat_params(
             &state,
@@ -224,13 +229,14 @@ pub fn rollout_from_demands(
             "warm_up_periods_ratio must be in [0, 1]",
         ));
     }
+    let state_scale = demand_state_scale(&config.demand_config)?;
 
     let mut epoch_costs = Vec::with_capacity(demands.len());
     for demand in demands.iter() {
         let state = build_pipeline_state(
             env_state.current_inventory,
             &env_state.lead_time_orders,
-            config.max_order_size,
+            state_scale,
         );
         let action = action_from_flat_params(
             &state,
@@ -297,14 +303,14 @@ pub fn linear_rollout(
     seed: u64,
 ) -> PyResult<f64> {
     validate_linear_config(config)?;
+    let state_scale = demand_state_scale(&config.demand_config)?;
 
     let mut rng = StdRng::seed_from_u64(seed);
     let mut demand_process =
         build_demand_process(config.demand_config, &mut rng).map_err(PyValueError::new_err)?;
     let mut env_state = initialize_state(
-        config.demand_config.demand_rate,
+        state_scale,
         config.lead_time,
-        config.max_order_size,
         &mut rng,
         &mut demand_process,
     );
@@ -314,7 +320,7 @@ pub fn linear_rollout(
         let state = build_pipeline_state(
             env_state.current_inventory,
             &env_state.lead_time_orders,
-            config.max_order_size,
+            state_scale,
         );
         let action = linear_action_from_flat_params(
             &state,
@@ -358,13 +364,14 @@ pub fn linear_rollout_from_demands(
             "lead_time_orders length must match input_dim",
         ));
     }
+    let state_scale = demand_state_scale(&config.demand_config)?;
 
     let mut epoch_costs = Vec::with_capacity(demands.len());
     for demand in demands.iter() {
         let state = build_pipeline_state(
             env_state.current_inventory,
             &env_state.lead_time_orders,
-            config.max_order_size,
+            state_scale,
         );
         let action = linear_action_from_flat_params(
             &state,
@@ -425,14 +432,14 @@ pub fn neural_rollout(
     seed: u64,
 ) -> PyResult<f64> {
     validate_neural_config(config)?;
+    let state_scale = demand_state_scale(&config.demand_config)?;
 
     let mut rng = StdRng::seed_from_u64(seed);
     let mut demand_process =
         build_demand_process(config.demand_config, &mut rng).map_err(PyValueError::new_err)?;
     let mut env_state = initialize_state(
-        config.demand_config.demand_rate,
+        state_scale,
         config.lead_time,
-        config.max_order_size,
         &mut rng,
         &mut demand_process,
     );
@@ -442,7 +449,7 @@ pub fn neural_rollout(
         let state = build_pipeline_state(
             env_state.current_inventory,
             &env_state.lead_time_orders,
-            config.max_order_size,
+            state_scale,
         );
         let action = mlp_action_from_flat_params(
             &state,
@@ -488,13 +495,14 @@ pub fn neural_rollout_from_demands(
             "lead_time_orders length must match input_dim",
         ));
     }
+    let state_scale = demand_state_scale(&config.demand_config)?;
 
     let mut epoch_costs = Vec::with_capacity(demands.len());
     for demand in demands.iter() {
         let state = build_pipeline_state(
             env_state.current_inventory,
             &env_state.lead_time_orders,
-            config.max_order_size,
+            state_scale,
         );
         let action = mlp_action_from_flat_params(
             &state,

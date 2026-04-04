@@ -1,6 +1,4 @@
 use rand::rngs::StdRng;
-use rand::Rng;
-
 use crate::problems::lost_sales::demand::{sample_demand, LostSalesDemandProcess};
 
 #[derive(Clone)]
@@ -12,12 +10,12 @@ pub struct LostSalesState {
 pub fn build_pipeline_state(
     current_inventory: i64,
     lead_time_orders: &[usize],
-    max_order_size: usize,
+    demand_mean: f64,
 ) -> Vec<f32> {
-    let mut state = lead_time_orders.to_vec();
-    state[0] += current_inventory as usize;
-    let scale = max_order_size.max(1) as f32;
-    state.into_iter().map(|x| x as f32 / scale).collect()
+    let scale = demand_mean.max(1.0) as f32;
+    let mut state: Vec<f32> = lead_time_orders.iter().map(|&x| x as f32 / scale).collect();
+    state[0] += (current_inventory.max(0) as f32) / scale;
+    state
 }
 
 pub fn epoch_cost(
@@ -47,21 +45,17 @@ pub fn epoch_cost(
 }
 
 pub fn initialize_state(
-    demand_rate: f64,
+    demand_mean: f64,
     lead_time: usize,
-    max_order_size: usize,
     rng: &mut StdRng,
     demand_process: &mut LostSalesDemandProcess,
 ) -> LostSalesState {
-    let mut current_inventory = (2.0 * demand_rate).round() as i64;
+    let mut current_inventory = (2.0 * demand_mean).round() as i64;
     let mut lead_time_orders = vec![0usize; lead_time];
+    let initial_order_quantity = demand_mean.max(0.0).round() as usize;
 
     for slot in lead_time_orders.iter_mut() {
-        *slot = if max_order_size == 0 {
-            0
-        } else {
-            rng.gen_range(1..=max_order_size)
-        };
+        *slot = initial_order_quantity;
         let demand = sample_demand(rng, demand_process);
         current_inventory = (current_inventory - demand).max(0);
     }
@@ -69,5 +63,29 @@ pub fn initialize_state(
     LostSalesState {
         current_inventory,
         lead_time_orders,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::build_pipeline_state;
+
+    #[test]
+    fn pipeline_state_is_scaled_by_mean_demand() {
+        let state = build_pipeline_state(2, &[3, 4, 5], 5.0);
+        assert_eq!(state, vec![1.0, 0.8, 1.0]);
+    }
+
+    #[test]
+    fn pipeline_state_uses_minimum_unit_scale() {
+        let state = build_pipeline_state(2, &[3, 4], 0.0);
+        assert_eq!(state, vec![5.0, 4.0]);
+    }
+
+    #[test]
+    fn pipeline_state_handles_very_large_orders_without_integer_overflow() {
+        let state = build_pipeline_state(2, &[usize::MAX], 5.0);
+        assert!(state[0].is_finite());
+        assert!(state[0] > 0.0);
     }
 }

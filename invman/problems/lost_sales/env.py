@@ -2,7 +2,6 @@ from collections import deque
 
 import numpy as np
 
-from invman.policies.common import build_scalar_action_spec
 from invman.problems.lost_sales.demand import (
     DEFAULT_MMPP2_LAMBDA_HIGH,
     DEFAULT_MMPP2_LAMBDA_LOW,
@@ -22,6 +21,11 @@ def _normalize_state_features(state_features: str) -> str:
         "pipeline_plus_summary": "pipeline_plus_summary",
         "augmented": "pipeline_plus_summary",
         "feature_augmented": "pipeline_plus_summary",
+        "raw_pipeline": "raw_pipeline",
+        "pipeline_raw": "raw_pipeline",
+        "raw_pipeline_plus_summary": "raw_pipeline_plus_summary",
+        "pipeline_plus_summary_raw": "raw_pipeline_plus_summary",
+        "raw_augmented": "raw_pipeline_plus_summary",
     }
     normalized = aliases.get(state_features)
     if normalized is None:
@@ -53,8 +57,6 @@ class LostSalesEnv:
     ):
         if lead_time < 1:
             raise ValueError("lead_time must be at least 1")
-        if max_order_size < 0:
-            raise ValueError("max_order_size must be non-negative")
 
         self.demand_rate = float(demand_rate)
         self.demand_dist_name = demand_dist_name
@@ -62,9 +64,7 @@ class LostSalesEnv:
         self.shortage_cost = float(shortage_cost)
         self.procurement_cost = float(procurement_cost)
         self.fixed_order_cost = float(fixed_order_cost)
-        self.max_order_size = int(max_order_size)
-        self.action_space_dim = self.max_order_size + 1
-        self.action_spec = build_scalar_action_spec(self.max_order_size)
+        del max_order_size
         self.one_hot_inventory_upper_bound = int(one_hot_inventory_upper_bound)
         self.lead_time = int(lead_time)
         self.state_features = _normalize_state_features(state_features)
@@ -95,17 +95,14 @@ class LostSalesEnv:
     def initialize_env(self):
         self.current_inventory_level = int(round(2 * self.demand_rate))
         self.lead_time_orders.clear()
+        initial_order_quantity = int(round(self.demand_mean))
         demand_process = (
             self._runtime_demand_process
             if not self.track_demand
             else build_demand_process(self.demand_config, rng=np.random)
         )
         for _ in range(self.lead_time):
-            if self.max_order_size == 0:
-                order_quantity = 0
-            else:
-                order_quantity = np.random.randint(low=1, high=self.action_space_dim)
-            self.lead_time_orders.append(int(order_quantity))
+            self.lead_time_orders.append(initial_order_quantity)
             epoch_demand = int(demand_process.sample())
             self.current_inventory_level = max(0, self.current_inventory_level - int(epoch_demand))
 
@@ -125,7 +122,7 @@ class LostSalesEnv:
         return self.norm_state
 
     def is_valid_action(self, action):
-        return 0 <= int(action) <= self.max_order_size
+        return int(action) >= 0
 
     def _sample_single_demand(self):
         if self._runtime_demand_process is None:
@@ -142,9 +139,9 @@ class LostSalesEnv:
         return self._sample_single_demand()
 
     def get_state_dim(self):
-        if self.state_features == "pipeline":
+        if self.state_features in {"pipeline", "raw_pipeline"}:
             return self.lead_time
-        if self.state_features == "pipeline_plus_summary":
+        if self.state_features in {"pipeline_plus_summary", "raw_pipeline_plus_summary"}:
             return self.lead_time + 3
         raise NotImplementedError(f"Unknown state feature mode: {self.state_features}")
 
@@ -183,12 +180,15 @@ class LostSalesEnv:
 
     @property
     def policy_state(self):
-        scale = float(max(1, self.max_order_size))
+        scale = float(max(1.0, self.demand_mean))
         pipeline_state = np.asarray(self.state, dtype=np.float32) / scale
+        raw_pipeline_state = np.asarray(self.state, dtype=np.float32)
         if self.state_features == "pipeline":
             return pipeline_state
+        if self.state_features == "raw_pipeline":
+            return raw_pipeline_state
         if self.state_features == "pipeline_plus_summary":
-            position_scale = float(max(1, self.lead_time * self.max_order_size))
+            position_scale = float(max(1.0, (self.lead_time + 1) * self.demand_mean))
             summary = np.asarray(
                 [
                     self.current_inventory_level / scale,
@@ -198,16 +198,30 @@ class LostSalesEnv:
                 dtype=np.float32,
             )
             return np.concatenate([pipeline_state, summary]).astype(np.float32, copy=False)
+        if self.state_features == "raw_pipeline_plus_summary":
+            raw_summary = np.asarray(
+                [
+                    self.current_inventory_level,
+                    sum(self.lead_time_orders),
+                    self.inventory_position,
+                ],
+                dtype=np.float32,
+            )
+            return np.concatenate([raw_pipeline_state, raw_summary]).astype(np.float32, copy=False)
         raise NotImplementedError(f"Unknown state feature mode: {self.state_features}")
 
     @property
     def inventory_position(self):
         return self.current_inventory_level + sum(self.lead_time_orders)
 
+    @property
+    def demand_mean(self):
+        return float(self.demand_config.stationary_mean)
+
     def step(self, order_quantity):
         order_quantity = int(order_quantity)
         if not self.is_valid_action(order_quantity):
-            raise ValueError(f"Invalid order quantity {order_quantity}; expected 0..{self.max_order_size}")
+            raise ValueError(f"Invalid order quantity {order_quantity}; expected a non-negative integer")
 
         arriving_orders = self.update_lead_time_orders(order_quantity)
         self.current_inventory_level += arriving_orders
@@ -223,7 +237,8 @@ class LostSalesEnv:
         return self.norm_state, epoch_cost, self.done
 
     def get_one_hot_encoded_state(self, state):
-        d = self.one_hot_inventory_upper_bound + self.max_order_size + 1
+        trailing_bound = 1 + max(0, int(state[1])) if len(state) > 1 else 1
+        d = self.one_hot_inventory_upper_bound + trailing_bound
         s = np.zeros((1, d))
         s[0, state[0]] = 1
         s[0, self.one_hot_inventory_upper_bound + state[1]] = 1
@@ -333,6 +348,7 @@ def _rust_lost_sales_policy_mode(model, args, track_demand=False, return_env=Fal
     dense_rust_heads = {
         "categorical_quantity",
         "direct_quantity",
+        "uncapped_direct_quantity",
         "sigmoid_direct_quantity",
         "unbounded_direct_quantity",
         "soft_gated_direct_quantity",

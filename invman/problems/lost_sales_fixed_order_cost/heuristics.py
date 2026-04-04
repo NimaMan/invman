@@ -251,7 +251,7 @@ def evaluate_policy_cost(
             policy_name=policy_name,
             inventory_position=env.inventory_position,
             params=params,
-            max_order_size=env.max_order_size,
+            max_order_size=int(args.max_order_size),
         )
         env.step(order_quantity=order_quantity)
 

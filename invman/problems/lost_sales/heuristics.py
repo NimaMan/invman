@@ -11,8 +11,9 @@ from invman.problems.lost_sales.env import LostSalesEnv, build_env_from_args
 
 
 class LostSalesHeuristicPolicies:
-    def __init__(self, env: LostSalesEnv):
+    def __init__(self, env: LostSalesEnv, order_search_upper_bound: int):
         self.env = env
+        self.order_search_upper_bound = int(order_search_upper_bound)
         self.one_period_cache = {}
         self.q_l_cache = {}
         self.q_L_cache = {}
@@ -84,7 +85,7 @@ class LostSalesHeuristicPolicies:
         current_value = evaluator(state, 0)
         previous_value = np.inf
 
-        while best_quantity + 1 < self.env.action_space_dim and previous_value > current_value:
+        while best_quantity < self.order_search_upper_bound and previous_value > current_value:
             best_quantity += 1
             previous_value = current_value
             current_value = evaluator(state, best_quantity)
@@ -151,7 +152,7 @@ class LostSalesHeuristicPolicies:
             z_x[l] = int(sbar[l] - v_l)
 
         order_quantity = max(0, int(np.min(z_x)))
-        return min(order_quantity, self.env.max_order_size)
+        return min(order_quantity, self.order_search_upper_bound)
 
 
 def get_heuristic_policy_cost(args, env=None, heuristic="myopic1", seed=1234):
@@ -162,7 +163,10 @@ def get_heuristic_policy_cost(args, env=None, heuristic="myopic1", seed=1234):
     elif not isinstance(env, LostSalesEnv):
         raise TypeError("env must be a LostSalesEnv instance")
 
-    policy = LostSalesHeuristicPolicies(env=env)
+    policy = LostSalesHeuristicPolicies(
+        env=env,
+        order_search_upper_bound=int(getattr(args, "max_order_size", 0)),
+    )
     heuristic_name = heuristic.lower()
     done = False
     state_action = {}
