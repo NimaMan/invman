@@ -23,7 +23,7 @@ pub fn parse_activation(activation: &str) -> PyResult<ActivationKind> {
 pub enum DensePolicyHead {
     CategoricalQuantity,
     DirectQuantity,
-    UncappedDirectQuantity,
+    CappedDirectQuantity,
     SigmoidDirectQuantity,
     UnboundedDirectQuantity,
     SoftGatedDirectQuantity,
@@ -36,11 +36,13 @@ pub enum DensePolicyHead {
 pub fn parse_policy_head(policy_head: &str) -> PyResult<DensePolicyHead> {
     match policy_head {
         "categorical_quantity" => Ok(DensePolicyHead::CategoricalQuantity),
-        "direct_quantity" => Ok(DensePolicyHead::DirectQuantity),
-        "positive_quantity" => Ok(DensePolicyHead::DirectQuantity),
-        "uncapped_direct_quantity" => Ok(DensePolicyHead::UncappedDirectQuantity),
-        "uncapped_softplus_quantity" => Ok(DensePolicyHead::UncappedDirectQuantity),
-        "uncapped_positive_quantity" => Ok(DensePolicyHead::UncappedDirectQuantity),
+        "direct_quantity"
+        | "positive_quantity"
+        | "softplus_quantity"
+        | "nonnegative_quantity" => Ok(DensePolicyHead::DirectQuantity),
+        "capped_direct_quantity" | "capped_softplus_quantity" | "capped_positive_quantity" => {
+            Ok(DensePolicyHead::CappedDirectQuantity)
+        }
         "sigmoid_direct_quantity" | "scaled_direct_quantity" => {
             Ok(DensePolicyHead::SigmoidDirectQuantity)
         }
@@ -63,7 +65,7 @@ pub fn parse_policy_head(policy_head: &str) -> PyResult<DensePolicyHead> {
             Ok(DensePolicyHead::HardGatedOrdinalQuantity)
         }
         other => Err(PyValueError::new_err(format!(
-            "unsupported dense policy head '{other}', expected one of: categorical_quantity, direct_quantity, uncapped_direct_quantity, sigmoid_direct_quantity, unbounded_direct_quantity, soft_gated_direct_quantity, gated_sigmoid_direct_quantity, hard_gated_direct_quantity, soft_gated_ordinal_quantity, hard_gated_ordinal_quantity"
+            "unsupported dense policy head '{other}', expected one of: categorical_quantity, direct_quantity, capped_direct_quantity, sigmoid_direct_quantity, unbounded_direct_quantity, soft_gated_direct_quantity, gated_sigmoid_direct_quantity, hard_gated_direct_quantity, soft_gated_ordinal_quantity, hard_gated_ordinal_quantity"
         ))),
     }
 }
@@ -133,18 +135,18 @@ fn dense_action_from_logits(
                 )));
             }
             let quantity_value = (1.0 + logits[0].exp()).ln();
-            let action = quantity_value.round().clamp(0.0, max_order_size as f32) as usize;
+            let action = quantity_value.round().max(0.0) as usize;
             Ok(action)
         }
-        DensePolicyHead::UncappedDirectQuantity => {
+        DensePolicyHead::CappedDirectQuantity => {
             if logits.len() != 1 {
                 return Err(PyValueError::new_err(format!(
-                    "uncapped direct quantity logits length {} does not match expected 1",
+                    "capped direct quantity logits length {} does not match expected 1",
                     logits.len()
                 )));
             }
             let quantity_value = (1.0 + logits[0].exp()).ln();
-            let action = quantity_value.round().max(0.0) as usize;
+            let action = quantity_value.round().clamp(0.0, max_order_size as f32) as usize;
             Ok(action)
         }
         DensePolicyHead::SigmoidDirectQuantity => {

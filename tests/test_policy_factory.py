@@ -19,6 +19,7 @@ def _make_args(policy_name):
         policy_name=policy_name,
         problem="lost_sales",
         state_features="pipeline",
+        max_order_size=20,
     )
     apply_policy_name(args)
     return args
@@ -38,83 +39,106 @@ def test_build_policy_returns_neural_policy():
 
 def test_build_policy_returns_linear_direct_policy():
     env = LostSalesEnv(demand_rate=5.0, lead_time=4, max_order_size=20, horizon=10, track_demand=True)
-    model = build_policy(_make_args("linear_direct_quantity"), env)
+    args = _make_args("linear_direct_quantity")
+    model = build_policy(args, env)
     assert isinstance(model, LinearPolicyNet)
     action = model(torch.as_tensor(env.policy_state, dtype=torch.float32))
     assert isinstance(action, int)
-    assert 0 <= action <= env.max_order_size
+    assert action >= 0
 
 
 def test_build_policy_returns_nn_direct_policy():
     env = LostSalesEnv(demand_rate=5.0, lead_time=4, max_order_size=20, horizon=10, track_demand=True)
-    model = build_policy(_make_args("nn_direct_quantity_h50_selu"), env)
+    args = _make_args("nn_direct_quantity_h50_selu")
+    model = build_policy(args, env)
     assert isinstance(model, PolicyNet)
     action = model(torch.as_tensor(env.policy_state, dtype=torch.float32))
     assert isinstance(action, int)
-    assert 0 <= action <= env.max_order_size
+    assert action >= 0
 
 
 @pytest.mark.parametrize(
     "policy_name",
-    ["linear_unbounded_direct_quantity", "nn_unbounded_direct_quantity"],
+    [
+        "linear_unbounded_direct_quantity",
+        "nn_unbounded_direct_quantity",
+        "linear_uncapped_direct_quantity",
+        "nn_uncapped_direct_quantity",
+    ],
 )
 def test_unbounded_direct_policy_names_are_not_supported(policy_name):
     with pytest.raises(ValueError, match="Unknown"):
         _make_args(policy_name)
 
 
-def test_build_policy_returns_linear_gated_direct_policy():
+def test_build_policy_returns_linear_capped_direct_policy():
     env = LostSalesEnv(demand_rate=5.0, lead_time=4, max_order_size=20, horizon=10, track_demand=True)
-    model = build_policy(_make_args("linear_soft_gated_direct_quantity"), env)
+    args = _make_args("linear_capped_direct_quantity")
+    model = build_policy(args, env)
     assert isinstance(model, LinearPolicyNet)
     action = model(torch.as_tensor(env.policy_state, dtype=torch.float32))
     assert isinstance(action, int)
-    assert 0 <= action <= env.max_order_size
+    assert 0 <= action <= args.max_order_size
+
+
+def test_build_policy_returns_linear_gated_direct_policy():
+    env = LostSalesEnv(demand_rate=5.0, lead_time=4, max_order_size=20, horizon=10, track_demand=True)
+    args = _make_args("linear_soft_gated_direct_quantity")
+    model = build_policy(args, env)
+    assert isinstance(model, LinearPolicyNet)
+    action = model(torch.as_tensor(env.policy_state, dtype=torch.float32))
+    assert isinstance(action, int)
+    assert 0 <= action <= args.max_order_size
 
 
 def test_build_policy_returns_nn_gated_direct_policy():
     env = LostSalesEnv(demand_rate=5.0, lead_time=4, max_order_size=20, horizon=10, track_demand=True)
-    model = build_policy(_make_args("nn_soft_gated_direct_quantity"), env)
+    args = _make_args("nn_soft_gated_direct_quantity")
+    model = build_policy(args, env)
     assert isinstance(model, PolicyNet)
     action = model(torch.as_tensor(env.policy_state, dtype=torch.float32))
     assert isinstance(action, int)
-    assert 0 <= action <= env.max_order_size
+    assert 0 <= action <= args.max_order_size
 
 
 def test_build_policy_returns_linear_gated_sigmoid_direct_policy():
     env = LostSalesEnv(demand_rate=5.0, lead_time=4, max_order_size=20, horizon=10, track_demand=True)
-    model = build_policy(_make_args("linear_gated_sigmoid_direct_quantity"), env)
+    args = _make_args("linear_gated_sigmoid_direct_quantity")
+    model = build_policy(args, env)
     assert isinstance(model, LinearPolicyNet)
     action = model(torch.as_tensor(env.policy_state, dtype=torch.float32))
     assert isinstance(action, int)
-    assert 0 <= action <= env.max_order_size
+    assert 0 <= action <= args.max_order_size
 
 
 def test_build_policy_returns_nn_gated_sigmoid_direct_policy():
     env = LostSalesEnv(demand_rate=5.0, lead_time=4, max_order_size=20, horizon=10, track_demand=True)
-    model = build_policy(_make_args("nn_gated_sigmoid_direct_quantity"), env)
+    args = _make_args("nn_gated_sigmoid_direct_quantity")
+    model = build_policy(args, env)
     assert isinstance(model, PolicyNet)
     action = model(torch.as_tensor(env.policy_state, dtype=torch.float32))
     assert isinstance(action, int)
-    assert 0 <= action <= env.max_order_size
+    assert 0 <= action <= args.max_order_size
 
 
 def test_build_policy_returns_linear_hard_gated_direct_policy():
     env = LostSalesEnv(demand_rate=5.0, lead_time=4, max_order_size=20, horizon=10, track_demand=True)
-    model = build_policy(_make_args("linear_hard_gated_direct_quantity"), env)
+    args = _make_args("linear_hard_gated_direct_quantity")
+    model = build_policy(args, env)
     assert isinstance(model, LinearPolicyNet)
     action = model(torch.as_tensor(env.policy_state, dtype=torch.float32))
     assert isinstance(action, int)
-    assert 0 <= action <= env.max_order_size
+    assert 0 <= action <= args.max_order_size
 
 
 def test_build_policy_returns_nn_hard_gated_direct_policy():
     env = LostSalesEnv(demand_rate=5.0, lead_time=4, max_order_size=20, horizon=10, track_demand=True)
-    model = build_policy(_make_args("nn_hard_gated_direct_quantity"), env)
+    args = _make_args("nn_hard_gated_direct_quantity")
+    model = build_policy(args, env)
     assert isinstance(model, PolicyNet)
     action = model(torch.as_tensor(env.policy_state, dtype=torch.float32))
     assert isinstance(action, int)
-    assert 0 <= action <= env.max_order_size
+    assert 0 <= action <= args.max_order_size
 
 
 def test_build_policy_returns_linear_policy_for_fixed_cost_lost_sales():

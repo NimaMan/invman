@@ -100,7 +100,7 @@ fn validate_linear_config(config: &LostSalesLinearRolloutConfig) -> PyResult<()>
         | DensePolicyHead::SoftGatedOrdinalQuantity
         | DensePolicyHead::HardGatedOrdinalQuantity => config.max_order_size + 1,
         DensePolicyHead::DirectQuantity
-        | DensePolicyHead::UncappedDirectQuantity
+        | DensePolicyHead::CappedDirectQuantity
         | DensePolicyHead::SigmoidDirectQuantity
         | DensePolicyHead::UnboundedDirectQuantity => 1,
         DensePolicyHead::SoftGatedDirectQuantity

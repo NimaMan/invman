@@ -348,7 +348,7 @@ def _rust_lost_sales_policy_mode(model, args, track_demand=False, return_env=Fal
     dense_rust_heads = {
         "categorical_quantity",
         "direct_quantity",
-        "uncapped_direct_quantity",
+        "capped_direct_quantity",
         "sigmoid_direct_quantity",
         "unbounded_direct_quantity",
         "soft_gated_direct_quantity",

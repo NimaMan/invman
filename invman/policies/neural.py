@@ -70,8 +70,7 @@ class PolicyNet(ESModule):
             out_features = self.control_dim
         self.policy_output_dim = int(out_features)
         if self.action_output_mode in {
-            "direct_quantity",
-            "uncapped_direct_quantity",
+            "capped_direct_quantity",
             "sigmoid_direct_quantity",
             "gated_sigmoid_direct_quantity",
             "soft_gated_direct_quantity",
@@ -80,7 +79,7 @@ class PolicyNet(ESModule):
             "hard_gated_direct_quantity",
         } and max_order_size is None:
             raise ValueError(
-                "max_order_size is required when action_output_mode uses bounded quantity outputs"
+                "max_order_size is required when action_output_mode uses a decoder-side cap"
             )
         if self.action_output_mode == "categorical_quantity" and (
             self.control_dim != 1 or self.control_mode != "scalar_quantity"
@@ -88,7 +87,7 @@ class PolicyNet(ESModule):
             raise ValueError("categorical_quantity requires a scalar_quantity control spec.")
         if self.action_output_mode in {
             "direct_quantity",
-            "uncapped_direct_quantity",
+            "capped_direct_quantity",
             "sigmoid_direct_quantity",
             "unbounded_direct_quantity",
             "gated_sigmoid_direct_quantity",
@@ -152,13 +151,13 @@ class PolicyNet(ESModule):
             projected_controls = [int(action.item())]
         elif self.action_output_mode == "direct_quantity":
             quantity_value = torch.nn.functional.softplus(raw_output.squeeze(-1))
-            _, projected_controls = self._project_controls(quantity_value.reshape(-1))
-            action = self._finalize_action(projected_controls, state)
-        elif self.action_output_mode == "uncapped_direct_quantity":
-            quantity_value = torch.nn.functional.softplus(raw_output.squeeze(-1))
             action = torch.round(quantity_value).to(dtype=torch.int64)
             action = torch.clamp(action, min=0)
             projected_controls = [int(action.item())]
+        elif self.action_output_mode == "capped_direct_quantity":
+            quantity_value = torch.nn.functional.softplus(raw_output.squeeze(-1))
+            _, projected_controls = self._project_controls(quantity_value.reshape(-1))
+            action = self._finalize_action(projected_controls, state)
         elif self.action_output_mode == "sigmoid_direct_quantity":
             quantity_value = torch.sigmoid(raw_output.squeeze(-1)) * float(self.max_order_size)
             action = torch.round(quantity_value).to(dtype=torch.int64)
@@ -244,16 +243,16 @@ class PolicyNet(ESModule):
             if self.action_output_mode in {
                 "bounded_quantity",
                 "direct_quantity",
-                "uncapped_direct_quantity",
+                "capped_direct_quantity",
                 "unbounded_direct_quantity",
             }:
                 self.features["projected_controls"] = projected_controls
             if self.action_output_mode == "direct_quantity":
                 self.features["quantity_value"] = quantity_value.detach().cpu().numpy()
-                self.features["projected_action"] = action
-            if self.action_output_mode == "uncapped_direct_quantity":
-                self.features["quantity_value"] = quantity_value.detach().cpu().numpy()
                 self.features["projected_action"] = int(action.item())
+            if self.action_output_mode == "capped_direct_quantity":
+                self.features["quantity_value"] = quantity_value.detach().cpu().numpy()
+                self.features["projected_action"] = action
             if self.action_output_mode == "unbounded_direct_quantity":
                 self.features["projected_action"] = action
             if self.action_output_mode == "bounded_quantity":
@@ -262,16 +261,14 @@ class PolicyNet(ESModule):
                 self.features["raw_output"] = raw_output.detach().cpu().numpy()
             if self.action_output_mode in {
                 "bounded_quantity",
-                "direct_quantity",
-                "uncapped_direct_quantity",
+                "capped_direct_quantity",
                 "unbounded_direct_quantity",
             }:
                 return action, self.features
             return int(action.item()), self.features
         if self.action_output_mode in {
             "bounded_quantity",
-            "direct_quantity",
-            "uncapped_direct_quantity",
+            "capped_direct_quantity",
             "unbounded_direct_quantity",
         }:
             return action

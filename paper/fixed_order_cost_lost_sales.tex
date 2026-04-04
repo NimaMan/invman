@@ -29,9 +29,11 @@ We study two closely related problems:
 \end{itemize}
 
 In both cases the controller observes the current inventory state and chooses an integer order
-quantity $q_t \in \{0,1,\ldots,\bar q\}$. Demand is stochastic and unmet demand is lost. The
+quantity $q_t \in \mathbb{Z}_{\ge 0}$. Demand is stochastic and unmet demand is lost. The
 fixed-cost version adds the term $K\mathbf{1}\{q_t>0\}$ to the one-period cost, which makes the
-order/no-order boundary much more important.
+order/no-order boundary much more important. Some policy families still introduce a finite
+decoder-side cap $\bar q$, but that cap is now a policy design choice rather than an environment
+restriction.
 
 \section{Current benchmark instances and protocol}
 
@@ -116,12 +118,22 @@ families have zero autocorrelation at every positive lag.
 \section{Policy families and action equations}
 
 The current study is intentionally narrow: the reported experiments use linear policies and soft
-trees on the scalar-quantity action space
+trees on the nonnegative scalar action space
 \[
-a_t \in \{0,1,\ldots,Q\},
+a_t \in \mathbb{Z}_{\ge 0}.
 \]
-where $Q$ is the environment order cap. Let $x_t \in \mathbb{R}^d$ denote the state feature
-vector. The code implements a \emph{backbone} plus a \emph{decoder}:
+Let $x_t \in \mathbb{R}^d$ denote the state feature vector. Some decoders additionally introduce a
+finite policy-side cap $\bar q$ and therefore operate on the bounded control set
+\[
+\mathcal{A}_{\bar q} = \{0,1,\ldots,\bar q\},
+\qquad
+\mathcal{A}_{\bar q}^{+} = \{1,\ldots,\bar q\}.
+\]
+For uncapped nonnegative heads we write
+\[
+\mathcal{A}_{\infty} = \mathbb{Z}_{\ge 0}.
+\]
+The code implements a \emph{backbone} plus a \emph{decoder}:
 \begin{itemize}
     \item a linear backbone emits logits by an affine map,
     \item a one-hidden-layer neural backbone emits logits through an MLP,
@@ -137,47 +149,53 @@ In the one-hidden-layer neural case with width $H$ and activation $\phi$,
 u_\theta(x_t) = V \phi(Ux_t + c) + e.
 \]
 The decoder formulas below are shared by both dense backbones; only the way the latent outputs are
-produced changes.
+produced changes. For scalar controls we write $\Pi_{\mathcal{A}}(z)$ for nearest-integer
+projection of a real-valued proposal $z$ onto the discrete action set $\mathcal{A}$.
 
 We study the following action parameterizations:
 
 \paragraph{Categorical quantity.}
-The policy emits $Q+1$ logits and chooses
+The policy emits $\bar q+1$ logits and chooses
 \[
-a_t = \arg\max_{a \in \{0,1,\ldots,Q\}} u_a(x_t).
+a_t = \arg\max_{a \in \mathcal{A}_{\bar q}} u_a(x_t).
 \]
+This head is inherently cap-dependent.
 
 \paragraph{Sigmoid direct quantity.}
 The policy emits one scalar and maps it as
 \[
-a_t = \mathrm{round}\!\left(Q \, \sigma(u(x_t))\right).
+a_t = \mathrm{round}\!\left(\bar q \, \sigma(u(x_t))\right).
 \]
 This is the code path named \texttt{sigmoid\_direct\_quantity}: a one-head bounded S-curve map.
 
 \paragraph{Direct quantity.}
 The policy emits one scalar and maps it as
 \[
-\tilde a_t = \mathrm{round}\!\left(\mathrm{softplus}(u(x_t))\right),
-\qquad
-a_t = \mathrm{clip}(\tilde a_t, 0, Q).
+a_t = \Pi_{\mathcal{A}_{\infty}}\!\left(\mathrm{softplus}(u(x_t))\right).
 \]
 This is the code path named \texttt{direct\_quantity}: a one-head positive-part map with no
-explicit factor of $Q$ inside the head.
+decoder-side upper bound.
+
+\paragraph{Capped direct quantity.}
+The policy emits one scalar and maps it as
+\[
+a_t = \Pi_{\mathcal{A}_{\bar q}}\!\left(\mathrm{softplus}(u(x_t))\right).
+\]
+This is the code path named \texttt{capped\_direct\_quantity}. It is the same softplus quantity
+map as above, but with a decoder-side cap entering only through the final projection.
 
 \paragraph{Soft-gated sigmoid direct quantity.}
 The policy emits two latent outputs, a gate score $g(x_t)$ and a quantity score $q(x_t)$, then
 sets
 \[
-a_t = \mathrm{round}\!\left(\sigma(g(x_t)) \, \sigma(q(x_t)) \, Q\right).
+a_t = \mathrm{round}\!\left(\sigma(g(x_t)) \, \sigma(q(x_t)) \, \bar q\right).
 \]
 This is the code path named \texttt{gated\_sigmoid\_direct\_quantity}.
 
 \paragraph{Soft-gated direct quantity.}
 The policy emits $g(x_t)$ and $q(x_t)$, then sets
 \[
-\tilde a_t = \mathrm{round}\!\left(\sigma(g(x_t)) \, \mathrm{softplus}(q(x_t))\right),
-\qquad
-a_t = \mathrm{clip}(\tilde a_t, 0, Q).
+a_t = \Pi_{\mathcal{A}_{\bar q}}\!\left(\sigma(g(x_t)) \, \mathrm{softplus}(q(x_t))\right).
 \]
 This is the code path named \texttt{soft\_gated\_direct\_quantity}.
 
@@ -187,7 +205,7 @@ The policy emits $g(x_t)$ and $q(x_t)$, and uses
 a_t =
 \begin{cases}
 0, & \sigma(g(x_t)) < 0.5, \\
-\mathrm{clip}(\mathrm{round}(\mathrm{softplus}(q(x_t))), 1, Q),
+\Pi_{\mathcal{A}_{\bar q}^{+}}\!\left(\mathrm{softplus}(q(x_t))\right),
 & \sigma(g(x_t)) \ge 0.5.
 \end{cases}
 \]
@@ -195,9 +213,9 @@ This is the code path named \texttt{hard\_gated\_direct\_quantity}.
 
 \paragraph{Soft-gated ordinal quantity.}
 The policy emits one gate score $g(x_t)$ and ordinal scores
-$o_1(x_t),\ldots,o_Q(x_t)$, and sets
+$o_1(x_t),\ldots,o_{\bar q}(x_t)$, and sets
 \[
-\hat m(x_t) = \sum_{k=1}^{Q} \sigma(o_k(x_t)),
+\hat m(x_t) = \sum_{k=1}^{\bar q} \sigma(o_k(x_t)),
 \qquad
 a_t = \mathrm{round}\!\left(\sigma(g(x_t)) \, \hat m(x_t)\right).
 \]
@@ -213,9 +231,7 @@ q_\ell(x_t) = \mathrm{softplus}(\alpha_\ell^\top x_t + \beta_\ell).
 \]
 The final action is the rounded mixture
 \[
-\tilde a_t = \mathrm{round}\!\left(\sum_\ell \pi_\ell(x_t) q_\ell(x_t)\right),
-\qquad
-a_t = \mathrm{clip}(\tilde a_t, 0, Q).
+a_t = \Pi_{\mathcal{A}_{\bar q}}\!\left(\sum_\ell \pi_\ell(x_t) q_\ell(x_t)\right).
 \]
 This is the active \texttt{soft\_tree\_depth1\_linear\_leaf} /
 \texttt{soft\_tree\_depth2\_linear\_leaf} family. In code, the split network is always oblique in
@@ -224,159 +240,90 @@ the reported runs and the scalar leaf is exactly a softplus-transformed affine q
 The policy family that is \emph{not} part of the active benchmark surface is the raw unbounded
 direct head
 \[
-a_t = \mathrm{clip}(\mathrm{round}(u(x_t)), 0, Q),
+a_t = \Pi_{\mathcal{A}_{\bar q}}\!\left(u(x_t)\right),
 \]
 which repeatedly converged to weak basins in earlier runs and is now treated as a negative ablation
 rather than a serious candidate.
 
 \subsection{Parameter counts}
 
-The active $L=4$ benchmark surface uses linear dense policies and depth-$1$ / depth-$2$ soft
-trees. Table~\ref{tab:policy-parameter-counts} gives their trainable parameter counts as explicit
-functions of the state dimension $d$ and the action cap $Q$.
+The policy families discussed in this note fall into three groups: linear dense policies,
+one-hidden-layer neural dense policies, and soft trees. For the active $L=4$ pipeline state we
+have $d=4$ and therefore $d+1=5$. The bounded heads use $\bar q=20$ in the canonical vanilla
+instance and $\bar q=50$ in the canonical fixed-cost instance. The current NN registry entries use
+a single hidden layer of width $H=50$ with SELU activation.
 
 \begin{table}[t]
 \centering
 \small
-\caption{Trainable parameter counts for the active scalar-quantity policy families. Here $d$ is
-the state dimension and $Q$ is the environment action cap.}
-\label{tab:policy-parameter-counts}
-\begin{tabular}{|l|c|}
+\caption{Trainable parameter counts for the linear scalar-quantity policy families. The last
+column shows the concrete $L=4$ counts, reported as vanilla / fixed-cost when the decoder-side
+cap differs across the two canonical instances.}
+\label{tab:linear-parameter-counts}
+\begin{tabular}{|l|c|c|}
 \hline
-Policy family & Trainable parameters \\
+Policy family & Trainable parameters & Count at $L=4$ \\
 \hline
-Linear categorical quantity & $(d+1)(Q+1)$ \\
-Linear sigmoid direct quantity & $d+1$ \\
-Linear direct quantity & $d+1$ \\
-Linear gated sigmoid direct quantity & $2(d+1)$ \\
-Linear soft-gated direct quantity & $2(d+1)$ \\
-Linear hard-gated direct quantity & $2(d+1)$ \\
-Linear soft-gated ordinal quantity & $(d+1)(Q+1)$ \\
-Soft tree, depth-1 linear leaf & $3(d+1)$ \\
-Soft tree, depth-2 linear leaf & $7(d+1)$ \\
+Linear categorical quantity & $(d+1)(\bar q+1)$ & $105 / 255$ \\
+Linear sigmoid direct quantity & $d+1$ & $5$ \\
+Linear direct quantity & $d+1$ & $5$ \\
+Linear capped direct quantity & $d+1$ & $5$ \\
+Linear gated sigmoid direct quantity & $2(d+1)$ & $10$ \\
+Linear soft-gated direct quantity & $2(d+1)$ & $10$ \\
+Linear hard-gated direct quantity & $2(d+1)$ & $10$ \\
+Linear soft-gated ordinal quantity & $(d+1)(\bar q+1)$ & $105 / 255$ \\
+Soft tree, depth-1 linear leaf & $3(d+1)$ & $15$ \\
+Soft tree, depth-2 linear leaf & $7(d+1)$ & $35$ \\
 \hline
 \end{tabular}
 \end{table}
 
-For the one-hidden-layer neural analogue with width $H$, the shared dense-backbone count is
-\[
-N_{\mathrm{NN}}(m; d, H) = H(d+1) + (H+1)m,
-\]
-where $m$ is the decoder output dimension:
-\[
-m=
-\begin{cases}
-Q+1, & \text{categorical or soft-gated ordinal},\\
-1, & \text{direct or sigmoid direct},\\
-2, & \text{gated direct heads}.
-\end{cases}
-\]
-This is exactly the parameterization implemented by \texttt{PolicyNet} in the codebase.
+\begin{table}[t]
+\centering
+\small
+\caption{Trainable parameter counts for the one-hidden-layer NN scalar-quantity policy families.
+These counts use the current repo default $H=50$ for the \texttt{nn\_*} policies. The last column
+again reports vanilla / fixed-cost when the decoder-side cap differs across the two canonical
+instances.}
+\label{tab:nn-parameter-counts}
+\begin{tabular}{|l|c|c|}
+\hline
+Policy family & Trainable parameters & Count at $L=4$ \\
+\hline
+NN categorical quantity & $H(d+1) + (H+1)(\bar q+1)$ & $1321 / 2851$ \\
+NN sigmoid direct quantity & $H(d+1) + (H+1)$ & $301$ \\
+NN direct quantity & $H(d+1) + (H+1)$ & $301$ \\
+NN capped direct quantity & $H(d+1) + (H+1)$ & $301$ \\
+NN gated sigmoid direct quantity & $H(d+1) + 2(H+1)$ & $352$ \\
+NN soft-gated direct quantity & $H(d+1) + 2(H+1)$ & $352$ \\
+NN hard-gated direct quantity & $H(d+1) + 2(H+1)$ & $352$ \\
+NN soft-gated ordinal quantity & $H(d+1) + (H+1)(\bar q+1)$ & $1321 / 2851$ \\
+\hline
+\end{tabular}
+\end{table}
 
-\section{Canonical Poisson results}
+\begin{table}[t]
+\centering
+\small
+\caption{Trainable parameter counts for the soft-tree policy families.}
+\label{tab:tree-parameter-counts}
+\begin{tabular}{|l|c|c|}
+\hline
+Policy family & Trainable parameters & Count at $L=4$ \\
+\hline
+Soft tree, depth-1 linear leaf & $3(d+1)$ & $15$ \\
+Soft tree, depth-2 linear leaf & $7(d+1)$ & $35$ \\
+\hline
+\end{tabular}
+\end{table}
+
+\section{Numerical experiments}
 
 \subsection{Vanilla lost sales}
 
-For the canonical vanilla Poisson instance, the heuristic baselines are:
-\[
-\text{myopic1} = 5.0627,\qquad
-\text{myopic2} = 4.8168,\qquad
-\text{SVBS} = 5.8344.
-\]
-
-\begin{table}[t]
-\centering
-\caption{Canonical vanilla lost-sales benchmark for $L=4$, $p=4$, Poisson demand with mean $5$,
-and the current $2000$-iteration / population-$64$ CMA-ES protocol.}
-\label{tab:vanilla-poisson-canonical}
-\begin{tabular}{lrr}
-\toprule
-Policy family & Mean cost & Std. dev. \\
-\midrule
-\multicolumn{3}{l}{\textit{Heuristic baselines}} \\
-myopic1 & 5.0627 & --- \\
-myopic2 & 4.8168 & --- \\
-SVBS & 5.8344 & --- \\
-\midrule
-\multicolumn{3}{l}{\textit{Learned policies}} \\
-Linear, categorical quantity & 4.8752 & 0.0087 \\
-Linear, sigmoid direct quantity & 4.7557 & 0.0073 \\
-Linear, direct quantity & 4.7467 & 0.0075 \\
-Linear, gated sigmoid direct quantity & 4.7451 & 0.0082 \\
-Linear, soft-gated direct quantity & 4.7481 & 0.0080 \\
-Linear, hard-gated direct quantity & 4.7480 & 0.0076 \\
-Linear, soft-gated ordinal quantity & 4.7503 & 0.0077 \\
-Soft tree, depth-1 linear leaf & 4.7481 & 0.0075 \\
-Soft tree, depth-2 linear leaf & 4.7518 & 0.0078 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-Table~\ref{tab:vanilla-poisson-canonical} shows that once we leave the flat categorical head, the
-vanilla problem is relatively forgiving. Every non-categorical direct/tree policy lands in almost
-the same cost band, all below the best heuristic.
-
-This corrects an earlier overstatement in our local notes: the one-head sigmoid direct policy is
-not fundamentally bad on vanilla lost sales. At smaller CMA populations it was search-sensitive,
-but under the current population-$64$ protocol it is competitive.
-
-\subsection{Fixed-cost lost sales}
-
-For the canonical fixed-cost Poisson instance, the heuristic baselines are:
-\[
-(s,S)=9.3677,\qquad
-(s,nQ)=9.2094,\qquad
-\text{modified }(s,S,q)=9.2003.
-\]
-
-\begin{table}[t]
-\centering
-\caption{Canonical fixed-cost lost-sales benchmark for $L=4$, $p=4$, $K=5$, Poisson demand with
-mean $5$, and the current $2000$-iteration / population-$64$ CMA-ES protocol.}
-\label{tab:fixed-cost-poisson-canonical}
-\begin{tabular}{lrr}
-\toprule
-Policy family & Mean cost & Std. dev. \\
-\midrule
-\multicolumn{3}{l}{\textit{Heuristic baselines}} \\
-$(s,S)$ & 9.3677 & --- \\
-$(s,nQ)$ & 9.2094 & --- \\
-modified $(s,S,q)$ & 9.2003 & --- \\
-\midrule
-\multicolumn{3}{l}{\textit{Learned policies}} \\
-Linear, categorical quantity & 10.2754 & 0.0091 \\
-Linear, sigmoid direct quantity & 8.7728 & 0.0077 \\
-Linear, direct quantity & 9.7482 & 0.0072 \\
-Linear, gated sigmoid direct quantity & 9.7474 & 0.0074 \\
-Linear, soft-gated direct quantity & 8.7715 & 0.0068 \\
-Linear, hard-gated direct quantity & 9.7478 & 0.0072 \\
-Linear, soft-gated ordinal quantity & 8.7783 & 0.0074 \\
-Soft tree, depth-1 linear leaf & 8.7708 & 0.0075 \\
-Soft tree, depth-2 linear leaf & 8.7700 & 0.0076 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-Table~\ref{tab:fixed-cost-poisson-canonical} is much sharper. The fixed-cost problem is still the
-harder search test. The plain direct head is not robust here under the current protocol, whereas
-the best structured heads and the trees all land in the same strong basin around $8.77$.
-
-The key point is that this is no longer a simple ``Q-free versus Q-dependent'' story:
-\begin{itemize}
-    \item the $Q$-dependent one-head sigmoid direct policy is good,
-    \item the $Q$-free one-head softplus direct policy is not,
-    \item the $Q$-free soft-gated direct policy is good,
-    \item the trees are good.
-\end{itemize}
-So the real issue is search geometry, not a single symbolic design choice.
-
-\section{Demand-family robustness}
-
-\subsection{Vanilla $L=4$ sweep}
-
 Table~\ref{tab:vanilla-l4-demand-table} reports the full $L=4$, $p=4$ vanilla comparison across
-all four demand families. All heuristic baselines are shown explicitly rather than being collapsed
-into a single best-heuristic row.
+all four demand families on the active linear/tree benchmark surface. All heuristic baselines are
+shown explicitly rather than being collapsed into a single best-heuristic row.
 
 \begin{table}[t]
 \centering
@@ -397,7 +344,7 @@ SVBS & 5.8344 & 13.8596 & 12.2518 & 6.8244 \\
 \hline
 Linear categorical quantity & 4.8752 & 10.8041 & 8.6411 & 5.7431 \\
 Linear sigmoid direct quantity & 4.7557 & 10.6606 & 8.6336 & 5.3673 \\
-Linear direct quantity & 4.7467 & 10.6426 & 8.5899 & 5.3654 \\
+Linear capped direct quantity & 4.7467 & 10.6426 & 8.5899 & 5.3654 \\
 Linear gated sigmoid direct quantity & \textbf{4.7451} & 10.6469 & 8.6206 & 5.3680 \\
 Linear soft-gated direct quantity & 4.7481 & 10.6416 & 8.5819 & 5.3732 \\
 Linear hard-gated direct quantity & 4.7480 & 10.6542 & 8.5799 & 5.3685 \\
@@ -418,10 +365,14 @@ The vanilla side is comparatively forgiving:
     so those cells are marked unavailable.
 \end{itemize}
 
-\subsection{Fixed-cost $L=4$ sweep}
+So the full vanilla numerical experiment still says the same thing: once we move away from the
+flat categorical head, most direct and tree parameterizations land in essentially the same good
+basin. Search geometry matters here, but only weakly compared with the fixed-cost case below.
+
+\subsection{Fixed-cost lost sales}
 
 Table~\ref{tab:fixed-cost-l4-demand-table} reports the corresponding fixed-cost $L=4$, $p=4$,
-$K=5$ comparison.
+$K=5$ comparison on the same active linear/tree benchmark surface.
 
 \begin{table}[t]
 \centering
@@ -442,7 +393,7 @@ modified $(s,S,q)$ & 9.2003 & 14.0023 & 12.0935 & 9.6501 \\
 \hline
 Linear categorical quantity & 10.2754 & 15.9951 & 14.4001 & 10.7435 \\
 Linear sigmoid direct quantity & 8.7728 & 15.6229 & 12.3011 & 9.0772 \\
-Linear direct quantity & 9.7482 & 13.8152 & 12.4235 & 10.3640 \\
+Linear capped direct quantity & 9.7482 & 13.8152 & 12.4235 & 10.3640 \\
 Linear gated sigmoid direct quantity & 9.7474 & 13.7711 & 13.2140 & 10.3766 \\
 Linear soft-gated direct quantity & 8.7715 & 14.2049 & 12.3907 & \textbf{9.0656} \\
 Linear hard-gated direct quantity & 9.7478 & \textbf{13.6276} & \textbf{11.8787} & 10.3620 \\
@@ -463,21 +414,15 @@ This is still the sharper architecture test:
     \item Poisson fixed-cost demand still slightly favors the depth-$2$ tree.
 \end{itemize}
 
+This is where the full numerical experiment becomes much more informative than a single summary
+table. In fixed-cost lost sales, changing the action head changes which basin CMA-ES reaches. The
+problem is not just representational capacity: the main empirical effect is that different heads
+expose different order/no-order geometry to the search procedure.
+
 \section{Interpretation}
 
 The original local hypothesis was that \emph{factorization} or \emph{gating} might be the main
-winning ingredient. The current evidence is weaker and more precise than that.
-
-What we can say now is:
-\begin{enumerate}
-    \item The raw unbounded direct head is a bad search parameterization and should remain excluded
-    from the active benchmark surface.
-    \item The one-head sigmoid direct map is not fundamentally broken; it is search-sensitive. It
-    can be bad at smaller populations and good at larger ones.
-    \item The fixed-cost problem remains much more architecture-sensitive than the vanilla problem.
-    \item The most stable current interpretation is that these policy families differ mainly in the
-    replenishment geometry they expose to CMA-ES, not only in raw expressivity.
-\end{enumerate}
+winning ingredient. The numerical evidence is now weaker and more precise than that.
 
 So the best current reading is:
 \begin{quote}
@@ -485,9 +430,10 @@ Good policies are the ones whose parameterization makes the relevant replenishme
 for CMA-ES to find under the available budget.
 \end{quote}
 
-That map need not always be represented in the same way. In vanilla lost sales it can be realized
-by many non-categorical direct and tree heads. In fixed-cost lost sales it is still much more
-dependent on the action-head geometry and the demand family.
+That map need not always be represented in the same way. Vanilla lost sales is comparatively
+forgiving, so many non-categorical direct and tree heads realize essentially the same solution.
+Fixed-cost lost sales is not: there the action-head geometry and the demand family much more
+strongly determine which replenishment boundary CMA-ES can actually find.
 
 \section{Published verification anchor}
 
