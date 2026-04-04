@@ -18,6 +18,8 @@ Current implemented families:
 - `lost_sales_fixed_order_cost`
 - `dual_sourcing`
 - `multi_echelon`
+- `perishable_inventory`
+- `nonstationary_lot_sizing`
 
 ## Decision Rule
 
@@ -35,6 +37,8 @@ axis at a time.
 ## Implementation Order
 
 ### 1. `perishable_inventory`
+
+Status: implemented
 
 This is the next problem to implement.
 
@@ -61,6 +65,8 @@ Initial heuristic set to support:
 - fixed issuance rule as part of the instance definition, for example FIFO or LIFO
 
 ### 2. `nonstationary_lot_sizing`
+
+Status: implemented
 
 Why second:
 
@@ -159,11 +165,11 @@ Reason:
 
 ## Immediate Decision
 
-The next Rust problem folder should be:
+The next Rust problem folder after the current implementations should be:
 
-- `src/problems/perishable_inventory/`
+- `src/problems/random_yield_inventory/`
 
-and it should be implemented before any new multi-item or decentralized family.
+and it should still be implemented before any new multi-item or decentralized family.
 
 ## Review Anchor
 
