@@ -145,7 +145,6 @@ fn lost_sales_constant_action_rollout(
     flat_params,
     input_dim,
     depth,
-    max_order_size,
     demand_rate,
     demand_dist_name="Poisson",
     demand_lambda_low=DEFAULT_MMPP2_LAMBDA_LOW,
@@ -162,13 +161,12 @@ fn lost_sales_constant_action_rollout(
     warm_up_periods_ratio=0.2,
     temperature=0.25,
     split_type="oblique",
-    leaf_type="constant"
+    leaf_type="linear"
 ))]
 fn lost_sales_soft_tree_rollout(
     flat_params: Vec<f32>,
     input_dim: usize,
     depth: usize,
-    max_order_size: usize,
     demand_rate: f64,
     demand_dist_name: &str,
     demand_lambda_low: f64,
@@ -190,7 +188,6 @@ fn lost_sales_soft_tree_rollout(
     let config = LostSalesRolloutConfig {
         input_dim,
         depth,
-        max_order_size,
         demand_config: build_lost_sales_demand_config(
             demand_dist_name,
             demand_rate,
@@ -218,7 +215,6 @@ fn lost_sales_soft_tree_rollout(
     flat_params,
     input_dim,
     depth,
-    max_order_size,
     current_inventory,
     lead_time_orders,
     demands,
@@ -229,13 +225,12 @@ fn lost_sales_soft_tree_rollout(
     warm_up_periods_ratio=0.2,
     temperature=0.25,
     split_type="oblique",
-    leaf_type="constant"
+    leaf_type="linear"
 ))]
 fn lost_sales_soft_tree_rollout_from_demands(
     flat_params: Vec<f32>,
     input_dim: usize,
     depth: usize,
-    max_order_size: usize,
     current_inventory: i64,
     lead_time_orders: Vec<usize>,
     demands: Vec<usize>,
@@ -252,7 +247,6 @@ fn lost_sales_soft_tree_rollout_from_demands(
     let config = LostSalesRolloutConfig {
         input_dim,
         depth,
-        max_order_size,
         demand_config: LostSalesDemandConfig {
             kind: LostSalesDemandKind::Poisson,
             demand_rate: empirical_mean,
@@ -284,7 +278,6 @@ fn lost_sales_soft_tree_rollout_from_demands(
     params_batch,
     input_dim,
     depth,
-    max_order_size,
     demand_rate,
     seeds,
     demand_dist_name="Poisson",
@@ -301,13 +294,12 @@ fn lost_sales_soft_tree_rollout_from_demands(
     warm_up_periods_ratio=0.2,
     temperature=0.25,
     split_type="oblique",
-    leaf_type="constant"
+    leaf_type="linear"
 ))]
 fn lost_sales_soft_tree_population_rollout(
     params_batch: Vec<Vec<f32>>,
     input_dim: usize,
     depth: usize,
-    max_order_size: usize,
     demand_rate: f64,
     seeds: Vec<u64>,
     demand_dist_name: &str,
@@ -329,7 +321,6 @@ fn lost_sales_soft_tree_population_rollout(
     let config = LostSalesRolloutConfig {
         input_dim,
         depth,
-        max_order_size,
         demand_config: build_lost_sales_demand_config(
             demand_dist_name,
             demand_rate,
@@ -357,7 +348,7 @@ fn lost_sales_soft_tree_population_rollout(
     flat_params,
     input_dim,
     output_dim,
-    max_order_size,
+    policy_max_quantity,
     demand_rate,
     demand_dist_name="Poisson",
     demand_lambda_low=DEFAULT_MMPP2_LAMBDA_LOW,
@@ -378,7 +369,7 @@ fn lost_sales_linear_rollout(
     flat_params: Vec<f32>,
     input_dim: usize,
     output_dim: usize,
-    max_order_size: usize,
+    policy_max_quantity: Option<usize>,
     demand_rate: f64,
     demand_dist_name: &str,
     demand_lambda_low: f64,
@@ -398,7 +389,7 @@ fn lost_sales_linear_rollout(
     let config = LostSalesLinearRolloutConfig {
         input_dim,
         output_dim,
-        max_order_size,
+        policy_max_quantity,
         policy_head: parse_policy_head(policy_head)?,
         demand_config: build_lost_sales_demand_config(
             demand_dist_name,
@@ -424,7 +415,7 @@ fn lost_sales_linear_rollout(
     flat_params,
     input_dim,
     output_dim,
-    max_order_size,
+    policy_max_quantity,
     current_inventory,
     lead_time_orders,
     demands,
@@ -439,7 +430,7 @@ fn lost_sales_linear_rollout_from_demands(
     flat_params: Vec<f32>,
     input_dim: usize,
     output_dim: usize,
-    max_order_size: usize,
+    policy_max_quantity: Option<usize>,
     current_inventory: i64,
     lead_time_orders: Vec<usize>,
     demands: Vec<usize>,
@@ -454,7 +445,7 @@ fn lost_sales_linear_rollout_from_demands(
     let config = LostSalesLinearRolloutConfig {
         input_dim,
         output_dim,
-        max_order_size,
+        policy_max_quantity,
         policy_head: parse_policy_head(policy_head)?,
         demand_config: LostSalesDemandConfig {
             kind: LostSalesDemandKind::Poisson,
@@ -484,7 +475,7 @@ fn lost_sales_linear_rollout_from_demands(
     params_batch,
     input_dim,
     output_dim,
-    max_order_size,
+    policy_max_quantity,
     demand_rate,
     seeds,
     demand_dist_name="Poisson",
@@ -505,7 +496,7 @@ fn lost_sales_linear_population_rollout(
     params_batch: Vec<Vec<f32>>,
     input_dim: usize,
     output_dim: usize,
-    max_order_size: usize,
+    policy_max_quantity: Option<usize>,
     demand_rate: f64,
     seeds: Vec<u64>,
     demand_dist_name: &str,
@@ -525,7 +516,7 @@ fn lost_sales_linear_population_rollout(
     let config = LostSalesLinearRolloutConfig {
         input_dim,
         output_dim,
-        max_order_size,
+        policy_max_quantity,
         policy_head: parse_policy_head(policy_head)?,
         demand_config: build_lost_sales_demand_config(
             demand_dist_name,
@@ -552,7 +543,7 @@ fn lost_sales_linear_population_rollout(
     input_dim,
     hidden_dims,
     output_dim,
-    max_order_size,
+    policy_max_quantity,
     activation,
     demand_rate,
     demand_dist_name="Poisson",
@@ -575,7 +566,7 @@ fn lost_sales_nn_rollout(
     input_dim: usize,
     hidden_dims: Vec<usize>,
     output_dim: usize,
-    max_order_size: usize,
+    policy_max_quantity: Option<usize>,
     activation: &str,
     demand_rate: f64,
     demand_dist_name: &str,
@@ -597,7 +588,7 @@ fn lost_sales_nn_rollout(
         input_dim,
         hidden_dims,
         output_dim,
-        max_order_size,
+        policy_max_quantity,
         policy_head: parse_policy_head(policy_head)?,
         demand_config: build_lost_sales_demand_config(
             demand_dist_name,
@@ -625,7 +616,7 @@ fn lost_sales_nn_rollout(
     input_dim,
     hidden_dims,
     output_dim,
-    max_order_size,
+    policy_max_quantity,
     activation,
     current_inventory,
     lead_time_orders,
@@ -642,7 +633,7 @@ fn lost_sales_nn_rollout_from_demands(
     input_dim: usize,
     hidden_dims: Vec<usize>,
     output_dim: usize,
-    max_order_size: usize,
+    policy_max_quantity: Option<usize>,
     activation: &str,
     current_inventory: i64,
     lead_time_orders: Vec<usize>,
@@ -659,7 +650,7 @@ fn lost_sales_nn_rollout_from_demands(
         input_dim,
         hidden_dims,
         output_dim,
-        max_order_size,
+        policy_max_quantity,
         policy_head: parse_policy_head(policy_head)?,
         demand_config: LostSalesDemandConfig {
             kind: LostSalesDemandKind::Poisson,
@@ -691,7 +682,7 @@ fn lost_sales_nn_rollout_from_demands(
     input_dim,
     hidden_dims,
     output_dim,
-    max_order_size,
+    policy_max_quantity,
     activation,
     demand_rate,
     seeds,
@@ -714,7 +705,7 @@ fn lost_sales_nn_population_rollout(
     input_dim: usize,
     hidden_dims: Vec<usize>,
     output_dim: usize,
-    max_order_size: usize,
+    policy_max_quantity: Option<usize>,
     activation: &str,
     demand_rate: f64,
     seeds: Vec<u64>,
@@ -736,7 +727,7 @@ fn lost_sales_nn_population_rollout(
         input_dim,
         hidden_dims,
         output_dim,
-        max_order_size,
+        policy_max_quantity,
         policy_head: parse_policy_head(policy_head)?,
         demand_config: build_lost_sales_demand_config(
             demand_dist_name,

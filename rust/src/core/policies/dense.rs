@@ -25,7 +25,6 @@ pub enum DensePolicyHead {
     DirectQuantity,
     CappedDirectQuantity,
     SigmoidDirectQuantity,
-    UnboundedDirectQuantity,
     SoftGatedDirectQuantity,
     GatedSigmoidDirectQuantity,
     HardGatedDirectQuantity,
@@ -46,7 +45,6 @@ pub fn parse_policy_head(policy_head: &str) -> PyResult<DensePolicyHead> {
         "sigmoid_direct_quantity" | "scaled_direct_quantity" => {
             Ok(DensePolicyHead::SigmoidDirectQuantity)
         }
-        "unbounded_direct_quantity" => Ok(DensePolicyHead::UnboundedDirectQuantity),
         "soft_gated_direct_quantity" | "gated_direct_quantity" => {
             Ok(DensePolicyHead::SoftGatedDirectQuantity)
         }
@@ -65,7 +63,7 @@ pub fn parse_policy_head(policy_head: &str) -> PyResult<DensePolicyHead> {
             Ok(DensePolicyHead::HardGatedOrdinalQuantity)
         }
         other => Err(PyValueError::new_err(format!(
-            "unsupported dense policy head '{other}', expected one of: categorical_quantity, direct_quantity, capped_direct_quantity, sigmoid_direct_quantity, unbounded_direct_quantity, soft_gated_direct_quantity, gated_sigmoid_direct_quantity, hard_gated_direct_quantity, soft_gated_ordinal_quantity, hard_gated_ordinal_quantity"
+            "unsupported dense policy head '{other}', expected one of: categorical_quantity, direct_quantity, capped_direct_quantity, sigmoid_direct_quantity, soft_gated_direct_quantity, gated_sigmoid_direct_quantity, hard_gated_direct_quantity, soft_gated_ordinal_quantity, hard_gated_ordinal_quantity"
         ))),
     }
 }
@@ -106,6 +104,17 @@ fn sigmoid(x: f32) -> f32 {
     1.0 / (1.0 + (-x).exp())
 }
 
+fn require_policy_max_quantity(
+    policy_max_quantity: Option<usize>,
+    policy_name: &str,
+) -> PyResult<usize> {
+    policy_max_quantity.ok_or_else(|| {
+        PyValueError::new_err(format!(
+            "{policy_name} requires a policy-side quantity cap, but none was provided"
+        ))
+    })
+}
+
 fn dense_forward(input: &[f32], weights: &[f32], bias: &[f32], out_dim: usize) -> Vec<f32> {
     let in_dim = input.len();
     let mut output = vec![0.0_f32; out_dim];
@@ -123,7 +132,7 @@ fn dense_forward(input: &[f32], weights: &[f32], bias: &[f32], out_dim: usize) -
 fn dense_action_from_logits(
     logits: &[f32],
     policy_head: DensePolicyHead,
-    max_order_size: usize,
+    policy_max_quantity: Option<usize>,
 ) -> PyResult<usize> {
     match policy_head {
         DensePolicyHead::CategoricalQuantity => Ok(argmax_first(logits)),
@@ -145,8 +154,9 @@ fn dense_action_from_logits(
                     logits.len()
                 )));
             }
+            let cap = require_policy_max_quantity(policy_max_quantity, "capped direct quantity")?;
             let quantity_value = (1.0 + logits[0].exp()).ln();
-            let action = quantity_value.round().clamp(0.0, max_order_size as f32) as usize;
+            let action = quantity_value.round().clamp(0.0, cap as f32) as usize;
             Ok(action)
         }
         DensePolicyHead::SigmoidDirectQuantity => {
@@ -156,18 +166,9 @@ fn dense_action_from_logits(
                     logits.len()
                 )));
             }
-            let scaled_quantity = sigmoid(logits[0]) * max_order_size as f32;
-            let action = scaled_quantity.round().clamp(0.0, max_order_size as f32) as usize;
-            Ok(action)
-        }
-        DensePolicyHead::UnboundedDirectQuantity => {
-            if logits.len() != 1 {
-                return Err(PyValueError::new_err(format!(
-                    "unbounded direct quantity logits length {} does not match expected 1",
-                    logits.len()
-                )));
-            }
-            let action = logits[0].round().clamp(0.0, max_order_size as f32) as usize;
+            let cap = require_policy_max_quantity(policy_max_quantity, "sigmoid direct quantity")?;
+            let scaled_quantity = sigmoid(logits[0]) * cap as f32;
+            let action = scaled_quantity.round().clamp(0.0, cap as f32) as usize;
             Ok(action)
         }
         DensePolicyHead::SoftGatedDirectQuantity => {
@@ -177,11 +178,11 @@ fn dense_action_from_logits(
                     logits.len()
                 )));
             }
+            let cap =
+                require_policy_max_quantity(policy_max_quantity, "soft-gated direct quantity")?;
             let gate_prob = sigmoid(logits[0]);
             let quantity_value = (1.0 + logits[1].exp()).ln();
-            let action = (gate_prob * quantity_value)
-                .round()
-                .clamp(0.0, max_order_size as f32) as usize;
+            let action = (gate_prob * quantity_value).round().clamp(0.0, cap as f32) as usize;
             Ok(action)
         }
         DensePolicyHead::GatedSigmoidDirectQuantity => {
@@ -191,11 +192,13 @@ fn dense_action_from_logits(
                     logits.len()
                 )));
             }
+            let cap = require_policy_max_quantity(
+                policy_max_quantity,
+                "gated sigmoid direct quantity",
+            )?;
             let gate_prob = sigmoid(logits[0]);
-            let quantity_value = sigmoid(logits[1]) * max_order_size as f32;
-            let action = (gate_prob * quantity_value)
-                .round()
-                .clamp(0.0, max_order_size as f32) as usize;
+            let quantity_value = sigmoid(logits[1]) * cap as f32;
+            let action = (gate_prob * quantity_value).round().clamp(0.0, cap as f32) as usize;
             Ok(action)
         }
         DensePolicyHead::HardGatedDirectQuantity => {
@@ -209,31 +212,29 @@ fn dense_action_from_logits(
             if gate_prob < 0.5 {
                 return Ok(0);
             }
+            let cap =
+                require_policy_max_quantity(policy_max_quantity, "hard-gated direct quantity")?;
             let quantity_value = (1.0 + logits[1].exp()).ln();
-            let action = quantity_value.round().clamp(1.0, max_order_size as f32) as usize;
+            let action = quantity_value.round().clamp(1.0, cap as f32) as usize;
             Ok(action)
         }
         DensePolicyHead::SoftGatedOrdinalQuantity => {
-            if logits.len() != max_order_size + 1 {
+            if logits.len() < 2 {
                 return Err(PyValueError::new_err(format!(
-                    "gated ordinal logits length {} does not match expected {}",
+                    "gated ordinal logits length {} does not match minimum expected 2",
                     logits.len(),
-                    max_order_size + 1
                 )));
             }
             let gate_prob = sigmoid(logits[0]);
             let quantity_score: f32 = logits[1..].iter().map(|value| sigmoid(*value)).sum();
-            let action = (gate_prob * quantity_score)
-                .round()
-                .clamp(0.0, max_order_size as f32) as usize;
+            let action = (gate_prob * quantity_score).round().max(0.0) as usize;
             Ok(action)
         }
         DensePolicyHead::HardGatedOrdinalQuantity => {
-            if logits.len() != max_order_size + 1 {
+            if logits.len() < 2 {
                 return Err(PyValueError::new_err(format!(
-                    "two-stage ordinal logits length {} does not match expected {}",
+                    "two-stage ordinal logits length {} does not match minimum expected 2",
                     logits.len(),
-                    max_order_size + 1
                 )));
             }
             let gate_prob = sigmoid(logits[0]);
@@ -241,7 +242,7 @@ fn dense_action_from_logits(
                 return Ok(0);
             }
             let quantity_score: f32 = logits[1..].iter().map(|value| sigmoid(*value)).sum();
-            let action = quantity_score.round().clamp(1.0, max_order_size as f32) as usize;
+            let action = quantity_score.round().max(1.0) as usize;
             Ok(action)
         }
     }
@@ -253,7 +254,7 @@ pub fn linear_action_from_flat_params(
     input_dim: usize,
     output_dim: usize,
     policy_head: DensePolicyHead,
-    max_order_size: usize,
+    policy_max_quantity: Option<usize>,
 ) -> PyResult<usize> {
     if state.len() != input_dim {
         return Err(PyValueError::new_err(format!(
@@ -277,7 +278,7 @@ pub fn linear_action_from_flat_params(
         &flat_params[split..],
         output_dim,
     );
-    dense_action_from_logits(&logits, policy_head, max_order_size)
+    dense_action_from_logits(&logits, policy_head, policy_max_quantity)
 }
 
 pub fn mlp_action_from_flat_params(
@@ -288,7 +289,7 @@ pub fn mlp_action_from_flat_params(
     output_dim: usize,
     activation: ActivationKind,
     policy_head: DensePolicyHead,
-    max_order_size: usize,
+    policy_max_quantity: Option<usize>,
 ) -> PyResult<usize> {
     if state.len() != input_dim {
         return Err(PyValueError::new_err(format!(
@@ -343,5 +344,5 @@ pub fn mlp_action_from_flat_params(
         &flat_params[cursor + weight_len..cursor + weight_len + output_dim],
         output_dim,
     );
-    dense_action_from_logits(&logits, policy_head, max_order_size)
+    dense_action_from_logits(&logits, policy_head, policy_max_quantity)
 }

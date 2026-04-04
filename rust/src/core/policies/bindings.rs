@@ -7,14 +7,14 @@ use crate::core::policies::soft_tree::{
 };
 
 #[pyfunction]
-#[pyo3(signature = (state, split_weights, split_bias, leaf_logits, depth, max_order_size, temperature=0.25, split_type="oblique"))]
+#[pyo3(signature = (state, split_weights, split_bias, leaf_logits, depth, policy_max_quantity, temperature=0.25, split_type="oblique"))]
 fn soft_tree_action(
     state: Vec<f32>,
     split_weights: Vec<f32>,
     split_bias: Vec<f32>,
     leaf_logits: Vec<f32>,
     depth: usize,
-    max_order_size: usize,
+    policy_max_quantity: usize,
     temperature: f32,
     split_type: &str,
 ) -> PyResult<usize> {
@@ -36,10 +36,10 @@ fn soft_tree_action(
     );
     let mut action_value = 0.0f32;
     for (leaf_prob, leaf_logit) in leaf_probs.iter().zip(leaf_logits.iter()) {
-        let quantity = 1.0 / (1.0 + (-leaf_logit).exp()) * max_order_size as f32;
+        let quantity = 1.0 / (1.0 + (-leaf_logit).exp()) * policy_max_quantity as f32;
         action_value += leaf_prob * quantity;
     }
-    let clipped = action_value.round().clamp(0.0, max_order_size as f32);
+    let clipped = action_value.round().clamp(0.0, policy_max_quantity as f32);
     Ok(clipped as usize)
 }
 
@@ -49,17 +49,15 @@ fn soft_tree_action(
     flat_params,
     input_dim,
     depth,
-    max_order_size,
     temperature=0.25,
     split_type="oblique",
-    leaf_type="constant"
+    leaf_type="linear"
 ))]
 fn soft_tree_action_from_flat_params(
     state: Vec<f32>,
     flat_params: Vec<f32>,
     input_dim: usize,
     depth: usize,
-    max_order_size: usize,
     temperature: f32,
     split_type: &str,
     leaf_type: &str,
@@ -69,7 +67,6 @@ fn soft_tree_action_from_flat_params(
         &flat_params,
         input_dim,
         depth,
-        max_order_size,
         temperature,
         parse_split_type(split_type)?,
         parse_leaf_type(leaf_type)?,

@@ -135,6 +135,9 @@ class SoftTreePolicy(ESModule):
 
     def _project_controls(self, action_value):
         rounded = torch.round(action_value).to(dtype=torch.int64)
+        if self.control_mode == "scalar_quantity" and self.control_dim == 1 and self.leaf_type == "linear":
+            scalar = int(torch.clamp(rounded[0], min=0).item())
+            return scalar, np.asarray(scalar, dtype=np.int64)
         min_tensor = action_value.new_tensor(self.min_values, dtype=torch.int64)
         max_tensor = action_value.new_tensor(self.max_values, dtype=torch.int64)
         clipped = torch.minimum(torch.maximum(rounded, min_tensor), max_tensor)

@@ -8,7 +8,7 @@ use crate::core::policies::dense::{
     linear_action_from_flat_params, mlp_action_from_flat_params, ActivationKind, DensePolicyHead,
 };
 use crate::core::policies::soft_tree::{
-    action_from_flat_params, SoftTreeLeafType, SoftTreeSplitType,
+    uncapped_scalar_action_from_flat_params, SoftTreeLeafType, SoftTreeSplitType,
 };
 use crate::problems::lost_sales::demand::{
     build_demand_process, sample_demand, LostSalesDemandConfig,
@@ -21,7 +21,6 @@ use crate::problems::lost_sales::env::{
 pub struct LostSalesRolloutConfig {
     pub input_dim: usize,
     pub depth: usize,
-    pub max_order_size: usize,
     pub demand_config: LostSalesDemandConfig,
     pub lead_time: usize,
     pub holding_cost: f64,
@@ -39,7 +38,7 @@ pub struct LostSalesRolloutConfig {
 pub struct LostSalesLinearRolloutConfig {
     pub input_dim: usize,
     pub output_dim: usize,
-    pub max_order_size: usize,
+    pub policy_max_quantity: Option<usize>,
     pub policy_head: DensePolicyHead,
     pub demand_config: LostSalesDemandConfig,
     pub lead_time: usize,
@@ -56,7 +55,7 @@ pub struct LostSalesNeuralRolloutConfig {
     pub input_dim: usize,
     pub hidden_dims: Vec<usize>,
     pub output_dim: usize,
-    pub max_order_size: usize,
+    pub policy_max_quantity: Option<usize>,
     pub policy_head: DensePolicyHead,
     pub demand_config: LostSalesDemandConfig,
     pub lead_time: usize,
@@ -83,6 +82,11 @@ fn validate_config(config: &LostSalesRolloutConfig) -> PyResult<()> {
             "warm_up_periods_ratio must be in [0, 1]",
         ));
     }
+    if config.leaf_type != SoftTreeLeafType::Linear {
+        return Err(PyValueError::new_err(
+            "lost-sales soft-tree rollout only supports uncapped linear leaves",
+        ));
+    }
     Ok(())
 }
 
@@ -96,13 +100,19 @@ fn validate_linear_config(config: &LostSalesLinearRolloutConfig) -> PyResult<()>
         ));
     }
     let expected_output_dim = match config.policy_head {
-        DensePolicyHead::CategoricalQuantity
-        | DensePolicyHead::SoftGatedOrdinalQuantity
-        | DensePolicyHead::HardGatedOrdinalQuantity => config.max_order_size + 1,
+        DensePolicyHead::CategoricalQuantity => config.output_dim,
+        DensePolicyHead::SoftGatedOrdinalQuantity
+        | DensePolicyHead::HardGatedOrdinalQuantity => {
+            if config.output_dim < 2 {
+                return Err(PyValueError::new_err(
+                    "output_dim must be at least 2 for the selected policy head",
+                ));
+            }
+            config.output_dim
+        }
         DensePolicyHead::DirectQuantity
         | DensePolicyHead::CappedDirectQuantity
-        | DensePolicyHead::SigmoidDirectQuantity
-        | DensePolicyHead::UnboundedDirectQuantity => 1,
+        | DensePolicyHead::SigmoidDirectQuantity => 1,
         DensePolicyHead::SoftGatedDirectQuantity
         | DensePolicyHead::GatedSigmoidDirectQuantity
         | DensePolicyHead::HardGatedDirectQuantity => 2,
@@ -127,7 +137,7 @@ fn validate_neural_config(config: &LostSalesNeuralRolloutConfig) -> PyResult<()>
     validate_linear_config(&LostSalesLinearRolloutConfig {
         input_dim: config.input_dim,
         output_dim: config.output_dim,
-        max_order_size: config.max_order_size,
+        policy_max_quantity: config.policy_max_quantity,
         policy_head: config.policy_head,
         demand_config: config.demand_config,
         lead_time: config.lead_time,
@@ -176,12 +186,11 @@ pub fn rollout(flat_params: &[f32], config: &LostSalesRolloutConfig, seed: u64) 
             &env_state.lead_time_orders,
             state_scale,
         );
-        let action = action_from_flat_params(
+        let action = uncapped_scalar_action_from_flat_params(
             &state,
             flat_params,
             config.input_dim,
             config.depth,
-            config.max_order_size,
             config.temperature,
             config.split_type,
             config.leaf_type,
@@ -238,12 +247,11 @@ pub fn rollout_from_demands(
             &env_state.lead_time_orders,
             state_scale,
         );
-        let action = action_from_flat_params(
+        let action = uncapped_scalar_action_from_flat_params(
             &state,
             flat_params,
             config.input_dim,
             config.depth,
-            config.max_order_size,
             config.temperature,
             config.split_type,
             config.leaf_type,
@@ -328,7 +336,7 @@ pub fn linear_rollout(
             config.input_dim,
             config.output_dim,
             config.policy_head,
-            config.max_order_size,
+            config.policy_max_quantity,
         )?;
         let arriving_order = env_state.lead_time_orders.remove(0);
         env_state.lead_time_orders.push(action);
@@ -379,7 +387,7 @@ pub fn linear_rollout_from_demands(
             config.input_dim,
             config.output_dim,
             config.policy_head,
-            config.max_order_size,
+            config.policy_max_quantity,
         )?;
         let arriving_order = env_state.lead_time_orders.remove(0);
         env_state.lead_time_orders.push(action);
@@ -459,7 +467,7 @@ pub fn neural_rollout(
             config.output_dim,
             config.activation,
             config.policy_head,
-            config.max_order_size,
+            config.policy_max_quantity,
         )?;
         let arriving_order = env_state.lead_time_orders.remove(0);
         env_state.lead_time_orders.push(action);
@@ -512,7 +520,7 @@ pub fn neural_rollout_from_demands(
             config.output_dim,
             config.activation,
             config.policy_head,
-            config.max_order_size,
+            config.policy_max_quantity,
         )?;
         let arriving_order = env_state.lead_time_orders.remove(0);
         env_state.lead_time_orders.push(action);

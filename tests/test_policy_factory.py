@@ -60,13 +60,11 @@ def test_build_policy_returns_nn_direct_policy():
 @pytest.mark.parametrize(
     "policy_name",
     [
-        "linear_unbounded_direct_quantity",
-        "nn_unbounded_direct_quantity",
-        "linear_uncapped_direct_quantity",
-        "nn_uncapped_direct_quantity",
+        "linear_unknown_direct_quantity",
+        "nn_unknown_direct_quantity",
     ],
 )
-def test_unbounded_direct_policy_names_are_not_supported(policy_name):
+def test_unknown_direct_policy_names_are_not_supported(policy_name):
     with pytest.raises(ValueError, match="Unknown"):
         _make_args(policy_name)
 

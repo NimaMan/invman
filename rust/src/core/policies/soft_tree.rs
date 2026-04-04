@@ -370,24 +370,74 @@ pub fn action_vector_from_flat_params(
     Ok(project_action_value(&action_value, action_spec))
 }
 
+pub fn uncapped_scalar_action_from_flat_params(
+    state: &[f32],
+    flat_params: &[f32],
+    input_dim: usize,
+    depth: usize,
+    temperature: f32,
+    split_type: SoftTreeSplitType,
+    leaf_type: SoftTreeLeafType,
+) -> PyResult<usize> {
+    if temperature <= 0.0 {
+        return Err(PyValueError::new_err("temperature must be positive"));
+    }
+    if leaf_type != SoftTreeLeafType::Linear {
+        return Err(PyValueError::new_err(
+            "uncapped scalar soft-tree quantities require linear leaves",
+        ));
+    }
+    let action_dim = 1usize;
+    let (weights_end, bias_end, num_leaves) =
+        validate_soft_tree_flat_params(flat_params.len(), input_dim, depth, leaf_type, action_dim)?;
+    if state.len() != input_dim {
+        return Err(PyValueError::new_err(format!(
+            "state length {} does not match input_dim {}",
+            state.len(),
+            input_dim
+        )));
+    }
+
+    let split_weights = &flat_params[..weights_end];
+    let split_bias = &flat_params[weights_end..bias_end];
+    let leaf_probs = soft_tree_leaf_probabilities(
+        state,
+        split_weights,
+        split_bias,
+        depth,
+        temperature,
+        split_type,
+    );
+
+    let mut action_value = 0.0f32;
+    for (leaf_idx, leaf_prob) in leaf_probs.iter().enumerate() {
+        let leaf_output = leaf_output_from_flat_params(
+            state,
+            flat_params,
+            input_dim,
+            bias_end,
+            num_leaves,
+            leaf_idx,
+            leaf_type,
+            action_dim,
+        );
+        let raw = leaf_output[0];
+        let softplus = raw.max(0.0) + (-(raw.abs())).exp().ln_1p();
+        action_value += leaf_prob * softplus;
+    }
+    Ok(action_value.round().max(0.0) as usize)
+}
+
 pub fn action_from_flat_params(
     state: &[f32],
     flat_params: &[f32],
     input_dim: usize,
     depth: usize,
-    max_order_size: usize,
     temperature: f32,
     split_type: SoftTreeSplitType,
     leaf_type: SoftTreeLeafType,
 ) -> PyResult<usize> {
-    let action_spec = SoftTreeActionSpec {
-        action_dim: 1,
-        action_mode: SoftTreeActionMode::ScalarQuantity,
-        min_values: vec![0],
-        max_values: vec![max_order_size],
-        allowed_values: None,
-    };
-    Ok(action_vector_from_flat_params(
+    uncapped_scalar_action_from_flat_params(
         state,
         flat_params,
         input_dim,
@@ -395,6 +445,5 @@ pub fn action_from_flat_params(
         temperature,
         split_type,
         leaf_type,
-        &action_spec,
-    )?[0])
+    )
 }

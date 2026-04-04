@@ -344,13 +344,12 @@ def _rust_lost_sales_policy_mode(model, args, track_demand=False, return_env=Fal
 
     model_name = type(model).__name__
     if model_name == "SoftTreePolicy":
-        return "soft_tree"
+        return "soft_tree" if str(getattr(model, "leaf_type", "constant")) == "linear" else None
     dense_rust_heads = {
         "categorical_quantity",
         "direct_quantity",
         "capped_direct_quantity",
         "sigmoid_direct_quantity",
-        "unbounded_direct_quantity",
         "soft_gated_direct_quantity",
         "gated_sigmoid_direct_quantity",
         "hard_gated_direct_quantity",
@@ -366,6 +365,27 @@ def _rust_lost_sales_policy_mode(model, args, track_demand=False, return_env=Fal
 
 def _dense_policy_output_dim(model):
     return int(getattr(model, "policy_output_dim", getattr(model, "output_dim")))
+
+
+def _rust_policy_max_quantity(model):
+    bounded_dense_heads = {
+        "categorical_quantity",
+        "capped_direct_quantity",
+        "sigmoid_direct_quantity",
+        "soft_gated_direct_quantity",
+        "gated_sigmoid_direct_quantity",
+        "hard_gated_direct_quantity",
+        "soft_gated_ordinal_quantity",
+        "hard_gated_ordinal_quantity",
+    }
+    action_output_mode = str(getattr(model, "action_output_mode", ""))
+    if action_output_mode not in bounded_dense_heads:
+        return None
+
+    policy_max_quantity = getattr(model, "max_order_size", None)
+    if policy_max_quantity is None:
+        raise ValueError(f"{action_output_mode} requires a policy-side quantity cap")
+    return int(policy_max_quantity)
 
 
 def get_model_fitness(
@@ -397,7 +417,6 @@ def get_model_fitness(
             flat_params=np.asarray(flat_params, dtype=np.float32).tolist(),
             input_dim=int(model.input_dim),
             depth=int(model.depth),
-            max_order_size=int(model.max_order_size),
             split_type=str(getattr(model, "split_type", "oblique")),
             leaf_type=str(getattr(model, "leaf_type", "constant")),
             demand_rate=float(args.demand_rate),
@@ -426,7 +445,7 @@ def get_model_fitness(
             flat_params=np.asarray(flat_params, dtype=np.float32).tolist(),
             input_dim=int(model.input_dim),
             output_dim=_dense_policy_output_dim(model),
-            max_order_size=int(model.max_order_size),
+            policy_max_quantity=_rust_policy_max_quantity(model),
             policy_head=policy_head,
             demand_rate=float(args.demand_rate),
             demand_dist_name=str(getattr(args, "demand_dist_name", "Poisson")),
@@ -454,7 +473,7 @@ def get_model_fitness(
             input_dim=int(model.input_dim),
             hidden_dims=[int(width) for width in model.hidden_dim],
             output_dim=_dense_policy_output_dim(model),
-            max_order_size=int(model.max_order_size),
+            policy_max_quantity=_rust_policy_max_quantity(model),
             policy_head=policy_head,
             activation=str(getattr(model, "activation_name", "selu")),
             demand_rate=float(args.demand_rate),
@@ -504,7 +523,6 @@ def get_population_fitness(model, args, model_params_batch, seeds):
             params_batch=params_batch,
             input_dim=int(model.input_dim),
             depth=int(model.depth),
-            max_order_size=int(model.max_order_size),
             split_type=str(getattr(model, "split_type", "oblique")),
             leaf_type=str(getattr(model, "leaf_type", "constant")),
             demand_rate=float(args.demand_rate),
@@ -526,7 +544,7 @@ def get_population_fitness(model, args, model_params_batch, seeds):
             params_batch=params_batch,
             input_dim=int(model.input_dim),
             output_dim=_dense_policy_output_dim(model),
-            max_order_size=int(model.max_order_size),
+            policy_max_quantity=_rust_policy_max_quantity(model),
             policy_head=policy_head,
             demand_rate=float(args.demand_rate),
             seeds=[int(seed) for seed in seeds],
@@ -547,7 +565,7 @@ def get_population_fitness(model, args, model_params_batch, seeds):
             input_dim=int(model.input_dim),
             hidden_dims=[int(width) for width in model.hidden_dim],
             output_dim=_dense_policy_output_dim(model),
-            max_order_size=int(model.max_order_size),
+            policy_max_quantity=_rust_policy_max_quantity(model),
             policy_head=policy_head,
             activation=str(getattr(model, "activation_name", "selu")),
             demand_rate=float(args.demand_rate),
