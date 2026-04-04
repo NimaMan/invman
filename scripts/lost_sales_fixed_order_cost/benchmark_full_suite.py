@@ -21,6 +21,7 @@ from invman.problems.lost_sales_fixed_order_cost.reference_instances import (
     get_benchmark_grid,
     get_reference_instance,
 )
+from invman.utils import RunStatusTracker
 
 
 def parse_args():
@@ -75,6 +76,10 @@ def _ensure_dirs(root: Path):
 
 def _summary_paths(root: Path):
     return root / "fixed_cost_full_suite.json", root / "fixed_cost_full_suite.md"
+
+
+def _suite_status_path(root: Path):
+    return root / "suite_status.json"
 
 
 def _instance_summary_path(root: Path, reference_name: str) -> Path:
@@ -200,12 +205,14 @@ def _summarize_instances(instances: list[dict]) -> dict:
     return {"policies": policies}
 
 
-def _build_instance_payload(parsed, root: Path, instance: dict, selected_ids: set[str] | None):
+def _build_instance_payload(parsed, root: Path, instance: dict, selected_ids: set[str] | None, tracker=None):
     reference_name = instance["name"]
     instance_summary_path = _instance_summary_path(root, reference_name)
     if parsed.reuse_existing_instance_summary and instance_summary_path.exists():
         return json.loads(instance_summary_path.read_text(encoding="utf-8"))
 
+    if tracker is not None:
+        tracker.update("benchmarking_heuristics", reference_name=reference_name)
     heuristic_summary = benchmark_reference_instance(
         reference_name,
         search_horizon=parsed.search_horizon,
@@ -219,6 +226,12 @@ def _build_instance_payload(parsed, root: Path, instance: dict, selected_ids: se
     for spec in EXPERIMENT_SPECS:
         if selected_ids is not None and spec["id"] not in selected_ids:
             continue
+        if tracker is not None:
+            tracker.update(
+                "running_policy",
+                reference_name=reference_name,
+                policy_id=spec["id"],
+            )
         args = configure_run_args(parsed, spec, root, reference_name)
         payload, result_path = _load_or_run_experiment(args, reuse_existing=parsed.reuse_existing)
         learned_policies[spec["id"]] = {
@@ -308,11 +321,11 @@ def _run_instance_subprocess(parsed, reference_name: str, *, mp_num_processors: 
     subprocess.run(command, check=True, cwd=PACKAGE_ROOT)
 
 
-def _collect_instance_payloads(parsed, root: Path, grid_instances: list[dict], selected_ids: set[str] | None):
+def _collect_instance_payloads(parsed, root: Path, grid_instances: list[dict], selected_ids: set[str] | None, tracker=None):
     actual_jobs = _effective_instance_jobs(parsed, len(grid_instances))
     if actual_jobs == 1 or len(grid_instances) <= 1:
         return [
-            _build_instance_payload(parsed, root, instance, selected_ids)
+            _build_instance_payload(parsed, root, instance, selected_ids, tracker=tracker)
             for instance in grid_instances
         ]
 
@@ -366,36 +379,64 @@ def main():
     root = _suite_root(parsed.run_tag)
     _ensure_dirs(root)
 
-    grid = get_benchmark_grid(parsed.grid_name)
-    grid_instances = grid["instances"]
-    if parsed.references is not None:
-        requested = set(parsed.references)
-        grid_instances = [instance for instance in grid_instances if instance["name"] in requested]
-    if parsed.limit is not None:
-        grid_instances = grid_instances[: int(parsed.limit)]
+    tracker = None
+    tracker_cm = None
+    if not parsed.skip_suite_summary:
+        tracker_cm = RunStatusTracker(
+            _suite_status_path(root),
+            metadata={
+                "run_tag": parsed.run_tag,
+                "problem": "lost_sales_fixed_order_cost",
+                "grid_name": parsed.grid_name,
+                "seed": int(parsed.seed),
+            },
+        )
+        tracker = tracker_cm.__enter__()
 
-    selected_ids = set(parsed.only) if parsed.only else None
+    try:
+        if tracker is not None:
+            tracker.update("loading_grid")
+        grid = get_benchmark_grid(parsed.grid_name)
+        grid_instances = grid["instances"]
+        if parsed.references is not None:
+            requested = set(parsed.references)
+            grid_instances = [instance for instance in grid_instances if instance["name"] in requested]
+        if parsed.limit is not None:
+            grid_instances = grid_instances[: int(parsed.limit)]
 
-    instance_payloads = _collect_instance_payloads(parsed, root, grid_instances, selected_ids)
+        selected_ids = set(parsed.only) if parsed.only else None
 
-    summary = {
-        "run_tag": parsed.run_tag,
-        "grid_name": parsed.grid_name,
-        "grid_description": grid["description"],
-        "grid_axes": grid["axes"],
-        "num_instances": len(instance_payloads),
-        "protocol": _instance_protocol(parsed),
-        "instances": instance_payloads,
-        "aggregate": _summarize_instances(instance_payloads),
-    }
+        instance_payloads = _collect_instance_payloads(parsed, root, grid_instances, selected_ids, tracker=tracker)
 
-    if parsed.skip_suite_summary:
-        return
+        summary = {
+            "run_tag": parsed.run_tag,
+            "grid_name": parsed.grid_name,
+            "grid_description": grid["description"],
+            "grid_axes": grid["axes"],
+            "num_instances": len(instance_payloads),
+            "protocol": _instance_protocol(parsed),
+            "instances": instance_payloads,
+            "aggregate": _summarize_instances(instance_payloads),
+        }
 
-    summary_json, summary_md = _summary_paths(root)
-    summary_json.write_text(json.dumps(summary, indent=2), encoding="utf-8")
-    summary_md.write_text(_render_markdown(summary), encoding="utf-8")
-    print(json.dumps({"summary_json": str(summary_json), "summary_md": str(summary_md)}, indent=2))
+        if parsed.skip_suite_summary:
+            return
+
+        if tracker is not None:
+            tracker.update("writing_suite_summary", num_instances=len(instance_payloads))
+        summary_json, summary_md = _summary_paths(root)
+        summary_json.write_text(json.dumps(summary, indent=2), encoding="utf-8")
+        summary_md.write_text(_render_markdown(summary), encoding="utf-8")
+        if tracker is not None:
+            tracker.mark_completed(
+                summary_json=str(summary_json),
+                summary_md=str(summary_md),
+                num_instances=len(instance_payloads),
+            )
+        print(json.dumps({"summary_json": str(summary_json), "summary_md": str(summary_md)}, indent=2))
+    finally:
+        if tracker_cm is not None:
+            tracker_cm.__exit__(*sys.exc_info())
 
 
 if __name__ == "__main__":
