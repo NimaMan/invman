@@ -2,6 +2,66 @@
 
 This package contains the fixed setup-cost extension of the single-item lost-sales problem.
 
+## Literature guidance
+
+### Primary fixed-cost benchmark reference
+
+- Marco Bijvank, Sandjai Bhulai, and Woonghee Tim Huh, *Parametric replenishment policies for
+  inventory systems with lost sales and fixed order cost*, European Journal of Operational
+  Research, 2015.
+- DOI: <https://doi.org/10.1016/j.ejor.2014.11.036>
+- Repo literature note: `docs/literature/fixed_order_cost_literature.md`
+
+This paper is the core literature anchor for the fixed-order-cost lost-sales problem in this repo.
+
+### What the fixed-cost literature gives us
+
+The Bijvank et al. benchmark family gives:
+
+- the fixed-cost lost-sales problem family
+- the benchmark heuristic classes
+- validation anchors for published small instances
+
+The main heuristic classes used there are:
+
+- `(s,S)`
+- `(s,nQ)`
+- modified `(s,S,q)`
+
+### What it does not give us
+
+This literature does not give:
+
+- a deep-RL benchmark for fixed-cost lost sales
+- a prescribed neural architecture
+- a prescribed neural action head
+
+So for learning-based fixed-cost experiments, this package necessarily combines:
+
+- fixed-cost benchmark structure from Bijvank et al.
+- learning-architecture guidance from nearby single-item DRL papers
+
+### Nearest DRL architecture anchor
+
+The closest single-item DRL reference we currently have is the vanilla lost-sales A3C study of
+Gijsbrechts et al. (2022):
+
+- DOI: <https://doi.org/10.1287/msom.2021.1064>
+- four fully connected layers `[150, 120, 80, 20]`
+- ReLU after each layer
+- value regularization `0.25`
+- four parallel learners
+- gradient clipping `40`
+- bounded scalar action space `[0, 1, ..., 20]` for their lost-sales setting
+
+Repo implication:
+
+- if we want a literature-style bounded NN baseline for fixed-order-cost lost sales, the cleanest
+  imported cap is `Q = 20`
+- if we use a larger cap such as `Q = 50`, that is a repo-specific design choice rather than a
+  direct literature DRL anchor
+- any such cap should remain a policy parameter, not an environment-side hidden restriction
+
 Canonical reference instance:
 
 - name: `lit_pois_mu5_l4_p4_k5`
@@ -75,10 +135,9 @@ For this problem, the policy head matters more than the backbone:
 
 Supporting files:
 
-- [reference_instances.py](/Users/nimamanaf/Desktop/code/ML/inventory_management/invman/invman/problems/lost_sales_fixed_order_cost/reference_instances.py)
-- [heuristics.py](/Users/nimamanaf/Desktop/code/ML/inventory_management/invman/invman/problems/lost_sales_fixed_order_cost/heuristics.py)
-- [benchmark.py](/Users/nimamanaf/Desktop/code/ML/inventory_management/invman/invman/problems/lost_sales_fixed_order_cost/benchmark.py)
-- [env.py](/Users/nimamanaf/Desktop/code/ML/inventory_management/invman/invman/problems/lost_sales_fixed_order_cost/env.py)
+- `reference_instances.py`
+- `heuristics.py`
+- `benchmark.py`
+- `env.py`
 
-Detailed benchmark notes live in
-[fixed_cost_l4_refresh.md](/Users/nimamanaf/Desktop/code/ML/inventory_management/invman/docs/benchmarks/fixed_cost_l4_refresh.md).
+Detailed benchmark notes live in `docs/benchmarks/fixed_cost_l4_refresh.md`.

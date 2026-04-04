@@ -1,13 +1,14 @@
 import numpy as np
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
 
 from invman.policies.common import (
+    as_float32_vector,
     normalize_action_spec,
     normalize_tree_action_adapter,
     normalize_tree_leaf_type,
     normalize_tree_split_type,
+    round_nearest,
+    sigmoid,
+    softplus,
 )
 from invman.policies.es_module import ESModule
 from invman.utils import save_init_args
@@ -56,112 +57,120 @@ class SoftTreePolicy(ESModule):
         self.num_internal_nodes = (2 ** self.depth) - 1
         self.num_leaves = 2 ** self.depth
 
-        self.split_weights = nn.Parameter(torch.empty(self.num_internal_nodes, self.input_dim))
-        self.split_bias = nn.Parameter(torch.empty(self.num_internal_nodes))
+        self.split_weights = np.empty((self.num_internal_nodes, self.input_dim), dtype=np.float32)
+        self.split_bias = np.empty((self.num_internal_nodes,), dtype=np.float32)
         if self.leaf_type == "constant":
-            self.leaf_logits = nn.Parameter(torch.empty(self.num_leaves, self.control_dim))
+            self.leaf_logits = np.empty((self.num_leaves, self.control_dim), dtype=np.float32)
             self.leaf_weights = None
             self.leaf_bias = None
         elif self.leaf_type in {"linear", "sigmoid_linear"}:
-            self.leaf_weights = nn.Parameter(torch.empty(self.num_leaves, self.control_dim, self.input_dim))
-            self.leaf_bias = nn.Parameter(torch.empty(self.num_leaves, self.control_dim))
+            self.leaf_weights = np.empty((self.num_leaves, self.control_dim, self.input_dim), dtype=np.float32)
+            self.leaf_bias = np.empty((self.num_leaves, self.control_dim), dtype=np.float32)
             self.leaf_logits = None
         else:
             raise NotImplementedError(f"Unknown tree leaf type: {self.leaf_type}")
         self.features = {}
         self.reset_parameters()
 
-    def reset_parameters(self):
-        nn.init.normal_(self.split_weights, mean=0.0, std=0.15)
-        nn.init.normal_(self.split_bias, mean=0.0, std=0.15)
+    def parameter_arrays(self):
+        arrays = [self.split_weights, self.split_bias]
         if self.leaf_type == "constant":
-            nn.init.normal_(self.leaf_logits, mean=0.0, std=0.15)
+            arrays.append(self.leaf_logits)
         elif self.leaf_type in {"linear", "sigmoid_linear"}:
-            nn.init.normal_(self.leaf_weights, mean=0.0, std=0.15)
-            nn.init.normal_(self.leaf_bias, mean=0.0, std=0.15)
+            arrays.append(self.leaf_weights)
+            arrays.append(self.leaf_bias)
+        return arrays
+
+    def reset_parameters(self):
+        self.split_weights[...] = np.random.normal(0.0, 0.15, size=self.split_weights.shape).astype(np.float32)
+        self.split_bias[...] = np.random.normal(0.0, 0.15, size=self.split_bias.shape).astype(np.float32)
+        if self.leaf_type == "constant":
+            self.leaf_logits[...] = np.random.normal(0.0, 0.15, size=self.leaf_logits.shape).astype(np.float32)
+        elif self.leaf_type in {"linear", "sigmoid_linear"}:
+            self.leaf_weights[...] = np.random.normal(0.0, 0.15, size=self.leaf_weights.shape).astype(np.float32)
+            self.leaf_bias[...] = np.random.normal(0.0, 0.15, size=self.leaf_bias.shape).astype(np.float32)
         else:
             raise NotImplementedError(f"Unknown tree leaf type: {self.leaf_type}")
 
     def _leaf_probabilities(self, state):
         if self.split_type == "oblique":
-            logits = F.linear(state.unsqueeze(0), self.split_weights, self.split_bias).squeeze(0)
+            logits = (self.split_weights @ state + self.split_bias).astype(np.float32, copy=False)
             selected_feature_idx = None
             selected_feature_weight = None
         elif self.split_type == "axis_aligned":
-            selector_idx = torch.argmax(torch.abs(self.split_weights), dim=-1)
-            node_idx = torch.arange(self.num_internal_nodes, device=self.split_weights.device)
-            selected_feature_idx = selector_idx.detach().cpu().numpy()
-            selected_feature_weight = self.split_weights[node_idx, selector_idx].detach().cpu().numpy()
+            selector_idx = np.argmax(np.abs(self.split_weights), axis=-1)
+            node_idx = np.arange(self.num_internal_nodes)
+            selected_feature_idx = selector_idx.astype(np.int64, copy=False)
+            selected_feature_weight = self.split_weights[node_idx, selector_idx].astype(np.float32, copy=True)
             selected_state = state[selector_idx]
             selected_weight = self.split_weights[node_idx, selector_idx]
-            logits = (selected_state * selected_weight) + self.split_bias
+            logits = (selected_state * selected_weight + self.split_bias).astype(np.float32, copy=False)
         else:
             raise NotImplementedError(f"Unknown tree split type: {self.split_type}")
 
-        gates = torch.sigmoid(logits / self.temperature)
+        gates = sigmoid(logits / np.float32(self.temperature)).astype(np.float32, copy=False)
 
-        level_probs = state.new_ones(1)
+        level_probs = np.ones(1, dtype=np.float32)
         for depth in range(self.depth):
             next_level_probs = []
             start_idx = (2 ** depth) - 1
             for offset, parent_prob in enumerate(level_probs):
-                gate = gates[start_idx + offset]
-                next_level_probs.append(parent_prob * (1.0 - gate))
-                next_level_probs.append(parent_prob * gate)
-            level_probs = torch.stack(next_level_probs)
+                gate = float(gates[start_idx + offset])
+                next_level_probs.append(float(parent_prob) * (1.0 - gate))
+                next_level_probs.append(float(parent_prob) * gate)
+            level_probs = np.asarray(next_level_probs, dtype=np.float32)
         return gates, level_probs, selected_feature_idx, selected_feature_weight
 
-    def _control_scale(self, state):
-        min_tensor = state.new_tensor(self.min_values, dtype=torch.float32).view(1, self.control_dim)
-        max_tensor = state.new_tensor(self.max_values, dtype=torch.float32).view(1, self.control_dim)
-        return min_tensor, max_tensor
-
     def _leaf_quantities(self, state):
-        min_tensor = state.new_tensor(self.min_values, dtype=torch.float32).view(1, self.control_dim)
-        max_tensor = state.new_tensor(self.max_values, dtype=torch.float32).view(1, self.control_dim)
+        min_tensor = np.asarray(self.min_values, dtype=np.float32).reshape(1, self.control_dim)
+        max_tensor = np.asarray(self.max_values, dtype=np.float32).reshape(1, self.control_dim)
         action_span = max_tensor - min_tensor
         if self.leaf_type == "constant":
-            scaled = min_tensor + torch.sigmoid(self.leaf_logits) * action_span
-            return scaled, None
+            scaled = min_tensor + sigmoid(self.leaf_logits) * action_span
+            return scaled.astype(np.float32, copy=False), None
         if self.leaf_type == "sigmoid_linear":
-            raw_leaf_output = torch.einsum("lai,i->la", self.leaf_weights, state) + self.leaf_bias
-            scaled = min_tensor + torch.sigmoid(raw_leaf_output) * action_span
-            return scaled, raw_leaf_output
+            raw_leaf_output = np.einsum("lai,i->la", self.leaf_weights, state, optimize=True) + self.leaf_bias
+            scaled = min_tensor + sigmoid(raw_leaf_output) * action_span
+            return scaled.astype(np.float32, copy=False), raw_leaf_output.astype(np.float32, copy=False)
         if self.leaf_type == "linear":
-            raw_leaf_output = torch.einsum("lai,i->la", self.leaf_weights, state) + self.leaf_bias
-            scaled = min_tensor + F.softplus(raw_leaf_output)
-            return scaled, raw_leaf_output
+            raw_leaf_output = np.einsum("lai,i->la", self.leaf_weights, state, optimize=True) + self.leaf_bias
+            scaled = min_tensor + softplus(raw_leaf_output)
+            return scaled.astype(np.float32, copy=False), raw_leaf_output.astype(np.float32, copy=False)
         raise NotImplementedError(f"Unknown tree leaf type: {self.leaf_type}")
 
     def _project_controls(self, action_value):
-        rounded = torch.round(action_value).to(dtype=torch.int64)
+        action_value = np.asarray(action_value, dtype=np.float32).reshape(self.control_dim)
+        rounded = round_nearest(action_value).astype(np.int64)
         if self.control_mode == "scalar_quantity" and self.control_dim == 1 and self.leaf_type == "linear":
-            scalar = int(torch.clamp(rounded[0], min=0).item())
+            scalar = int(max(int(rounded[0]), 0))
             return scalar, np.asarray(scalar, dtype=np.int64)
-        min_tensor = action_value.new_tensor(self.min_values, dtype=torch.int64)
-        max_tensor = action_value.new_tensor(self.max_values, dtype=torch.int64)
-        clipped = torch.minimum(torch.maximum(rounded, min_tensor), max_tensor)
+        clipped = np.clip(
+            rounded,
+            np.asarray(self.min_values, dtype=np.int64),
+            np.asarray(self.max_values, dtype=np.int64),
+        )
 
         if self.control_mode == "discrete_grid":
             projected_dims = []
             for dim_idx, allowed_values in enumerate(self.control_spec["allowed_values"]):
-                allowed_tensor = action_value.new_tensor(allowed_values, dtype=torch.float32)
-                distances = torch.abs(allowed_tensor - action_value[dim_idx])
-                projected_dims.append(int(allowed_tensor[torch.argmin(distances)].item()))
+                allowed_tensor = np.asarray(allowed_values, dtype=np.float32)
+                distances = np.abs(allowed_tensor - action_value[dim_idx])
+                projected_dims.append(int(allowed_tensor[int(np.argmin(distances))]))
             if self.control_dim == 1:
                 return projected_dims[0], np.asarray(projected_dims[0], dtype=np.int64)
             return tuple(projected_dims), np.asarray(projected_dims, dtype=np.int64)
 
         if self.control_dim == 1:
-            return int(clipped[0].item()), np.asarray(int(clipped[0].item()), dtype=np.int64)
-        projected = tuple(int(value) for value in clipped.detach().cpu().tolist())
+            scalar = int(clipped[0])
+            return scalar, np.asarray(scalar, dtype=np.int64)
+        projected = tuple(int(value) for value in clipped.tolist())
         return projected, np.asarray(projected, dtype=np.int64)
 
     def _finalize_action(self, projected_controls, state):
         from invman.problems.dual_sourcing.policies import apply_action_adapter
 
         controls = np.atleast_1d(projected_controls).astype(np.int64).tolist()
-        normalized_state = state.detach().cpu().numpy()
+        normalized_state = np.asarray(state, dtype=np.float32)
         return apply_action_adapter(
             self.action_adapter,
             controls,
@@ -171,41 +180,35 @@ class SoftTreePolicy(ESModule):
         )
 
     def forward(self, state, return_features=False):
-        if state.dim() != 1:
-            raise ValueError("SoftTreePolicy expects a single 1D state vector")
-
-        state = state.to(dtype=torch.float32)
+        state = as_float32_vector(state)
         split_probs, leaf_probs, selected_feature_idx, selected_feature_weight = self._leaf_probabilities(state)
         leaf_quantities, raw_leaf_output = self._leaf_quantities(state)
-        action_value = torch.sum(leaf_probs.unsqueeze(-1) * leaf_quantities, dim=0)
+        action_value = np.sum(leaf_probs[:, None] * leaf_quantities, axis=0).astype(np.float32, copy=False)
         projected_controls, projected_array = self._project_controls(action_value)
         action = self._finalize_action(projected_array, state)
 
         if return_features:
-            self.features["split_probs"] = split_probs.detach().cpu().numpy()
-            self.features["leaf_probs"] = leaf_probs.detach().cpu().numpy()
-            leaf_quantities_np = leaf_quantities.detach().cpu().numpy()
-            self.features["leaf_quantities"] = (
-                leaf_quantities_np[:, 0] if self.control_dim == 1 else leaf_quantities_np
-            )
-            action_value_np = action_value.detach().cpu().numpy()
-            self.features["action_value"] = (
-                float(action_value_np.item()) if self.control_dim == 1 else action_value_np
-            )
-            self.features["projected_controls"] = projected_array
-            self.features["projected_action"] = np.asarray(action)
-            self.features["split_type"] = self.split_type
-            self.features["leaf_type"] = self.leaf_type
-            self.features["action_spec"] = dict(self.action_spec)
-            self.features["control_spec"] = dict(self.control_spec)
-            self.features["action_adapter"] = self.action_adapter
+            features = {
+                "split_probs": split_probs.copy(),
+                "leaf_probs": leaf_probs.copy(),
+                "leaf_quantities": leaf_quantities[:, 0].copy() if self.control_dim == 1 else leaf_quantities.copy(),
+                "action_value": float(action_value.item()) if self.control_dim == 1 else action_value.copy(),
+                "projected_controls": projected_array.copy() if isinstance(projected_array, np.ndarray) else np.asarray(projected_array),
+                "projected_action": np.asarray(action),
+                "split_type": self.split_type,
+                "leaf_type": self.leaf_type,
+                "action_spec": dict(self.action_spec),
+                "control_spec": dict(self.control_spec),
+                "action_adapter": self.action_adapter,
+            }
             if raw_leaf_output is not None:
-                raw_leaf_output_np = raw_leaf_output.detach().cpu().numpy()
-                self.features["raw_leaf_output"] = (
-                    raw_leaf_output_np[:, 0] if self.control_dim == 1 else raw_leaf_output_np
+                features["raw_leaf_output"] = (
+                    raw_leaf_output[:, 0].copy() if self.control_dim == 1 else raw_leaf_output.copy()
                 )
             if selected_feature_idx is not None:
-                self.features["selected_feature_idx"] = selected_feature_idx
-                self.features["selected_feature_weight"] = selected_feature_weight
+                features["selected_feature_idx"] = selected_feature_idx.copy()
+                features["selected_feature_weight"] = selected_feature_weight.copy()
+            self.features = features
             return action, self.features
+        self.features = {}
         return action

@@ -344,7 +344,11 @@ def _rust_lost_sales_policy_mode(model, args, track_demand=False, return_env=Fal
 
     model_name = type(model).__name__
     if model_name == "SoftTreePolicy":
-        return "soft_tree" if str(getattr(model, "leaf_type", "constant")) == "linear" else None
+        return (
+            "soft_tree"
+            if str(getattr(model, "leaf_type", "constant")) in {"linear", "sigmoid_linear"}
+            else None
+        )
     dense_rust_heads = {
         "categorical_quantity",
         "direct_quantity",
@@ -388,6 +392,15 @@ def _rust_policy_max_quantity(model):
     return int(policy_max_quantity)
 
 
+def _rust_soft_tree_policy_max_quantity(model):
+    if str(getattr(model, "leaf_type", "constant")) != "sigmoid_linear":
+        return None
+    policy_max_quantity = getattr(model, "max_order_size", None)
+    if policy_max_quantity is None:
+        raise ValueError("sigmoid_linear soft-tree leaves require a policy-side quantity cap")
+    return int(policy_max_quantity)
+
+
 def get_model_fitness(
     model,
     args,
@@ -398,8 +411,6 @@ def get_model_fitness(
     track_demand=False,
     verbose=False,
 ):
-    import torch
-
     rust_mode = _rust_lost_sales_policy_mode(
         model,
         args,
@@ -417,6 +428,7 @@ def get_model_fitness(
             flat_params=np.asarray(flat_params, dtype=np.float32).tolist(),
             input_dim=int(model.input_dim),
             depth=int(model.depth),
+            policy_max_quantity=_rust_soft_tree_policy_max_quantity(model),
             split_type=str(getattr(model, "split_type", "oblique")),
             leaf_type=str(getattr(model, "leaf_type", "constant")),
             demand_rate=float(args.demand_rate),
@@ -493,13 +505,11 @@ def get_model_fitness(
         return -float(avg_cost), indiv_idx
 
     np.random.seed(seed)
-    torch.manual_seed(seed)
     env = build_env_from_args(args, track_demand=track_demand)
     state = env.policy_state
     done = False
     while not done:
-        state_tensor = torch.as_tensor(state, dtype=torch.float32)
-        order_quantity = model(state_tensor)
+        order_quantity = model(state)
         state, _, done = env.step(order_quantity=order_quantity)
     if verbose:
         print(f"Seed {seed}: avg cost {env.avg_total_cost:.4f}")
@@ -523,6 +533,7 @@ def get_population_fitness(model, args, model_params_batch, seeds):
             params_batch=params_batch,
             input_dim=int(model.input_dim),
             depth=int(model.depth),
+            policy_max_quantity=_rust_soft_tree_policy_max_quantity(model),
             split_type=str(getattr(model, "split_type", "oblique")),
             leaf_type=str(getattr(model, "leaf_type", "constant")),
             demand_rate=float(args.demand_rate),

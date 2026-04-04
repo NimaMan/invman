@@ -17,6 +17,29 @@ Supporting sources used for the heuristic definitions:
 - Van Roy, Bertsekas, Lee, and Tsitsiklis (1997), *A Neurodynamic Programming Approach to Retailer Inventory Management*.
   DOI: https://doi.org/10.1109/CDC.1997.652501
 
+## Shared A3C Architecture Across the Gijsbrechts Problems
+
+Gijsbrechts et al. keep one shared neural backbone across dual sourcing, lost sales, and
+multi-echelon:
+
+- four fully connected layers with widths `[150, 120, 80, 20]`
+- ReLU after each layer
+- value regularization `0.25`
+- four parallel learners
+- gradient clipping `40`
+
+The three tuned hyperparameters are:
+
+- learning rate
+- entropy regularization
+- buffer length
+
+Problem-specific changes are mostly in the input dimension and action-space design:
+
+- lost sales: bounded scalar action `[0, 1, ..., 20]`
+- dual sourcing: two order quantities `(q_regular, q_expedited)`
+- multi-echelon: discretized base-stock action grid from Van Roy et al. (1997)
+
 ## Benchmark-Reference Summary
 
 For the two non-lost-sales problems, the literature gives us the benchmark problem sets and
@@ -124,3 +147,80 @@ Repo benchmark notes:
 
 - the repo benchmark is faithful to the literature action-grid setup;
 - constant base-stock search is exhaustive over the configured warehouse and retailer action grids.
+
+## Additional DRL Inventory Problem Types Outside the Current Repo Scope
+
+Below are adjacent problem families that are plausible next extensions for `invman`.
+
+### Perishable Inventory
+
+Primary source:
+
+- Alvaro Maggiar, Carson Eisenach, Sohrab Andaz, Dean Foster, Akhil Bagaria, Omer Gottesman,
+  and Dominique Perrault-Joncas (2025), *Structure-Informed Deep Reinforcement Learning for
+  Inventory Management*.
+- arXiv: https://arxiv.org/abs/2507.22040
+
+Problem type:
+
+- multi-period lost-sales inventory with fixed shelf life
+
+Architecture used there:
+
+- a WaveNet-style encoder for time-series inputs
+- history window `H = 32`
+- five stacked causal CNN layers with dilations `1, 2, 4, 8, 16`
+- the encoded time-series output is combined with static and endogenous variables in an MLP
+- MLP has two hidden layers of `32` neurons
+- ELU activations throughout
+
+Why this matters for `invman`:
+
+- this is the cleanest literature-backed next step if we want a fifth problem family beyond the
+  current four
+- it also provides a non-MLP architecture reference that is still inventory-specific
+
+### Joint Inventory Procurement and Removal
+
+Primary source:
+
+- same Maggiar et al. (2025) paper above
+
+Problem type:
+
+- joint procurement and removal / returns-value inventory control
+
+Architecture used there:
+
+- the same shared WaveNet-plus-MLP policy architecture as above
+- no problem-specific architecture change is introduced for this setting
+
+Why this matters for `invman`:
+
+- it is a natural extension if we want to study reverse logistics or inventory liquidation decisions
+
+### Beer Game / Serial Supply-Chain Coordination
+
+Primary source:
+
+- Afshin Oroojlooyjadid, MohammadReza Nazari, Lawrence V. Snyder, and Martin Takac (2020),
+  *A Deep Q-Network for the Beer Game: Deep Reinforcement Learning for Inventory Optimization*.
+- arXiv: https://arxiv.org/abs/1708.05924
+
+Problem type:
+
+- decentralized serial supply chain with local observations and cooperative total-cost objective
+
+Architecture and parameter details reported there:
+
+- DQN / SRDQN rather than actor-critic
+- state uses the last `m` periods of local observations
+- action uses a finite `d + x` adjustment rule instead of an unbounded order quantity
+- one explicit network shape reported for transfer-learning experiments is `[50, 180, 130, 61, 5]`
+- one explicit parameter setting reported there is `m = 10`, `beta = 20`, and target-network update
+  period `C = 10000`
+
+Why this matters for `invman`:
+
+- it is a natural reference if we ever want to move from centralized replenishment problems toward
+  decentralized supply-chain learning

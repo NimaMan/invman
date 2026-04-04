@@ -277,7 +277,12 @@ fn project_action_value(action_value: &[f32], action_spec: &SoftTreeActionSpec) 
             for (dim_idx, value) in action_value.iter().enumerate() {
                 let min_value = action_spec.min_values[dim_idx] as f32;
                 let max_value = action_spec.max_values[dim_idx] as f32;
-                let clipped = value.round().clamp(min_value, max_value);
+                let rounded = if *value >= 0.0 {
+                    (*value + 0.5).floor()
+                } else {
+                    (*value - 0.5).ceil()
+                };
+                let clipped = rounded.clamp(min_value, max_value);
                 projected.push(clipped as usize);
             }
         }

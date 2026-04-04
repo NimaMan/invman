@@ -39,12 +39,6 @@ def set_global_seeds(seed):
     seed = int(seed)
     random.seed(seed)
     np.random.seed(seed)
-    try:
-        import torch
-    except ImportError:  # pragma: no cover - torch is optional for some paths
-        torch = None
-    if torch is not None:
-        torch.manual_seed(seed)
 
 
 class RunTerminationRequested(KeyboardInterrupt):

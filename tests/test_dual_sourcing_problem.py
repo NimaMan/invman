@@ -1,6 +1,5 @@
 import numpy as np
 import pytest
-import torch
 
 from invman.policies import apply_policy_name, make_soft_tree_policy_name
 from invman.policies import SoftTreePolicy
@@ -109,7 +108,7 @@ def test_dual_sourcing_soft_tree_rust_matches_python_rollout():
     env.total_cost = 0.0
     env.horizon_demand = np.asarray(fixed_path.demands, dtype=np.int64)
     while not env.is_done():
-        env.step(model(torch.as_tensor(env.policy_state, dtype=torch.float32)))
+        env.step(model(env.policy_state))
 
     rust_cost = invman_rust.dual_sourcing_soft_tree_rollout_from_demands(
         flat_params=model.get_model_flat_params().astype(np.float32).tolist(),
@@ -175,7 +174,7 @@ def test_dual_sourcing_structured_tree_rust_matches_python_rollout():
     env.total_cost = 0.0
     env.horizon_demand = np.asarray(fixed_path.demands, dtype=np.int64)
     while not env.is_done():
-        env.step(model(torch.as_tensor(env.policy_state, dtype=torch.float32)))
+        env.step(model(env.policy_state))
 
     rust_cost = invman_rust.dual_sourcing_soft_tree_rollout_from_demands(
         flat_params=model.get_model_flat_params().astype(np.float32).tolist(),

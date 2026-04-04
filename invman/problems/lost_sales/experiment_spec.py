@@ -19,27 +19,57 @@ COMMON_BUDGET = {
 
 EXPERIMENT_SPECS = [
     {
-        "id": "linear_categorical_quantity_q8",
-        "rollout_backend": "rust",
-        "status": "trusted",
-    },
-    {
         "id": "linear_categorical_quantity_q20",
         "rollout_backend": "rust",
         "status": "trusted",
     },
     {
-        "id": "nn_categorical_quantity_q8",
+        "id": "linear_sigmoid_direct_quantity",
+        "rollout_backend": "rust",
+        "status": "trusted",
+    },
+    {
+        "id": "linear_soft_gated_direct_quantity",
+        "rollout_backend": "rust",
+        "status": "trusted",
+    },
+    {
+        "id": "linear_hard_gated_direct_quantity",
+        "rollout_backend": "rust",
+        "status": "trusted",
+    },
+    {
+        "id": "linear_soft_gated_ordinal_quantity",
         "rollout_backend": "rust",
         "status": "trusted",
     },
     {
         "id": "nn_categorical_quantity_q20",
         "rollout_backend": "rust",
+        "status": "provisional",
+    },
+    {
+        "id": "nn_soft_gated_ordinal_quantity",
+        "rollout_backend": "rust",
+        "status": "provisional",
+    },
+    {
+        "id": "soft_tree_depth1_linear_leaf",
+        "rollout_backend": "rust",
         "status": "trusted",
     },
     {
-        "id": "soft_tree_depth2_linear_leaf_q8",
+        "id": "soft_tree_depth2_linear_leaf",
+        "rollout_backend": "rust",
+        "status": "trusted",
+    },
+    {
+        "id": "soft_tree_depth1_sigmoid_linear_leaf_q20",
+        "rollout_backend": "rust",
+        "status": "trusted",
+    },
+    {
+        "id": "soft_tree_depth2_sigmoid_linear_leaf_q20",
         "rollout_backend": "rust",
         "status": "trusted",
     },
@@ -81,6 +111,7 @@ def configure_run_args(
     args.eval_seeds = parsed.eval_seeds
     args.sigma_init = COMMON_BUDGET["sigma_init"]
     args.save_every = COMMON_BUDGET["save_every"]
+    args.max_order_size = 20
     args.policy_name = spec["id"]
     apply_policy_name(args)
     args.rollout_backend = spec["rollout_backend"]

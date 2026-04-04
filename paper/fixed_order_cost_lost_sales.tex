@@ -211,18 +211,6 @@ a_t =
 \]
 This is the code path named \texttt{hard\_gated\_direct\_quantity}.
 
-\paragraph{Soft-gated ordinal quantity.}
-The policy emits one gate score $g(x_t)$ and ordinal scores
-$o_1(x_t),\ldots,o_{\bar q}(x_t)$, and sets
-\[
-\hat m(x_t) = \sum_{k=1}^{\bar q} \sigma(o_k(x_t)),
-\qquad
-a_t = \mathrm{round}\!\left(\sigma(g(x_t)) \, \hat m(x_t)\right).
-\]
-This is the code path named \texttt{soft\_gated\_ordinal\_quantity}. The implemented but
-currently inactive \texttt{hard\_gated\_ordinal\_quantity} replaces the soft product by the same
-hard gate used in the direct head above.
-
 \paragraph{Soft trees with linear leaves.}
 A soft tree computes path probabilities $\pi_\ell(x_t)$ over leaves, and each leaf emits a local
 linear quantity model
@@ -251,7 +239,9 @@ The policy families discussed in this note fall into three groups: linear dense 
 one-hidden-layer neural dense policies, and soft trees. For the active $L=4$ pipeline state we
 have $d=4$ and therefore $d+1=5$. The bounded heads use $\bar q=20$ in the canonical vanilla
 instance and $\bar q=50$ in the canonical fixed-cost instance. The current NN registry entries use
-a single hidden layer of width $H=50$ with SELU activation.
+a single hidden layer of width $H=50$ with SELU activation. We exclude the ordinal decoders from
+the active rerun surface below because their output dimension, and hence their parameter count,
+still scales directly with $\bar q$.
 
 \begin{table}[t]
 \centering
@@ -271,7 +261,6 @@ Linear capped direct quantity & $d+1$ & $5$ \\
 Linear gated sigmoid direct quantity & $2(d+1)$ & $10$ \\
 Linear soft-gated direct quantity & $2(d+1)$ & $10$ \\
 Linear hard-gated direct quantity & $2(d+1)$ & $10$ \\
-Linear soft-gated ordinal quantity & $(d+1)(\bar q+1)$ & $105 / 255$ \\
 Soft tree, depth-1 linear leaf & $3(d+1)$ & $15$ \\
 Soft tree, depth-2 linear leaf & $7(d+1)$ & $35$ \\
 \hline
@@ -297,7 +286,6 @@ NN capped direct quantity & $H(d+1) + (H+1)$ & $301$ \\
 NN gated sigmoid direct quantity & $H(d+1) + 2(H+1)$ & $352$ \\
 NN soft-gated direct quantity & $H(d+1) + 2(H+1)$ & $352$ \\
 NN hard-gated direct quantity & $H(d+1) + 2(H+1)$ & $352$ \\
-NN soft-gated ordinal quantity & $H(d+1) + (H+1)(\bar q+1)$ & $1321 / 2851$ \\
 \hline
 \end{tabular}
 \end{table}
@@ -348,7 +336,6 @@ Linear capped direct quantity & 4.7467 & 10.6426 & 8.5899 & 5.3654 \\
 Linear gated sigmoid direct quantity & \textbf{4.7451} & 10.6469 & 8.6206 & 5.3680 \\
 Linear soft-gated direct quantity & 4.7481 & 10.6416 & 8.5819 & 5.3732 \\
 Linear hard-gated direct quantity & 4.7480 & 10.6542 & 8.5799 & 5.3685 \\
-Linear soft-gated ordinal quantity & 4.7503 & 10.6801 & \textbf{8.4776} & \textbf{5.3595} \\
 Soft tree, depth-1 linear leaf & 4.7481 & \textbf{10.6391} & 8.5893 & --- \\
 Soft tree, depth-2 linear leaf & 4.7518 & 10.6453 & 11.9015 & --- \\
 \hline
@@ -359,7 +346,7 @@ The vanilla side is comparatively forgiving:
 \begin{itemize}
     \item every non-categorical policy beats the best heuristic in the Poisson and Geometric
     cases,
-    \item the correlated-demand winners are the ordinal direct heads rather than the trees,
+    \item the correlated-demand winners remain compact dense direct heads rather than the trees,
     \item the one-head sigmoid direct policy is competitive at population $64$,
     \item the currently stored negative-MMPP2 vanilla bundle does not contain the two tree rows,
     so those cells are marked unavailable.
@@ -397,7 +384,6 @@ Linear capped direct quantity & 9.7482 & 13.8152 & 12.4235 & 10.3640 \\
 Linear gated sigmoid direct quantity & 9.7474 & 13.7711 & 13.2140 & 10.3766 \\
 Linear soft-gated direct quantity & 8.7715 & 14.2049 & 12.3907 & \textbf{9.0656} \\
 Linear hard-gated direct quantity & 9.7478 & \textbf{13.6276} & \textbf{11.8787} & 10.3620 \\
-Linear soft-gated ordinal quantity & 8.7783 & 13.7504 & 12.2385 & 9.0810 \\
 Soft tree, depth-1 linear leaf & 8.7708 & 13.8218 & 12.3165 & 10.3697 \\
 Soft tree, depth-2 linear leaf & \textbf{8.7700} & 13.7412 & 12.3836 & 10.3675 \\
 \hline

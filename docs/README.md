@@ -18,3 +18,4 @@ Important literature notes:
 
 - `literature/fixed_order_cost_literature.md`
 - `literature/gijsbrechts2022_additional_problems.md`
+- `literature/fundamental_problem_families.md`

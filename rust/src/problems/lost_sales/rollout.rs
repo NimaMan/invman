@@ -8,7 +8,8 @@ use crate::core::policies::dense::{
     linear_action_from_flat_params, mlp_action_from_flat_params, ActivationKind, DensePolicyHead,
 };
 use crate::core::policies::soft_tree::{
-    uncapped_scalar_action_from_flat_params, SoftTreeLeafType, SoftTreeSplitType,
+    action_vector_from_flat_params, build_action_spec, uncapped_scalar_action_from_flat_params,
+    SoftTreeLeafType, SoftTreeSplitType,
 };
 use crate::problems::lost_sales::demand::{
     build_demand_process, sample_demand, LostSalesDemandConfig,
@@ -21,6 +22,7 @@ use crate::problems::lost_sales::env::{
 pub struct LostSalesRolloutConfig {
     pub input_dim: usize,
     pub depth: usize,
+    pub policy_max_quantity: Option<usize>,
     pub demand_config: LostSalesDemandConfig,
     pub lead_time: usize,
     pub holding_cost: f64,
@@ -82,9 +84,17 @@ fn validate_config(config: &LostSalesRolloutConfig) -> PyResult<()> {
             "warm_up_periods_ratio must be in [0, 1]",
         ));
     }
-    if config.leaf_type != SoftTreeLeafType::Linear {
+    if !matches!(
+        config.leaf_type,
+        SoftTreeLeafType::Linear | SoftTreeLeafType::SigmoidLinear
+    ) {
         return Err(PyValueError::new_err(
-            "lost-sales soft-tree rollout only supports uncapped linear leaves",
+            "lost-sales soft-tree rollout only supports linear and sigmoid_linear leaves",
+        ));
+    }
+    if config.leaf_type == SoftTreeLeafType::SigmoidLinear && config.policy_max_quantity.is_none() {
+        return Err(PyValueError::new_err(
+            "sigmoid_linear soft-tree leaves require a policy-side quantity cap",
         ));
     }
     Ok(())
@@ -165,6 +175,47 @@ fn demand_state_scale(demand_config: &LostSalesDemandConfig) -> PyResult<f64> {
     Ok(demand_config.implied_mean().map_err(PyValueError::new_err)?.max(1.0))
 }
 
+fn add_arriving_order(current_inventory: i64, arriving_order: usize) -> i64 {
+    let arriving_order_i64 = arriving_order.min(i64::MAX as usize) as i64;
+    current_inventory.saturating_add(arriving_order_i64)
+}
+
+fn soft_tree_action(flat_params: &[f32], state: &[f32], config: &LostSalesRolloutConfig) -> PyResult<usize> {
+    match config.leaf_type {
+        SoftTreeLeafType::Linear => uncapped_scalar_action_from_flat_params(
+            state,
+            flat_params,
+            config.input_dim,
+            config.depth,
+            config.temperature,
+            config.split_type,
+            config.leaf_type,
+        ),
+        SoftTreeLeafType::SigmoidLinear => {
+            let cap = config.policy_max_quantity.ok_or_else(|| {
+                PyValueError::new_err(
+                    "sigmoid_linear soft-tree leaves require a policy-side quantity cap",
+                )
+            })?;
+            let action_spec = build_action_spec("scalar_quantity", vec![0], vec![cap], None)?;
+            let action = action_vector_from_flat_params(
+                state,
+                flat_params,
+                config.input_dim,
+                config.depth,
+                config.temperature,
+                config.split_type,
+                config.leaf_type,
+                &action_spec,
+            )?;
+            Ok(action[0])
+        }
+        other => Err(PyValueError::new_err(format!(
+            "unsupported lost-sales soft-tree leaf type {other:?}"
+        ))),
+    }
+}
+
 pub fn rollout(flat_params: &[f32], config: &LostSalesRolloutConfig, seed: u64) -> PyResult<f64> {
     validate_config(config)?;
     let state_scale = demand_state_scale(&config.demand_config)?;
@@ -186,19 +237,11 @@ pub fn rollout(flat_params: &[f32], config: &LostSalesRolloutConfig, seed: u64) 
             &env_state.lead_time_orders,
             state_scale,
         );
-        let action = uncapped_scalar_action_from_flat_params(
-            &state,
-            flat_params,
-            config.input_dim,
-            config.depth,
-            config.temperature,
-            config.split_type,
-            config.leaf_type,
-        )?;
+        let action = soft_tree_action(flat_params, &state, config)?;
 
         let arriving_order = env_state.lead_time_orders.remove(0);
         env_state.lead_time_orders.push(action);
-        env_state.current_inventory += arriving_order as i64;
+        env_state.current_inventory = add_arriving_order(env_state.current_inventory, arriving_order);
 
         let demand = sample_demand(&mut rng, &mut demand_process);
         let cost = epoch_cost(
@@ -247,19 +290,11 @@ pub fn rollout_from_demands(
             &env_state.lead_time_orders,
             state_scale,
         );
-        let action = uncapped_scalar_action_from_flat_params(
-            &state,
-            flat_params,
-            config.input_dim,
-            config.depth,
-            config.temperature,
-            config.split_type,
-            config.leaf_type,
-        )?;
+        let action = soft_tree_action(flat_params, &state, config)?;
 
         let arriving_order = env_state.lead_time_orders.remove(0);
         env_state.lead_time_orders.push(action);
-        env_state.current_inventory += arriving_order as i64;
+        env_state.current_inventory = add_arriving_order(env_state.current_inventory, arriving_order);
 
         let cost = epoch_cost(
             &mut env_state.current_inventory,
@@ -340,7 +375,7 @@ pub fn linear_rollout(
         )?;
         let arriving_order = env_state.lead_time_orders.remove(0);
         env_state.lead_time_orders.push(action);
-        env_state.current_inventory += arriving_order as i64;
+        env_state.current_inventory = add_arriving_order(env_state.current_inventory, arriving_order);
         let demand = sample_demand(&mut rng, &mut demand_process);
         let cost = epoch_cost(
             &mut env_state.current_inventory,
@@ -391,7 +426,7 @@ pub fn linear_rollout_from_demands(
         )?;
         let arriving_order = env_state.lead_time_orders.remove(0);
         env_state.lead_time_orders.push(action);
-        env_state.current_inventory += arriving_order as i64;
+        env_state.current_inventory = add_arriving_order(env_state.current_inventory, arriving_order);
         let cost = epoch_cost(
             &mut env_state.current_inventory,
             *demand as i64,
@@ -471,7 +506,7 @@ pub fn neural_rollout(
         )?;
         let arriving_order = env_state.lead_time_orders.remove(0);
         env_state.lead_time_orders.push(action);
-        env_state.current_inventory += arriving_order as i64;
+        env_state.current_inventory = add_arriving_order(env_state.current_inventory, arriving_order);
         let demand = sample_demand(&mut rng, &mut demand_process);
         let cost = epoch_cost(
             &mut env_state.current_inventory,
@@ -524,7 +559,7 @@ pub fn neural_rollout_from_demands(
         )?;
         let arriving_order = env_state.lead_time_orders.remove(0);
         env_state.lead_time_orders.push(action);
-        env_state.current_inventory += arriving_order as i64;
+        env_state.current_inventory = add_arriving_order(env_state.current_inventory, arriving_order);
         let cost = epoch_cost(
             &mut env_state.current_inventory,
             *demand as i64,
@@ -565,4 +600,15 @@ pub fn neural_population_rollout(
         costs.push(result?);
     }
     Ok(costs)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::add_arriving_order;
+
+    #[test]
+    fn arriving_order_update_saturates_at_i64_max() {
+        let updated = add_arriving_order(i64::MAX - 1, usize::MAX);
+        assert_eq!(updated, i64::MAX);
+    }
 }

@@ -19,7 +19,7 @@ def _build_parsed(**overrides):
         "search_horizon": 10000,
         "reuse_existing": True,
         "reuse_existing_instance_summary": True,
-        "only": ["linear_categorical_quantity", "nn_soft_gated_ordinal_quantity"],
+        "only": ["linear_categorical_quantity", "soft_tree_depth2_linear_leaf"],
     }
     payload.update(overrides)
     return SimpleNamespace(**payload)
@@ -39,4 +39,4 @@ def test_child_command_forces_single_instance_execution_and_summary_skip():
     assert "--skip_suite_summary" in command
     assert "--only" in command
     assert "linear_categorical_quantity" in command
-    assert "nn_soft_gated_ordinal_quantity" in command
+    assert "soft_tree_depth2_linear_leaf" in command

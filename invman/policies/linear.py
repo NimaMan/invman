@@ -1,7 +1,14 @@
-import torch
-import torch.nn as nn
+import numpy as np
 
-from invman.policies.common import normalize_action_spec, normalize_policy_head
+from invman.policies.common import (
+    as_float32_vector,
+    init_linear_layer,
+    normalize_action_spec,
+    normalize_policy_head,
+    round_nearest,
+    sigmoid,
+    softplus,
+)
 from invman.policies.es_module import ESModule
 from invman.utils import save_init_args
 
@@ -21,8 +28,8 @@ class LinearPolicyNet(ESModule):
         action_adapter_config=None,
     ):
         super().__init__()
-        self.input_dim = input_dim
-        self.output_dim = output_dim
+        self.input_dim = int(input_dim)
+        self.output_dim = int(output_dim)
         self.output_activation = output_activation
         self.action_output_mode = normalize_policy_head(action_output_mode)
         self.max_order_size = max_order_size
@@ -44,7 +51,7 @@ class LinearPolicyNet(ESModule):
             "soft_gated_ordinal_quantity",
             "hard_gated_ordinal_quantity",
         }:
-            out_features = output_dim
+            out_features = self.output_dim
         elif self.action_output_mode in {
             "gated_sigmoid_direct_quantity",
             "soft_gated_direct_quantity",
@@ -86,29 +93,35 @@ class LinearPolicyNet(ESModule):
         if self.action_output_mode == "bounded_quantity" and self.control_dim < 1:
             raise ValueError("bounded_quantity requires at least one control dimension.")
 
-        self.linear_app = nn.Linear(in_features=input_dim, out_features=out_features)
+        self.linear_weight, self.linear_bias = init_linear_layer(self.input_dim, self.policy_output_dim)
         self.features = {}
 
+    def parameter_arrays(self):
+        return [self.linear_weight, self.linear_bias]
+
     def _project_controls(self, control_value):
-        rounded = torch.round(control_value).to(dtype=torch.int64)
-        min_tensor = control_value.new_tensor(self.min_values, dtype=torch.int64)
-        max_tensor = control_value.new_tensor(self.max_values, dtype=torch.int64)
-        clipped = torch.minimum(torch.maximum(rounded, min_tensor), max_tensor)
+        control_value = np.asarray(control_value, dtype=np.float32).reshape(self.control_dim)
+        rounded = round_nearest(control_value).astype(np.int64)
+        clipped = np.clip(
+            rounded,
+            np.asarray(self.min_values, dtype=np.int64),
+            np.asarray(self.max_values, dtype=np.int64),
+        )
 
         if self.control_mode == "discrete_grid":
             projected_dims = []
             for dim_idx, allowed_values in enumerate(self.control_spec["allowed_values"]):
-                allowed_tensor = control_value.new_tensor(allowed_values, dtype=torch.float32)
-                distances = torch.abs(allowed_tensor - control_value[dim_idx])
-                projected_dims.append(int(allowed_tensor[torch.argmin(distances)].item()))
+                allowed_tensor = np.asarray(allowed_values, dtype=np.float32)
+                distances = np.abs(allowed_tensor - control_value[dim_idx])
+                projected_dims.append(int(allowed_tensor[int(np.argmin(distances))]))
             if self.control_dim == 1:
                 return projected_dims[0], projected_dims
             return tuple(projected_dims), projected_dims
 
         if self.control_dim == 1:
-            scalar = int(clipped[0].item())
+            scalar = int(clipped[0])
             return scalar, [scalar]
-        projected = [int(value) for value in clipped.detach().cpu().tolist()]
+        projected = [int(value) for value in clipped.tolist()]
         return tuple(projected), projected
 
     def _finalize_action(self, projected_controls, state):
@@ -117,84 +130,81 @@ class LinearPolicyNet(ESModule):
         return apply_action_adapter(
             self.action_adapter,
             projected_controls,
-            state.detach().cpu().numpy(),
+            np.asarray(state, dtype=np.float32),
             self.action_spec,
             self.action_adapter_config,
         )
 
     def forward(self, state, return_features=False):
-        raw_output = self.linear_app(state)
+        state = as_float32_vector(state)
+        raw_output = (self.linear_weight @ state + self.linear_bias).astype(np.float32, copy=False)
+        features = {}
+
         if self.action_output_mode == "categorical_quantity":
-            action = torch.argmax(raw_output, dim=-1)
-            projected_controls = [int(action.item())]
+            action = int(np.argmax(raw_output))
+            projected_controls = [action]
         elif self.action_output_mode == "direct_quantity":
-            quantity_value = torch.nn.functional.softplus(raw_output.squeeze(-1))
-            action = torch.round(quantity_value).to(dtype=torch.int64)
-            action = torch.clamp(action, min=0)
-            projected_controls = [int(action.item())]
+            quantity_value = float(softplus(raw_output[0]))
+            action = int(max(round_nearest(np.asarray(quantity_value))[()], 0))
+            projected_controls = [action]
         elif self.action_output_mode == "capped_direct_quantity":
-            quantity_value = torch.nn.functional.softplus(raw_output.squeeze(-1))
-            _, projected_controls = self._project_controls(quantity_value.reshape(-1))
+            quantity_value = softplus(raw_output[0])
+            _, projected_controls = self._project_controls(np.asarray([quantity_value], dtype=np.float32))
             action = self._finalize_action(projected_controls, state)
         elif self.action_output_mode == "sigmoid_direct_quantity":
-            quantity_value = torch.sigmoid(raw_output.squeeze(-1)) * float(self.max_order_size)
-            action = torch.round(quantity_value).to(dtype=torch.int64)
-            projected_controls = [int(action.item())]
+            quantity_value = float(sigmoid(raw_output[0]) * float(self.max_order_size))
+            action = int(round_nearest(np.asarray(quantity_value))[()])
+            projected_controls = [action]
         elif self.action_output_mode == "soft_gated_direct_quantity":
-            gate_logit = raw_output[..., 0]
-            quantity_logit = raw_output[..., 1]
-            gate_prob = torch.sigmoid(gate_logit)
-            quantity_value = torch.nn.functional.softplus(quantity_logit)
-            action = torch.round(gate_prob * quantity_value).to(dtype=torch.int64)
-            action = torch.clamp(action, min=0, max=int(self.max_order_size))
-            projected_controls = [int(action.item())]
+            gate_logit = float(raw_output[0])
+            quantity_logit = float(raw_output[1])
+            gate_prob = float(sigmoid(gate_logit))
+            quantity_value = float(softplus(quantity_logit))
+            action = int(np.clip(round_nearest(np.asarray(gate_prob * quantity_value))[()], 0, int(self.max_order_size)))
+            projected_controls = [action]
         elif self.action_output_mode == "gated_sigmoid_direct_quantity":
-            gate_logit = raw_output[..., 0]
-            quantity_logit = raw_output[..., 1]
-            gate_prob = torch.sigmoid(gate_logit)
-            quantity_value = torch.sigmoid(quantity_logit) * float(self.max_order_size)
-            action = torch.round(gate_prob * quantity_value).to(dtype=torch.int64)
-            action = torch.clamp(action, min=0, max=int(self.max_order_size))
-            projected_controls = [int(action.item())]
+            gate_logit = float(raw_output[0])
+            quantity_logit = float(raw_output[1])
+            gate_prob = float(sigmoid(gate_logit))
+            quantity_value = float(sigmoid(quantity_logit) * float(self.max_order_size))
+            action = int(np.clip(round_nearest(np.asarray(gate_prob * quantity_value))[()], 0, int(self.max_order_size)))
+            projected_controls = [action]
         elif self.action_output_mode == "hard_gated_direct_quantity":
-            gate_logit = raw_output[..., 0]
-            quantity_logit = raw_output[..., 1]
-            gate_prob = torch.sigmoid(gate_logit)
+            gate_logit = float(raw_output[0])
+            quantity_logit = float(raw_output[1])
+            gate_prob = float(sigmoid(gate_logit))
             order_flag = gate_prob >= 0.5
-            quantity_value = torch.nn.functional.softplus(quantity_logit)
-            positive_action = torch.round(quantity_value).to(dtype=torch.int64)
-            positive_action = torch.clamp(positive_action, min=1, max=int(self.max_order_size))
-            action = torch.where(order_flag, positive_action, torch.zeros_like(positive_action))
-            projected_controls = [int(action.item())]
+            quantity_value = float(softplus(quantity_logit))
+            positive_action = int(np.clip(round_nearest(np.asarray(quantity_value))[()], 1, int(self.max_order_size)))
+            action = positive_action if order_flag else 0
+            projected_controls = [action]
         elif self.action_output_mode == "soft_gated_ordinal_quantity":
-            gate_logit = raw_output[..., 0]
-            ordinal_logits = raw_output[..., 1:]
-            gate_prob = torch.sigmoid(gate_logit)
-            quantity_score = torch.sigmoid(ordinal_logits).sum(dim=-1)
-            action = torch.round(gate_prob * quantity_score).to(dtype=torch.int64)
-            action = torch.clamp(action, min=0, max=int(self.max_order_size))
-            projected_controls = [int(action.item())]
+            gate_logit = float(raw_output[0])
+            ordinal_logits = raw_output[1:]
+            gate_prob = float(sigmoid(gate_logit))
+            quantity_score = float(np.sum(sigmoid(ordinal_logits)))
+            action = int(np.clip(round_nearest(np.asarray(gate_prob * quantity_score))[()], 0, int(self.max_order_size)))
+            projected_controls = [action]
         elif self.action_output_mode == "hard_gated_ordinal_quantity":
-            gate_logit = raw_output[..., 0]
-            ordinal_logits = raw_output[..., 1:]
-            gate_prob = torch.sigmoid(gate_logit)
-            quantity_score = torch.sigmoid(ordinal_logits).sum(dim=-1)
+            gate_logit = float(raw_output[0])
+            ordinal_logits = raw_output[1:]
+            gate_prob = float(sigmoid(gate_logit))
+            quantity_score = float(np.sum(sigmoid(ordinal_logits)))
             order_flag = gate_prob >= 0.5
-            positive_action = torch.round(quantity_score).to(dtype=torch.int64)
-            positive_action = torch.clamp(positive_action, min=1, max=int(self.max_order_size))
-            action = torch.where(order_flag, positive_action, torch.zeros_like(positive_action))
-            projected_controls = [int(action.item())]
+            positive_action = int(np.clip(round_nearest(np.asarray(quantity_score))[()], 1, int(self.max_order_size)))
+            action = positive_action if order_flag else 0
+            projected_controls = [action]
         elif self.action_output_mode == "bounded_quantity":
-            min_tensor = raw_output.new_tensor(self.min_values, dtype=torch.float32)
-            max_tensor = raw_output.new_tensor(self.max_values, dtype=torch.float32)
-            scaled_controls = min_tensor + torch.sigmoid(raw_output) * (max_tensor - min_tensor)
+            min_tensor = np.asarray(self.min_values, dtype=np.float32)
+            max_tensor = np.asarray(self.max_values, dtype=np.float32)
+            scaled_controls = min_tensor + sigmoid(raw_output) * (max_tensor - min_tensor)
             _, projected_controls = self._project_controls(scaled_controls)
             action = self._finalize_action(projected_controls, state)
         else:
             raise NotImplementedError(f"Unknown action_output_mode: {self.action_output_mode}")
 
         if return_features:
-            self.features["linear"] = raw_output.detach().cpu().numpy()
+            features["linear"] = raw_output.copy()
             if self.action_output_mode in {
                 "gated_sigmoid_direct_quantity",
                 "soft_gated_direct_quantity",
@@ -202,43 +212,47 @@ class LinearPolicyNet(ESModule):
                 "hard_gated_ordinal_quantity",
                 "hard_gated_direct_quantity",
             }:
-                self.features["gate_prob"] = gate_prob.detach().cpu().numpy()
+                features["gate_prob"] = np.asarray(gate_prob, dtype=np.float32)
                 if self.action_output_mode in {
                     "soft_gated_direct_quantity",
                     "gated_sigmoid_direct_quantity",
+                    "hard_gated_direct_quantity",
                 }:
-                    self.features["quantity_value"] = quantity_value.detach().cpu().numpy()
-                elif self.action_output_mode == "hard_gated_direct_quantity":
-                    self.features["quantity_value"] = quantity_value.detach().cpu().numpy()
-                    self.features["order_flag"] = order_flag.detach().cpu().numpy()
+                    features["quantity_value"] = np.asarray(quantity_value, dtype=np.float32)
                 else:
-                    self.features["quantity_score"] = quantity_score.detach().cpu().numpy()
-                if self.action_output_mode == "hard_gated_ordinal_quantity":
-                    self.features["order_flag"] = order_flag.detach().cpu().numpy()
+                    features["quantity_score"] = np.asarray(quantity_score, dtype=np.float32)
+                if self.action_output_mode in {
+                    "hard_gated_direct_quantity",
+                    "hard_gated_ordinal_quantity",
+                }:
+                    features["order_flag"] = np.asarray(order_flag)
             if self.action_output_mode in {
                 "bounded_quantity",
                 "direct_quantity",
                 "capped_direct_quantity",
             }:
-                self.features["projected_controls"] = projected_controls
+                features["projected_controls"] = projected_controls
             if self.action_output_mode == "direct_quantity":
-                self.features["quantity_value"] = quantity_value.detach().cpu().numpy()
-                self.features["projected_action"] = int(action.item())
+                features["quantity_value"] = np.asarray(quantity_value, dtype=np.float32)
+                features["projected_action"] = int(action)
             if self.action_output_mode == "capped_direct_quantity":
-                self.features["quantity_value"] = quantity_value.detach().cpu().numpy()
-                self.features["projected_action"] = action
+                features["quantity_value"] = np.asarray(quantity_value, dtype=np.float32)
+                features["projected_action"] = action
             if self.action_output_mode == "bounded_quantity":
-                self.features["action_adapter"] = self.action_adapter
-                self.features["projected_action"] = action
+                features["action_adapter"] = self.action_adapter
+                features["projected_action"] = action
+            self.features = features
             if self.action_output_mode in {
                 "bounded_quantity",
                 "capped_direct_quantity",
             }:
                 return action, self.features
-            return int(action.item()), self.features
+            return int(action), self.features
+
+        self.features = {}
         if self.action_output_mode in {
             "bounded_quantity",
             "capped_direct_quantity",
         }:
             return action
-        return int(action.item())
+        return int(action)

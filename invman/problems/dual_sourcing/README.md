@@ -2,6 +2,21 @@
 
 This package implements the small-scale dual-sourcing benchmark family used by Gijsbrechts et al. (2022) for the Veeraraghavan-Scheller-Wolf settings:
 
+## Literature guidance
+
+### Primary references
+
+- Joren Gijsbrechts, Robert N. Boute, Jan A. Van Mieghem, and Dennis J. Zhang,
+  *Can Deep Reinforcement Learning Improve Inventory Management? Performance on Lost Sales, Dual
+  Sourcing, and Multi-Echelon Problems*, Manufacturing & Service Operations Management, 2022.
+- DOI: <https://doi.org/10.1287/msom.2021.1064>
+- Veeraraghavan and Scheller-Wolf (2008), the dual-sourcing benchmark family used by the paper:
+  <https://ideas.repec.org/a/inm/oropre/v56y2008i4p850-864.html>
+
+### Published problem family
+
+The Gijsbrechts dual-sourcing benchmark family uses:
+
 - regular supplier lead time `lr in {2, 3, 4}`
 - expedited lead time `le = 0`
 - discrete uniform demand on `{0, 1, 2, 3, 4}`
@@ -9,6 +24,29 @@ This package implements the small-scale dual-sourcing benchmark family used by G
 - backlog cost `b = 495`
 - regular cost `c_r = 100`
 - expedited cost `c_e in {105, 110}`
+
+### Published neural architecture
+
+The paper uses the same fixed A3C backbone here as in lost sales and multi-echelon:
+
+- four fully connected layers `[150, 120, 80, 20]`
+- ReLU after each layer
+- value regularization `0.25`
+- four parallel learners
+- gradient clipping `40`
+
+### Published action design
+
+The dual-sourcing action is two-dimensional:
+
+- regular-source order quantity
+- expedited-source order quantity
+
+Repo implication:
+
+- dual sourcing should not inherit a single scalar lost-sales-style `Q`
+- if bounded policies are used here, the regular and expedited bounds should be explicit and
+  source-specific policy parameters
 
 Implemented heuristic families:
 

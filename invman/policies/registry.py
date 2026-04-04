@@ -507,6 +507,22 @@ _POLICY_ALIASES = {
         leaf_type="linear",
         max_order_size=8,
     ),
+    "soft_tree_depth2_sigmoid_linear_leaf_q20": _soft_tree_spec(
+        "soft_tree_depth2_sigmoid_linear_leaf_q20",
+        depth=2,
+        temperature=0.25,
+        split_type="oblique",
+        leaf_type="sigmoid_linear",
+        max_order_size=20,
+    ),
+    "soft_tree_depth1_sigmoid_linear_leaf_q20": _soft_tree_spec(
+        "soft_tree_depth1_sigmoid_linear_leaf_q20",
+        depth=1,
+        temperature=0.25,
+        split_type="oblique",
+        leaf_type="sigmoid_linear",
+        max_order_size=20,
+    ),
     "linear_bounded_quantity_identity": _dense_spec(
         "linear_bounded_quantity_identity",
         policy_backbone="linear",

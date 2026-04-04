@@ -18,7 +18,7 @@ from invman.problems.lost_sales_fixed_order_cost.reference_instances import (
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Evaluate a saved learned policy on a named reference instance.")
-    parser.add_argument("--model_dir", required=True, help="Directory containing model_config.json and model_params.torch.")
+    parser.add_argument("--model_dir", required=True, help="Directory containing model_config.json and model_params.npy.")
     parser.add_argument("--problem", choices=["lost_sales", "lost_sales_fixed_order_cost"], required=True)
     parser.add_argument("--reference", required=True, help="Named reference instance for the selected problem.")
     parser.add_argument("--eval_horizon", type=int, default=int(1e6))

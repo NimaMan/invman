@@ -34,6 +34,61 @@ Current problem modules:
 - `src/problems/dual_sourcing/`
 - `src/problems/multi_echelon/`
 
+## Standard Module Contract
+
+All new Rust problem families should use the same folder contract.
+
+Required files:
+
+```text
+src/problems/<problem>/
+  mod.rs
+  env.rs
+  heuristics.rs
+  rollout.rs
+  references.rs
+  bindings.rs
+  tests/
+    mod.rs
+    verification.rs
+```
+
+Optional files:
+
+- `demand.rs`, `supply.rs`, `allocation.rs`, `policies.rs`, `dp.rs`, or similar helpers when the
+  problem structure requires them
+
+File responsibilities:
+
+- `env.rs`: state definition, transition logic, and period cost accounting
+- `heuristics.rs`: classical benchmark policies and heuristic search helpers
+- `rollout.rs`: learned-policy rollout kernels used by training and evaluation
+- `references.rs`: literature instances, published values, repo canonical instance, and
+  `VERIFICATION_PROBLEM_INSTANCE`
+- `bindings.rs`: Python-facing entrypoints
+- `tests/verification.rs`: the exact correctness anchor for the problem dynamics and heuristics
+
+Rules for `references.rs`:
+
+- it is the source of truth for the literature instances we keep in the repo
+- it must contain every paper instance we want to benchmark later, not only the first one we test
+- it must define:
+  - `PRIMARY_REFERENCE_INSTANCE`
+  - `VERIFICATION_PROBLEM_INSTANCE`
+- it must distinguish:
+  - exact published values
+  - repo-native benchmark values
+  - deterministic worked-example values used only for correctness testing
+
+Rules for the first test:
+
+- every new family must ship with one verification test before policy training work starts
+- the verification test should prove both:
+  - environment mechanics are correct
+  - at least one benchmark heuristic produces the expected result on the verification instance
+- if the literature does not publish exact per-instance costs, use a small deterministic instance for
+  correctness and keep the literature benchmark family in `references.rs` separately
+
 Build into the active project virtualenv with:
 
 ```bash

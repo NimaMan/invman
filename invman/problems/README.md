@@ -30,3 +30,36 @@ Each inventory-control problem lives in its own subpackage under `invman/problem
 
 Learned policy classes stay separate under `invman/policies/`. The problem packages own the
 simulation, baseline heuristics, and reference benchmarks.
+
+## Standard For New Problems
+
+The current four packages were added incrementally and are not fully uniform. New problem families
+should follow one standard from the start.
+
+Required artifacts for every new problem family:
+
+- `README.md`: short literature note, benchmark scope, and the canonical repo interpretation of the
+  problem family
+- `reference_instances.py` or the Rust-first equivalent source of truth:
+  - all literature instances we want to carry forward from the papers
+  - one `PRIMARY_REFERENCE_INSTANCE`
+  - one `VERIFICATION_PROBLEM_INSTANCE`
+  - published numbers when they exist
+  - explicit notes when repo values are repo-native rather than verbatim literature values
+- `heuristics.py` or Rust-first equivalent:
+  - the classical benchmark policies for that family
+  - search helpers if the heuristic requires parameter tuning
+- `env.py` or Rust-first equivalent:
+  - state transition logic and cost accounting
+- `benchmark.py` when we have a nontrivial benchmark grid
+- tests tied to the verification instance
+
+Required semantics:
+
+- the references file is the authoritative list of literature instances used in the repo
+- the verification instance is the minimal correctness anchor for environment dynamics and
+  heuristic behavior
+- the primary reference instance is the canonical first benchmark for learned policies
+
+For Rust-first additions, the same concepts should live under `rust/src/problems/<problem>/`
+first, and the Python package can mirror that structure later.

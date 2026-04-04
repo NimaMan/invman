@@ -24,6 +24,21 @@ EXPERIMENT_SPECS = [
         "status": "trusted",
     },
     {
+        "id": "linear_sigmoid_direct_quantity",
+        "rollout_backend": "rust",
+        "status": "trusted",
+    },
+    {
+        "id": "linear_soft_gated_direct_quantity",
+        "rollout_backend": "rust",
+        "status": "trusted",
+    },
+    {
+        "id": "linear_hard_gated_direct_quantity",
+        "rollout_backend": "rust",
+        "status": "trusted",
+    },
+    {
         "id": "linear_soft_gated_ordinal_quantity",
         "rollout_backend": "rust",
         "status": "trusted",
@@ -40,7 +55,7 @@ EXPERIMENT_SPECS = [
     {
         "id": "nn_soft_gated_ordinal_quantity",
         "rollout_backend": "rust",
-        "status": "trusted",
+        "status": "provisional",
     },
     {
         "id": "soft_tree_depth2_linear_leaf",
@@ -49,6 +64,16 @@ EXPERIMENT_SPECS = [
     },
     {
         "id": "soft_tree_depth1_linear_leaf",
+        "rollout_backend": "rust",
+        "status": "trusted",
+    },
+    {
+        "id": "soft_tree_depth2_sigmoid_linear_leaf_q20",
+        "rollout_backend": "rust",
+        "status": "trusted",
+    },
+    {
+        "id": "soft_tree_depth1_sigmoid_linear_leaf_q20",
         "rollout_backend": "rust",
         "status": "trusted",
     },
@@ -78,6 +103,7 @@ def configure_run_args(
     args.eval_horizon = parsed.eval_horizon
     args.eval_seeds = parsed.eval_seeds
     args.sigma_init = COMMON_BUDGET["sigma_init"]
+    args.max_order_size = 20
     args.policy_name = spec["id"]
     apply_policy_name(args)
     args.rollout_backend = spec["rollout_backend"]

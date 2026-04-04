@@ -249,8 +249,6 @@ def get_model_fitness(
     track_demand=False,
     verbose=False,
 ):
-    import torch
-
     use_rust_rollout = _should_use_rust_soft_tree_rollout(model, args, track_demand=track_demand, return_env=return_env)
     if model_params is not None and not use_rust_rollout:
         model.set_model_params(model_params)
@@ -292,12 +290,11 @@ def get_model_fitness(
         return -float(avg_cost), indiv_idx
 
     np.random.seed(seed)
-    torch.manual_seed(seed)
     env = build_env_from_args(args, track_demand=track_demand)
     state = env.policy_state
     done = False
     while not done:
-        action = model(torch.as_tensor(state, dtype=torch.float32))
+        action = model(state)
         state, _, done = env.step(action)
     if verbose:
         print(f"Seed {seed}: avg cost {env.avg_total_cost:.4f}")

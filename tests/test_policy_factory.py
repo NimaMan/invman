@@ -1,7 +1,6 @@
 from types import SimpleNamespace
 
 import pytest
-import torch
 
 from invman.policies import (
     apply_policy_name,
@@ -42,7 +41,7 @@ def test_build_policy_returns_linear_direct_policy():
     args = _make_args("linear_direct_quantity")
     model = build_policy(args, env)
     assert isinstance(model, LinearPolicyNet)
-    action = model(torch.as_tensor(env.policy_state, dtype=torch.float32))
+    action = model(env.policy_state)
     assert isinstance(action, int)
     assert action >= 0
 
@@ -52,7 +51,7 @@ def test_build_policy_returns_nn_direct_policy():
     args = _make_args("nn_direct_quantity_h50_selu")
     model = build_policy(args, env)
     assert isinstance(model, PolicyNet)
-    action = model(torch.as_tensor(env.policy_state, dtype=torch.float32))
+    action = model(env.policy_state)
     assert isinstance(action, int)
     assert action >= 0
 
@@ -74,7 +73,7 @@ def test_build_policy_returns_linear_capped_direct_policy():
     args = _make_args("linear_capped_direct_quantity")
     model = build_policy(args, env)
     assert isinstance(model, LinearPolicyNet)
-    action = model(torch.as_tensor(env.policy_state, dtype=torch.float32))
+    action = model(env.policy_state)
     assert isinstance(action, int)
     assert 0 <= action <= args.max_order_size
 
@@ -84,7 +83,7 @@ def test_build_policy_returns_linear_gated_direct_policy():
     args = _make_args("linear_soft_gated_direct_quantity")
     model = build_policy(args, env)
     assert isinstance(model, LinearPolicyNet)
-    action = model(torch.as_tensor(env.policy_state, dtype=torch.float32))
+    action = model(env.policy_state)
     assert isinstance(action, int)
     assert 0 <= action <= args.max_order_size
 
@@ -94,7 +93,7 @@ def test_build_policy_returns_nn_gated_direct_policy():
     args = _make_args("nn_soft_gated_direct_quantity")
     model = build_policy(args, env)
     assert isinstance(model, PolicyNet)
-    action = model(torch.as_tensor(env.policy_state, dtype=torch.float32))
+    action = model(env.policy_state)
     assert isinstance(action, int)
     assert 0 <= action <= args.max_order_size
 
@@ -104,7 +103,7 @@ def test_build_policy_returns_linear_gated_sigmoid_direct_policy():
     args = _make_args("linear_gated_sigmoid_direct_quantity")
     model = build_policy(args, env)
     assert isinstance(model, LinearPolicyNet)
-    action = model(torch.as_tensor(env.policy_state, dtype=torch.float32))
+    action = model(env.policy_state)
     assert isinstance(action, int)
     assert 0 <= action <= args.max_order_size
 
@@ -114,7 +113,7 @@ def test_build_policy_returns_nn_gated_sigmoid_direct_policy():
     args = _make_args("nn_gated_sigmoid_direct_quantity")
     model = build_policy(args, env)
     assert isinstance(model, PolicyNet)
-    action = model(torch.as_tensor(env.policy_state, dtype=torch.float32))
+    action = model(env.policy_state)
     assert isinstance(action, int)
     assert 0 <= action <= args.max_order_size
 
@@ -124,7 +123,7 @@ def test_build_policy_returns_linear_hard_gated_direct_policy():
     args = _make_args("linear_hard_gated_direct_quantity")
     model = build_policy(args, env)
     assert isinstance(model, LinearPolicyNet)
-    action = model(torch.as_tensor(env.policy_state, dtype=torch.float32))
+    action = model(env.policy_state)
     assert isinstance(action, int)
     assert 0 <= action <= args.max_order_size
 
@@ -134,7 +133,7 @@ def test_build_policy_returns_nn_hard_gated_direct_policy():
     args = _make_args("nn_hard_gated_direct_quantity")
     model = build_policy(args, env)
     assert isinstance(model, PolicyNet)
-    action = model(torch.as_tensor(env.policy_state, dtype=torch.float32))
+    action = model(env.policy_state)
     assert isinstance(action, int)
     assert 0 <= action <= args.max_order_size
 
@@ -229,6 +228,11 @@ def test_legacy_policy_aliases_resolve_to_canonical_names():
     assert tree_args.policy_name == "soft_tree_depth1_sigmoid_linear_leaf"
     assert tree_args.tree_leaf_type == "sigmoid_linear"
 
+    bounded_tree_args = _make_args("soft_tree_depth2_sigmoid_linear_leaf_q20")
+    assert bounded_tree_args.policy_name == "soft_tree_depth2_sigmoid_linear_leaf_q20"
+    assert bounded_tree_args.tree_leaf_type == "sigmoid_linear"
+    assert bounded_tree_args.max_order_size == 20
+
 
 def test_policy_name_builders_emit_canonical_descriptive_names():
     assert make_dense_policy_name("linear", "scaled_direct_quantity") == "linear_sigmoid_direct_quantity"
@@ -248,7 +252,7 @@ def test_build_policy_supports_bounded_linear_on_vector_action_problem():
     args.problem = "dual_sourcing"
     model = build_policy(args, env)
     assert isinstance(model, LinearPolicyNet)
-    action = model(torch.as_tensor(env.policy_state, dtype=torch.float32))
+    action = model(env.policy_state)
     assert isinstance(action, tuple)
     assert len(action) == 2
     assert 0 <= action[0] <= env.regular_max_order_size
@@ -261,7 +265,7 @@ def test_build_policy_supports_bounded_nn_on_vector_action_problem():
     args.problem = "dual_sourcing"
     model = build_policy(args, env)
     assert isinstance(model, PolicyNet)
-    action = model(torch.as_tensor(env.policy_state, dtype=torch.float32))
+    action = model(env.policy_state)
     assert isinstance(action, tuple)
     assert len(action) == 2
     assert 0 <= action[0] <= env.regular_max_order_size
@@ -309,7 +313,7 @@ def test_build_policy_supports_structured_dual_sourcing_nn():
     )
     args.problem = "dual_sourcing"
     model = build_policy(args, env)
-    action = model(torch.as_tensor(env.policy_state, dtype=torch.float32))
+    action = model(env.policy_state)
     assert isinstance(action, tuple)
     assert len(action) == 2
     assert 0 <= action[0] <= env.regular_max_order_size

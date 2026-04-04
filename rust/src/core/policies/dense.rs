@@ -178,11 +178,9 @@ fn dense_action_from_logits(
                     logits.len()
                 )));
             }
-            let cap =
-                require_policy_max_quantity(policy_max_quantity, "soft-gated direct quantity")?;
             let gate_prob = sigmoid(logits[0]);
             let quantity_value = (1.0 + logits[1].exp()).ln();
-            let action = (gate_prob * quantity_value).round().clamp(0.0, cap as f32) as usize;
+            let action = (gate_prob * quantity_value).round().max(0.0) as usize;
             Ok(action)
         }
         DensePolicyHead::GatedSigmoidDirectQuantity => {
@@ -279,6 +277,22 @@ pub fn linear_action_from_flat_params(
         output_dim,
     );
     dense_action_from_logits(&logits, policy_head, policy_max_quantity)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{dense_action_from_logits, DensePolicyHead};
+
+    #[test]
+    fn soft_gated_direct_quantity_does_not_require_policy_cap() {
+        let action = dense_action_from_logits(
+            &[10.0, 30.0],
+            DensePolicyHead::SoftGatedDirectQuantity,
+            None,
+        )
+        .expect("soft-gated direct quantity should be uncapped on Rust");
+        assert!(action > 20);
+    }
 }
 
 pub fn mlp_action_from_flat_params(

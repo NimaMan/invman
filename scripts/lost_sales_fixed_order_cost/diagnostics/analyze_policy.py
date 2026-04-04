@@ -6,7 +6,6 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
-import torch
 
 from invman.policies.es_module import ESModule
 from invman.problems.lost_sales_fixed_order_cost.env import build_env_from_args
@@ -15,7 +14,7 @@ from invman.problems.lost_sales_fixed_order_cost.heuristics import get_modified_
 
 def get_args():
     parser = argparse.ArgumentParser(description="Inspect a trained fixed-cost policy.")
-    parser.add_argument("--model_dir", required=True, help="Directory containing model_config.json and model_params.torch.")
+    parser.add_argument("--model_dir", required=True, help="Directory containing model_config.json and model_params.npy.")
     parser.add_argument("--seed", default=1234, type=int)
     parser.add_argument("--horizon", default=50000, type=int)
     parser.add_argument("--state_features", default="pipeline", help="State feature mode expected by the model.")
@@ -53,13 +52,12 @@ def summarize_actions(actions):
 
 def rollout_model(model, args, seed: int):
     np.random.seed(seed)
-    torch.manual_seed(seed)
     env = build_env_from_args(args, track_demand=True)
     state = env.policy_state
     actions = []
     done = False
     while not done:
-        action = int(model(torch.as_tensor(state, dtype=torch.float32)))
+        action = int(model(state))
         actions.append(action)
         state, _, done = env.step(action)
     return env.avg_total_cost, summarize_actions(actions)
@@ -111,13 +109,11 @@ def coarse_grid_action_histogram(model, state_features, max_order_size=50, lead_
     counts = Counter()
     for current_inventory in vals:
         for lead_time_orders in product(vals, repeat=lead_time):
-            state = torch.tensor(
-                build_policy_state(
-                    current_inventory=current_inventory,
-                    lead_time_orders=lead_time_orders,
-                    max_order_size=max_order_size,
-                    state_features=state_features,
-                )
+            state = build_policy_state(
+                current_inventory=current_inventory,
+                lead_time_orders=lead_time_orders,
+                max_order_size=max_order_size,
+                state_features=state_features,
             )
             counts[int(model(state))] += 1
     return counts.most_common(15), len(counts)

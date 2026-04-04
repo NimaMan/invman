@@ -2,6 +2,70 @@
 
 This package is the canonical home for the vanilla lost-sales problem.
 
+## Literature guidance
+
+### Primary references
+
+- Joren Gijsbrechts, Robert N. Boute, Jan A. Van Mieghem, and Dennis J. Zhang,
+  *Can Deep Reinforcement Learning Improve Inventory Management? Performance on Lost Sales, Dual
+  Sourcing, and Multi-Echelon Problems*, Manufacturing & Service Operations Management, 2022.
+- DOI: <https://doi.org/10.1287/msom.2021.1064>
+- Companion code: <https://github.com/JorenGijsbrechts/DRL_A3C_inventory>
+
+The broader repo benchmark grid also follows the single-item lost-sales family used in Xin (2020),
+which is what the full vanilla benchmark surface here is aligned to.
+
+### Published problem family
+
+The Gijsbrechts DRL paper uses six Zipkin-style lost-sales settings:
+
+- lead time `L in {2, 3, 4}`
+- shortage penalty `p in {4, 9}`
+- holding cost `h = 1`
+- ordering cost `c = 0`
+- demand `~ Poisson(5)`
+
+Those are the nearest literature DRL settings for the single-item vanilla lost-sales problem in
+this repo.
+
+The broader `invman` vanilla benchmark grid is larger:
+
+- lead times `L in {2, 4, 6, 8, 10}`
+- shortage costs `p in {4, 19}`
+- demand families `{Poisson, Geometric}`
+- mean demand `5`
+
+### Published neural architecture
+
+Gijsbrechts et al. use the same A3C actor-critic backbone across lost sales, dual sourcing, and
+multi-echelon:
+
+- four fully connected layers with widths `[150, 120, 80, 20]`
+- ReLU after each layer
+- value regularization `0.25`
+- four parallel learners
+- gradient clipping `40`
+
+The paper states that this backbone is fixed across the three problem types, and that only the
+learning rate, entropy regularization, and buffer length are tuned by problem instance.
+
+### Published action design and normalization
+
+For lost sales, the paper uses a bounded scalar action space:
+
+- actions `[0, 1, ..., 20]`
+- companion-code parameter `max_order = 20`
+
+The companion code also rescales the state by:
+
+- `InvMax + LT * max_order`
+
+Repo implication:
+
+- `Q = 20` is the clean literature anchor if we want a bounded policy-side lost-sales baseline
+- if a cap is used in `invman`, it should be explicit in the policy design rather than silently
+  imposed by the environment
+
 Core files:
 
 - `env.py`: simulator and rollout helpers
@@ -58,10 +122,3 @@ Stable vanilla lost-sales benchmark entrypoints now come in two modes:
 
 - `scripts/lost_sales/benchmark_canonical_suite.py`: one canonical preflight instance
 - `scripts/lost_sales/benchmark_full_suite.py`: full 20-instance literature-aligned grid
-
-The full grid follows the instance family from Xin (2020):
-
-- lead times `L in {2,4,6,8,10}`
-- shortage costs `p in {4,19}`
-- demand distributions `{Poisson, Geometric}`
-- mean demand `5`

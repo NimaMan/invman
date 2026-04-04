@@ -1,12 +1,11 @@
 import numpy as np
-import torch
 
 from invman.policies import SoftTreePolicy
 
 
 def test_soft_tree_policy_returns_valid_action_and_features():
     model = SoftTreePolicy(input_dim=4, max_order_size=20, depth=2, temperature=0.25)
-    state = torch.tensor(np.array([0.5, 0.1, 0.2, 0.0], dtype=np.float32))
+    state = np.array([0.5, 0.1, 0.2, 0.0], dtype=np.float32)
 
     action, features = model(state, return_features=True)
 
@@ -25,7 +24,7 @@ def test_axis_aligned_soft_tree_policy_reports_selected_features():
         temperature=0.25,
         split_type="axis_aligned",
     )
-    state = torch.tensor(np.array([0.5, 0.1, 0.2, 0.0], dtype=np.float32))
+    state = np.array([0.5, 0.1, 0.2, 0.0], dtype=np.float32)
 
     action, features = model(state, return_features=True)
 
@@ -44,7 +43,7 @@ def test_linear_leaf_soft_tree_policy_reports_leaf_outputs():
         split_type="oblique",
         leaf_type="linear",
     )
-    state = torch.tensor(np.array([0.5, 0.1, 0.2, 0.0], dtype=np.float32))
+    state = np.array([0.5, 0.1, 0.2, 0.0], dtype=np.float32)
 
     action, features = model(state, return_features=True)
 
@@ -64,7 +63,7 @@ def test_sigmoid_linear_leaf_soft_tree_policy_reports_leaf_outputs():
         split_type="oblique",
         leaf_type="sigmoid_linear",
     )
-    state = torch.tensor(np.array([0.5, 0.1, 0.2, 0.0], dtype=np.float32))
+    state = np.array([0.5, 0.1, 0.2, 0.0], dtype=np.float32)
 
     action, features = model(state, return_features=True)
 
@@ -102,7 +101,7 @@ def test_structured_dual_sourcing_soft_tree_projects_controls_and_actions():
             "state_scale": 24.0,
         },
     )
-    state = torch.tensor(np.array([8.0, 3.0, 1.0, 2.0], dtype=np.float32) / 24.0)
+    state = np.array([8.0, 3.0, 1.0, 2.0], dtype=np.float32) / 24.0
 
     action, features = model(state, return_features=True)
 

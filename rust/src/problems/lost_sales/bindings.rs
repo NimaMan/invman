@@ -161,7 +161,8 @@ fn lost_sales_constant_action_rollout(
     warm_up_periods_ratio=0.2,
     temperature=0.25,
     split_type="oblique",
-    leaf_type="linear"
+    leaf_type="linear",
+    policy_max_quantity=None
 ))]
 fn lost_sales_soft_tree_rollout(
     flat_params: Vec<f32>,
@@ -184,10 +185,12 @@ fn lost_sales_soft_tree_rollout(
     temperature: f32,
     split_type: &str,
     leaf_type: &str,
+    policy_max_quantity: Option<usize>,
 ) -> PyResult<f64> {
     let config = LostSalesRolloutConfig {
         input_dim,
         depth,
+        policy_max_quantity,
         demand_config: build_lost_sales_demand_config(
             demand_dist_name,
             demand_rate,
@@ -225,7 +228,8 @@ fn lost_sales_soft_tree_rollout(
     warm_up_periods_ratio=0.2,
     temperature=0.25,
     split_type="oblique",
-    leaf_type="linear"
+    leaf_type="linear",
+    policy_max_quantity=None
 ))]
 fn lost_sales_soft_tree_rollout_from_demands(
     flat_params: Vec<f32>,
@@ -242,11 +246,13 @@ fn lost_sales_soft_tree_rollout_from_demands(
     temperature: f32,
     split_type: &str,
     leaf_type: &str,
+    policy_max_quantity: Option<usize>,
 ) -> PyResult<f64> {
     let empirical_mean = empirical_mean_demand(&demands);
     let config = LostSalesRolloutConfig {
         input_dim,
         depth,
+        policy_max_quantity,
         demand_config: LostSalesDemandConfig {
             kind: LostSalesDemandKind::Poisson,
             demand_rate: empirical_mean,
@@ -294,7 +300,8 @@ fn lost_sales_soft_tree_rollout_from_demands(
     warm_up_periods_ratio=0.2,
     temperature=0.25,
     split_type="oblique",
-    leaf_type="linear"
+    leaf_type="linear",
+    policy_max_quantity=None
 ))]
 fn lost_sales_soft_tree_population_rollout(
     params_batch: Vec<Vec<f32>>,
@@ -317,10 +324,12 @@ fn lost_sales_soft_tree_population_rollout(
     temperature: f32,
     split_type: &str,
     leaf_type: &str,
+    policy_max_quantity: Option<usize>,
 ) -> PyResult<Vec<f64>> {
     let config = LostSalesRolloutConfig {
         input_dim,
         depth,
+        policy_max_quantity,
         demand_config: build_lost_sales_demand_config(
             demand_dist_name,
             demand_rate,
