@@ -63,3 +63,17 @@ Required semantics:
 
 For Rust-first additions, the same concepts should live under `rust/src/problems/<problem>/`
 first, and the Python package can mirror that structure later.
+
+For Rust-first problem families, use this layout by default:
+
+- `env.rs`
+- `heuristics/`
+  - `mod.rs`
+  - one file per benchmark heuristic family when the module is more than trivial
+- `rollout.rs`
+- `references.rs`
+- `bindings.rs`
+- `tests/verification.rs`
+
+If literature-backed verification needs an exact finite-state solver or analytical evaluator, put it
+in `exact.rs` and keep it separate from `heuristics/`.

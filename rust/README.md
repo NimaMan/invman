@@ -9,6 +9,7 @@ Current scope:
   - fixed-order-cost heuristic search
   - dual sourcing
   - multi-echelon
+  - perishable inventory
 - batched soft-tree population evaluation for CMA-ES
 - soft-tree policy support for:
   - `oblique` and `axis_aligned` split types
@@ -33,6 +34,7 @@ Current problem modules:
 - `src/problems/lost_sales_fixed_order_cost/`
 - `src/problems/dual_sourcing/`
 - `src/problems/multi_echelon/`
+- `src/problems/perishable_inventory/`
 
 ## Standard Module Contract
 
@@ -44,7 +46,8 @@ Required files:
 src/problems/<problem>/
   mod.rs
   env.rs
-  heuristics.rs
+  heuristics/
+    mod.rs
   rollout.rs
   references.rs
   bindings.rs
@@ -55,18 +58,20 @@ src/problems/<problem>/
 
 Optional files:
 
-- `demand.rs`, `supply.rs`, `allocation.rs`, `policies.rs`, `dp.rs`, or similar helpers when the
-  problem structure requires them
+- `exact.rs`, `demand.rs`, `supply.rs`, `allocation.rs`, `policies.rs`, `dp.rs`, or similar
+  helpers when the problem structure requires them
 
 File responsibilities:
 
 - `env.rs`: state definition, transition logic, and period cost accounting
-- `heuristics.rs`: classical benchmark policies and heuristic search helpers
+- `heuristics/`: classical benchmark policies and heuristic search helpers, split by policy family
 - `rollout.rs`: learned-policy rollout kernels used by training and evaluation
 - `references.rs`: literature instances, published values, repo canonical instance, and
   `VERIFICATION_PROBLEM_INSTANCE`
 - `bindings.rs`: Python-facing entrypoints
 - `tests/verification.rs`: the exact correctness anchor for the problem dynamics and heuristics
+- `exact.rs` when needed: exact tabular solvers or analytical verification helpers used to
+  reproduce literature anchors cleanly outside the test file
 
 Rules for `references.rs`:
 
@@ -86,8 +91,8 @@ Rules for the first test:
 - the verification test should prove both:
   - environment mechanics are correct
   - at least one benchmark heuristic produces the expected result on the verification instance
-- if the literature does not publish exact per-instance costs, use a small deterministic instance for
-  correctness and keep the literature benchmark family in `references.rs` separately
+- if exact tabular verification logic is needed, put it in `exact.rs` rather than embedding it
+  directly in `tests/verification.rs`
 
 Build into the active project virtualenv with:
 
