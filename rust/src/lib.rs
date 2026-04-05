@@ -13,6 +13,7 @@ fn version() -> &'static str {
 fn invman_rust(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(version, m)?)?;
     core::policies::bindings::register_py(m)?;
+    problems::ameliorating_inventory::bindings::register_py(m)?;
     problems::decentralized_inventory_control::bindings::register_py(m)?;
     problems::lost_sales::bindings::register_py(m)?;
     problems::lost_sales_fixed_order_cost::bindings::register_py(m)?;
