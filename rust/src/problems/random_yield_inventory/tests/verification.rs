@@ -8,8 +8,10 @@ use crate::problems::random_yield_inventory::heuristics::{
     weighted_newsvendor_order_quantity, yield_inflated_base_stock_parameters,
 };
 use crate::problems::random_yield_inventory::references::{
-    CHEN_2018_REFERENCE, INDERFURTH_2015_REFERENCE, PRIMARY_REFERENCE_INSTANCE,
-    VERIFICATION_PROBLEM_INSTANCE, WORKED_TRANSITION_REFERENCE, YAN_2026_REFERENCE,
+    CHEN_2018_REFERENCE, INDERFURTH_2015_POSITIVE_LEAD_TIMES,
+    INDERFURTH_2015_PROPORTIONAL_YIELD_PAIRS, INDERFURTH_2015_REFERENCE,
+    LITERATURE_BENCHMARK_FAMILIES, PRIMARY_REFERENCE_INSTANCE, VERIFICATION_PROBLEM_INSTANCE,
+    WORKED_TRANSITION_REFERENCE, YAN_2026_REFERENCE,
 };
 
 #[test]
@@ -35,6 +37,34 @@ fn reference_set_has_expected_shape() {
             - 1.0)
             .abs()
             < 1e-12
+    );
+}
+
+#[test]
+fn literature_benchmark_catalog_tracks_match_quality() {
+    assert_eq!(LITERATURE_BENCHMARK_FAMILIES.len(), 6);
+    assert!(LITERATURE_BENCHMARK_FAMILIES
+        .iter()
+        .all(|family| !family.benchmark_policies.is_empty()));
+
+    let yan_family = LITERATURE_BENCHMARK_FAMILIES
+        .iter()
+        .find(|family| family.name == "yan2026_small_scale_exact_dp_family")
+        .expect("Yan small-scale family must exist");
+    assert_eq!(yan_family.model_match, "exact_model_match");
+    assert_eq!(yan_family.access_level, "preview_only");
+
+    let proportional_family = LITERATURE_BENCHMARK_FAMILIES
+        .iter()
+        .find(|family| family.name == "inderfurth2015_positive_lt_proportional_grid")
+        .expect("Inderfurth proportional family must exist");
+    assert_eq!(
+        proportional_family.lead_times,
+        INDERFURTH_2015_POSITIVE_LEAD_TIMES
+    );
+    assert_eq!(
+        proportional_family.yield_rate_mean_cv_pairs,
+        INDERFURTH_2015_PROPORTIONAL_YIELD_PAIRS
     );
 }
 

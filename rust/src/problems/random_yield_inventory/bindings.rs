@@ -9,20 +9,22 @@ use crate::problems::random_yield_inventory::finite_horizon_dp::{
 };
 use crate::problems::random_yield_inventory::heuristics::{
     policy_discounted_cost_summary, policy_rollout_from_paths, simulate_policy,
-    weighted_newsvendor_order_quantity,
-    yield_inflated_base_stock_order_quantity, yield_inflated_base_stock_parameters,
-    DiscountedCostSummary,
+    weighted_newsvendor_order_quantity, yield_inflated_base_stock_order_quantity,
+    yield_inflated_base_stock_parameters, DiscountedCostSummary,
 };
 use crate::problems::random_yield_inventory::references::{
-    ExactVerificationReference, RandomYieldReferenceInstance, PRIMARY_REFERENCE_INSTANCE,
-    VERIFICATION_PROBLEM_INSTANCE,
+    ExactVerificationReference, LiteratureBenchmarkFamily, RandomYieldReferenceInstance,
+    LITERATURE_BENCHMARK_FAMILIES, PRIMARY_REFERENCE_INSTANCE, VERIFICATION_PROBLEM_INSTANCE,
 };
 use crate::problems::random_yield_inventory::rollout::{
     build_initial_state, population_rollout, rollout, rollout_from_paths,
     RandomYieldInventoryRolloutConfig,
 };
 
-fn primary_reference_to_py(py: Python<'_>, reference: &RandomYieldReferenceInstance) -> PyResult<PyObject> {
+fn primary_reference_to_py(
+    py: Python<'_>,
+    reference: &RandomYieldReferenceInstance,
+) -> PyResult<PyObject> {
     let dict = PyDict::new_bound(py);
     dict.set_item("name", reference.name)?;
     dict.set_item("source", reference.source)?;
@@ -36,7 +38,10 @@ fn primary_reference_to_py(py: Python<'_>, reference: &RandomYieldReferenceInsta
     dict.set_item("procurement_cost", reference.procurement_cost)?;
     dict.set_item("discount_factor", reference.discount_factor)?;
     dict.set_item("initial_inventory_level", reference.initial_inventory_level)?;
-    dict.set_item("initial_pipeline_orders", reference.initial_pipeline_orders.to_vec())?;
+    dict.set_item(
+        "initial_pipeline_orders",
+        reference.initial_pipeline_orders.to_vec(),
+    )?;
     dict.set_item("notes", reference.notes)?;
     Ok(dict.into_any().unbind().into())
 }
@@ -108,9 +113,47 @@ fn discounted_cost_summary_to_py(
     Ok(dict.into_any().unbind().into())
 }
 
+fn literature_family_to_py(
+    py: Python<'_>,
+    family: &LiteratureBenchmarkFamily,
+) -> PyResult<PyObject> {
+    let dict = PyDict::new_bound(py);
+    dict.set_item("name", family.name)?;
+    dict.set_item("source", family.source)?;
+    dict.set_item("url", family.url)?;
+    dict.set_item("horizon_type", family.horizon_type)?;
+    dict.set_item("demand_family", family.demand_family)?;
+    dict.set_item("yield_model", family.yield_model)?;
+    dict.set_item("model_match", family.model_match)?;
+    dict.set_item("access_level", family.access_level)?;
+    dict.set_item("benchmark_policies", family.benchmark_policies.to_vec())?;
+    dict.set_item("lead_times", family.lead_times.to_vec())?;
+    dict.set_item("demand_means", family.demand_means.to_vec())?;
+    dict.set_item("demand_cvs", family.demand_cvs.to_vec())?;
+    dict.set_item(
+        "success_probabilities",
+        family.success_probabilities.to_vec(),
+    )?;
+    dict.set_item("critical_ratios", family.critical_ratios.to_vec())?;
+    dict.set_item(
+        "yield_rate_mean_cv_pairs",
+        family.yield_rate_mean_cv_pairs.to_vec(),
+    )?;
+    dict.set_item("notes", family.notes)?;
+    Ok(dict.into_any().unbind().into())
+}
+
 #[pyfunction]
 fn random_yield_inventory_primary_reference_instance(py: Python<'_>) -> PyResult<PyObject> {
     primary_reference_to_py(py, &PRIMARY_REFERENCE_INSTANCE)
+}
+
+#[pyfunction]
+fn random_yield_inventory_literature_benchmark_families(py: Python<'_>) -> PyResult<Vec<PyObject>> {
+    LITERATURE_BENCHMARK_FAMILIES
+        .iter()
+        .map(|family| literature_family_to_py(py, family))
+        .collect()
 }
 
 #[pyfunction]
@@ -127,7 +170,10 @@ fn random_yield_inventory_exact_dp_summary(py: Python<'_>) -> PyResult<PyObject>
         evaluate_named_heuristic(&VERIFICATION_PROBLEM_INSTANCE, "weighted_newsvendor")?;
 
     let dict = PyDict::new_bound(py);
-    dict.set_item("verification_reference", verification_reference_to_py(py, &VERIFICATION_PROBLEM_INSTANCE)?)?;
+    dict.set_item(
+        "verification_reference",
+        verification_reference_to_py(py, &VERIFICATION_PROBLEM_INSTANCE)?,
+    )?;
     dict.set_item("optimal_discounted_cost", optimal.discounted_cost)?;
     dict.set_item("optimal_first_action", optimal.first_action)?;
     dict.set_item(
@@ -144,7 +190,10 @@ fn random_yield_inventory_exact_dp_summary(py: Python<'_>) -> PyResult<PyObject>
         "linear_inflation_discounted_cost",
         linear_inflation.discounted_cost,
     )?;
-    dict.set_item("linear_inflation_first_action", linear_inflation.first_action)?;
+    dict.set_item(
+        "linear_inflation_first_action",
+        linear_inflation.first_action,
+    )?;
     dict.set_item(
         "weighted_newsvendor_discounted_cost",
         weighted_newsvendor.discounted_cost,
@@ -601,10 +650,17 @@ pub fn register_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
+        random_yield_inventory_literature_benchmark_families,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
         random_yield_inventory_exact_verification_instance,
         m
     )?)?;
-    m.add_function(wrap_pyfunction!(random_yield_inventory_exact_dp_summary, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        random_yield_inventory_exact_dp_summary,
+        m
+    )?)?;
     m.add_function(wrap_pyfunction!(
         random_yield_inventory_soft_tree_rollout,
         m

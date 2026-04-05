@@ -16,6 +16,13 @@ def get_primary_reference() -> dict:
     return dict(invman_rust.random_yield_inventory_primary_reference_instance())
 
 
+def get_literature_benchmark_families() -> list[dict]:
+    return [
+        dict(family)
+        for family in invman_rust.random_yield_inventory_literature_benchmark_families()
+    ]
+
+
 def get_exact_verification_reference() -> dict:
     return dict(invman_rust.random_yield_inventory_exact_verification_instance())
 
