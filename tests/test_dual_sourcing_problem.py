@@ -1,3 +1,6 @@
+from itertools import product
+from types import SimpleNamespace
+
 import numpy as np
 import pytest
 
@@ -12,6 +15,7 @@ from invman.problems.dual_sourcing import (
     search_best_dual_index_policy,
     search_best_single_index_policy,
     search_best_tailored_base_surge_policy,
+    solve_bounded_dp,
 )
 from invman.problems.dual_sourcing.env import DualSourcingEnv
 
@@ -67,9 +71,172 @@ def test_dual_sourcing_reference_instances_include_literature_benchmark_metadata
     assert "optimal_dp" in benchmark.benchmark_policies
     assert "capped_dual_index" in benchmark.benchmark_policies
     assert benchmark.published_values["a3c_optimality_gap_pct_upper"] == 2.0
-    assert instance.expected_ranking[0] == "capped_dual_index"
+    assert benchmark.published_values["published_metric"] == "optimality_gap_pct"
+    assert instance.expected_ranking == (
+        "capped_dual_index",
+        "dual_index",
+        "tailored_base_surge",
+        "single_index",
+    )
     assert instance.literature_values["best_reported_heuristic_family"] == "capped_dual_index"
+    assert instance.literature_values["published_optimality_gap_pct"] == {
+        "capped_dual_index": 0.11,
+        "dual_index": 0.49,
+        "single_index": 2.44,
+        "tailored_base_surge": 0.58,
+        "a3c": 1.33,
+    }
     assert instance.literature_values["has_exact_published_cost"] is False
+
+
+def test_dual_sourcing_bounded_dp_reports_average_cost_of_extracted_policy():
+    args = SimpleNamespace(
+        regular_lead_time=2,
+        regular_order_cost=10.0,
+        expedited_order_cost=12.0,
+        holding_cost=1.0,
+        shortage_cost=20.0,
+        regular_max_order_size=4,
+        expedited_max_order_size=4,
+        dual_demand_low=0,
+        dual_demand_high=2,
+    )
+    inventory_lower = -8
+    inventory_upper = 10
+
+    dp_result = solve_bounded_dp(
+        args,
+        inventory_lower=inventory_lower,
+        inventory_upper=inventory_upper,
+        tolerance=1e-10,
+        max_iterations=500,
+    )
+
+    demand_values = list(range(args.dual_demand_low, args.dual_demand_high + 1))
+    demand_prob = 1.0 / len(demand_values)
+    state_space = list(
+        product(
+            range(inventory_lower, inventory_upper + 1),
+            range(args.regular_max_order_size + 1),
+        )
+    )
+    state_to_idx = {state: idx for idx, state in enumerate(state_space)}
+    transition = np.zeros((len(state_space), len(state_space)), dtype=np.float64)
+    expected_cost = np.zeros(len(state_space), dtype=np.float64)
+
+    for state_idx, state in enumerate(state_space):
+        regular_order, expedited_order = dp_result.best_action_by_state[state]
+        for demand in demand_values:
+            end_inventory = int(state[0]) + int(expedited_order) - int(demand)
+            next_state = (
+                max(inventory_lower, min(inventory_upper, end_inventory + int(state[1]))),
+                max(0, min(args.regular_max_order_size, int(regular_order))),
+            )
+            transition[state_idx, state_to_idx[next_state]] += demand_prob
+            expected_cost[state_idx] += demand_prob * (
+                args.regular_order_cost * int(regular_order)
+                + args.expedited_order_cost * int(expedited_order)
+                + args.holding_cost * max(end_inventory, 0)
+                + args.shortage_cost * max(-end_inventory, 0)
+            )
+
+    initial_state = (
+        int(round((args.regular_lead_time + 1) * 0.5 * (args.dual_demand_low + args.dual_demand_high))),
+        0,
+    )
+    distribution = np.zeros(len(state_space), dtype=np.float64)
+    distribution[state_to_idx[initial_state]] = 1.0
+    for _ in range(10_000):
+        next_distribution = distribution @ transition
+        if np.max(np.abs(next_distribution - distribution)) < 1e-14:
+            distribution = next_distribution
+            break
+        distribution = next_distribution
+
+    stationary_cost = float(distribution @ expected_cost)
+    assert dp_result.average_cost == pytest.approx(stationary_cost, abs=1e-8)
+
+
+def test_dual_sourcing_rust_bounded_average_cost_matches_python_dp():
+    args = SimpleNamespace(
+        regular_lead_time=2,
+        regular_order_cost=10.0,
+        expedited_order_cost=12.0,
+        holding_cost=1.0,
+        shortage_cost=20.0,
+        regular_max_order_size=4,
+        expedited_max_order_size=4,
+        dual_demand_low=0,
+        dual_demand_high=2,
+    )
+
+    python_summary = solve_bounded_dp(
+        args,
+        inventory_lower=-8,
+        inventory_upper=10,
+        tolerance=1e-10,
+        max_iterations=500,
+    )
+    rust_summary = dict(
+        invman_rust.dual_sourcing_bounded_average_cost_optimal_summary(
+            regular_lead_time=args.regular_lead_time,
+            regular_order_cost=args.regular_order_cost,
+            expedited_order_cost=args.expedited_order_cost,
+            holding_cost=args.holding_cost,
+            shortage_cost=args.shortage_cost,
+            regular_max_order_size=args.regular_max_order_size,
+            expedited_max_order_size=args.expedited_max_order_size,
+            demand_low=args.dual_demand_low,
+            demand_high=args.dual_demand_high,
+            inventory_lower=-8,
+            inventory_upper=10,
+            tolerance=1e-10,
+            max_iterations=500,
+        )
+    )
+
+    initial_state = tuple(rust_summary["initial_state"])
+    assert rust_summary["average_cost"] == pytest.approx(python_summary.average_cost, abs=1e-10)
+    assert tuple(rust_summary["first_action"]) == python_summary.best_action_by_state[initial_state]
+    assert rust_summary["iterations"] == python_summary.iterations
+
+
+def test_dual_sourcing_rust_reference_benchmark_matches_figure9_gaps_for_l2_ce105():
+    report = dict(
+        invman_rust.dual_sourcing_reference_benchmark_summary(
+            reference_instance_name="dual_l2_ce105",
+            inventory_lower=-12,
+            inventory_upper=24,
+            tolerance=1e-8,
+            max_iterations=250,
+            search_seed=123,
+            search_horizon=6000,
+            warm_up_periods_ratio=0.2,
+        )
+    )
+
+    assert report["reference_name"] == "dual_l2_ce105"
+    assert report["optimal"]["average_cost"] > 0.0
+
+    heuristics = {entry["policy_name"]: dict(entry) for entry in report["heuristics"]}
+    assert list(heuristics) == [
+        "capped_dual_index",
+        "tailored_base_surge",
+        "dual_index",
+        "single_index",
+    ]
+
+    assert heuristics["capped_dual_index"]["published_optimality_gap_pct"] == pytest.approx(0.00)
+    assert heuristics["tailored_base_surge"]["published_optimality_gap_pct"] == pytest.approx(0.06)
+    assert heuristics["dual_index"]["published_optimality_gap_pct"] == pytest.approx(0.11)
+    assert heuristics["single_index"]["published_optimality_gap_pct"] == pytest.approx(0.56)
+
+    for entry in heuristics.values():
+        assert entry["average_cost"] >= report["optimal"]["average_cost"] - 1e-8
+        assert entry["optimality_gap_pct"] == pytest.approx(
+            entry["published_optimality_gap_pct"],
+            abs=0.01,
+        )
 
 
 def test_dual_sourcing_soft_tree_rust_matches_python_rollout():

@@ -14,7 +14,20 @@ fn mean_after_warmup(epoch_costs: &[f64], warm_up_periods_ratio: f64) -> f64 {
     active_costs.iter().sum::<f64>() / active_costs.len() as f64
 }
 
-fn single_index_action(
+pub fn target_upper_bound(
+    regular_lead_time: usize,
+    demand_low: usize,
+    demand_high: usize,
+    expedited_max_order_size: usize,
+) -> usize {
+    let mean_demand = 0.5 * (demand_low + demand_high) as f64;
+    let upper =
+        ((regular_lead_time + 2) as f64 * mean_demand + 2.0 * expedited_max_order_size as f64)
+            .round() as usize;
+    expedited_max_order_size.max(upper.min(24))
+}
+
+pub fn single_index_action(
     regular_inventory_position: i64,
     s_e: usize,
     s_r: usize,
@@ -30,7 +43,7 @@ fn single_index_action(
     (regular, expedited)
 }
 
-fn dual_index_action(
+pub fn dual_index_action(
     expedited_inventory_position: i64,
     regular_inventory_position: i64,
     s_e: usize,
@@ -47,7 +60,7 @@ fn dual_index_action(
     (regular, expedited)
 }
 
-fn capped_dual_index_action(
+pub fn capped_dual_index_action(
     expedited_inventory_position: i64,
     regular_inventory_position: i64,
     s_e: usize,
@@ -64,7 +77,7 @@ fn capped_dual_index_action(
     (desired_regular.min(cap_r).min(max_regular), expedited)
 }
 
-fn tailored_base_surge_action(
+pub fn tailored_base_surge_action(
     expedited_inventory_position: i64,
     surge_level: usize,
     regular_qty: usize,
@@ -75,6 +88,53 @@ fn tailored_base_surge_action(
         .saturating_sub(expedited_inventory_position.max(0) as usize)
         .min(max_expedited);
     (regular_qty.min(max_regular), expedited)
+}
+
+pub fn named_policy_action(
+    policy_name: &str,
+    params: &[usize],
+    reduced_state: &[i64],
+    regular_max_order_size: usize,
+    expedited_max_order_size: usize,
+) -> PyResult<(usize, usize)> {
+    let expedited_inventory_position = reduced_state[0];
+    let regular_inventory_position = reduced_state.iter().sum::<i64>();
+    match policy_name {
+        "single_index" => Ok(single_index_action(
+            regular_inventory_position,
+            params[0],
+            params[1],
+            regular_max_order_size,
+            expedited_max_order_size,
+        )),
+        "dual_index" => Ok(dual_index_action(
+            expedited_inventory_position,
+            regular_inventory_position,
+            params[0],
+            params[1],
+            regular_max_order_size,
+            expedited_max_order_size,
+        )),
+        "capped_dual_index" => Ok(capped_dual_index_action(
+            expedited_inventory_position,
+            regular_inventory_position,
+            params[0],
+            params[1],
+            params[2],
+            regular_max_order_size,
+            expedited_max_order_size,
+        )),
+        "tailored_base_surge" => Ok(tailored_base_surge_action(
+            expedited_inventory_position,
+            params[0],
+            params[1],
+            regular_max_order_size,
+            expedited_max_order_size,
+        )),
+        _ => Err(PyValueError::new_err(format!(
+            "unknown dual-sourcing policy '{policy_name}'"
+        ))),
+    }
 }
 
 fn rollout_policy_from_demands(
@@ -93,46 +153,13 @@ fn rollout_policy_from_demands(
     let mut reduced_state = state.to_vec();
     let mut epoch_costs = Vec::with_capacity(demands.len());
     for demand in demands.iter().copied() {
-        let expedited_inventory_position = reduced_state[0];
-        let regular_inventory_position = reduced_state.iter().sum::<i64>();
-        let (regular_order, expedited_order) = match policy_name {
-            "single_index" => single_index_action(
-                regular_inventory_position,
-                params[0],
-                params[1],
-                regular_max_order_size,
-                expedited_max_order_size,
-            ),
-            "dual_index" => dual_index_action(
-                expedited_inventory_position,
-                regular_inventory_position,
-                params[0],
-                params[1],
-                regular_max_order_size,
-                expedited_max_order_size,
-            ),
-            "capped_dual_index" => capped_dual_index_action(
-                expedited_inventory_position,
-                regular_inventory_position,
-                params[0],
-                params[1],
-                params[2],
-                regular_max_order_size,
-                expedited_max_order_size,
-            ),
-            "tailored_base_surge" => tailored_base_surge_action(
-                expedited_inventory_position,
-                params[0],
-                params[1],
-                regular_max_order_size,
-                expedited_max_order_size,
-            ),
-            _ => {
-                return Err(PyValueError::new_err(format!(
-                    "unknown dual-sourcing policy '{policy_name}'"
-                )))
-            }
-        };
+        let (regular_order, expedited_order) = named_policy_action(
+            policy_name,
+            params,
+            &reduced_state,
+            regular_max_order_size,
+            expedited_max_order_size,
+        )?;
         epoch_costs.push(epoch_cost(
             &reduced_state,
             regular_order,
