@@ -1,3 +1,4 @@
+pub mod decentralized_inventory_control;
 pub mod dual_sourcing;
 pub mod joint_replenishment;
 pub mod lost_sales;
