@@ -13,6 +13,8 @@ Artifact folders:
   - paper scope and benchmark interpretation
 - `practical/`
   - checked-in rolling forecast trace, benchmark spec, and latest report snapshot
+- `experiments/`
+  - paper-facing benchmark definition
 - `verification/`
   - human-readable statement of what the verifier asserts
 

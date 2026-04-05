@@ -28,7 +28,8 @@ The crate mirrors the Python package structure:
   - heuristic search
   - problem-specific action mappings when needed
 - `problems/<problem>/`
-  - canonical Rust-side artifact home for literature, practical benchmarks, and verification notes
+  - canonical Rust-side artifact home for literature, practical benchmarks, experiment plans, and
+    verification notes
 
 Current problem modules:
 
@@ -54,6 +55,7 @@ problems/<problem>/
   practical/
     datasets/
     reports/
+  experiments/
   verification/
 
 src/problems/<problem>/
@@ -87,6 +89,8 @@ File responsibilities:
 - `problems/<problem>/literature/`: the human-readable interpretation of the carried paper family
 - `problems/<problem>/practical/datasets/`: checked-in practical benchmark traces or descriptors
 - `problems/<problem>/practical/reports/`: checked-in canonical benchmark snapshots
+- `problems/<problem>/experiments/`: paper-facing experiment definitions for reported benchmark
+  studies
 - `problems/<problem>/verification/`: human-readable targets for what the tests assert
 - problem-specific solver helpers when needed, with names that say what they do:
   `finite_horizon_dp.rs`, `value_iteration_mdp.rs`, `rolling_scarf_dp.rs`, and similar modules

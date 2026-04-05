@@ -6,7 +6,7 @@ families, under `rust/src/problems/` first.
 For Rust-first families, the canonical problem home is split into:
 
 - `rust/src/problems/<problem>/` for executable code only
-- `rust/problems/<problem>/` for literature, practical, and verification artifacts
+- `rust/problems/<problem>/` for literature, practical, experiments, and verification artifacts
 
 ## Current Problem Set
 
@@ -179,6 +179,40 @@ Every mature family should eventually support three benchmark layers.
 We do not skip verification in favor of practical benchmarks. Practicalization comes after the
 problem family is already correct.
 
+## Experiment Design Contract
+
+Each mature Rust-first family should also carry an `experiments/` folder under
+`rust/problems/<problem>/`.
+
+This is the paper-reporting layer. It is where we define:
+
+- which instances we will report in the paper
+- which learned policy families we will optimize with CMA-ES
+- which heuristic baselines we will compare against
+- whether an exact or near-exact optimal benchmark exists
+- which metrics we will report in the paper tables
+
+Current paper objective:
+
+- design policy classes for `invman` problems
+- optimize their parameters with CMA-ES
+- compare against:
+  - the problem heuristics
+  - the optimal policy when an exact optimum exists
+  - the strongest benchmark baseline when an exact optimum is not tractable
+
+Minimum expected file:
+
+- `rust/problems/<problem>/experiments/paper_benchmark.md`
+
+That file should define at least:
+
+- reported instances
+- learned policy families
+- heuristic comparators
+- exact / optimal comparator availability
+- reported metrics
+
 ## Verification Standard
 
 Verification in this repo means: run our code and assert its outputs against frozen reference
@@ -306,6 +340,7 @@ Use this layout by default:
   - `practical/`
     - `datasets/`
     - `reports/`
+  - `experiments/`
   - `verification/`
 - `rust/src/problems/<problem>/`
   - `env.rs`
@@ -334,6 +369,8 @@ Artifact responsibilities:
   - checked-in practical dataset descriptors or trace files
 - `rust/problems/<problem>/practical/reports/`
   - checked-in canonical report snapshots
+- `rust/problems/<problem>/experiments/`
+  - paper-facing experiment definitions and reported-instance selections
 - `rust/problems/<problem>/verification/`
   - human-readable verification targets and semantics
 - `scripts/<problem>/run_practical_benchmark.py`
