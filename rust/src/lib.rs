@@ -24,5 +24,6 @@ fn invman_rust(m: &Bound<'_, PyModule>) -> PyResult<()> {
     problems::one_warehouse_multi_retailer::bindings::register_py(m)?;
     problems::perishable_inventory::bindings::register_py(m)?;
     problems::random_yield_inventory::bindings::register_py(m)?;
+    problems::spare_parts_inventory::bindings::register_py(m)?;
     Ok(())
 }

@@ -25,6 +25,7 @@ Current implemented families:
 - `one_warehouse_multi_retailer`
 - `decentralized_inventory_control`
 - `network_inventory`
+- `spare_parts_inventory`
 
 ## Decision Rule
 
@@ -167,7 +168,6 @@ Primary literature anchor:
 
 These are real inventory-control topics, but not first-wave additions for `invman`:
 
-- `spare_parts_inventory`
 - `ameliorating_inventory`
 - `procurement_removal_inventory`
 - `joint_pricing_inventory`
@@ -182,8 +182,8 @@ Reason:
 
 The first-wave expansion sequence is now implemented through `network_inventory`.
 
-The next additions, if we continue expanding the family set, should come from the deferred list
-rather than from the first-wave core families above.
+The next additions, if we continue expanding the family set, should come from the remaining
+deferred list rather than from the first-wave core families above.
 
 ## Review Anchor
 

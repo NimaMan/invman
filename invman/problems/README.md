@@ -17,8 +17,10 @@ Current problem families in the repo:
 - `joint_replenishment`
 - `one_warehouse_multi_retailer`
 - `decentralized_inventory_control`
+- `network_inventory`
+- `spare_parts_inventory`
 
-The first four have Python problem packages today. The later six are currently Rust-first.
+The first four have Python problem packages today. The later eight are currently Rust-first.
 
 ### Current Python Packages
 
@@ -66,6 +68,11 @@ These families are implemented first under `rust/src/problems/<problem>/`:
 - `decentralized_inventory_control/`
   - Beer-Game-style local-information serial chain with `base_stock` and `sterman_anchor_adjust`
     benchmarks plus exact reduced verification
+- `network_inventory/`
+  - generalized directed inventory networks with exact reduced verification on a small diamond graph
+- `spare_parts_inventory/`
+  - repairable spare-parts control with installed-base failures, repair returns, procurement, and
+    exact reduced finite-horizon verification
 
 Learned policy classes stay separate under `invman/policies/`. The problem packages own the
 simulation, baseline heuristics, and reference benchmarks.
@@ -81,7 +88,7 @@ That means:
 - the Rust module must already contain the environment, heuristic baselines, rollout path, and
   verification anchors before the family counts as implemented
 
-The newer Rust-first families currently include the six families listed above.
+The newer Rust-first families currently include the eight families listed above.
 
 ## Standard For New Problems
 

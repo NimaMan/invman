@@ -9,3 +9,4 @@ pub mod network_inventory;
 pub mod one_warehouse_multi_retailer;
 pub mod perishable_inventory;
 pub mod random_yield_inventory;
+pub mod spare_parts_inventory;
