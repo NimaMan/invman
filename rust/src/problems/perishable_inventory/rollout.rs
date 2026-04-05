@@ -53,6 +53,31 @@ fn mean_after_warmup(epoch_costs: &[f64], warm_up_periods_ratio: f64) -> PyResul
     Ok(active_costs.iter().sum::<f64>() / active_costs.len() as f64)
 }
 
+fn discounted_return_after_warmup(
+    epoch_costs: &[f64],
+    warm_up_periods_ratio: f64,
+    gamma: f64,
+) -> PyResult<f64> {
+    if epoch_costs.is_empty() {
+        return Err(PyValueError::new_err("epoch_costs must be non-empty"));
+    }
+    if !(0.0..=1.0).contains(&warm_up_periods_ratio) {
+        return Err(PyValueError::new_err(
+            "warm_up_periods_ratio must be in [0, 1]",
+        ));
+    }
+    if !(0.0..=1.0).contains(&gamma) {
+        return Err(PyValueError::new_err("gamma must be in [0, 1]"));
+    }
+    let horizon = epoch_costs.len();
+    let warm_up_periods = ((warm_up_periods_ratio * horizon as f64).floor() as usize).min(horizon);
+    let mut discounted_return = 0.0;
+    for (offset, cost) in epoch_costs.iter().skip(warm_up_periods).enumerate() {
+        discounted_return += -cost * gamma.powi(offset as i32);
+    }
+    Ok(discounted_return)
+}
+
 fn validate_config(config: &PerishableInventoryRolloutConfig) -> PyResult<()> {
     if config.shelf_life < 1 {
         return Err(PyValueError::new_err("shelf_life must be at least 1"));
@@ -139,6 +164,48 @@ pub fn rollout(
     mean_after_warmup(&epoch_costs, config.warm_up_periods_ratio)
 }
 
+pub fn rollout_discounted_return(
+    flat_params: &[f32],
+    config: &PerishableInventoryRolloutConfig,
+    seed: u64,
+    gamma: f64,
+) -> PyResult<f64> {
+    validate_config(config)?;
+    let gamma_dist = build_discrete_gamma(config.demand_mean, config.demand_cov)?;
+    let mut rng = StdRng::seed_from_u64(seed);
+    let mut state = initialize_state(config.demand_mean, config.shelf_life, config.lead_time);
+    let mut epoch_costs = Vec::with_capacity(config.horizon);
+
+    for _ in 0..config.horizon {
+        let policy_state = build_policy_state(&state, config.demand_mean);
+        let action = action_vector_from_flat_params(
+            &policy_state,
+            flat_params,
+            config.input_dim,
+            config.depth,
+            config.temperature,
+            config.split_type,
+            config.leaf_type,
+            &config.action_spec,
+        )?[0];
+        let demand = sample_gamma_demand(&mut rng, &gamma_dist);
+        let outcome = step_state(
+            &state,
+            action,
+            demand,
+            config.holding_cost,
+            config.shortage_cost,
+            config.waste_cost,
+            config.procurement_cost,
+            config.issuing_policy,
+        );
+        epoch_costs.push(outcome.cost);
+        state = outcome.next_state;
+    }
+
+    discounted_return_after_warmup(&epoch_costs, config.warm_up_periods_ratio, gamma)
+}
+
 pub fn rollout_from_demands(
     flat_params: &[f32],
     config: &PerishableInventoryRolloutConfig,
@@ -178,6 +245,46 @@ pub fn rollout_from_demands(
     mean_after_warmup(&epoch_costs, config.warm_up_periods_ratio)
 }
 
+pub fn rollout_from_demands_discounted_return(
+    flat_params: &[f32],
+    config: &PerishableInventoryRolloutConfig,
+    mut state: PerishableState,
+    demands: &[usize],
+    gamma: f64,
+) -> PyResult<f64> {
+    validate_config(config)?;
+    validate_state(&state, config.shelf_life, config.lead_time)?;
+    let mut epoch_costs = Vec::with_capacity(demands.len());
+
+    for demand in demands.iter().copied() {
+        let policy_state = build_policy_state(&state, config.demand_mean);
+        let action = action_vector_from_flat_params(
+            &policy_state,
+            flat_params,
+            config.input_dim,
+            config.depth,
+            config.temperature,
+            config.split_type,
+            config.leaf_type,
+            &config.action_spec,
+        )?[0];
+        let outcome = step_state(
+            &state,
+            action,
+            demand,
+            config.holding_cost,
+            config.shortage_cost,
+            config.waste_cost,
+            config.procurement_cost,
+            config.issuing_policy,
+        );
+        epoch_costs.push(outcome.cost);
+        state = outcome.next_state;
+    }
+
+    discounted_return_after_warmup(&epoch_costs, config.warm_up_periods_ratio, gamma)
+}
+
 pub fn population_rollout(
     params_batch: &[Vec<f32>],
     config: &PerishableInventoryRolloutConfig,
@@ -192,5 +299,23 @@ pub fn population_rollout(
         .par_iter()
         .zip(seeds.par_iter())
         .map(|(flat_params, seed)| rollout(flat_params, config, *seed))
+        .collect()
+}
+
+pub fn population_rollout_discounted_return(
+    params_batch: &[Vec<f32>],
+    config: &PerishableInventoryRolloutConfig,
+    seeds: &[u64],
+    gamma: f64,
+) -> PyResult<Vec<f64>> {
+    if params_batch.len() != seeds.len() {
+        return Err(PyValueError::new_err(
+            "params_batch and seeds must have the same length",
+        ));
+    }
+    params_batch
+        .par_iter()
+        .zip(seeds.par_iter())
+        .map(|(flat_params, seed)| rollout_discounted_return(flat_params, config, *seed, gamma))
         .collect()
 }
