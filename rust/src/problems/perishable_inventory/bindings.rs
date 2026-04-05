@@ -21,7 +21,9 @@ use crate::problems::perishable_inventory::rollout::{
     population_rollout_discounted_return as perishable_population_rollout_discounted_return,
     rollout as perishable_rollout,
     rollout_discounted_return as perishable_rollout_discounted_return,
-    rollout_from_demands as perishable_rollout_from_demands, PerishableInventoryRolloutConfig,
+    rollout_from_demands as perishable_rollout_from_demands,
+    rollout_trace_summary_from_demands as perishable_rollout_trace_summary_from_demands,
+    PerishableInventoryRolloutConfig,
 };
 use crate::problems::perishable_inventory::value_iteration_mdp::{
     best_base_stock_level_by_expected_return, build_exact_mdp, build_policy_table_9x9,
@@ -606,6 +608,77 @@ fn perishable_inventory_soft_tree_rollout_from_demands(
         pipeline_orders,
     };
     perishable_rollout_from_demands(&flat_params, &config, state, &demands)
+}
+
+#[pyfunction]
+#[pyo3(signature = (
+    flat_params,
+    input_dim,
+    depth,
+    min_values,
+    max_values,
+    action_mode,
+    on_hand,
+    pipeline_orders,
+    demands,
+    holding_cost,
+    shortage_cost,
+    waste_cost,
+    procurement_cost=0.0,
+    temperature=0.25,
+    split_type="oblique",
+    leaf_type="constant",
+    issuing_policy="fifo",
+    allowed_values=None,
+    demand_mean=None
+))]
+fn perishable_inventory_soft_tree_trace_summary_from_demands(
+    py: Python<'_>,
+    flat_params: Vec<f32>,
+    input_dim: usize,
+    depth: usize,
+    min_values: Vec<usize>,
+    max_values: Vec<usize>,
+    action_mode: &str,
+    on_hand: Vec<usize>,
+    pipeline_orders: Vec<usize>,
+    demands: Vec<usize>,
+    holding_cost: f64,
+    shortage_cost: f64,
+    waste_cost: f64,
+    procurement_cost: f64,
+    temperature: f32,
+    split_type: &str,
+    leaf_type: &str,
+    issuing_policy: &str,
+    allowed_values: Option<Vec<Vec<usize>>>,
+    demand_mean: Option<f64>,
+) -> PyResult<PyObject> {
+    let config = PerishableInventoryRolloutConfig {
+        input_dim,
+        depth,
+        action_spec: build_action_spec(action_mode, min_values, max_values, allowed_values)?,
+        demand_mean: demand_mean.unwrap_or_else(|| empirical_mean_demand(&demands)),
+        demand_cov: 1.0,
+        shelf_life: on_hand.len(),
+        lead_time: pipeline_orders.len() + 1,
+        holding_cost,
+        shortage_cost,
+        waste_cost,
+        procurement_cost,
+        horizon: demands.len(),
+        warm_up_periods_ratio: 0.0,
+        temperature,
+        split_type: parse_split_type(split_type)?,
+        leaf_type: parse_leaf_type(leaf_type)?,
+        issuing_policy: parse_issuing_policy(issuing_policy)?,
+    };
+    let state = PerishableState {
+        on_hand,
+        pipeline_orders,
+    };
+    let summary = perishable_rollout_trace_summary_from_demands(&flat_params, &config, state, &demands)?;
+    trace_summary_to_py(py, &summary)
 }
 
 #[pyfunction]
@@ -1416,6 +1489,10 @@ pub fn register_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     )?)?;
     m.add_function(wrap_pyfunction!(
         perishable_inventory_soft_tree_rollout_from_demands,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        perishable_inventory_soft_tree_trace_summary_from_demands,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(

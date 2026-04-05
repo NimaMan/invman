@@ -210,6 +210,11 @@ Minimum expected file:
 
 - `rust/problems/<problem>/experiments/README.md`
 
+Typical generated outputs:
+
+- `rust/problems/<problem>/experiments/reports/latest_report.json`
+- `rust/problems/<problem>/experiments/reports/README.md`
+
 That file should define at least:
 
 - reported instances

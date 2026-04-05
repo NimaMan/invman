@@ -76,3 +76,14 @@ The paper table for this family should show:
 1. on exact small instances, whether CMA-ES can recover or approach the optimal policy gap
 2. on a larger practical instance, whether the designed policy beats the benchmark heuristics on
    the waste-service-cost tradeoff
+
+## Executable Benchmark
+
+Runner:
+
+- `scripts/perishable_inventory/run_paper_benchmark.py`
+
+Default outputs:
+
+- `rust/problems/perishable_inventory/experiments/reports/latest_report.json`
+- `rust/problems/perishable_inventory/experiments/reports/README.md`

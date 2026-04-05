@@ -23,6 +23,7 @@ rust/problems/<problem>/
     datasets/
     reports/
   experiments/
+    reports/
   verification/
 ```
 

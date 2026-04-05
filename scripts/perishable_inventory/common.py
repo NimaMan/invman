@@ -81,6 +81,44 @@ def search_best_base_stock(reference: dict, seeds: Iterable[int], *, horizon: in
     )
 
 
+def search_best_base_stock_from_demands(
+    reference: dict,
+    demands: Iterable[int],
+    *,
+    demand_mean: float,
+) -> dict:
+    on_hand, pipeline_orders = zero_state(reference)
+    best, top = invman_rust.perishable_inventory_base_stock_search_from_demands(
+        on_hand=on_hand,
+        pipeline_orders=pipeline_orders,
+        demands=[int(value) for value in demands],
+        lead_time=int(reference["lead_time"]),
+        max_order_size=int(reference["max_order_size"]),
+        demand_mean=float(demand_mean),
+        holding_cost=float(reference["holding_cost"]),
+        shortage_cost=float(reference["shortage_cost"]),
+        waste_cost=float(reference["waste_cost"]),
+        position_upper_bound=int(reference["max_order_size"]),
+        procurement_cost=float(reference["procurement_cost"]),
+        warm_up_periods_ratio=0.0,
+        issuing_policy=str(reference["issuing_policy"]),
+        top_k=12,
+    )
+    return {
+        "best": {
+            "params": [int(best[0])],
+            "mean_period_cost": float(best[1]),
+        },
+        "top": [
+            {
+                "params": [int(params)],
+                "mean_period_cost": float(mean_period_cost),
+            }
+            for params, mean_period_cost in top
+        ],
+    }
+
+
 def search_best_bsp_low_ew(reference: dict, seeds: Iterable[int], *, horizon: int | None = None) -> dict:
     on_hand, pipeline_orders = zero_state(reference)
     return dict(
@@ -102,6 +140,44 @@ def search_best_bsp_low_ew(reference: dict, seeds: Iterable[int], *, horizon: in
             top_k=12,
         )
     )
+
+
+def search_best_bsp_low_ew_from_demands(
+    reference: dict,
+    demands: Iterable[int],
+    *,
+    demand_mean: float,
+) -> dict:
+    on_hand, pipeline_orders = zero_state(reference)
+    best, top = invman_rust.perishable_inventory_bsp_low_ew_search_from_demands(
+        on_hand=on_hand,
+        pipeline_orders=pipeline_orders,
+        demands=[int(value) for value in demands],
+        lead_time=int(reference["lead_time"]),
+        max_order_size=int(reference["max_order_size"]),
+        demand_mean=float(demand_mean),
+        holding_cost=float(reference["holding_cost"]),
+        shortage_cost=float(reference["shortage_cost"]),
+        waste_cost=float(reference["waste_cost"]),
+        position_upper_bound=int(reference["max_order_size"]),
+        procurement_cost=float(reference["procurement_cost"]),
+        warm_up_periods_ratio=0.0,
+        issuing_policy=str(reference["issuing_policy"]),
+        top_k=12,
+    )
+    return {
+        "best": {
+            "params": [int(best[0]), int(best[1]), int(best[2])],
+            "mean_period_cost": float(best[3]),
+        },
+        "top": [
+            {
+                "params": [int(s1), int(s2), int(b)],
+                "mean_period_cost": float(mean_period_cost),
+            }
+            for s1, s2, b, mean_period_cost in top
+        ],
+    }
 
 
 def build_soft_tree_model(
@@ -191,6 +267,74 @@ def evaluate_soft_tree_policy(
         "max_return": float(np.max(returns)),
         "num_seeds": int(returns.size),
     }
+
+
+def evaluate_heuristic_trace_summary(
+    reference: dict,
+    policy_name: str,
+    params,
+    demands: Iterable[int],
+    *,
+    demand_mean: float,
+) -> dict:
+    on_hand, pipeline_orders = zero_state(reference)
+    return dict(
+        invman_rust.perishable_inventory_policy_trace_summary_from_demands(
+            policy_name=policy_name,
+            params=list(params) if isinstance(params, tuple) else [int(value) for value in params],
+            on_hand=on_hand,
+            pipeline_orders=pipeline_orders,
+            demands=[int(value) for value in demands],
+            lead_time=int(reference["lead_time"]),
+            max_order_size=int(reference["max_order_size"]),
+            demand_mean=float(demand_mean),
+            holding_cost=float(reference["holding_cost"]),
+            shortage_cost=float(reference["shortage_cost"]),
+            waste_cost=float(reference["waste_cost"]),
+            procurement_cost=float(reference["procurement_cost"]),
+            issuing_policy=str(reference["issuing_policy"]),
+        )
+    )
+
+
+def evaluate_soft_tree_trace_summary(
+    reference: dict,
+    model: SoftTreePolicy,
+    demands: Iterable[int],
+    *,
+    demand_mean: float,
+    flat_params=None,
+) -> dict:
+    params = model.get_model_flat_params() if flat_params is None else flat_params
+    on_hand, pipeline_orders = zero_state(reference)
+    return dict(
+        invman_rust.perishable_inventory_soft_tree_trace_summary_from_demands(
+            flat_params=np.asarray(params, dtype=np.float32).tolist(),
+            on_hand=on_hand,
+            pipeline_orders=pipeline_orders,
+            demands=[int(value) for value in demands],
+            demand_mean=float(demand_mean),
+            **{
+                key: value
+                for key, value in soft_tree_rollout_kwargs(
+                    reference,
+                    model,
+                    flat_params=params,
+                    horizon=int(reference["horizon"]),
+                ).items()
+                if key
+                not in {
+                    "flat_params",
+                    "demand_mean",
+                    "demand_cov",
+                    "shelf_life",
+                    "lead_time",
+                    "horizon",
+                    "warm_up_periods_ratio",
+                }
+            },
+        )
+    )
 
 
 def dumps_json(payload: dict) -> str:

@@ -12,6 +12,7 @@ use crate::problems::perishable_inventory::env::{
     build_policy_state, initialize_state, step_state, validate_state, IssuingPolicy,
     PerishableState,
 };
+use crate::problems::perishable_inventory::heuristics::PolicyTraceSummary;
 
 #[derive(Clone)]
 pub struct PerishableInventoryRolloutConfig {
@@ -243,6 +244,94 @@ pub fn rollout_from_demands(
     }
 
     mean_after_warmup(&epoch_costs, config.warm_up_periods_ratio)
+}
+
+pub fn rollout_trace_summary_from_demands(
+    flat_params: &[f32],
+    config: &PerishableInventoryRolloutConfig,
+    mut state: PerishableState,
+    demands: &[usize],
+) -> PyResult<PolicyTraceSummary> {
+    validate_config(config)?;
+    validate_state(&state, config.shelf_life, config.lead_time)?;
+    if demands.is_empty() {
+        return Err(PyValueError::new_err("demands must be non-empty"));
+    }
+
+    let mut total_cost = 0.0;
+    let mut total_demand = 0usize;
+    let mut total_shortage = 0usize;
+    let mut stockout_periods = 0usize;
+    let mut total_waste = 0usize;
+    let mut total_holding_inventory = 0usize;
+    let mut total_order_quantity = 0usize;
+    let mut positive_order_periods = 0usize;
+
+    for demand in demands.iter().copied() {
+        let policy_state = build_policy_state(&state, config.demand_mean);
+        let order_quantity = action_vector_from_flat_params(
+            &policy_state,
+            flat_params,
+            config.input_dim,
+            config.depth,
+            config.temperature,
+            config.split_type,
+            config.leaf_type,
+            &config.action_spec,
+        )?[0];
+        let outcome = step_state(
+            &state,
+            order_quantity,
+            demand,
+            config.holding_cost,
+            config.shortage_cost,
+            config.waste_cost,
+            config.procurement_cost,
+            config.issuing_policy,
+        );
+        total_cost += outcome.cost;
+        total_demand += demand;
+        total_shortage += outcome.shortage;
+        total_waste += outcome.waste;
+        total_holding_inventory += outcome.holding_inventory;
+        total_order_quantity += order_quantity;
+        if order_quantity > 0 {
+            positive_order_periods += 1;
+        }
+        if outcome.shortage > 0 {
+            stockout_periods += 1;
+        }
+        state = outcome.next_state;
+    }
+
+    let periods = demands.len();
+    let ending_inventory = state.on_hand.iter().copied().sum::<usize>();
+    let ending_pipeline = state.pipeline_orders.iter().copied().sum::<usize>();
+
+    Ok(PolicyTraceSummary {
+        periods,
+        total_cost,
+        mean_period_cost: total_cost / periods as f64,
+        total_demand,
+        total_shortage,
+        fill_rate: if total_demand > 0 {
+            1.0 - total_shortage as f64 / total_demand as f64
+        } else {
+            1.0
+        },
+        cycle_service_level: 1.0 - stockout_periods as f64 / periods as f64,
+        total_waste,
+        waste_rate: if total_demand > 0 {
+            total_waste as f64 / total_demand as f64
+        } else {
+            0.0
+        },
+        mean_holding_inventory: total_holding_inventory as f64 / periods as f64,
+        mean_order_quantity: total_order_quantity as f64 / periods as f64,
+        positive_order_frequency: positive_order_periods as f64 / periods as f64,
+        ending_inventory,
+        ending_pipeline,
+    })
 }
 
 pub fn rollout_from_demands_discounted_return(
