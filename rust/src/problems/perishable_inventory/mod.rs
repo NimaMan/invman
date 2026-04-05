@@ -5,7 +5,7 @@ pub mod references;
 pub mod rollout;
 
 #[cfg(test)]
-pub(crate) mod exact;
+pub(crate) mod value_iteration_mdp;
 
 #[cfg(test)]
 mod tests;

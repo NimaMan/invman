@@ -1,5 +1,7 @@
 use crate::problems::random_yield_inventory::env::{build_policy_state, initialize_state, step_state};
-use crate::problems::random_yield_inventory::exact::{evaluate_named_heuristic, solve_optimal_policy};
+use crate::problems::random_yield_inventory::finite_horizon_dp::{
+    evaluate_named_heuristic, solve_optimal_policy,
+};
 use crate::problems::random_yield_inventory::heuristics::{
     weighted_newsvendor_order_quantity, yield_inflated_base_stock_parameters,
 };

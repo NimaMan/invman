@@ -1,5 +1,5 @@
 use crate::problems::perishable_inventory::env::{build_policy_state, PerishableState};
-use crate::problems::perishable_inventory::exact::{
+use crate::problems::perishable_inventory::value_iteration_mdp::{
     best_base_stock_level_by_expected_return, build_exact_mdp, build_policy_table_9x9,
     expected_discounted_return_from_zero_state, value_iteration_best_action_values,
 };

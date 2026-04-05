@@ -76,4 +76,5 @@ For Rust-first problem families, use this layout by default:
 - `tests/verification.rs`
 
 If literature-backed verification needs an exact finite-state solver or analytical evaluator, put it
-in `exact.rs` and keep it separate from `heuristics/`.
+in a role-specific module such as `finite_horizon_dp.rs`, `value_iteration_mdp.rs`, or
+`rolling_scarf_dp.rs` and keep it separate from `heuristics/`.

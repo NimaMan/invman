@@ -25,7 +25,7 @@ pub struct ExactPolicyEvaluation {
 fn validate_exact_reference(reference: &ExactVerificationReference) -> PyResult<()> {
     if reference.lead_time != 2 {
         return Err(PyValueError::new_err(
-            "exact verifier currently supports lead_time == 2 only",
+            "finite_horizon_dp currently supports lead_time == 2 only",
         ));
     }
     if reference.demand_support.len() != reference.demand_probabilities.len() {

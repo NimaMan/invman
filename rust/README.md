@@ -60,8 +60,9 @@ src/problems/<problem>/
 
 Optional files:
 
-- `exact.rs`, `demand.rs`, `supply.rs`, `allocation.rs`, `policies.rs`, `dp.rs`, or similar
-  helpers when the problem structure requires them
+- descriptive helper modules such as `demand.rs`, `supply.rs`, `allocation.rs`, `policies.rs`,
+  `finite_horizon_dp.rs`, `value_iteration_mdp.rs`, or `rolling_scarf_dp.rs` when the problem
+  structure requires them
 
 File responsibilities:
 
@@ -72,8 +73,9 @@ File responsibilities:
   `VERIFICATION_PROBLEM_INSTANCE`
 - `bindings.rs`: Python-facing entrypoints
 - `tests/verification.rs`: the exact correctness anchor for the problem dynamics and heuristics
-- `exact.rs` when needed: exact tabular solvers or analytical verification helpers used to
-  reproduce literature anchors cleanly outside the test file
+- problem-specific solver helpers when needed, with names that say what they do:
+  `finite_horizon_dp.rs`, `value_iteration_mdp.rs`, `rolling_scarf_dp.rs`, and similar modules
+  used to reproduce literature anchors cleanly outside the test file
 
 Rules for `references.rs`:
 
@@ -93,8 +95,9 @@ Rules for the first test:
 - the verification test should prove both:
   - environment mechanics are correct
   - at least one benchmark heuristic produces the expected result on the verification instance
-- if exact tabular verification logic is needed, put it in `exact.rs` rather than embedding it
-  directly in `tests/verification.rs`
+- if exact tabular verification logic is needed, put it in a clearly named solver module such as
+  `finite_horizon_dp.rs` or `value_iteration_mdp.rs` rather than embedding it directly in
+  `tests/verification.rs`
 
 Build into the active project virtualenv with:
 
