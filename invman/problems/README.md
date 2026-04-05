@@ -31,6 +31,7 @@ Current problem families in the repo:
 - `spare_parts_inventory`
 - `ameliorating_inventory`
 - `procurement_removal_inventory`
+- `vendor_managed_inventory`
 
 The first four have Python problem packages today. The later nine are currently Rust-first.
 
@@ -91,6 +92,9 @@ These families are implemented first under `rust/src/problems/<problem>/`:
 - `procurement_removal_inventory/`
   - single-item procurement-plus-removal inventory with returnable quota state, interval-stock
     heuristics, and exact reduced finite-horizon verification
+- `vendor_managed_inventory/`
+  - single-vendor single-retailer consignment-style replenishment with DC stock, one-period
+    shipment lead time, vendor shipment heuristics, and exact reduced finite-horizon verification
 
 Learned policy classes stay separate under `invman/policies/`. The problem packages own the
 simulation, baseline heuristics, and reference benchmarks.
