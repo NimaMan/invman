@@ -1,0 +1,31 @@
+{
+  "name": "retail_like_weekly_trace",
+  "family": "nonstationary_lot_sizing",
+  "source_kind": "repo_curated_semi_real",
+  "source_note": "Weekly retail-like forecast and realized-demand trace with trend, weekly pulses, and forecast error. This is a semi-real practical benchmark, not a literature verification row.",
+  "practical_goal": "Evaluate forecast-driven replenishment baselines on a single rolling forecast path using service, cost, and ordering metrics.",
+  "forecast_horizon": 8,
+  "lead_time": 2,
+  "holding_cost": 1.0,
+  "shortage_cost": 5.0,
+  "fixed_order_cost": 10.0,
+  "procurement_cost": 0.0,
+  "lost_sales": true,
+  "demand_distribution": "poisson",
+  "demand_cv": 0.0,
+  "initial_net_inventory": 20.0,
+  "pipeline_orders": [0.0, 0.0],
+  "forecast_means": [
+    8.0, 9.0, 10.0, 11.0, 13.0, 15.0, 12.0, 9.0,
+    8.0, 9.0, 10.0, 12.0, 14.0, 16.0, 13.0, 10.0,
+    9.0, 10.0, 11.0, 12.0, 14.0, 17.0, 14.0, 11.0,
+    10.0, 11.0, 12.0, 13.0, 15.0, 18.0, 15.0, 12.0,
+    11.0, 12.0, 13.0, 14.0, 16.0, 19.0, 16.0, 13.0
+  ],
+  "demands": [
+    7.0, 10.0, 9.0, 12.0, 12.0, 16.0, 11.0, 8.0,
+    9.0, 8.0, 11.0, 13.0, 15.0, 17.0, 12.0, 9.0,
+    8.0, 11.0, 10.0, 13.0, 13.0, 18.0, 15.0, 10.0,
+    9.0, 12.0, 11.0, 14.0, 16.0, 17.0, 14.0, 13.0
+  ]
+}

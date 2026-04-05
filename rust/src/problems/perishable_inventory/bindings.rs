@@ -6,25 +6,26 @@ use crate::core::policies::soft_tree::{build_action_spec, parse_leaf_type, parse
 use crate::problems::perishable_inventory::env::{parse_issuing_policy, PerishableState};
 use crate::problems::perishable_inventory::heuristics::{
     policy_discounted_return, policy_discounted_return_summary, policy_rollout,
-    policy_rollout_from_demands, search_base_stock, search_base_stock_discounted_return,
-    search_base_stock_discounted_return_summary, search_base_stock_from_demands,
-    search_bsp_low_ew, search_bsp_low_ew_discounted_return,
+    policy_rollout_from_demands, policy_trace_summary_from_demands, search_base_stock,
+    search_base_stock_discounted_return, search_base_stock_discounted_return_summary,
+    search_base_stock_from_demands, search_bsp_low_ew, search_bsp_low_ew_discounted_return,
     search_bsp_low_ew_discounted_return_summary, search_bsp_low_ew_from_demands,
-    DiscountedReturnSummary,
+    DiscountedReturnSummary, PolicyTraceSummary,
 };
 use crate::problems::perishable_inventory::references::{
     get_primary_reference_instance, get_reference_instance, list_reference_instances,
     PerishableReferenceInstance,
 };
-use crate::problems::perishable_inventory::value_iteration_mdp::{
-    best_base_stock_level_by_expected_return, build_exact_mdp, build_policy_table_9x9,
-    expected_discounted_return_from_zero_state, value_iteration_best_action_values,
-};
 use crate::problems::perishable_inventory::rollout::{
     population_rollout as perishable_population_rollout,
     population_rollout_discounted_return as perishable_population_rollout_discounted_return,
-    rollout as perishable_rollout, rollout_discounted_return as perishable_rollout_discounted_return,
+    rollout as perishable_rollout,
+    rollout_discounted_return as perishable_rollout_discounted_return,
     rollout_from_demands as perishable_rollout_from_demands, PerishableInventoryRolloutConfig,
+};
+use crate::problems::perishable_inventory::value_iteration_mdp::{
+    best_base_stock_level_by_expected_return, build_exact_mdp, build_policy_table_9x9,
+    expected_discounted_return_from_zero_state, value_iteration_best_action_values,
 };
 
 fn empirical_mean_demand(demands: &[usize]) -> f64 {
@@ -44,7 +45,10 @@ fn reference_instance_state_count(instance: &PerishableReferenceInstance) -> usi
     (instance.max_order_size + 1).pow(components as u32)
 }
 
-fn reference_instance_to_py(py: Python<'_>, instance: PerishableReferenceInstance) -> PyResult<PyObject> {
+fn reference_instance_to_py(
+    py: Python<'_>,
+    instance: PerishableReferenceInstance,
+) -> PyResult<PyObject> {
     let dict = PyDict::new_bound(py);
     dict.set_item("name", instance.name)?;
     dict.set_item("demand_mean", instance.demand_mean)?;
@@ -98,7 +102,10 @@ fn reference_instance_to_py(py: Python<'_>, instance: PerishableReferenceInstanc
         let figure_dict = PyDict::new_bound(py);
         figure_dict.set_item("source", figure.source)?;
         figure_dict.set_item("url", figure.url)?;
-        figure_dict.set_item("published_base_stock_level", figure.published_base_stock_level)?;
+        figure_dict.set_item(
+            "published_base_stock_level",
+            figure.published_base_stock_level,
+        )?;
         figure_dict.set_item(
             "published_optimal_policy",
             policy_table_to_vec(figure.published_optimal_policy),
@@ -134,6 +141,25 @@ fn heuristic_search_to_py(
     let dict = PyDict::new_bound(py);
     dict.set_item("best", best)?;
     dict.set_item("top", top)?;
+    Ok(dict.into_any().unbind().into())
+}
+
+fn trace_summary_to_py(py: Python<'_>, summary: &PolicyTraceSummary) -> PyResult<PyObject> {
+    let dict = PyDict::new_bound(py);
+    dict.set_item("periods", summary.periods)?;
+    dict.set_item("total_cost", summary.total_cost)?;
+    dict.set_item("mean_period_cost", summary.mean_period_cost)?;
+    dict.set_item("total_demand", summary.total_demand)?;
+    dict.set_item("total_shortage", summary.total_shortage)?;
+    dict.set_item("fill_rate", summary.fill_rate)?;
+    dict.set_item("cycle_service_level", summary.cycle_service_level)?;
+    dict.set_item("total_waste", summary.total_waste)?;
+    dict.set_item("waste_rate", summary.waste_rate)?;
+    dict.set_item("mean_holding_inventory", summary.mean_holding_inventory)?;
+    dict.set_item("mean_order_quantity", summary.mean_order_quantity)?;
+    dict.set_item("positive_order_frequency", summary.positive_order_frequency)?;
+    dict.set_item("ending_inventory", summary.ending_inventory)?;
+    dict.set_item("ending_pipeline", summary.ending_pipeline)?;
     Ok(dict.into_any().unbind().into())
 }
 
@@ -190,7 +216,10 @@ fn perishable_inventory_exact_mdp_summary(
     dict.set_item("state_count", state_count)?;
     dict.set_item("best_base_stock_level", best_base_stock_level)?;
     dict.set_item("value_iteration_mean_return", expected_return)?;
-    dict.set_item("value_iteration_mean_return_rounded", expected_return.round() as i32)?;
+    dict.set_item(
+        "value_iteration_mean_return_rounded",
+        expected_return.round() as i32,
+    )?;
 
     if instance.published_figure3_verification.is_some() {
         let policy_table = build_policy_table_9x9(&policy, &mdp);
@@ -631,6 +660,59 @@ fn perishable_inventory_policy_rollout_from_demands(
         warm_up_periods_ratio,
         parse_issuing_policy(issuing_policy)?,
     )
+}
+
+#[pyfunction]
+#[pyo3(signature = (
+    policy_name,
+    params,
+    on_hand,
+    pipeline_orders,
+    demands,
+    lead_time,
+    max_order_size,
+    demand_mean,
+    holding_cost,
+    shortage_cost,
+    waste_cost,
+    procurement_cost=0.0,
+    issuing_policy="fifo"
+))]
+fn perishable_inventory_policy_trace_summary_from_demands(
+    py: Python<'_>,
+    policy_name: &str,
+    params: Vec<usize>,
+    on_hand: Vec<usize>,
+    pipeline_orders: Vec<usize>,
+    demands: Vec<usize>,
+    lead_time: usize,
+    max_order_size: usize,
+    demand_mean: f64,
+    holding_cost: f64,
+    shortage_cost: f64,
+    waste_cost: f64,
+    procurement_cost: f64,
+    issuing_policy: &str,
+) -> PyResult<PyObject> {
+    let state = PerishableState {
+        on_hand,
+        pipeline_orders,
+    };
+    let summary = policy_trace_summary_from_demands(
+        policy_name,
+        &params,
+        &state,
+        &demands,
+        lead_time,
+        max_order_size,
+        demand_mean,
+        holding_cost,
+        shortage_cost,
+        waste_cost,
+        procurement_cost,
+        parse_issuing_policy(issuing_policy)?,
+    )?;
+    trace_summary_to_py(py, &summary)
 }
 
 #[pyfunction]
@@ -1292,13 +1374,15 @@ fn perishable_inventory_bsp_low_ew_search_discounted_return_summary(
     let best_obj = heuristic_candidate_to_py(py, &[best.0, best.1, best.2], &best.3)?;
     let top_objs = top
         .iter()
-        .map(|(low_inventory_level, high_inventory_level, threshold, summary)| {
-            heuristic_candidate_to_py(
-                py,
-                &[*low_inventory_level, *high_inventory_level, *threshold],
-                summary,
-            )
-        })
+        .map(
+            |(low_inventory_level, high_inventory_level, threshold, summary)| {
+                heuristic_candidate_to_py(
+                    py,
+                    &[*low_inventory_level, *high_inventory_level, *threshold],
+                    summary,
+                )
+            },
+        )
         .collect::<PyResult<Vec<_>>>()?;
     heuristic_search_to_py(py, best_obj, top_objs)
 }
@@ -1316,10 +1400,7 @@ pub fn register_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
         perishable_inventory_get_reference_instance,
         m
     )?)?;
-    m.add_function(wrap_pyfunction!(
-        perishable_inventory_exact_mdp_summary,
-        m
-    )?)?;
+    m.add_function(wrap_pyfunction!(perishable_inventory_exact_mdp_summary, m)?)?;
     m.add_function(wrap_pyfunction!(perishable_inventory_soft_tree_rollout, m)?)?;
     m.add_function(wrap_pyfunction!(
         perishable_inventory_soft_tree_discounted_return,
@@ -1339,6 +1420,10 @@ pub fn register_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     )?)?;
     m.add_function(wrap_pyfunction!(
         perishable_inventory_policy_rollout_from_demands,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        perishable_inventory_policy_trace_summary_from_demands,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(perishable_inventory_policy_rollout, m)?)?;

@@ -27,6 +27,8 @@ The crate mirrors the Python package structure:
   - rollout kernels
   - heuristic search
   - problem-specific action mappings when needed
+- `problems/<problem>/`
+  - canonical Rust-side artifact home for literature, practical benchmarks, and verification notes
 
 Current problem modules:
 
@@ -40,11 +42,20 @@ Current problem modules:
 
 ## Standard Module Contract
 
-All new Rust problem families should use the same folder contract.
+All new Rust problem families should use the same split contract: code in `src/`, human-readable
+artifacts in `problems/`.
 
 Required files:
 
 ```text
+problems/<problem>/
+  README.md
+  literature/
+  practical/
+    datasets/
+    reports/
+  verification/
+
 src/problems/<problem>/
   mod.rs
   env.rs
@@ -73,6 +84,10 @@ File responsibilities:
   `VERIFICATION_PROBLEM_INSTANCE`
 - `bindings.rs`: Python-facing entrypoints
 - `tests/verification.rs`: the exact correctness anchor for the problem dynamics and heuristics
+- `problems/<problem>/literature/`: the human-readable interpretation of the carried paper family
+- `problems/<problem>/practical/datasets/`: checked-in practical benchmark traces or descriptors
+- `problems/<problem>/practical/reports/`: checked-in canonical benchmark snapshots
+- `problems/<problem>/verification/`: human-readable targets for what the tests assert
 - problem-specific solver helpers when needed, with names that say what they do:
   `finite_horizon_dp.rs`, `value_iteration_mdp.rs`, `rolling_scarf_dp.rs`, and similar modules
   used to reproduce literature anchors cleanly outside the test file

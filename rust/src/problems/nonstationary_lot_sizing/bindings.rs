@@ -1,17 +1,38 @@
 use pyo3::prelude::*;
+use pyo3::types::PyDict;
 use pyo3::wrap_pyfunction;
 
 use crate::core::policies::soft_tree::{build_action_spec, parse_leaf_type, parse_split_type};
-use crate::problems::nonstationary_lot_sizing::demand::parse_demand_distribution_kind;
+use crate::problems::nonstationary_lot_sizing::demand::{
+    parse_demand_distribution_kind, DemandDistributionKind,
+};
 use crate::problems::nonstationary_lot_sizing::heuristics::{
-    policy_rollout_from_demands, rolling_dp_s_s_levels, rolling_dp_s_s_sequence,
-    simple_s_s_levels, simulate_periodic_s_s_policy, simulate_policy,
+    periodic_s_s_trace_summary_from_demands, policy_rollout_from_demands,
+    policy_trace_summary_from_demands, rolling_dp_s_s_levels, rolling_dp_s_s_sequence,
+    simple_s_s_levels, simulate_periodic_s_s_policy, simulate_policy, PolicyTraceSummary,
 };
 use crate::problems::nonstationary_lot_sizing::rollout::{
     build_initial_state_from_forecast, population_rollout as lot_sizing_population_rollout,
     rollout as lot_sizing_rollout, rollout_from_demands as lot_sizing_rollout_from_demands,
     NonstationaryLotSizingRolloutConfig,
 };
+
+fn trace_summary_to_py(py: Python<'_>, summary: &PolicyTraceSummary) -> PyResult<PyObject> {
+    let dict = PyDict::new_bound(py);
+    dict.set_item("periods", summary.periods)?;
+    dict.set_item("total_cost", summary.total_cost)?;
+    dict.set_item("mean_period_cost", summary.mean_period_cost)?;
+    dict.set_item("total_demand", summary.total_demand)?;
+    dict.set_item("total_shortage", summary.total_shortage)?;
+    dict.set_item("shortage_rate", summary.shortage_rate)?;
+    dict.set_item("cycle_service_level", summary.cycle_service_level)?;
+    dict.set_item("mean_holding_inventory", summary.mean_holding_inventory)?;
+    dict.set_item("mean_order_quantity", summary.mean_order_quantity)?;
+    dict.set_item("positive_order_frequency", summary.positive_order_frequency)?;
+    dict.set_item("ending_net_inventory", summary.ending_net_inventory)?;
+    dict.set_item("ending_pipeline", summary.ending_pipeline)?;
+    Ok(dict.into_any().unbind().into())
+}
 
 #[pyfunction]
 #[pyo3(signature = (
@@ -326,6 +347,63 @@ fn nonstationary_lot_sizing_policy_rollout_from_demands(
     forecast_horizon,
     initial_net_inventory,
     pipeline_orders,
+    demands,
+    holding_cost,
+    shortage_cost,
+    fixed_order_cost,
+    demand_distribution="cv_normal",
+    demand_cv=0.2,
+    procurement_cost=0.0,
+    lost_sales=true
+))]
+fn nonstationary_lot_sizing_policy_trace_summary_from_demands(
+    py: Python<'_>,
+    policy_name: &str,
+    params: Vec<f64>,
+    forecast_means: Vec<f64>,
+    forecast_horizon: usize,
+    initial_net_inventory: f64,
+    pipeline_orders: Vec<f64>,
+    demands: Vec<f64>,
+    holding_cost: f64,
+    shortage_cost: f64,
+    fixed_order_cost: f64,
+    demand_distribution: &str,
+    demand_cv: f64,
+    procurement_cost: f64,
+    lost_sales: bool,
+) -> PyResult<PyObject> {
+    let initial_state = build_initial_state_from_forecast(
+        &forecast_means,
+        forecast_horizon,
+        initial_net_inventory,
+        &pipeline_orders,
+    )?;
+    let summary = policy_trace_summary_from_demands(
+        policy_name,
+        &params,
+        &initial_state,
+        &forecast_means,
+        &demands,
+        holding_cost,
+        shortage_cost,
+        procurement_cost,
+        fixed_order_cost,
+        lost_sales,
+        demand_cv,
+        parse_demand_distribution_kind(demand_distribution)?,
+    )?;
+    trace_summary_to_py(py, &summary)
+}
+
+#[pyfunction]
+#[pyo3(signature = (
+    policy_name,
+    params,
+    forecast_means,
+    forecast_horizon,
+    initial_net_inventory,
+    pipeline_orders,
     periods,
     replications=1000,
     seed=1234,
@@ -559,6 +637,68 @@ fn nonstationary_lot_sizing_simulate_rolling_dp_policy(
     Ok((summary.mean_cost, summary.cost_std, summary.shortage_rate))
 }
 
+#[pyfunction]
+#[pyo3(signature = (
+    forecast_means,
+    forecast_horizon,
+    initial_net_inventory,
+    pipeline_orders,
+    demands,
+    holding_cost=1.0,
+    shortage_cost=5.0,
+    fixed_order_cost=10.0,
+    procurement_cost=0.0,
+    lost_sales=true,
+    discount_factor=0.99,
+    stationary_tail_periods=32
+))]
+fn nonstationary_lot_sizing_rolling_dp_trace_summary_from_demands(
+    py: Python<'_>,
+    forecast_means: Vec<f64>,
+    forecast_horizon: usize,
+    initial_net_inventory: f64,
+    pipeline_orders: Vec<f64>,
+    demands: Vec<f64>,
+    holding_cost: f64,
+    shortage_cost: f64,
+    fixed_order_cost: f64,
+    procurement_cost: f64,
+    lost_sales: bool,
+    discount_factor: f64,
+    stationary_tail_periods: usize,
+) -> PyResult<PyObject> {
+    let initial_state = build_initial_state_from_forecast(
+        &forecast_means,
+        forecast_horizon,
+        initial_net_inventory,
+        &pipeline_orders,
+    )?;
+    let sequence = rolling_dp_s_s_sequence(
+        &forecast_means,
+        demands.len(),
+        forecast_horizon,
+        pipeline_orders.len(),
+        holding_cost,
+        shortage_cost,
+        fixed_order_cost,
+        DemandDistributionKind::Poisson,
+        discount_factor,
+        stationary_tail_periods,
+    )?;
+    let summary = periodic_s_s_trace_summary_from_demands(
+        &sequence,
+        &initial_state,
+        &forecast_means,
+        &demands,
+        holding_cost,
+        shortage_cost,
+        procurement_cost,
+        fixed_order_cost,
+        lost_sales,
+    )?;
+    trace_summary_to_py(py, &summary)
+}
+
 pub fn register_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(
         nonstationary_lot_sizing_soft_tree_rollout,
@@ -574,6 +714,10 @@ pub fn register_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     )?)?;
     m.add_function(wrap_pyfunction!(
         nonstationary_lot_sizing_policy_rollout_from_demands,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        nonstationary_lot_sizing_policy_trace_summary_from_demands,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
@@ -594,6 +738,10 @@ pub fn register_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     )?)?;
     m.add_function(wrap_pyfunction!(
         nonstationary_lot_sizing_simulate_rolling_dp_policy,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        nonstationary_lot_sizing_rolling_dp_trace_summary_from_demands,
         m
     )?)?;
     Ok(())

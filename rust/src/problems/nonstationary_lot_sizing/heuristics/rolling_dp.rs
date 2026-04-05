@@ -6,13 +6,11 @@ use rand::rngs::StdRng;
 use rand::SeedableRng;
 use statrs::distribution::{Discrete, Poisson};
 
-use crate::problems::nonstationary_lot_sizing::demand::{
-    sample_demand, DemandDistributionKind,
-};
+use super::{s_s_order_quantity, PolicySimulationSummary, PolicyTraceSummary};
+use crate::problems::nonstationary_lot_sizing::demand::{sample_demand, DemandDistributionKind};
 use crate::problems::nonstationary_lot_sizing::env::{
     inventory_position, step_state, validate_state, NonstationaryLotSizingState,
 };
-use super::{s_s_order_quantity, PolicySimulationSummary};
 
 const DEMAND_TAIL_MASS: f64 = 1e-12;
 
@@ -73,9 +71,8 @@ fn poisson_support(mean: f64) -> PyResult<Vec<(i32, f64)>> {
         return Ok(vec![(0, 1.0)]);
     }
 
-    let poisson = Poisson::new(mean).map_err(|err| {
-        PyValueError::new_err(format!("invalid Poisson mean {mean}: {err}"))
-    })?;
+    let poisson = Poisson::new(mean)
+        .map_err(|err| PyValueError::new_err(format!("invalid Poisson mean {mean}: {err}")))?;
     let mut support = Vec::new();
     let mut cumulative_probability = 0.0;
     let mut probability = (-mean).exp();
@@ -106,10 +103,7 @@ fn poisson_support(mean: f64) -> PyResult<Vec<(i32, f64)>> {
     Ok(support)
 }
 
-fn build_augmented_forecast(
-    forecast_window: &[f64],
-    stationary_tail_periods: usize,
-) -> Vec<f64> {
+fn build_augmented_forecast(forecast_window: &[f64], stationary_tail_periods: usize) -> Vec<f64> {
     let mean_forecast = forecast_window.iter().sum::<f64>() / forecast_window.len() as f64;
     let mut augmented = forecast_window.to_vec();
     augmented.extend(std::iter::repeat(mean_forecast).take(stationary_tail_periods));
@@ -145,7 +139,9 @@ fn implied_inventory_bounds(
         0.0
     };
 
-    let min_inventory_position = -((2 * max_cumulative_support).max(4 * max_single_support).max(32));
+    let min_inventory_position = -((2 * max_cumulative_support)
+        .max(4 * max_single_support)
+        .max(32));
     let max_inventory_position =
         (max_cumulative_support as f64 + eoq + (2 * max_single_support) as f64).ceil() as i32;
 
@@ -187,11 +183,15 @@ fn expected_future_cost(
         .map(|(demand, probability)| {
             let next_inventory_position = order_up_to - demand;
             let continuation_cost = if next_inventory_position < min_inventory_position {
-                let extra_shortage_units = (min_inventory_position - next_inventory_position) as f64;
-                next_values[min_index] + shortage_cost * extra_shortage_units / (1.0 - discount_factor)
+                let extra_shortage_units =
+                    (min_inventory_position - next_inventory_position) as f64;
+                next_values[min_index]
+                    + shortage_cost * extra_shortage_units / (1.0 - discount_factor)
             } else if next_inventory_position > max_inventory_position {
-                let extra_inventory_units = (next_inventory_position - max_inventory_position) as f64;
-                next_values[max_index] + holding_cost * extra_inventory_units / (1.0 - discount_factor)
+                let extra_inventory_units =
+                    (next_inventory_position - max_inventory_position) as f64;
+                next_values[max_index]
+                    + holding_cost * extra_inventory_units / (1.0 - discount_factor)
             } else {
                 next_values[(next_inventory_position - min_inventory_position) as usize]
             };
@@ -222,9 +222,7 @@ pub fn rolling_dp_s_s_levels(
         ));
     }
     if !(0.0..1.0).contains(&discount_factor) {
-        return Err(PyValueError::new_err(
-            "discount_factor must lie in [0, 1)",
-        ));
+        return Err(PyValueError::new_err("discount_factor must lie in [0, 1)"));
     }
 
     let augmented_forecast = build_augmented_forecast(forecast_window, stationary_tail_periods);
@@ -234,8 +232,12 @@ pub fn rolling_dp_s_s_levels(
         ));
     }
 
-    let (min_inventory_position, max_inventory_position) =
-        implied_inventory_bounds(&augmented_forecast, lead_time, holding_cost, fixed_order_cost)?;
+    let (min_inventory_position, max_inventory_position) = implied_inventory_bounds(
+        &augmented_forecast,
+        lead_time,
+        holding_cost,
+        fixed_order_cost,
+    )?;
     let states = (min_inventory_position..=max_inventory_position).collect::<Vec<_>>();
     let decision_periods = augmented_forecast.len() - lead_time;
     let single_period_supports = augmented_forecast[..decision_periods]
@@ -406,11 +408,18 @@ pub fn simulate_periodic_s_s_policy(
         initial_state.forecast_window.len(),
         initial_state.pipeline_orders.len(),
     )?;
-    validate_forecast_path(forecast_means, levels.len(), initial_state.forecast_window.len())?;
+    validate_forecast_path(
+        forecast_means,
+        levels.len(),
+        initial_state.forecast_window.len(),
+    )?;
     if replications == 0 {
         return Err(PyValueError::new_err("replications must be at least 1"));
     }
-    if levels.iter().any(|level| level.order_up_to < level.reorder_point) {
+    if levels
+        .iter()
+        .any(|level| level.order_up_to < level.reorder_point)
+    {
         return Err(PyValueError::new_err(
             "periodic (s,S) levels must satisfy order_up_to >= reorder_point",
         ));
@@ -469,5 +478,116 @@ pub fn simulate_periodic_s_s_policy(
         } else {
             0.0
         },
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn periodic_s_s_trace_summary_from_demands(
+    levels: &[RollingDpPolicyLevels],
+    initial_state: &NonstationaryLotSizingState,
+    forecast_means: &[f64],
+    demands: &[f64],
+    holding_cost: f64,
+    shortage_cost: f64,
+    procurement_cost: f64,
+    fixed_order_cost: f64,
+    lost_sales: bool,
+) -> PyResult<PolicyTraceSummary> {
+    validate_state(
+        initial_state,
+        initial_state.forecast_window.len(),
+        initial_state.pipeline_orders.len(),
+    )?;
+    validate_forecast_path(
+        forecast_means,
+        demands.len(),
+        initial_state.forecast_window.len(),
+    )?;
+    if demands.is_empty() {
+        return Err(PyValueError::new_err("demands must be non-empty"));
+    }
+    if levels.len() != demands.len() {
+        return Err(PyValueError::new_err(format!(
+            "levels length {} does not match demands length {}",
+            levels.len(),
+            demands.len()
+        )));
+    }
+    if levels
+        .iter()
+        .any(|level| level.order_up_to < level.reorder_point)
+    {
+        return Err(PyValueError::new_err(
+            "periodic (s,S) levels must satisfy order_up_to >= reorder_point",
+        ));
+    }
+    if demands
+        .iter()
+        .any(|value| !value.is_finite() || *value < 0.0)
+    {
+        return Err(PyValueError::new_err(
+            "demands must be finite and non-negative",
+        ));
+    }
+
+    let mut state = initial_state.clone();
+    let mut total_cost = 0.0;
+    let mut total_demand = 0.0;
+    let mut total_shortage = 0.0;
+    let mut stockout_periods = 0usize;
+    let mut total_holding_inventory = 0.0;
+    let mut total_order_quantity = 0.0;
+    let mut positive_order_periods = 0usize;
+
+    for (period, level) in levels.iter().enumerate() {
+        let order_quantity = s_s_order_quantity(
+            inventory_position(&state),
+            level.reorder_point as f64,
+            level.order_up_to as f64,
+        );
+        let next_forecast_mean = forecast_means[period + state.forecast_window.len()];
+        let outcome = step_state(
+            &state,
+            order_quantity,
+            demands[period],
+            next_forecast_mean,
+            holding_cost,
+            shortage_cost,
+            procurement_cost,
+            fixed_order_cost,
+            lost_sales,
+        )?;
+        total_cost += outcome.period_cost;
+        total_demand += demands[period];
+        total_shortage += outcome.unmet_demand;
+        total_holding_inventory += outcome.holding_inventory;
+        total_order_quantity += order_quantity;
+        if order_quantity > 0.0 {
+            positive_order_periods += 1;
+        }
+        if outcome.unmet_demand > 0.0 {
+            stockout_periods += 1;
+        }
+        state = outcome.next_state;
+    }
+
+    let periods = demands.len();
+    Ok(PolicyTraceSummary {
+        periods,
+        total_cost,
+        mean_period_cost: total_cost / periods as f64,
+        total_demand,
+        total_shortage,
+        shortage_rate: if total_demand > 0.0 {
+            total_shortage / total_demand
+        } else {
+            0.0
+        },
+        cycle_service_level: 1.0 - stockout_periods as f64 / periods as f64,
+        mean_holding_inventory: total_holding_inventory / periods as f64,
+        mean_order_quantity: total_order_quantity / periods as f64,
+        positive_order_frequency: positive_order_periods as f64 / periods as f64,
+        ending_net_inventory: state.net_inventory,
+        ending_pipeline: state.pipeline_orders.iter().sum::<f64>(),
     })
 }

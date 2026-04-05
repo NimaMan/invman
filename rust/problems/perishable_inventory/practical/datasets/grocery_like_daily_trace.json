@@ -1,0 +1,22 @@
+{
+  "name": "grocery_like_daily_trace",
+  "family": "perishable_inventory",
+  "source_kind": "repo_curated_semi_real",
+  "source_note": "Daily grocery-like demand trace with weekday seasonality and two promotion spikes. This is a semi-real practical benchmark, not a literature verification instance.",
+  "practical_goal": "Tune simple replenishment heuristics on recent history and evaluate waste-service-cost tradeoffs on a held-out demand block.",
+  "reference_instance_name": "de_moor2022_m4_exp6_l2_cp7_fifo",
+  "train_demands": [
+    3, 4, 4, 5, 6, 7, 2,
+    4, 4, 5, 5, 7, 8, 3,
+    2, 3, 4, 5, 6, 7, 2,
+    3, 4, 4, 6, 7, 8, 3,
+    2, 3, 4, 4, 5, 7, 2,
+    3, 4, 5, 6, 8, 9, 3
+  ],
+  "test_demands": [
+    4, 4, 5, 6, 8, 9, 3,
+    3, 4, 5, 5, 7, 8, 2,
+    2, 3, 4, 5, 6, 7, 2,
+    3, 5, 6, 7, 9, 10, 3
+  ]
+}

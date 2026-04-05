@@ -3,6 +3,11 @@
 Each inventory-control problem lives in its own subpackage under `invman/problems` or, for newer
 families, under `rust/src/problems/` first.
 
+For Rust-first families, the canonical problem home is split into:
+
+- `rust/src/problems/<problem>/` for executable code only
+- `rust/problems/<problem>/` for literature, practical, and verification artifacts
+
 ## Current Problem Set
 
 Current problem families in the repo:
@@ -19,8 +24,9 @@ Current problem families in the repo:
 - `decentralized_inventory_control`
 - `network_inventory`
 - `spare_parts_inventory`
+- `ameliorating_inventory`
 
-The first four have Python problem packages today. The later eight are currently Rust-first.
+The first four have Python problem packages today. The later nine are currently Rust-first.
 
 ### Current Python Packages
 
@@ -73,9 +79,15 @@ These families are implemented first under `rust/src/problems/<problem>/`:
 - `spare_parts_inventory/`
   - repairable spare-parts control with installed-base failures, repair returns, procurement, and
     exact reduced finite-horizon verification
+- `ameliorating_inventory/`
+  - age-improving inventory with purchase control, issuance subproblem, and exact reduced
+    finite-horizon verification
 
 Learned policy classes stay separate under `invman/policies/`. The problem packages own the
 simulation, baseline heuristics, and reference benchmarks.
+
+For mature Rust-first families, the non-code artifact home should live under
+`rust/problems/<problem>/`.
 
 ## Current Direction
 
@@ -88,7 +100,7 @@ That means:
 - the Rust module must already contain the environment, heuristic baselines, rollout path, and
   verification anchors before the family counts as implemented
 
-The newer Rust-first families currently include the eight families listed above.
+The newer Rust-first families currently include the nine families listed above.
 
 ## Standard For New Problems
 
@@ -146,6 +158,27 @@ Required semantics:
   - environment mechanics
   - at least one benchmark heuristic or exact policy on that instance
 
+## Benchmark Layers
+
+Every mature family should eventually support three benchmark layers.
+
+1. `verification`
+   - tiny exact or frozen reference instance
+   - purpose: prove implementation correctness
+   - expected output: assertions in tests
+2. `literature`
+   - the benchmark settings and policy rows carried from papers
+   - purpose: show that the repo reproduces the published problem family and baseline behavior
+   - expected output: reference metadata plus validation scripts where possible
+3. `practical`
+   - trace-backed or dataset-backed evaluation that is closer to how inventory is used
+   - purpose: evaluate policies on cost, service, and operational robustness outside the narrow
+     verification setting
+   - expected output: benchmark scripts, checked-in dataset descriptors, and markdown/json reports
+
+We do not skip verification in favor of practical benchmarks. Practicalization comes after the
+problem family is already correct.
+
 ## Verification Standard
 
 Verification in this repo means: run our code and assert its outputs against frozen reference
@@ -172,6 +205,60 @@ When a paper does not expose exact per-instance benchmark rows, the correct fall
   `value_iteration_mdp.rs`, or `rolling_scarf_dp.rs`
 - freeze those repo-native exact outputs in `VERIFICATION_PROBLEM_INSTANCE`
 - label them explicitly as repo-native, not literature-quoted
+
+## Practical Benchmark Contract
+
+“Consolidate and practicalize” means pushing the current family set toward a common operational
+benchmarking standard rather than only adding more problem families.
+
+For a practical benchmark, define:
+
+- one checked-in dataset descriptor under `rust/problems/<problem>/practical/datasets/`
+- one runner under `scripts/<problem>/run_practical_benchmark.py`
+- one standard report with:
+  - dataset metadata
+  - calibration protocol, if any
+  - policy rows
+  - operational metrics
+- one checked-in markdown/json report under `rust/problems/<problem>/practical/reports/`
+
+The standard report should include, when meaningful for the family:
+
+- mean period cost or total cost
+- fill rate or shortage rate
+- cycle service level
+- waste rate or backlog / downtime proxy
+- mean holding inventory
+- mean order quantity
+- positive-order frequency
+
+Not every practical benchmark needs a train/test split. Use the split only when a heuristic needs
+parameter calibration. Forecast-adaptive policies can be evaluated directly on a rolling forecast
+path.
+
+Accepted practical data sources:
+
+- real public data
+- semi-real traces derived from public operational patterns
+- repo-curated trace sets designed to exercise realistic decision tradeoffs
+
+For any practical benchmark, be explicit about which of those three categories it belongs to.
+
+## First Practicalized Families
+
+The first two families we are practicalizing are:
+
+- `nonstationary_lot_sizing`
+  - practical reason: forecast-driven decision making is already close to real replenishment
+  - current practical artifact: checked-in rolling forecast trace plus cost/service benchmark script
+- `perishable_inventory`
+  - practical reason: waste-service tradeoffs are central and easy to expose with trace-backed
+    demand blocks
+  - current practical artifact: checked-in grocery-like demand trace plus train/test heuristic
+    benchmark script
+
+These practical benchmarks do not replace the literature references in `references.rs`; they sit on
+top of them.
 
 ## Reference Semantics
 
@@ -208,25 +295,49 @@ carry that explicitly as policy configuration and save it with the model and res
 
 ## Rust-First Folder Contract
 
-For Rust-first additions, the same concepts should live under `rust/src/problems/<problem>/`
-first, and the Python package can mirror that structure later.
+For Rust-first additions, keep the executable module under `rust/src/problems/<problem>/` and put
+the canonical artifact home under `rust/problems/<problem>/`.
 
 Use this layout by default:
 
-- `env.rs`
-- `heuristics/`
+- `rust/problems/<problem>/`
+  - `README.md`
+  - `literature/`
+  - `practical/`
+    - `datasets/`
+    - `reports/`
+  - `verification/`
+- `rust/src/problems/<problem>/`
+  - `env.rs`
+  - `heuristics/`
+    - `mod.rs`
+    - one file per benchmark heuristic family when the module is more than trivial
+  - `rollout.rs`
+  - `references.rs`
+  - `bindings.rs`
   - `mod.rs`
-  - one file per benchmark heuristic family when the module is more than trivial
-- `rollout.rs`
-- `references.rs`
-- `bindings.rs`
-- `mod.rs`
-- `tests/mod.rs`
-- `tests/verification.rs`
+  - `tests/mod.rs`
+  - `tests/verification.rs`
 
 If literature-backed verification needs an exact finite-state solver or analytical evaluator, put it
 in a role-specific module such as `finite_horizon_dp.rs`, `value_iteration_mdp.rs`, or
 `rolling_scarf_dp.rs` and keep it separate from `heuristics/`.
+
+Artifact responsibilities:
+
+- `rust/problems/<problem>/README.md`
+  - human-readable home for the family
+  - points to code, literature notes, practical benchmarks, and verification targets
+- `rust/problems/<problem>/literature/`
+  - benchmark interpretation, source scope, and paper notes
+- `rust/problems/<problem>/practical/datasets/`
+  - checked-in practical dataset descriptors or trace files
+- `rust/problems/<problem>/practical/reports/`
+  - checked-in canonical report snapshots
+- `rust/problems/<problem>/verification/`
+  - human-readable verification targets and semantics
+- `scripts/<problem>/run_practical_benchmark.py`
+  - executable entrypoint that refreshes the practical report
 
 Common optional helper modules:
 

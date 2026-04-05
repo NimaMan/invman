@@ -4,7 +4,8 @@ mod simple_ss;
 
 pub use lead_time_base_stock::{lead_time_base_stock_level, lead_time_base_stock_order_quantity};
 pub use rolling_dp::{
-    rolling_dp_s_s_levels, rolling_dp_s_s_sequence, simulate_periodic_s_s_policy,
+    periodic_s_s_trace_summary_from_demands, rolling_dp_s_s_levels, rolling_dp_s_s_sequence,
+    simulate_periodic_s_s_policy,
 };
 pub use simple_ss::{s_s_order_quantity, simple_s_s_levels, simple_s_s_order_quantity};
 
@@ -23,6 +24,22 @@ pub struct PolicySimulationSummary {
     pub mean_cost: f64,
     pub cost_std: f64,
     pub shortage_rate: f64,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PolicyTraceSummary {
+    pub periods: usize,
+    pub total_cost: f64,
+    pub mean_period_cost: f64,
+    pub total_demand: f64,
+    pub total_shortage: f64,
+    pub shortage_rate: f64,
+    pub cycle_service_level: f64,
+    pub mean_holding_inventory: f64,
+    pub mean_order_quantity: f64,
+    pub positive_order_frequency: f64,
+    pub ending_net_inventory: f64,
+    pub ending_pipeline: f64,
 }
 
 fn mean_after_warmup(epoch_costs: &[f64], warm_up_periods_ratio: f64) -> PyResult<f64> {
@@ -175,6 +192,110 @@ pub fn policy_rollout_from_demands(
     }
 
     mean_after_warmup(&epoch_costs, warm_up_periods_ratio)
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn policy_trace_summary_from_demands(
+    policy_name: &str,
+    params: &[f64],
+    initial_state: &NonstationaryLotSizingState,
+    forecast_means: &[f64],
+    demands: &[f64],
+    holding_cost: f64,
+    shortage_cost: f64,
+    procurement_cost: f64,
+    fixed_order_cost: f64,
+    lost_sales: bool,
+    demand_cv: f64,
+    demand_kind: DemandDistributionKind,
+) -> PyResult<PolicyTraceSummary> {
+    validate_state(
+        initial_state,
+        initial_state.forecast_window.len(),
+        initial_state.pipeline_orders.len(),
+    )?;
+    validate_forecast_path(
+        forecast_means,
+        demands.len(),
+        initial_state.forecast_window.len(),
+    )?;
+    if demands.is_empty() {
+        return Err(PyValueError::new_err("demands must be non-empty"));
+    }
+    if demands
+        .iter()
+        .any(|value| !value.is_finite() || *value < 0.0)
+    {
+        return Err(PyValueError::new_err(
+            "demands must be finite and non-negative",
+        ));
+    }
+
+    let mut state = initial_state.clone();
+    let mut total_cost = 0.0;
+    let mut total_demand = 0.0;
+    let mut total_shortage = 0.0;
+    let mut stockout_periods = 0usize;
+    let mut total_holding_inventory = 0.0;
+    let mut total_order_quantity = 0.0;
+    let mut positive_order_periods = 0usize;
+
+    for period in 0..demands.len() {
+        let order_quantity = policy_order_quantity(
+            policy_name,
+            params,
+            &state,
+            holding_cost,
+            shortage_cost,
+            fixed_order_cost,
+            demand_cv,
+            demand_kind,
+        )?;
+        let next_forecast_mean = forecast_means[period + state.forecast_window.len()];
+        let outcome = step_state(
+            &state,
+            order_quantity,
+            demands[period],
+            next_forecast_mean,
+            holding_cost,
+            shortage_cost,
+            procurement_cost,
+            fixed_order_cost,
+            lost_sales,
+        )?;
+        total_cost += outcome.period_cost;
+        total_demand += demands[period];
+        total_shortage += outcome.unmet_demand;
+        total_holding_inventory += outcome.holding_inventory;
+        total_order_quantity += order_quantity;
+        if order_quantity > 0.0 {
+            positive_order_periods += 1;
+        }
+        if outcome.unmet_demand > 0.0 {
+            stockout_periods += 1;
+        }
+        state = outcome.next_state;
+    }
+
+    let periods = demands.len();
+    Ok(PolicyTraceSummary {
+        periods,
+        total_cost,
+        mean_period_cost: total_cost / periods as f64,
+        total_demand,
+        total_shortage,
+        shortage_rate: if total_demand > 0.0 {
+            total_shortage / total_demand
+        } else {
+            0.0
+        },
+        cycle_service_level: 1.0 - stockout_periods as f64 / periods as f64,
+        mean_holding_inventory: total_holding_inventory / periods as f64,
+        mean_order_quantity: total_order_quantity / periods as f64,
+        positive_order_frequency: positive_order_periods as f64 / periods as f64,
+        ending_net_inventory: state.net_inventory,
+        ending_pipeline: state.pipeline_orders.iter().sum::<f64>(),
+    })
 }
 
 pub fn simulate_policy(

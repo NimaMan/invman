@@ -40,6 +40,24 @@ pub struct DiscountedReturnSummary {
     pub num_seeds: usize,
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct PolicyTraceSummary {
+    pub periods: usize,
+    pub total_cost: f64,
+    pub mean_period_cost: f64,
+    pub total_demand: usize,
+    pub total_shortage: usize,
+    pub fill_rate: f64,
+    pub cycle_service_level: f64,
+    pub total_waste: usize,
+    pub waste_rate: f64,
+    pub mean_holding_inventory: f64,
+    pub mean_order_quantity: f64,
+    pub positive_order_frequency: f64,
+    pub ending_inventory: usize,
+    pub ending_pipeline: usize,
+}
+
 fn summarize_discounted_returns(returns: &[f64]) -> PyResult<DiscountedReturnSummary> {
     if returns.is_empty() {
         return Err(PyValueError::new_err("returns must be non-empty"));
@@ -55,10 +73,7 @@ fn summarize_discounted_returns(returns: &[f64]) -> PyResult<DiscountedReturnSum
         .sum::<f64>()
         / num_seeds as f64;
     let min_return = returns.iter().copied().fold(f64::INFINITY, f64::min);
-    let max_return = returns
-        .iter()
-        .copied()
-        .fold(f64::NEG_INFINITY, f64::max);
+    let max_return = returns.iter().copied().fold(f64::NEG_INFINITY, f64::max);
     Ok(DiscountedReturnSummary {
         mean_return,
         std_return: variance.sqrt(),
@@ -173,6 +188,122 @@ pub fn policy_rollout_from_demands(
     }
 
     mean_after_warmup(&epoch_costs, warm_up_periods_ratio)
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn policy_trace_summary_from_demands(
+    policy_name: &str,
+    params: &[usize],
+    initial_state: &PerishableState,
+    demands: &[usize],
+    lead_time: usize,
+    max_order_size: usize,
+    demand_mean: f64,
+    holding_cost: f64,
+    shortage_cost: f64,
+    waste_cost: f64,
+    procurement_cost: f64,
+    issuing_policy: IssuingPolicy,
+) -> PyResult<PolicyTraceSummary> {
+    if demands.is_empty() {
+        return Err(PyValueError::new_err("demands must be non-empty"));
+    }
+
+    let mut state = initial_state.clone();
+    let mut total_cost = 0.0;
+    let mut total_demand = 0usize;
+    let mut total_shortage = 0usize;
+    let mut stockout_periods = 0usize;
+    let mut total_waste = 0usize;
+    let mut total_holding_inventory = 0usize;
+    let mut total_order_quantity = 0usize;
+    let mut positive_order_periods = 0usize;
+
+    for demand in demands.iter().copied() {
+        let order_quantity = match policy_name {
+            "base_stock" => {
+                if params.len() != 1 {
+                    return Err(PyValueError::new_err("base_stock expects params [S]"));
+                }
+                base_stock_order_quantity(&state, params[0], max_order_size)
+            }
+            "bsp_low_ew" => {
+                if params.len() != 3 {
+                    return Err(PyValueError::new_err(
+                        "bsp_low_ew expects params [S1, S2, b]",
+                    ));
+                }
+                bsp_low_ew_order_quantity(
+                    &state,
+                    params[0],
+                    params[1],
+                    params[2],
+                    max_order_size,
+                    lead_time,
+                    demand_mean,
+                    issuing_policy,
+                )
+            }
+            _ => {
+                return Err(PyValueError::new_err(format!(
+                    "unknown perishable-inventory policy '{policy_name}'"
+                )))
+            }
+        };
+
+        let outcome = step_state(
+            &state,
+            order_quantity,
+            demand,
+            holding_cost,
+            shortage_cost,
+            waste_cost,
+            procurement_cost,
+            issuing_policy,
+        );
+        total_cost += outcome.cost;
+        total_demand += demand;
+        total_shortage += outcome.shortage;
+        total_waste += outcome.waste;
+        total_holding_inventory += outcome.holding_inventory;
+        total_order_quantity += order_quantity;
+        if order_quantity > 0 {
+            positive_order_periods += 1;
+        }
+        if outcome.shortage > 0 {
+            stockout_periods += 1;
+        }
+        state = outcome.next_state;
+    }
+
+    let periods = demands.len();
+    let ending_inventory = state.on_hand.iter().copied().sum::<usize>();
+    let ending_pipeline = state.pipeline_orders.iter().copied().sum::<usize>();
+
+    Ok(PolicyTraceSummary {
+        periods,
+        total_cost,
+        mean_period_cost: total_cost / periods as f64,
+        total_demand,
+        total_shortage,
+        fill_rate: if total_demand > 0 {
+            1.0 - total_shortage as f64 / total_demand as f64
+        } else {
+            1.0
+        },
+        cycle_service_level: 1.0 - stockout_periods as f64 / periods as f64,
+        total_waste,
+        waste_rate: if total_demand > 0 {
+            total_waste as f64 / total_demand as f64
+        } else {
+            0.0
+        },
+        mean_holding_inventory: total_holding_inventory as f64 / periods as f64,
+        mean_order_quantity: total_order_quantity as f64 / periods as f64,
+        positive_order_frequency: positive_order_periods as f64 / periods as f64,
+        ending_inventory,
+        ending_pipeline,
+    })
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -600,7 +731,10 @@ pub fn search_base_stock_discounted_return_summary(
     issuing_policy: IssuingPolicy,
     position_upper_bound: usize,
     top_k: usize,
-) -> PyResult<((usize, DiscountedReturnSummary), Vec<(usize, DiscountedReturnSummary)>)> {
+) -> PyResult<(
+    (usize, DiscountedReturnSummary),
+    Vec<(usize, DiscountedReturnSummary)>,
+)> {
     if top_k == 0 {
         return Err(PyValueError::new_err("top_k must be positive"));
     }
@@ -633,7 +767,10 @@ pub fn search_base_stock_discounted_return_summary(
             .total_cmp(&left.1.mean_return)
             .then_with(|| left.0.cmp(&right.0))
     });
-    Ok((results[0].clone(), results.into_iter().take(top_k).collect()))
+    Ok((
+        results[0].clone(),
+        results.into_iter().take(top_k).collect(),
+    ))
 }
 
 pub fn search_bsp_low_ew_from_demands(
@@ -864,7 +1001,12 @@ pub fn search_bsp_low_ew_discounted_return_summary(
                     gamma,
                     issuing_policy,
                 )?;
-                results.push((low_inventory_level, high_inventory_level, threshold, summary));
+                results.push((
+                    low_inventory_level,
+                    high_inventory_level,
+                    threshold,
+                    summary,
+                ));
             }
         }
     }
@@ -877,5 +1019,8 @@ pub fn search_bsp_low_ew_discounted_return_summary(
             .then_with(|| left.1.cmp(&right.1))
             .then_with(|| left.2.cmp(&right.2))
     });
-    Ok((results[0].clone(), results.into_iter().take(top_k).collect()))
+    Ok((
+        results[0].clone(),
+        results.into_iter().take(top_k).collect(),
+    ))
 }
