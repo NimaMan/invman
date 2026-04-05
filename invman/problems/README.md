@@ -30,6 +30,7 @@ Current problem families in the repo:
 - `network_inventory`
 - `spare_parts_inventory`
 - `ameliorating_inventory`
+- `procurement_removal_inventory`
 
 The first four have Python problem packages today. The later nine are currently Rust-first.
 
@@ -87,6 +88,9 @@ These families are implemented first under `rust/src/problems/<problem>/`:
 - `ameliorating_inventory/`
   - age-improving inventory with purchase control, issuance subproblem, and exact reduced
     finite-horizon verification
+- `procurement_removal_inventory/`
+  - single-item procurement-plus-removal inventory with returnable quota state, interval-stock
+    heuristics, and exact reduced finite-horizon verification
 
 Learned policy classes stay separate under `invman/policies/`. The problem packages own the
 simulation, baseline heuristics, and reference benchmarks.
