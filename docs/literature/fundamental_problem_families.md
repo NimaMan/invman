@@ -21,6 +21,10 @@ Current implemented families:
 - `perishable_inventory`
 - `nonstationary_lot_sizing`
 - `random_yield_inventory`
+- `joint_replenishment`
+- `one_warehouse_multi_retailer`
+- `decentralized_inventory_control`
+- `network_inventory`
 
 ## Decision Rule
 
@@ -97,6 +101,8 @@ Primary literature anchor:
 
 ### 4. `joint_replenishment`
 
+Status: implemented
+
 Why fourth:
 
 - this is the first clean multi-item coupling problem to add
@@ -110,6 +116,8 @@ Primary literature anchor:
 
 ### 5. `one_warehouse_multi_retailer`
 
+Status: implemented
+
 Why fifth:
 
 - this is the natural next step after the current two-echelon folder
@@ -122,6 +130,8 @@ Primary literature anchor:
   <https://doi.org/10.1016/j.ijpe.2023.109088>
 
 ### 6. `decentralized_inventory_control`
+
+Status: implemented
 
 Why sixth:
 
@@ -139,6 +149,8 @@ Primary literature anchors:
   <https://doi.org/10.1016/j.compchemeng.2025.109111>
 
 ### 7. `network_inventory`
+
+Status: implemented
 
 Why later:
 
@@ -168,11 +180,10 @@ Reason:
 
 ## Immediate Decision
 
-The next Rust problem folder after the current implementations should be:
+The first-wave expansion sequence is now implemented through `network_inventory`.
 
-- `src/problems/joint_replenishment/`
-
-and it should still be implemented before any new multi-item or decentralized family.
+The next additions, if we continue expanding the family set, should come from the deferred list
+rather than from the first-wave core families above.
 
 ## Review Anchor
 

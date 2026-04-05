@@ -5,6 +5,7 @@ pub mod lost_sales;
 pub mod lost_sales_fixed_order_cost;
 pub mod multi_echelon;
 pub mod nonstationary_lot_sizing;
+pub mod network_inventory;
 pub mod one_warehouse_multi_retailer;
 pub mod perishable_inventory;
 pub mod random_yield_inventory;
