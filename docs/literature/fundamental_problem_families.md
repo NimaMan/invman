@@ -20,6 +20,7 @@ Current implemented families:
 - `multi_echelon`
 - `perishable_inventory`
 - `nonstationary_lot_sizing`
+- `random_yield_inventory`
 
 ## Decision Rule
 
@@ -80,6 +81,8 @@ Primary literature anchor:
   <https://doi.org/10.1016/j.ejor.2023.10.007>
 
 ### 3. `random_yield_inventory`
+
+Status: implemented
 
 Why third:
 
@@ -167,7 +170,7 @@ Reason:
 
 The next Rust problem folder after the current implementations should be:
 
-- `src/problems/random_yield_inventory/`
+- `src/problems/joint_replenishment/`
 
 and it should still be implemented before any new multi-item or decentralized family.
 

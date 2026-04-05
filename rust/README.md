@@ -35,6 +35,8 @@ Current problem modules:
 - `src/problems/dual_sourcing/`
 - `src/problems/multi_echelon/`
 - `src/problems/perishable_inventory/`
+- `src/problems/nonstationary_lot_sizing/`
+- `src/problems/random_yield_inventory/`
 
 ## Standard Module Contract
 

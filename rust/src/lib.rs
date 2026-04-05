@@ -19,5 +19,6 @@ fn invman_rust(m: &Bound<'_, PyModule>) -> PyResult<()> {
     problems::multi_echelon::bindings::register_py(m)?;
     problems::nonstationary_lot_sizing::bindings::register_py(m)?;
     problems::perishable_inventory::bindings::register_py(m)?;
+    problems::random_yield_inventory::bindings::register_py(m)?;
     Ok(())
 }
