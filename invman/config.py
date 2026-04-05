@@ -36,6 +36,26 @@ def _normalize_state_features(state_features: str) -> str:
     return normalized
 
 
+def _normalize_state_normalizer(state_normalizer: str) -> str:
+    aliases = {
+        "identity": "identity",
+        "none": "identity",
+        "raw": "identity",
+        "quantity_scale": "quantity_scale",
+        "qscale": "quantity_scale",
+        "scale": "quantity_scale",
+        "divide_by_scale": "quantity_scale",
+        "scalar_divide": "quantity_scale",
+    }
+    normalized = aliases.get(state_normalizer)
+    if normalized is None:
+        valid = ", ".join(sorted(aliases))
+        raise ValueError(
+            f"Unknown state normalizer '{state_normalizer}'. Expected one of: {valid}"
+        )
+    return normalized
+
+
 def get_config(argv=None):
     load_dotenv()
 
@@ -145,6 +165,17 @@ def get_config(argv=None):
         help="State representation fed to the policy approximator.",
     )
     parser.add_argument(
+        "--state_normalizer",
+        default="identity",
+        help="Policy-side input normalization mode.",
+    )
+    parser.add_argument(
+        "--state_scale",
+        default=None,
+        type=float,
+        help="Optional scalar divisor used by the policy-side input normalizer.",
+    )
+    parser.add_argument(
         "--rollout_backend",
         default="python",
         choices=["python", "rust"],
@@ -170,6 +201,10 @@ def get_config(argv=None):
     args.trained_models_dir = str(Path(args.trained_models_dir).expanduser())
     try:
         args.state_features = _normalize_state_features(args.state_features)
+    except ValueError as exc:
+        parser.error(str(exc))
+    try:
+        args.state_normalizer = _normalize_state_normalizer(args.state_normalizer)
     except ValueError as exc:
         parser.error(str(exc))
     if args.policy_name is not None:

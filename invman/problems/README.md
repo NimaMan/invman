@@ -61,6 +61,22 @@ Required semantics:
   heuristic behavior
 - the primary reference instance is the canonical first benchmark for learned policies
 
+## Env/Policy Boundary
+
+Across problem families, follow this boundary:
+
+- env:
+  - owns dynamics
+  - owns the canonical problem state/observation
+  - returns raw state in a fixed format for that problem
+- policy:
+  - owns input normalization
+  - owns the approximator
+  - owns action decoding
+
+Do not hide policy-side normalization inside the env. If a learned policy needs state scaling,
+carry that explicitly as policy configuration and save it with the model and result metadata.
+
 For Rust-first additions, the same concepts should live under `rust/src/problems/<problem>/`
 first, and the Python package can mirror that structure later.
 

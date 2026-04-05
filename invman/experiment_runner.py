@@ -58,7 +58,7 @@ def ensure_output_dirs(args):
 
 def build_result_payload(args, learned_policy_results, heuristic_results):
     policy_spec = get_policy_spec(args)
-    policy_architecture = policy_spec.architecture_label(args.state_features)
+    policy_architecture = policy_spec.architecture_label(getattr(args, "state_features", "canonical"))
     problem_params = {
         "lead_time": getattr(args, "lead_time", None),
         "fixed_order_cost": getattr(args, "fixed_order_cost", None),
@@ -87,7 +87,9 @@ def build_result_payload(args, learned_policy_results, heuristic_results):
         "policy_backbone": policy_spec.policy_backbone,
         "policy_decoder": policy_spec.action_output_mode,
         "policy_architecture": policy_architecture,
-        "state_features": args.state_features,
+        "state_features": getattr(args, "state_features", None),
+        "state_normalizer": getattr(args, "state_normalizer", None),
+        "state_scale": getattr(args, "state_scale", None),
         "hidden_dim": list(policy_spec.hidden_dim) if policy_spec.hidden_dim else None,
         "activation": policy_spec.activation,
         "tree_depth": policy_spec.tree_depth,

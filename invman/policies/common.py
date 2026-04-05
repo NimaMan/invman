@@ -70,6 +70,45 @@ def as_float32_vector(value, *, name="state"):
     return vector
 
 
+def normalize_state_normalizer(state_normalizer: str | None) -> str:
+    aliases = {
+        None: "identity",
+        "identity": "identity",
+        "none": "identity",
+        "raw": "identity",
+        "quantity_scale": "divide_by_scale",
+        "qscale": "divide_by_scale",
+        "scale": "divide_by_scale",
+        "divide_by_scale": "divide_by_scale",
+        "scalar_divide": "divide_by_scale",
+    }
+    normalized = aliases.get(state_normalizer)
+    if normalized is None:
+        valid = ", ".join(sorted(str(key) for key in aliases if key is not None))
+        raise ValueError(
+            f"Unknown state normalizer '{state_normalizer}'. Expected one of: {valid}"
+        )
+    return normalized
+
+
+def normalize_state_vector(
+    state,
+    *,
+    state_normalizer: str = "identity",
+    state_scale: float | None = None,
+):
+    vector = as_float32_vector(state)
+    normalized = normalize_state_normalizer(state_normalizer)
+    if normalized == "identity":
+        return vector
+    if state_scale is None:
+        raise ValueError("state_scale is required when state_normalizer divides by scale")
+    scale = float(state_scale)
+    if scale <= 0.0:
+        raise ValueError("state_scale must be positive")
+    return (vector / np.float32(scale)).astype(np.float32, copy=False)
+
+
 def normalize_policy_head(policy_head: str) -> str:
     aliases = {
         "categorical_quantity": "categorical_quantity",

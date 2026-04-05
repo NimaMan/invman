@@ -46,7 +46,8 @@ def _make_reference_instance(
         "track_demand": True,
         "warm_up_periods_ratio": 0.2,
         "seed": 123,
-        "state_features": "pipeline",
+        "state_normalizer": "quantity_scale",
+        "state_scale": 20.0,
     }
     description = (
         f"Literature-aligned lost-sales instance with {demand_dist_name} demand, "
@@ -107,7 +108,8 @@ VANILLA_L4_P4_POISSON5 = ReferenceInstance(
         "track_demand": True,
         "warm_up_periods_ratio": 0.2,
         "seed": 123,
-        "state_features": "pipeline",
+        "state_normalizer": "quantity_scale",
+        "state_scale": 20.0,
     },
     expected_costs={
         "optimal": 4.73,

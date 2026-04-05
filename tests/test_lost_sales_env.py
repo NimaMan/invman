@@ -99,7 +99,7 @@ def test_track_demand_makes_demand_path_independent_of_action_cap():
     assert np.array_equal(env_small_cap.horizon_demand, env_large_cap.horizon_demand)
 
 
-def test_pipeline_plus_summary_state_appends_inventory_summaries():
+def test_policy_state_returns_raw_canonical_pipeline():
     env = LostSalesEnv(
         demand_rate=5.0,
         lead_time=3,
@@ -107,17 +107,15 @@ def test_pipeline_plus_summary_state_appends_inventory_summaries():
         horizon=5,
         track_demand=True,
         warm_up_periods_ratio=0.0,
-        state_features="pipeline_plus_summary",
     )
     env.lead_time_orders = deque([4, 2, 1], maxlen=3)
     env.current_inventory_level = 6
 
     state = env.policy_state
 
-    assert env.state_space_dim == 6
+    assert env.state_space_dim == 3
     assert state.shape == (env.state_space_dim,)
-    np.testing.assert_allclose(state[:3], np.array([1.0, 0.2, 0.1], dtype=np.float32))
-    np.testing.assert_allclose(state[3:], np.array([0.6, 0.23333333, 0.43333334], dtype=np.float32))
+    np.testing.assert_allclose(state, np.array([10.0, 2.0, 1.0], dtype=np.float32))
 
 
 def test_markov_modulated_demand_paths_keep_mean_and_flip_correlation_sign():

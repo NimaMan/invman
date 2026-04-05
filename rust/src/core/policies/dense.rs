@@ -190,10 +190,8 @@ fn dense_action_from_logits(
                     logits.len()
                 )));
             }
-            let cap = require_policy_max_quantity(
-                policy_max_quantity,
-                "gated sigmoid direct quantity",
-            )?;
+            let cap =
+                require_policy_max_quantity(policy_max_quantity, "gated sigmoid direct quantity")?;
             let gate_prob = sigmoid(logits[0]);
             let quantity_value = sigmoid(logits[1]) * cap as f32;
             let action = (gate_prob * quantity_value).round().clamp(0.0, cap as f32) as usize;

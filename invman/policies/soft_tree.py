@@ -2,6 +2,8 @@ import numpy as np
 
 from invman.policies.common import (
     as_float32_vector,
+    normalize_state_normalizer,
+    normalize_state_vector,
     normalize_action_spec,
     normalize_tree_action_adapter,
     normalize_tree_leaf_type,
@@ -28,6 +30,8 @@ class SoftTreePolicy(ESModule):
         leaf_type="constant",
         action_adapter="identity",
         action_adapter_config=None,
+        state_normalizer="identity",
+        state_scale=None,
     ):
         super().__init__()
         if depth < 1:
@@ -54,6 +58,8 @@ class SoftTreePolicy(ESModule):
         self.leaf_type = normalize_tree_leaf_type(leaf_type)
         self.action_adapter = normalize_tree_action_adapter(action_adapter)
         self.action_adapter_config = None if action_adapter_config is None else dict(action_adapter_config)
+        self.state_normalizer = normalize_state_normalizer(state_normalizer)
+        self.state_scale = None if state_scale is None else float(state_scale)
         self.num_internal_nodes = (2 ** self.depth) - 1
         self.num_leaves = 2 ** self.depth
 
@@ -180,12 +186,17 @@ class SoftTreePolicy(ESModule):
         )
 
     def forward(self, state, return_features=False):
-        state = as_float32_vector(state)
+        raw_state = as_float32_vector(state)
+        state = normalize_state_vector(
+            raw_state,
+            state_normalizer=self.state_normalizer,
+            state_scale=self.state_scale,
+        )
         split_probs, leaf_probs, selected_feature_idx, selected_feature_weight = self._leaf_probabilities(state)
         leaf_quantities, raw_leaf_output = self._leaf_quantities(state)
         action_value = np.sum(leaf_probs[:, None] * leaf_quantities, axis=0).astype(np.float32, copy=False)
         projected_controls, projected_array = self._project_controls(action_value)
-        action = self._finalize_action(projected_array, state)
+        action = self._finalize_action(projected_array, raw_state)
 
         if return_features:
             features = {
@@ -195,6 +206,7 @@ class SoftTreePolicy(ESModule):
                 "action_value": float(action_value.item()) if self.control_dim == 1 else action_value.copy(),
                 "projected_controls": projected_array.copy() if isinstance(projected_array, np.ndarray) else np.asarray(projected_array),
                 "projected_action": np.asarray(action),
+                "normalized_state": state.copy(),
                 "split_type": self.split_type,
                 "leaf_type": self.leaf_type,
                 "action_spec": dict(self.action_spec),

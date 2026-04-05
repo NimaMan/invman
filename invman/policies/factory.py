@@ -38,6 +38,8 @@ def build_policy(args, env):
     control_spec = context.get("control_spec")
     action_adapter = context.get("action_adapter", "identity")
     action_adapter_config = context.get("action_adapter_config")
+    state_normalizer = context.get("state_normalizer", "identity")
+    state_scale = context.get("state_scale")
     policy_max_order_size = _policy_max_order_size(action_spec)
 
     if policy_spec.policy_backbone == "linear":
@@ -50,6 +52,8 @@ def build_policy(args, env):
             control_spec=control_spec,
             action_adapter=action_adapter,
             action_adapter_config=action_adapter_config,
+            state_normalizer=state_normalizer,
+            state_scale=state_scale,
         )
     if policy_spec.policy_backbone == "nn":
         return PolicyNet(
@@ -63,6 +67,8 @@ def build_policy(args, env):
             control_spec=control_spec,
             action_adapter=action_adapter,
             action_adapter_config=action_adapter_config,
+            state_normalizer=state_normalizer,
+            state_scale=state_scale,
         )
     if policy_spec.policy_backbone == "soft_tree":
         return SoftTreePolicy(
@@ -76,5 +82,7 @@ def build_policy(args, env):
             leaf_type=policy_spec.tree_leaf_type,
             action_adapter=action_adapter,
             action_adapter_config=action_adapter_config,
+            state_normalizer=state_normalizer,
+            state_scale=state_scale,
         )
     raise NotImplementedError(f"Unknown policy backbone: {policy_spec.policy_backbone}")

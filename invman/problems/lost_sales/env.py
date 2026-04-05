@@ -2,6 +2,7 @@ from collections import deque
 
 import numpy as np
 
+from invman.policies.common import normalize_state_normalizer
 from invman.problems.lost_sales.demand import (
     DEFAULT_MMPP2_LAMBDA_HIGH,
     DEFAULT_MMPP2_LAMBDA_LOW,
@@ -13,25 +14,6 @@ from invman.problems.lost_sales.demand import (
     get_cumulative_demand_cdf,
     get_demand_prob_vector,
 )
-
-
-def _normalize_state_features(state_features: str) -> str:
-    aliases = {
-        "pipeline": "pipeline",
-        "pipeline_plus_summary": "pipeline_plus_summary",
-        "augmented": "pipeline_plus_summary",
-        "feature_augmented": "pipeline_plus_summary",
-        "raw_pipeline": "raw_pipeline",
-        "pipeline_raw": "raw_pipeline",
-        "raw_pipeline_plus_summary": "raw_pipeline_plus_summary",
-        "pipeline_plus_summary_raw": "raw_pipeline_plus_summary",
-        "raw_augmented": "raw_pipeline_plus_summary",
-    }
-    normalized = aliases.get(state_features)
-    if normalized is None:
-        valid = ", ".join(sorted(aliases))
-        raise ValueError(f"Unknown state feature mode '{state_features}'. Expected one of: {valid}")
-    return normalized
 
 
 class LostSalesEnv:
@@ -53,7 +35,7 @@ class LostSalesEnv:
         demand_p11: float = DEFAULT_MMPP2_POSITIVE_P11,
         track_demand: bool = True,
         warm_up_periods_ratio: float = 0.2,
-        state_features: str = "pipeline",
+        state_features: str | None = None,
     ):
         if lead_time < 1:
             raise ValueError("lead_time must be at least 1")
@@ -64,10 +46,8 @@ class LostSalesEnv:
         self.shortage_cost = float(shortage_cost)
         self.procurement_cost = float(procurement_cost)
         self.fixed_order_cost = float(fixed_order_cost)
-        del max_order_size
         self.one_hot_inventory_upper_bound = int(one_hot_inventory_upper_bound)
         self.lead_time = int(lead_time)
-        self.state_features = _normalize_state_features(state_features)
         self.state_space_dim = self.get_state_dim()
         self.lead_time_orders = deque(maxlen=self.lead_time)
         self.current_epoch = 0
@@ -76,6 +56,7 @@ class LostSalesEnv:
         self.warm_up_periods = int(warm_up_periods_ratio * self.horizon)
         self.gamma = 0.995
         self.track_demand = track_demand
+        self.state_features = None if state_features is None else str(state_features)
         self.demand_lambda_low = float(demand_lambda_low)
         self.demand_lambda_high = float(demand_lambda_high)
         self.demand_p00 = float(demand_p00)
@@ -139,11 +120,7 @@ class LostSalesEnv:
         return self._sample_single_demand()
 
     def get_state_dim(self):
-        if self.state_features in {"pipeline", "raw_pipeline"}:
-            return self.lead_time
-        if self.state_features in {"pipeline_plus_summary", "raw_pipeline_plus_summary"}:
-            return self.lead_time + 3
-        raise NotImplementedError(f"Unknown state feature mode: {self.state_features}")
+        return self.lead_time
 
     def is_done(self):
         return self.done
@@ -180,35 +157,7 @@ class LostSalesEnv:
 
     @property
     def policy_state(self):
-        scale = float(max(1.0, self.demand_mean))
-        pipeline_state = np.asarray(self.state, dtype=np.float32) / scale
-        raw_pipeline_state = np.asarray(self.state, dtype=np.float32)
-        if self.state_features == "pipeline":
-            return pipeline_state
-        if self.state_features == "raw_pipeline":
-            return raw_pipeline_state
-        if self.state_features == "pipeline_plus_summary":
-            position_scale = float(max(1.0, (self.lead_time + 1) * self.demand_mean))
-            summary = np.asarray(
-                [
-                    self.current_inventory_level / scale,
-                    sum(self.lead_time_orders) / position_scale,
-                    self.inventory_position / position_scale,
-                ],
-                dtype=np.float32,
-            )
-            return np.concatenate([pipeline_state, summary]).astype(np.float32, copy=False)
-        if self.state_features == "raw_pipeline_plus_summary":
-            raw_summary = np.asarray(
-                [
-                    self.current_inventory_level,
-                    sum(self.lead_time_orders),
-                    self.inventory_position,
-                ],
-                dtype=np.float32,
-            )
-            return np.concatenate([raw_pipeline_state, raw_summary]).astype(np.float32, copy=False)
-        raise NotImplementedError(f"Unknown state feature mode: {self.state_features}")
+        return np.asarray(self.state, dtype=np.float32)
 
     @property
     def inventory_position(self):
@@ -321,7 +270,7 @@ def build_env_from_args(args, horizon=None, track_demand=False):
         demand_p11=float(getattr(args, "demand_p11", DEFAULT_MMPP2_POSITIVE_P11)),
         track_demand=track_demand,
         warm_up_periods_ratio=getattr(args, "warm_up_periods_ratio", 0.2),
-        state_features=getattr(args, "state_features", "pipeline"),
+        state_features=getattr(args, "state_features", None),
     )
 
 
@@ -338,8 +287,6 @@ def _rust_lost_sales_policy_mode(model, args, track_demand=False, return_env=Fal
     if return_env or track_demand:
         return None
     if getattr(args, "rollout_backend", "python") != "rust":
-        return None
-    if getattr(args, "state_features", "pipeline") != "pipeline":
         return None
 
     model_name = type(model).__name__
@@ -401,6 +348,34 @@ def _rust_soft_tree_policy_max_quantity(model):
     return int(policy_max_quantity)
 
 
+def _ensure_policy_state_normalization(model, args):
+    init_kwargs = getattr(model, "_init_kwargs", {})
+    if "state_normalizer" in init_kwargs:
+        return
+
+    state_normalizer = normalize_state_normalizer(
+        getattr(args, "state_normalizer", "quantity_scale")
+    )
+    state_scale = getattr(args, "state_scale", None)
+    if state_normalizer != "identity" and state_scale is None:
+        state_scale = float(getattr(args, "max_order_size", 1))
+
+    if hasattr(model, "state_normalizer"):
+        model.state_normalizer = state_normalizer
+    if hasattr(model, "state_scale"):
+        model.state_scale = None if state_scale is None else float(state_scale)
+
+
+def _rust_state_normalization(model):
+    state_normalizer = str(getattr(model, "state_normalizer", "identity"))
+    state_scale = getattr(model, "state_scale", None)
+    if state_normalizer == "identity":
+        return state_normalizer, None
+    if state_scale is None:
+        raise ValueError(f"{state_normalizer} requires an explicit state_scale")
+    return state_normalizer, float(state_scale)
+
+
 def get_model_fitness(
     model,
     args,
@@ -411,6 +386,7 @@ def get_model_fitness(
     track_demand=False,
     verbose=False,
 ):
+    _ensure_policy_state_normalization(model, args)
     rust_mode = _rust_lost_sales_policy_mode(
         model,
         args,
@@ -424,6 +400,7 @@ def get_model_fitness(
         import invman_rust
 
         flat_params = model_params if model_params is not None else model.get_model_flat_params()
+        state_normalizer, state_scale = _rust_state_normalization(model)
         avg_cost = invman_rust.lost_sales_soft_tree_rollout(
             flat_params=np.asarray(flat_params, dtype=np.float32).tolist(),
             input_dim=int(model.input_dim),
@@ -442,6 +419,8 @@ def get_model_fitness(
             seed=int(seed),
             warm_up_periods_ratio=float(getattr(args, "warm_up_periods_ratio", 0.2)),
             temperature=float(model.temperature),
+            state_normalizer=state_normalizer,
+            state_scale=state_scale,
             **_rust_demand_kwargs(args),
         )
         if verbose:
@@ -453,6 +432,7 @@ def get_model_fitness(
 
         flat_params = model_params if model_params is not None else model.get_model_flat_params()
         policy_head = str(getattr(model, "action_output_mode", "categorical_quantity"))
+        state_normalizer, state_scale = _rust_state_normalization(model)
         avg_cost = invman_rust.lost_sales_linear_rollout(
             flat_params=np.asarray(flat_params, dtype=np.float32).tolist(),
             input_dim=int(model.input_dim),
@@ -469,6 +449,8 @@ def get_model_fitness(
             horizon=int(args.horizon),
             seed=int(seed),
             warm_up_periods_ratio=float(getattr(args, "warm_up_periods_ratio", 0.2)),
+            state_normalizer=state_normalizer,
+            state_scale=state_scale,
             **_rust_demand_kwargs(args),
         )
         if verbose:
@@ -480,6 +462,7 @@ def get_model_fitness(
 
         flat_params = model_params if model_params is not None else model.get_model_flat_params()
         policy_head = str(getattr(model, "action_output_mode", "categorical_quantity"))
+        state_normalizer, state_scale = _rust_state_normalization(model)
         avg_cost = invman_rust.lost_sales_nn_rollout(
             flat_params=np.asarray(flat_params, dtype=np.float32).tolist(),
             input_dim=int(model.input_dim),
@@ -498,6 +481,8 @@ def get_model_fitness(
             horizon=int(args.horizon),
             seed=int(seed),
             warm_up_periods_ratio=float(getattr(args, "warm_up_periods_ratio", 0.2)),
+            state_normalizer=state_normalizer,
+            state_scale=state_scale,
             **_rust_demand_kwargs(args),
         )
         if verbose:
@@ -519,6 +504,7 @@ def get_model_fitness(
 
 
 def get_population_fitness(model, args, model_params_batch, seeds):
+    _ensure_policy_state_normalization(model, args)
     rust_mode = _rust_lost_sales_policy_mode(model, args, track_demand=False, return_env=False)
     if rust_mode is None:
         return None
@@ -529,6 +515,7 @@ def get_population_fitness(model, args, model_params_batch, seeds):
         np.asarray(model_params, dtype=np.float32).tolist() for model_params in model_params_batch
     ]
     if rust_mode == "soft_tree":
+        state_normalizer, state_scale = _rust_state_normalization(model)
         costs = invman_rust.lost_sales_soft_tree_population_rollout(
             params_batch=params_batch,
             input_dim=int(model.input_dim),
@@ -547,10 +534,13 @@ def get_population_fitness(model, args, model_params_batch, seeds):
             horizon=int(args.horizon),
             warm_up_periods_ratio=float(getattr(args, "warm_up_periods_ratio", 0.2)),
             temperature=float(model.temperature),
+            state_normalizer=state_normalizer,
+            state_scale=state_scale,
             **_rust_demand_kwargs(args),
         )
     elif rust_mode == "linear":
         policy_head = str(getattr(model, "action_output_mode", "categorical_quantity"))
+        state_normalizer, state_scale = _rust_state_normalization(model)
         costs = invman_rust.lost_sales_linear_population_rollout(
             params_batch=params_batch,
             input_dim=int(model.input_dim),
@@ -567,10 +557,13 @@ def get_population_fitness(model, args, model_params_batch, seeds):
             fixed_order_cost=float(getattr(args, "fixed_order_cost", 0.0)),
             horizon=int(args.horizon),
             warm_up_periods_ratio=float(getattr(args, "warm_up_periods_ratio", 0.2)),
+            state_normalizer=state_normalizer,
+            state_scale=state_scale,
             **_rust_demand_kwargs(args),
         )
     else:
         policy_head = str(getattr(model, "action_output_mode", "categorical_quantity"))
+        state_normalizer, state_scale = _rust_state_normalization(model)
         costs = invman_rust.lost_sales_nn_population_rollout(
             params_batch=params_batch,
             input_dim=int(model.input_dim),
@@ -589,6 +582,8 @@ def get_population_fitness(model, args, model_params_batch, seeds):
             fixed_order_cost=float(getattr(args, "fixed_order_cost", 0.0)),
             horizon=int(args.horizon),
             warm_up_periods_ratio=float(getattr(args, "warm_up_periods_ratio", 0.2)),
+            state_normalizer=state_normalizer,
+            state_scale=state_scale,
             **_rust_demand_kwargs(args),
         )
     return [(-float(cost), indiv_idx) for indiv_idx, cost in enumerate(costs)]

@@ -4,6 +4,8 @@ from invman.policies.common import (
     as_float32_vector,
     get_activation_function,
     init_linear_layer,
+    normalize_state_normalizer,
+    normalize_state_vector,
     normalize_action_spec,
     normalize_policy_head,
     round_nearest,
@@ -28,6 +30,8 @@ class PolicyNet(ESModule):
         control_spec=None,
         action_adapter="identity",
         action_adapter_config=None,
+        state_normalizer="identity",
+        state_scale=None,
     ):
         super().__init__()
         if isinstance(hidden_dim, int):
@@ -57,6 +61,8 @@ class PolicyNet(ESModule):
         self.max_values = [int(value) for value in self.control_spec["max_values"]]
         self.action_adapter = str(action_adapter)
         self.action_adapter_config = None if action_adapter_config is None else dict(action_adapter_config)
+        self.state_normalizer = normalize_state_normalizer(state_normalizer)
+        self.state_scale = None if state_scale is None else float(state_scale)
         self.layers = []
         in_features = self.input_dim
         for width in self.hidden_dim:
@@ -159,7 +165,12 @@ class PolicyNet(ESModule):
         )
 
     def forward(self, state, return_features=False):
-        state = as_float32_vector(state)
+        raw_state = as_float32_vector(state)
+        state = normalize_state_vector(
+            raw_state,
+            state_normalizer=self.state_normalizer,
+            state_scale=self.state_scale,
+        )
         h = state
         features = {}
         for layer_idx, layer in enumerate(self.layers):
@@ -178,7 +189,7 @@ class PolicyNet(ESModule):
         elif self.action_output_mode == "capped_direct_quantity":
             quantity_value = softplus(raw_output[0])
             _, projected_controls = self._project_controls(np.asarray([quantity_value], dtype=np.float32))
-            action = self._finalize_action(projected_controls, state)
+            action = self._finalize_action(projected_controls, raw_state)
         elif self.action_output_mode == "sigmoid_direct_quantity":
             quantity_value = float(sigmoid(raw_output[0]) * float(self.max_order_size))
             action = int(round_nearest(np.asarray(quantity_value))[()])
@@ -227,7 +238,7 @@ class PolicyNet(ESModule):
             max_tensor = np.asarray(self.max_values, dtype=np.float32)
             scaled_controls = min_tensor + sigmoid(raw_output) * (max_tensor - min_tensor)
             _, projected_controls = self._project_controls(scaled_controls)
-            action = self._finalize_action(projected_controls, state)
+            action = self._finalize_action(projected_controls, raw_state)
         else:
             raise NotImplementedError(f"Unknown action_output_mode: {self.action_output_mode}")
 
@@ -260,6 +271,7 @@ class PolicyNet(ESModule):
                 "capped_direct_quantity",
             }:
                 features["projected_controls"] = projected_controls
+            features["normalized_state"] = state.copy()
             if self.action_output_mode == "direct_quantity":
                 features["quantity_value"] = np.asarray(quantity_value, dtype=np.float32)
                 features["projected_action"] = int(action)

@@ -55,6 +55,8 @@ Fixed-cost files:
 - `../scripts/autoresearch_fixed_order_cost.py`: fixed-cost keep/discard runner and ledger
 - `../scripts/autoresearch_fixed_order_tree_structures.py`: focused tree-structure comparison runner
 - `../scripts/evaluate_saved_policy.py`: long-horizon reevaluation helper for promoted candidates
+- `fixed_cost_ordinal_stability/README.md`: focused note on when the ordinal fixed-cost head works,
+  when it fails, and how the stored Rust/Python baselines differ
 
 ## Current fixed-cost result
 

@@ -24,6 +24,8 @@ BASE_INSTANCE_PARAMS = {
     "eval_horizon": 50000,
     "warm_up_periods_ratio": 0.2,
     "seed": 42,
+    "state_normalizer": "quantity_scale",
+    "state_scale": 50.0,
 }
 
 DEFAULT_SEARCH_CONFIG = {

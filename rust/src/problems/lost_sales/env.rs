@@ -1,5 +1,11 @@
-use rand::rngs::StdRng;
 use crate::problems::lost_sales::demand::{sample_demand, LostSalesDemandProcess};
+use rand::rngs::StdRng;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum StateNormalizer {
+    Identity,
+    DivideByScale,
+}
 
 #[derive(Clone)]
 pub struct LostSalesState {
@@ -7,15 +13,30 @@ pub struct LostSalesState {
     pub lead_time_orders: Vec<usize>,
 }
 
-pub fn build_pipeline_state(
-    current_inventory: i64,
-    lead_time_orders: &[usize],
-    demand_mean: f64,
-) -> Vec<f32> {
-    let scale = demand_mean.max(1.0) as f32;
-    let mut state: Vec<f32> = lead_time_orders.iter().map(|&x| x as f32 / scale).collect();
-    state[0] += (current_inventory.max(0) as f32) / scale;
+pub fn build_pipeline_state(current_inventory: i64, lead_time_orders: &[usize]) -> Vec<f32> {
+    let mut state: Vec<f32> = lead_time_orders.iter().map(|&x| x as f32).collect();
+    state[0] += current_inventory.max(0) as f32;
     state
+}
+
+pub fn normalize_pipeline_state(
+    raw_state: &[f32],
+    state_normalizer: StateNormalizer,
+    state_scale: Option<f64>,
+) -> Result<Vec<f32>, String> {
+    match state_normalizer {
+        StateNormalizer::Identity => Ok(raw_state.to_vec()),
+        StateNormalizer::DivideByScale => {
+            let scale = state_scale.ok_or_else(|| {
+                String::from("divide-by-scale state normalization requires state_scale")
+            })?;
+            if scale <= 0.0 {
+                return Err(String::from("state_scale must be positive"));
+            }
+            let scale = scale as f32;
+            Ok(raw_state.iter().map(|value| *value / scale).collect())
+        }
+    }
 }
 
 pub fn epoch_cost(
@@ -68,24 +89,23 @@ pub fn initialize_state(
 
 #[cfg(test)]
 mod tests {
-    use super::build_pipeline_state;
+    use super::{build_pipeline_state, normalize_pipeline_state, StateNormalizer};
 
     #[test]
-    fn pipeline_state_is_scaled_by_mean_demand() {
-        let state = build_pipeline_state(2, &[3, 4, 5], 5.0);
-        assert_eq!(state, vec![1.0, 0.8, 1.0]);
+    fn pipeline_state_is_raw_quantity_vector() {
+        let state = build_pipeline_state(2, &[3, 4, 5]);
+        assert_eq!(state, vec![5.0, 4.0, 5.0]);
     }
 
     #[test]
-    fn pipeline_state_uses_minimum_unit_scale() {
-        let state = build_pipeline_state(2, &[3, 4], 0.0);
+    fn identity_normalizer_keeps_state_unchanged() {
+        let state = normalize_pipeline_state(&[5.0, 4.0], StateNormalizer::Identity, None).unwrap();
         assert_eq!(state, vec![5.0, 4.0]);
     }
 
     #[test]
-    fn pipeline_state_handles_very_large_orders_without_integer_overflow() {
-        let state = build_pipeline_state(2, &[usize::MAX], 5.0);
-        assert!(state[0].is_finite());
-        assert!(state[0] > 0.0);
+    fn divide_by_scale_normalizer_scales_state() {
+        let state = normalize_pipeline_state(&[5.0, 4.0, 3.0], StateNormalizer::DivideByScale, Some(5.0)).unwrap();
+        assert_eq!(state, vec![1.0, 0.8, 0.6]);
     }
 }

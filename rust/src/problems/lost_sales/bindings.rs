@@ -10,7 +10,9 @@ use crate::problems::lost_sales::demand::{
     LostSalesDemandKind, DEFAULT_MMPP2_LAMBDA_HIGH, DEFAULT_MMPP2_LAMBDA_LOW,
     DEFAULT_MMPP2_POSITIVE_P00, DEFAULT_MMPP2_POSITIVE_P11,
 };
-use crate::problems::lost_sales::env::{epoch_cost, initialize_state, LostSalesState};
+use crate::problems::lost_sales::env::{
+    epoch_cost, initialize_state, LostSalesState, StateNormalizer,
+};
 use crate::problems::lost_sales::rollout::{
     linear_population_rollout as lost_sales_linear_population_rollout_impl,
     linear_rollout as lost_sales_linear_rollout_impl,
@@ -51,6 +53,18 @@ fn empirical_mean_demand(demands: &[usize]) -> f64 {
     }
     let total: usize = demands.iter().copied().sum();
     total as f64 / demands.len() as f64
+}
+
+fn parse_state_normalizer(state_normalizer: &str) -> PyResult<StateNormalizer> {
+    match state_normalizer {
+        "identity" | "none" | "raw" => Ok(StateNormalizer::Identity),
+        "quantity_scale" | "qscale" | "scale" | "divide_by_scale" | "scalar_divide" => {
+            Ok(StateNormalizer::DivideByScale)
+        }
+        other => Err(pyo3::exceptions::PyValueError::new_err(format!(
+            "unsupported lost-sales rust state_normalizer '{other}', expected one of: identity, quantity_scale"
+        ))),
+    }
 }
 
 #[pyfunction]
@@ -106,12 +120,7 @@ fn lost_sales_constant_action_rollout(
     )?;
     let mut demand_process = build_demand_process(demand_config, &mut rng)
         .map_err(pyo3::exceptions::PyValueError::new_err)?;
-    let mut env_state = initialize_state(
-        demand_rate,
-        lead_time,
-        &mut rng,
-        &mut demand_process,
-    );
+    let mut env_state = initialize_state(demand_rate, lead_time, &mut rng, &mut demand_process);
     let warm_up_periods = ((warm_up_periods_ratio * horizon as f64).floor() as usize).min(horizon);
     let mut epoch_costs = Vec::with_capacity(horizon);
 
@@ -162,7 +171,9 @@ fn lost_sales_constant_action_rollout(
     temperature=0.25,
     split_type="oblique",
     leaf_type="linear",
-    policy_max_quantity=None
+    policy_max_quantity=None,
+    state_normalizer="identity",
+    state_scale=None
 ))]
 fn lost_sales_soft_tree_rollout(
     flat_params: Vec<f32>,
@@ -186,11 +197,15 @@ fn lost_sales_soft_tree_rollout(
     split_type: &str,
     leaf_type: &str,
     policy_max_quantity: Option<usize>,
+    state_normalizer: &str,
+    state_scale: Option<f64>,
 ) -> PyResult<f64> {
     let config = LostSalesRolloutConfig {
         input_dim,
         depth,
         policy_max_quantity,
+        state_scale,
+        state_normalizer: parse_state_normalizer(state_normalizer)?,
         demand_config: build_lost_sales_demand_config(
             demand_dist_name,
             demand_rate,
@@ -229,7 +244,9 @@ fn lost_sales_soft_tree_rollout(
     temperature=0.25,
     split_type="oblique",
     leaf_type="linear",
-    policy_max_quantity=None
+    policy_max_quantity=None,
+    state_normalizer="identity",
+    state_scale=None
 ))]
 fn lost_sales_soft_tree_rollout_from_demands(
     flat_params: Vec<f32>,
@@ -247,12 +264,16 @@ fn lost_sales_soft_tree_rollout_from_demands(
     split_type: &str,
     leaf_type: &str,
     policy_max_quantity: Option<usize>,
+    state_normalizer: &str,
+    state_scale: Option<f64>,
 ) -> PyResult<f64> {
     let empirical_mean = empirical_mean_demand(&demands);
     let config = LostSalesRolloutConfig {
         input_dim,
         depth,
         policy_max_quantity,
+        state_scale,
+        state_normalizer: parse_state_normalizer(state_normalizer)?,
         demand_config: LostSalesDemandConfig {
             kind: LostSalesDemandKind::Poisson,
             demand_rate: empirical_mean,
@@ -301,7 +322,9 @@ fn lost_sales_soft_tree_rollout_from_demands(
     temperature=0.25,
     split_type="oblique",
     leaf_type="linear",
-    policy_max_quantity=None
+    policy_max_quantity=None,
+    state_normalizer="identity",
+    state_scale=None
 ))]
 fn lost_sales_soft_tree_population_rollout(
     params_batch: Vec<Vec<f32>>,
@@ -325,11 +348,15 @@ fn lost_sales_soft_tree_population_rollout(
     split_type: &str,
     leaf_type: &str,
     policy_max_quantity: Option<usize>,
+    state_normalizer: &str,
+    state_scale: Option<f64>,
 ) -> PyResult<Vec<f64>> {
     let config = LostSalesRolloutConfig {
         input_dim,
         depth,
         policy_max_quantity,
+        state_scale,
+        state_normalizer: parse_state_normalizer(state_normalizer)?,
         demand_config: build_lost_sales_demand_config(
             demand_dist_name,
             demand_rate,
@@ -372,7 +399,9 @@ fn lost_sales_soft_tree_population_rollout(
     fixed_order_cost=0.0,
     horizon=2000,
     seed=1234,
-    warm_up_periods_ratio=0.2
+    warm_up_periods_ratio=0.2,
+    state_normalizer="identity",
+    state_scale=None
 ))]
 fn lost_sales_linear_rollout(
     flat_params: Vec<f32>,
@@ -394,11 +423,15 @@ fn lost_sales_linear_rollout(
     horizon: usize,
     seed: u64,
     warm_up_periods_ratio: f64,
+    state_normalizer: &str,
+    state_scale: Option<f64>,
 ) -> PyResult<f64> {
     let config = LostSalesLinearRolloutConfig {
         input_dim,
         output_dim,
         policy_max_quantity,
+        state_scale,
+        state_normalizer: parse_state_normalizer(state_normalizer)?,
         policy_head: parse_policy_head(policy_head)?,
         demand_config: build_lost_sales_demand_config(
             demand_dist_name,
@@ -433,7 +466,9 @@ fn lost_sales_linear_rollout(
     shortage_cost=4.0,
     procurement_cost=0.0,
     fixed_order_cost=0.0,
-    warm_up_periods_ratio=0.2
+    warm_up_periods_ratio=0.2,
+    state_normalizer="identity",
+    state_scale=None
 ))]
 fn lost_sales_linear_rollout_from_demands(
     flat_params: Vec<f32>,
@@ -449,12 +484,16 @@ fn lost_sales_linear_rollout_from_demands(
     procurement_cost: f64,
     fixed_order_cost: f64,
     warm_up_periods_ratio: f64,
+    state_normalizer: &str,
+    state_scale: Option<f64>,
 ) -> PyResult<f64> {
     let empirical_mean = empirical_mean_demand(&demands);
     let config = LostSalesLinearRolloutConfig {
         input_dim,
         output_dim,
         policy_max_quantity,
+        state_scale,
+        state_normalizer: parse_state_normalizer(state_normalizer)?,
         policy_head: parse_policy_head(policy_head)?,
         demand_config: LostSalesDemandConfig {
             kind: LostSalesDemandKind::Poisson,
@@ -499,7 +538,9 @@ fn lost_sales_linear_rollout_from_demands(
     procurement_cost=0.0,
     fixed_order_cost=0.0,
     horizon=2000,
-    warm_up_periods_ratio=0.2
+    warm_up_periods_ratio=0.2,
+    state_normalizer="identity",
+    state_scale=None
 ))]
 fn lost_sales_linear_population_rollout(
     params_batch: Vec<Vec<f32>>,
@@ -521,11 +562,15 @@ fn lost_sales_linear_population_rollout(
     fixed_order_cost: f64,
     horizon: usize,
     warm_up_periods_ratio: f64,
+    state_normalizer: &str,
+    state_scale: Option<f64>,
 ) -> PyResult<Vec<f64>> {
     let config = LostSalesLinearRolloutConfig {
         input_dim,
         output_dim,
         policy_max_quantity,
+        state_scale,
+        state_normalizer: parse_state_normalizer(state_normalizer)?,
         policy_head: parse_policy_head(policy_head)?,
         demand_config: build_lost_sales_demand_config(
             demand_dist_name,
@@ -568,7 +613,9 @@ fn lost_sales_linear_population_rollout(
     fixed_order_cost=0.0,
     horizon=2000,
     seed=1234,
-    warm_up_periods_ratio=0.2
+    warm_up_periods_ratio=0.2,
+    state_normalizer="identity",
+    state_scale=None
 ))]
 fn lost_sales_nn_rollout(
     flat_params: Vec<f32>,
@@ -592,12 +639,16 @@ fn lost_sales_nn_rollout(
     horizon: usize,
     seed: u64,
     warm_up_periods_ratio: f64,
+    state_normalizer: &str,
+    state_scale: Option<f64>,
 ) -> PyResult<f64> {
     let config = LostSalesNeuralRolloutConfig {
         input_dim,
         hidden_dims,
         output_dim,
         policy_max_quantity,
+        state_scale,
+        state_normalizer: parse_state_normalizer(state_normalizer)?,
         policy_head: parse_policy_head(policy_head)?,
         demand_config: build_lost_sales_demand_config(
             demand_dist_name,
@@ -635,7 +686,9 @@ fn lost_sales_nn_rollout(
     shortage_cost=4.0,
     procurement_cost=0.0,
     fixed_order_cost=0.0,
-    warm_up_periods_ratio=0.2
+    warm_up_periods_ratio=0.2,
+    state_normalizer="identity",
+    state_scale=None
 ))]
 fn lost_sales_nn_rollout_from_demands(
     flat_params: Vec<f32>,
@@ -653,6 +706,8 @@ fn lost_sales_nn_rollout_from_demands(
     procurement_cost: f64,
     fixed_order_cost: f64,
     warm_up_periods_ratio: f64,
+    state_normalizer: &str,
+    state_scale: Option<f64>,
 ) -> PyResult<f64> {
     let empirical_mean = empirical_mean_demand(&demands);
     let config = LostSalesNeuralRolloutConfig {
@@ -660,6 +715,8 @@ fn lost_sales_nn_rollout_from_demands(
         hidden_dims,
         output_dim,
         policy_max_quantity,
+        state_scale,
+        state_normalizer: parse_state_normalizer(state_normalizer)?,
         policy_head: parse_policy_head(policy_head)?,
         demand_config: LostSalesDemandConfig {
             kind: LostSalesDemandKind::Poisson,
@@ -707,7 +764,9 @@ fn lost_sales_nn_rollout_from_demands(
     procurement_cost=0.0,
     fixed_order_cost=0.0,
     horizon=2000,
-    warm_up_periods_ratio=0.2
+    warm_up_periods_ratio=0.2,
+    state_normalizer="identity",
+    state_scale=None
 ))]
 fn lost_sales_nn_population_rollout(
     params_batch: Vec<Vec<f32>>,
@@ -731,12 +790,16 @@ fn lost_sales_nn_population_rollout(
     fixed_order_cost: f64,
     horizon: usize,
     warm_up_periods_ratio: f64,
+    state_normalizer: &str,
+    state_scale: Option<f64>,
 ) -> PyResult<Vec<f64>> {
     let config = LostSalesNeuralRolloutConfig {
         input_dim,
         hidden_dims,
         output_dim,
         policy_max_quantity,
+        state_scale,
+        state_normalizer: parse_state_normalizer(state_normalizer)?,
         policy_head: parse_policy_head(policy_head)?,
         demand_config: build_lost_sales_demand_config(
             demand_dist_name,
