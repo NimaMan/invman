@@ -1,4 +1,6 @@
-use crate::problems::random_yield_inventory::env::{build_policy_state, initialize_state, step_state};
+use crate::problems::random_yield_inventory::env::{
+    build_policy_state, initialize_state, step_state,
+};
 use crate::problems::random_yield_inventory::finite_horizon_dp::{
     evaluate_named_heuristic, solve_optimal_policy,
 };
@@ -13,13 +15,27 @@ use crate::problems::random_yield_inventory::references::{
 #[test]
 fn reference_set_has_expected_shape() {
     assert_eq!(YAN_2026_REFERENCE.benchmark_policies.len(), 5);
-    assert_eq!(INDERFURTH_2015_REFERENCE.benchmark_policies, &["linear_inflation"]);
-    assert_eq!(CHEN_2018_REFERENCE.benchmark_policies, &["weighted_newsvendor"]);
+    assert_eq!(
+        INDERFURTH_2015_REFERENCE.benchmark_policies,
+        &["linear_inflation"]
+    );
+    assert_eq!(
+        CHEN_2018_REFERENCE.benchmark_policies,
+        &["weighted_newsvendor"]
+    );
     assert_eq!(PRIMARY_REFERENCE_INSTANCE.lead_time, 2);
     assert_eq!(PRIMARY_REFERENCE_INSTANCE.periods, 12);
     assert_eq!(VERIFICATION_PROBLEM_INSTANCE.lead_time, 2);
     assert_eq!(VERIFICATION_PROBLEM_INSTANCE.periods, 5);
-    assert!((VERIFICATION_PROBLEM_INSTANCE.demand_probabilities.iter().sum::<f64>() - 1.0).abs() < 1e-12);
+    assert!(
+        (VERIFICATION_PROBLEM_INSTANCE
+            .demand_probabilities
+            .iter()
+            .sum::<f64>()
+            - 1.0)
+            .abs()
+            < 1e-12
+    );
 }
 
 #[test]
@@ -36,8 +52,11 @@ fn policy_state_layout_matches_expected_shape() {
 #[test]
 fn worked_transition_matches_expected_accounting() {
     let worked = WORKED_TRANSITION_REFERENCE;
-    let state = initialize_state(worked.initial_inventory_level, worked.initial_pipeline_orders)
-        .expect("state must build");
+    let state = initialize_state(
+        worked.initial_inventory_level,
+        worked.initial_pipeline_orders,
+    )
+    .expect("state must build");
     let outcome = step_state(
         &state,
         worked.action,
@@ -94,15 +113,19 @@ fn weighted_newsvendor_initial_order_is_stable() {
         VERIFICATION_PROBLEM_INSTANCE.shortage_cost,
     )
     .expect("WNH order must compute");
-    assert_eq!(order as usize, VERIFICATION_PROBLEM_INSTANCE.expected_weighted_newsvendor_first_action);
+    assert_eq!(
+        order as usize,
+        VERIFICATION_PROBLEM_INSTANCE.expected_weighted_newsvendor_first_action
+    );
 }
 
 #[test]
 fn exact_dp_and_heuristics_match_reference_numbers() {
     let optimal = solve_optimal_policy(&VERIFICATION_PROBLEM_INSTANCE)
         .expect("exact optimal policy must solve");
-    let linear_inflation = evaluate_named_heuristic(&VERIFICATION_PROBLEM_INSTANCE, "linear_inflation")
-        .expect("linear inflation evaluation must solve");
+    let linear_inflation =
+        evaluate_named_heuristic(&VERIFICATION_PROBLEM_INSTANCE, "linear_inflation")
+            .expect("linear inflation evaluation must solve");
     let weighted_newsvendor =
         evaluate_named_heuristic(&VERIFICATION_PROBLEM_INSTANCE, "weighted_newsvendor")
             .expect("weighted newsvendor evaluation must solve");

@@ -2,7 +2,9 @@ use pyo3::exceptions::PyValueError;
 use pyo3::PyResult;
 use statrs::distribution::{Discrete, Poisson};
 
-use crate::problems::random_yield_inventory::env::{round_order_quantity, RandomYieldInventoryState};
+use crate::problems::random_yield_inventory::env::{
+    round_order_quantity, RandomYieldInventoryState,
+};
 use crate::problems::random_yield_inventory::heuristics::lead_time_target_stock_level;
 
 fn enumerate_pipeline_arrival_scenarios(
@@ -47,7 +49,8 @@ pub fn weighted_newsvendor_order_quantity(
     let lead_time = state.pipeline_orders.len();
     let target_stock_level =
         lead_time_target_stock_level(demand_mean, lead_time, holding_cost, shortage_cost)?;
-    let pipeline_scenarios = enumerate_pipeline_arrival_scenarios(&state.pipeline_orders, success_probability)?;
+    let pipeline_scenarios =
+        enumerate_pipeline_arrival_scenarios(&state.pipeline_orders, success_probability)?;
     let cumulative_demand_mean = demand_mean * lead_time as f64;
     let demand_distribution = Poisson::new(cumulative_demand_mean.max(1e-12)).map_err(|err| {
         PyValueError::new_err(format!(
@@ -69,7 +72,8 @@ pub fn weighted_newsvendor_order_quantity(
         probability_mass += demand_probability;
         for (scenario_probability, realized_pipeline) in &pipeline_scenarios {
             let projected_inventory = state.inventory_level + realized_pipeline - demand as f64;
-            expected_gap += scenario_probability * demand_probability
+            expected_gap += scenario_probability
+                * demand_probability
                 * (target_stock_level - projected_inventory).max(0.0);
         }
     }

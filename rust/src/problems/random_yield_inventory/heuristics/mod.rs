@@ -23,6 +23,36 @@ pub struct PolicySimulationSummary {
     pub cost_std: f64,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct DiscountedCostSummary {
+    pub mean_cost: f64,
+    pub cost_std: f64,
+    pub min_cost: f64,
+    pub max_cost: f64,
+    pub num_samples: usize,
+}
+
+fn summarize_costs(costs: &[f64]) -> PyResult<DiscountedCostSummary> {
+    if costs.is_empty() {
+        return Err(PyValueError::new_err("costs must be non-empty"));
+    }
+    let mean_cost = costs.iter().sum::<f64>() / costs.len() as f64;
+    let variance = costs
+        .iter()
+        .map(|value| (value - mean_cost).powi(2))
+        .sum::<f64>()
+        / costs.len() as f64;
+    let min_cost = costs.iter().copied().fold(f64::INFINITY, f64::min);
+    let max_cost = costs.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+    Ok(DiscountedCostSummary {
+        mean_cost,
+        cost_std: variance.sqrt(),
+        min_cost,
+        max_cost,
+        num_samples: costs.len(),
+    })
+}
+
 fn policy_order_quantity(
     policy_name: &str,
     params: &[f64],
@@ -61,6 +91,69 @@ fn policy_order_quantity(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
+pub fn policy_rollout(
+    policy_name: &str,
+    params: &[f64],
+    initial_inventory_level: f64,
+    pipeline_orders: &[f64],
+    periods: usize,
+    seed: u64,
+    demand_mean: f64,
+    demand_kind: DemandDistributionKind,
+    success_probability: f64,
+    holding_cost: f64,
+    shortage_cost: f64,
+    procurement_cost: f64,
+    discount_factor: f64,
+) -> PyResult<f64> {
+    if periods == 0 {
+        return Err(PyValueError::new_err("periods must be at least 1"));
+    }
+    if !success_probability.is_finite() || !(0.0..=1.0).contains(&success_probability) {
+        return Err(PyValueError::new_err(
+            "success_probability must lie in [0, 1]",
+        ));
+    }
+    if !(0.0..=1.0).contains(&discount_factor) {
+        return Err(PyValueError::new_err("discount_factor must lie in [0, 1]"));
+    }
+
+    let initial_state = initialize_state(initial_inventory_level, pipeline_orders)?;
+    let mut rng = StdRng::seed_from_u64(seed);
+    let mut state = initial_state;
+    let mut total_cost = 0.0;
+    let mut discount = 1.0;
+
+    for _ in 0..periods {
+        let realized_demand = sample_demand(&mut rng, demand_mean, demand_kind)?;
+        let arrival_succeeds = rng.gen_bool(success_probability);
+        let order_quantity = policy_order_quantity(
+            policy_name,
+            params,
+            &state,
+            demand_mean,
+            success_probability,
+            holding_cost,
+            shortage_cost,
+        )?;
+        let outcome = step_state(
+            &state,
+            order_quantity,
+            realized_demand,
+            arrival_succeeds,
+            holding_cost,
+            shortage_cost,
+            procurement_cost,
+        )?;
+        total_cost += discount * outcome.period_cost;
+        discount *= discount_factor;
+        state = outcome.next_state;
+    }
+
+    Ok(total_cost)
+}
+
 pub fn policy_rollout_from_paths(
     policy_name: &str,
     params: &[f64],
@@ -81,9 +174,7 @@ pub fn policy_rollout_from_paths(
         ));
     }
     if !(0.0..=1.0).contains(&discount_factor) {
-        return Err(PyValueError::new_err(
-            "discount_factor must lie in [0, 1]",
-        ));
+        return Err(PyValueError::new_err("discount_factor must lie in [0, 1]"));
     }
 
     let mut state = initial_state.clone();
@@ -117,6 +208,43 @@ pub fn policy_rollout_from_paths(
     Ok(discounted_cost)
 }
 
+#[allow(clippy::too_many_arguments)]
+pub fn policy_discounted_cost_summary(
+    policy_name: &str,
+    params: &[f64],
+    initial_inventory_level: f64,
+    pipeline_orders: &[f64],
+    periods: usize,
+    seeds: &[u64],
+    demand_mean: f64,
+    demand_kind: DemandDistributionKind,
+    success_probability: f64,
+    holding_cost: f64,
+    shortage_cost: f64,
+    procurement_cost: f64,
+    discount_factor: f64,
+) -> PyResult<DiscountedCostSummary> {
+    let mut costs = Vec::with_capacity(seeds.len());
+    for seed in seeds.iter().copied() {
+        costs.push(policy_rollout(
+            policy_name,
+            params,
+            initial_inventory_level,
+            pipeline_orders,
+            periods,
+            seed,
+            demand_mean,
+            demand_kind,
+            success_probability,
+            holding_cost,
+            shortage_cost,
+            procurement_cost,
+            discount_factor,
+        )?);
+    }
+    summarize_costs(&costs)
+}
+
 pub fn simulate_policy(
     policy_name: &str,
     params: &[f64],
@@ -145,9 +273,7 @@ pub fn simulate_policy(
         ));
     }
     if !(0.0..=1.0).contains(&discount_factor) {
-        return Err(PyValueError::new_err(
-            "discount_factor must lie in [0, 1]",
-        ));
+        return Err(PyValueError::new_err("discount_factor must lie in [0, 1]"));
     }
 
     let initial_state = initialize_state(initial_inventory_level, pipeline_orders)?;
@@ -188,15 +314,10 @@ pub fn simulate_policy(
         returns.push(total_cost);
     }
 
-    let mean_cost = returns.iter().sum::<f64>() / returns.len() as f64;
-    let variance = returns
-        .iter()
-        .map(|value| (value - mean_cost).powi(2))
-        .sum::<f64>()
-        / returns.len() as f64;
+    let summary = summarize_costs(&returns)?;
 
     Ok(PolicySimulationSummary {
-        mean_cost,
-        cost_std: variance.sqrt(),
+        mean_cost: summary.mean_cost,
+        cost_std: summary.cost_std,
     })
 }

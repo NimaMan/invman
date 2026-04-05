@@ -37,9 +37,7 @@ pub fn sample_demand(
                 return Ok(0.0);
             }
             let distribution = Poisson::new(demand_mean).map_err(|err| {
-                PyValueError::new_err(format!(
-                    "invalid Poisson mean {demand_mean}: {err}"
-                ))
+                PyValueError::new_err(format!("invalid Poisson mean {demand_mean}: {err}"))
             })?;
             Ok(distribution.sample(rng) as f64)
         }

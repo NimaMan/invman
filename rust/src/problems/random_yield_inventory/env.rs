@@ -85,7 +85,12 @@ pub fn build_policy_state(
     let mut features = Vec::with_capacity(state.pipeline_orders.len() + 3);
     features.push(state.inventory_level as f32 / scale);
     features.push(expected_position as f32 / scale);
-    features.extend(state.pipeline_orders.iter().map(|value| *value as f32 / scale));
+    features.extend(
+        state
+            .pipeline_orders
+            .iter()
+            .map(|value| *value as f32 / scale),
+    );
     let remaining_fraction = if total_periods == 0 {
         0.0
     } else {

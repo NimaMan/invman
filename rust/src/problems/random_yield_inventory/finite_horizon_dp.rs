@@ -42,11 +42,7 @@ fn validate_exact_reference(reference: &ExactVerificationReference) -> PyResult<
     Ok(())
 }
 
-fn as_state_key(
-    period: usize,
-    inventory_level: i32,
-    pipeline_orders: &[u32],
-) -> ExactStateKey {
+fn as_state_key(period: usize, inventory_level: i32, pipeline_orders: &[u32]) -> ExactStateKey {
     ExactStateKey {
         period,
         inventory_level,
@@ -152,7 +148,11 @@ pub fn solve_optimal_policy(
         reference.initial_pipeline_orders,
     );
     let mut cache = HashMap::new();
-    Ok(solve_optimal_from_state(initial_state, reference, &mut cache))
+    Ok(solve_optimal_from_state(
+        initial_state,
+        reference,
+        &mut cache,
+    ))
 }
 
 fn evaluate_heuristic_from_state(
@@ -185,7 +185,10 @@ fn evaluate_heuristic_from_state(
 
     let state_for_heuristic = initialize_state(
         state.inventory_level as f64,
-        &[state.pipeline_orders[0] as f64, state.pipeline_orders[1] as f64],
+        &[
+            state.pipeline_orders[0] as f64,
+            state.pipeline_orders[1] as f64,
+        ],
     )?;
     let raw_action = match heuristic_name {
         "linear_inflation" => yield_inflated_base_stock_order_quantity(
@@ -214,7 +217,9 @@ fn evaluate_heuristic_from_state(
         )?,
         _ => unreachable!(),
     };
-    let action = raw_action.round().clamp(0.0, reference.max_order_quantity as f64) as usize;
+    let action = raw_action
+        .round()
+        .clamp(0.0, reference.max_order_quantity as f64) as usize;
 
     let mut expected_cost = 0.0;
     for (demand, probability) in reference

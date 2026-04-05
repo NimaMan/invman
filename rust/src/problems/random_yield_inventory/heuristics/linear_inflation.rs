@@ -32,9 +32,7 @@ pub fn lead_time_target_stock_level(
         return Ok(0.0);
     }
     let distribution = Poisson::new(lead_time_mean).map_err(|err| {
-        PyValueError::new_err(format!(
-            "invalid Poisson mean {lead_time_mean}: {err}"
-        ))
+        PyValueError::new_err(format!("invalid Poisson mean {lead_time_mean}: {err}"))
     })?;
     Ok(distribution.inverse_cdf(critical_ratio.clamp(0.0, 1.0)) as f64)
 }
