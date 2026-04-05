@@ -35,5 +35,5 @@ Canonical runner:
 
 Latest checked-in report:
 
-- `reports/latest_report.md`
+- `reports/README.md`
 - `reports/latest_report.json`

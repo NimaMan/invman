@@ -8,6 +8,11 @@ For Rust-first families, the canonical problem home is split into:
 - `rust/src/problems/<problem>/` for executable code only
 - `rust/problems/<problem>/` for literature, practical, experiments, and verification artifacts
 
+Markdown convention:
+
+- each folder should expose at most one markdown entrypoint
+- that file should always be named `README.md`
+
 ## Current Problem Set
 
 Current problem families in the repo:
@@ -203,7 +208,7 @@ Current paper objective:
 
 Minimum expected file:
 
-- `rust/problems/<problem>/experiments/paper_benchmark.md`
+- `rust/problems/<problem>/experiments/README.md`
 
 That file should define at least:
 

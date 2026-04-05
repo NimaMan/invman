@@ -8,6 +8,11 @@ Use it together with `rust/src/problems/<problem>/`:
 - `rust/problems/<problem>/` holds literature notes, practical benchmark assets, and
   experiment definitions plus human-readable verification targets
 
+Markdown convention:
+
+- each folder uses a single markdown entrypoint
+- that file is always `README.md`
+
 Standard layout:
 
 ```text
@@ -31,7 +36,7 @@ code layout.
 
 The default paper-facing file for a mature family is:
 
-- `experiments/paper_benchmark.md`
+- `experiments/README.md`
 
 That file defines the reported instances, CMA-ES-optimized policy families, heuristic comparators,
 and whether an exact optimal benchmark exists for the reported slice.
