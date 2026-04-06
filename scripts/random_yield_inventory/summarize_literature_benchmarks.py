@@ -15,7 +15,7 @@ from common import dumps_json, ensure_parent, get_literature_benchmark_families
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Summarize the literature-backed benchmark families tracked for random_yield_inventory."
+        description="Summarize which random-yield literature sources have public benchmark numbers and whether they can anchor repo assertions."
     )
     parser.add_argument("--output_json", default=None)
     return parser.parse_args()
@@ -29,12 +29,13 @@ def _fmt(values):
 
 def _markdown(families: list[dict]) -> str:
     lines = [
-        "| Name | Match | Access | Yield Model | Lead Times | Success p | Yield (mean, cv) pairs |",
-        "| --- | --- | --- | --- | --- | --- | --- |",
+        "| Name | Match | Access | Numbers | Assertion Basis | Yield Model | Lead Times | Success p | Yield (mean, cv) pairs |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     for family in families:
         lines.append(
             f"| `{family['name']}` | `{family['model_match']}` | `{family['access_level']}` | "
+            f"`{family['reported_numbers_available']}` | `{family['repo_assertion_basis']}` | "
             f"`{family['yield_model']}` | `{_fmt(family['lead_times'])}` | "
             f"`{_fmt(family['success_probabilities'])}` | `{_fmt(family['yield_rate_mean_cv_pairs'])}` |"
         )

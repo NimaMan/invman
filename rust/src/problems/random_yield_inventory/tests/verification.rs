@@ -17,18 +17,29 @@ use crate::problems::random_yield_inventory::references::{
 #[test]
 fn reference_set_has_expected_shape() {
     assert_eq!(YAN_2026_REFERENCE.benchmark_policies.len(), 5);
+    assert!(!YAN_2026_REFERENCE.reported_numbers_available);
+    assert!(!YAN_2026_REFERENCE.numbers_anchor_repo_assertions);
     assert_eq!(
         INDERFURTH_2015_REFERENCE.benchmark_policies,
         &["linear_inflation"]
     );
+    assert!(INDERFURTH_2015_REFERENCE.reported_numbers_available);
+    assert!(!INDERFURTH_2015_REFERENCE.numbers_anchor_repo_assertions);
     assert_eq!(
         CHEN_2018_REFERENCE.benchmark_policies,
         &["weighted_newsvendor"]
     );
+    assert!(!CHEN_2018_REFERENCE.reported_numbers_available);
     assert_eq!(PRIMARY_REFERENCE_INSTANCE.lead_time, 2);
     assert_eq!(PRIMARY_REFERENCE_INSTANCE.periods, 12);
+    assert!(!PRIMARY_REFERENCE_INSTANCE.literature_verified);
+    assert_eq!(
+        PRIMARY_REFERENCE_INSTANCE.verification_source,
+        "repo_exact_solver_not_verified_against_literature"
+    );
     assert_eq!(VERIFICATION_PROBLEM_INSTANCE.lead_time, 2);
     assert_eq!(VERIFICATION_PROBLEM_INSTANCE.periods, 5);
+    assert!(!VERIFICATION_PROBLEM_INSTANCE.literature_verified);
     assert!(
         (VERIFICATION_PROBLEM_INSTANCE
             .demand_probabilities
@@ -53,6 +64,11 @@ fn literature_benchmark_catalog_tracks_match_quality() {
         .expect("Yan small-scale family must exist");
     assert_eq!(yan_family.model_match, "exact_model_match");
     assert_eq!(yan_family.access_level, "preview_only");
+    assert!(!yan_family.reported_numbers_available);
+    assert_eq!(
+        yan_family.repo_assertion_basis,
+        "do_not_use_for_repo_assertions"
+    );
 
     let proportional_family = LITERATURE_BENCHMARK_FAMILIES
         .iter()
@@ -65,6 +81,11 @@ fn literature_benchmark_catalog_tracks_match_quality() {
     assert_eq!(
         proportional_family.yield_rate_mean_cv_pairs,
         INDERFURTH_2015_PROPORTIONAL_YIELD_PAIRS
+    );
+    assert!(proportional_family.reported_numbers_available);
+    assert_eq!(
+        proportional_family.repo_assertion_basis,
+        "related_model_aggregate_only"
     );
 }
 

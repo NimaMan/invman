@@ -3,6 +3,8 @@ pub struct PublishedBenchmarkReference {
     pub source: &'static str,
     pub url: &'static str,
     pub benchmark_policies: &'static [&'static str],
+    pub reported_numbers_available: bool,
+    pub numbers_anchor_repo_assertions: bool,
     pub notes: &'static str,
 }
 
@@ -11,6 +13,8 @@ pub struct RandomYieldReferenceInstance {
     pub name: &'static str,
     pub source: &'static str,
     pub url: &'static str,
+    pub literature_verified: bool,
+    pub verification_source: &'static str,
     pub periods: usize,
     pub lead_time: usize,
     pub demand_mean: f64,
@@ -44,6 +48,8 @@ pub struct WorkedTransitionReference {
 pub struct ExactVerificationReference {
     pub source: &'static str,
     pub url: &'static str,
+    pub literature_verified: bool,
+    pub verification_source: &'static str,
     pub periods: usize,
     pub lead_time: usize,
     pub success_probability: f64,
@@ -74,6 +80,8 @@ pub struct LiteratureBenchmarkFamily {
     pub yield_model: &'static str,
     pub model_match: &'static str,
     pub access_level: &'static str,
+    pub reported_numbers_available: bool,
+    pub repo_assertion_basis: &'static str,
     pub benchmark_policies: &'static [&'static str],
     pub lead_times: &'static [usize],
     pub demand_means: &'static [f64],
@@ -92,21 +100,27 @@ pub const YAN_2026_REFERENCE: PublishedBenchmarkReference = PublishedBenchmarkRe
     source: "Yan et al. (2026), Computers & Operations Research 186, 107305",
     url: "https://doi.org/10.1016/j.cor.2025.107305",
     benchmark_policies: &["optimal_dp", "linear_inflation", "weighted_newsvendor", "gdsh", "drl"],
-    notes: "This paper defines the finite-horizon discounted all-or-nothing random-yield problem with positive lead time and backlogging. The article preview exposes the model and benchmark policy families, but not a clean table of exact per-instance benchmark rows accessible for repo assertions.",
+    reported_numbers_available: false,
+    numbers_anchor_repo_assertions: false,
+    notes: "This paper defines the finite-horizon discounted all-or-nothing random-yield problem with positive lead time and backlogging. The accessible record exposes the model and benchmark policy families, but not a public table of exact per-instance benchmark numbers that the repo can assert against.",
 };
 
 pub const INDERFURTH_2015_REFERENCE: PublishedBenchmarkReference = PublishedBenchmarkReference {
     source: "Inderfurth and Kiesmuller (2015), linear-inflation policies under random yield",
     url: "https://www.fww.ovgu.de/fww_media/femm/femm_2013/2013_07.pdf",
     benchmark_policies: &["linear_inflation"],
-    notes: "This paper gives the canonical linear-inflation rule q = F * (S - X)^+ and the standard choice F = 1/p for binomial yield. It also reports the lead-time-zero benchmark grid with mean demand 20, h = 1, p in {0.5, 0.7, 0.9}, and several critical ratios.",
+    reported_numbers_available: true,
+    numbers_anchor_repo_assertions: false,
+    notes: "This paper gives the canonical linear-inflation rule q = F * (S - X)^+ and the standard choice F = 1/p for binomial yield. It reports public numeric benchmark summaries, but they are for related random-yield models rather than exact all-or-nothing repo instances.",
 };
 
 pub const CHEN_2018_REFERENCE: PublishedBenchmarkReference = PublishedBenchmarkReference {
     source: "Chen et al. (2018), Heuristics and Bounds for an Inventory System with an All-or-Nothing Yield Pattern and Lead-times",
     url: "https://dblp.org/rec/conf/soli/ChenHYY18",
     benchmark_policies: &["weighted_newsvendor"],
-    notes: "The later Yan et al. (2026) paper identifies this weighted newsvendor heuristic as the main all-or-nothing benchmark policy and describes it as a sample-path weighted-average gap rule over pipeline-yield realizations.",
+    reported_numbers_available: false,
+    numbers_anchor_repo_assertions: false,
+    notes: "The later Yan et al. (2026) paper identifies this weighted newsvendor heuristic as the main all-or-nothing benchmark policy and describes it as a sample-path weighted-average gap rule over pipeline-yield realizations. We have not recovered a public table of benchmark numbers from this source.",
 };
 
 pub const INDERFURTH_2015_DEMAND_MEANS: &[f64] = &[20.0];
@@ -133,6 +147,8 @@ pub const YAN_2026_SMALL_SCALE_FAMILY: LiteratureBenchmarkFamily = LiteratureBen
     yield_model: "all_or_nothing",
     model_match: "exact_model_match",
     access_level: "preview_only",
+    reported_numbers_available: false,
+    repo_assertion_basis: "do_not_use_for_repo_assertions",
     benchmark_policies: YAN_2026_REFERENCE.benchmark_policies,
     lead_times: EMPTY_USIZE_SLICE,
     demand_means: EMPTY_F64_SLICE,
@@ -140,7 +156,7 @@ pub const YAN_2026_SMALL_SCALE_FAMILY: LiteratureBenchmarkFamily = LiteratureBen
     success_probabilities: EMPTY_F64_SLICE,
     critical_ratios: EMPTY_F64_SLICE,
     yield_rate_mean_cv_pairs: EMPTY_MEAN_CV_PAIR_SLICE,
-    notes: "The accessible ScienceDirect preview confirms a small-scale exact-DP experiment family and a larger heuristic/DRL experiment family for the all-or-nothing problem, but it does not expose the parameter tables needed for verbatim repo instances.",
+    notes: "The accessible record confirms a small-scale exact-DP experiment family and a larger heuristic/DRL experiment family for the all-or-nothing problem, but it does not expose public benchmark numbers that can be copied into repo assertions.",
 };
 
 pub const CHEN_2018_WNH_FAMILY: LiteratureBenchmarkFamily = LiteratureBenchmarkFamily {
@@ -152,6 +168,8 @@ pub const CHEN_2018_WNH_FAMILY: LiteratureBenchmarkFamily = LiteratureBenchmarkF
     yield_model: "all_or_nothing",
     model_match: "exact_model_match",
     access_level: "bibliographic_only",
+    reported_numbers_available: false,
+    repo_assertion_basis: "do_not_use_for_repo_assertions",
     benchmark_policies: CHEN_2018_REFERENCE.benchmark_policies,
     lead_times: EMPTY_USIZE_SLICE,
     demand_means: EMPTY_F64_SLICE,
@@ -159,7 +177,7 @@ pub const CHEN_2018_WNH_FAMILY: LiteratureBenchmarkFamily = LiteratureBenchmarkF
     success_probabilities: EMPTY_F64_SLICE,
     critical_ratios: EMPTY_F64_SLICE,
     yield_rate_mean_cv_pairs: EMPTY_MEAN_CV_PAIR_SLICE,
-    notes: "This source is the main published anchor for the weighted-newsvendor heuristic in the all-or-nothing setting, but the accessible bibliographic record does not expose a reusable instance grid.",
+    notes: "This source is the main published anchor for the weighted-newsvendor heuristic in the all-or-nothing setting, but the accessible bibliographic record does not expose reusable benchmark numbers.",
 };
 
 pub const INDERFURTH_2015_ZERO_LT_BINOMIAL_FAMILY: LiteratureBenchmarkFamily =
@@ -172,6 +190,8 @@ pub const INDERFURTH_2015_ZERO_LT_BINOMIAL_FAMILY: LiteratureBenchmarkFamily =
         yield_model: "binomial",
         model_match: "partial_match_general_random_yield",
         access_level: "grid_summary_accessible",
+        reported_numbers_available: true,
+        repo_assertion_basis: "related_model_aggregate_only",
         benchmark_policies: &["optimal_linear_inflation", "markov_chain", "steady_state"],
         lead_times: INDERFURTH_2015_ZERO_LEAD_TIME,
         demand_means: INDERFURTH_2015_DEMAND_MEANS,
@@ -179,7 +199,7 @@ pub const INDERFURTH_2015_ZERO_LT_BINOMIAL_FAMILY: LiteratureBenchmarkFamily =
         success_probabilities: INDERFURTH_2015_BINOMIAL_SUCCESS_PROBABILITIES,
         critical_ratios: INDERFURTH_2015_CRITICAL_RATIOS,
         yield_rate_mean_cv_pairs: EMPTY_MEAN_CV_PAIR_SLICE,
-        notes: "Section 3.3 uses mean demand 20, holding cost 1, demand CV values {0.1, 0.2, 0.3, 0.5, 0.75}, critical ratios {0.85, 0.90, 0.95, 0.97, 0.99, 0.995}, and binomial-yield probabilities {0.5, 0.7, 0.9}. This is not the same yield model as the repo's all-or-nothing environment.",
+        notes: "Section 3.3 uses mean demand 20, holding cost 1, demand CV values {0.1, 0.2, 0.3, 0.5, 0.75}, critical ratios {0.85, 0.90, 0.95, 0.97, 0.99, 0.995}, and binomial-yield probabilities {0.5, 0.7, 0.9}. Public numeric results exist, but this is not the same yield model as the repo's all-or-nothing environment.",
     };
 
 pub const INDERFURTH_2015_POSITIVE_LT_BINOMIAL_FAMILY: LiteratureBenchmarkFamily =
@@ -192,6 +212,8 @@ pub const INDERFURTH_2015_POSITIVE_LT_BINOMIAL_FAMILY: LiteratureBenchmarkFamily
         yield_model: "binomial",
         model_match: "partial_match_general_random_yield",
         access_level: "grid_summary_accessible",
+        reported_numbers_available: true,
+        repo_assertion_basis: "related_model_aggregate_only",
         benchmark_policies: &["optimal_linear_inflation", "markov_chain", "steady_state"],
         lead_times: INDERFURTH_2015_POSITIVE_LEAD_TIMES,
         demand_means: INDERFURTH_2015_DEMAND_MEANS,
@@ -199,7 +221,7 @@ pub const INDERFURTH_2015_POSITIVE_LT_BINOMIAL_FAMILY: LiteratureBenchmarkFamily
         success_probabilities: INDERFURTH_2015_BINOMIAL_SUCCESS_PROBABILITIES,
         critical_ratios: INDERFURTH_2015_CRITICAL_RATIOS,
         yield_rate_mean_cv_pairs: EMPTY_MEAN_CV_PAIR_SLICE,
-        notes: "Section 4.3 reuses the Section 3.3 grid and evaluates lead times {2, 5, 10} by simulation. This benchmark family is literature-backed but not directly executable in the current all-or-nothing model.",
+        notes: "Section 4.3 reuses the Section 3.3 grid and evaluates lead times {2, 5, 10} by simulation. Public numeric results exist, but this benchmark family is not directly executable in the current all-or-nothing model.",
     };
 
 pub const INDERFURTH_2015_ZERO_LT_PROPORTIONAL_FAMILY: LiteratureBenchmarkFamily =
@@ -212,6 +234,8 @@ pub const INDERFURTH_2015_ZERO_LT_PROPORTIONAL_FAMILY: LiteratureBenchmarkFamily
         yield_model: "stochastically_proportional",
         model_match: "special_case_related_to_all_or_nothing",
         access_level: "grid_summary_accessible",
+        reported_numbers_available: true,
+        repo_assertion_basis: "related_model_aggregate_only",
         benchmark_policies: &["optimal_linear_inflation", "markov_chain", "steady_state"],
         lead_times: INDERFURTH_2015_ZERO_LEAD_TIME,
         demand_means: INDERFURTH_2015_DEMAND_MEANS,
@@ -219,7 +243,7 @@ pub const INDERFURTH_2015_ZERO_LT_PROPORTIONAL_FAMILY: LiteratureBenchmarkFamily
         success_probabilities: EMPTY_F64_SLICE,
         critical_ratios: INDERFURTH_2015_CRITICAL_RATIOS,
         yield_rate_mean_cv_pairs: INDERFURTH_2015_PROPORTIONAL_YIELD_PAIRS,
-        notes: "The all-or-nothing model is a Bernoulli special case of proportional yield, but the published proportional-yield grid uses more general mean/CV pairs than order-level Bernoulli success alone can represent.",
+        notes: "The all-or-nothing model is a Bernoulli special case of proportional yield, but the published proportional-yield grid uses more general mean/CV pairs than order-level Bernoulli success alone can represent. Public numeric results exist only for the broader related model.",
     };
 
 pub const INDERFURTH_2015_POSITIVE_LT_PROPORTIONAL_FAMILY: LiteratureBenchmarkFamily =
@@ -232,6 +256,8 @@ pub const INDERFURTH_2015_POSITIVE_LT_PROPORTIONAL_FAMILY: LiteratureBenchmarkFa
         yield_model: "stochastically_proportional",
         model_match: "special_case_related_to_all_or_nothing",
         access_level: "grid_summary_accessible",
+        reported_numbers_available: true,
+        repo_assertion_basis: "related_model_aggregate_only",
         benchmark_policies: &["optimal_linear_inflation", "markov_chain", "steady_state"],
         lead_times: INDERFURTH_2015_POSITIVE_LEAD_TIMES,
         demand_means: INDERFURTH_2015_DEMAND_MEANS,
@@ -239,7 +265,7 @@ pub const INDERFURTH_2015_POSITIVE_LT_PROPORTIONAL_FAMILY: LiteratureBenchmarkFa
         success_probabilities: EMPTY_F64_SLICE,
         critical_ratios: INDERFURTH_2015_CRITICAL_RATIOS,
         yield_rate_mean_cv_pairs: INDERFURTH_2015_PROPORTIONAL_YIELD_PAIRS,
-        notes: "This family is the closest literature grid we currently have to the all-or-nothing setting, but it is still only a partial match because the published proportional-yield pairs are more general than Bernoulli shipment success.",
+        notes: "This family is the closest literature grid we currently have to the all-or-nothing setting, but it is still only a partial match because the published proportional-yield pairs are more general than Bernoulli shipment success. Public numeric results exist only for the broader related model.",
     };
 
 pub const LITERATURE_BENCHMARK_FAMILIES: &[LiteratureBenchmarkFamily] = &[
@@ -255,6 +281,8 @@ pub const PRIMARY_REFERENCE_INSTANCE: RandomYieldReferenceInstance = RandomYield
     name: "yan2026_style_lt2_p075_discounted",
     source: YAN_2026_REFERENCE.source,
     url: YAN_2026_REFERENCE.url,
+    literature_verified: false,
+    verification_source: "repo_exact_solver_not_verified_against_literature",
     periods: 12,
     lead_time: 2,
     demand_mean: 4.0,
@@ -265,7 +293,7 @@ pub const PRIMARY_REFERENCE_INSTANCE: RandomYieldReferenceInstance = RandomYield
     discount_factor: 0.99,
     initial_inventory_level: 6.0,
     initial_pipeline_orders: &[4.0, 3.0],
-    notes: "Canonical first learned-policy benchmark for the repo. This is a repo-native instance shaped after the small-lead-time discounted setting emphasized by Yan et al. (2026), not a verbatim table row from the paper.",
+    notes: "Canonical first learned-policy benchmark for the repo. This is a repo-native instance shaped after the small-lead-time discounted setting emphasized by Yan et al. (2026), not a verbatim literature table row. We use it because the paper does not expose public benchmark numbers for direct verification.",
 };
 
 pub const WORKED_TRANSITION_REFERENCE: WorkedTransitionReference = WorkedTransitionReference {
@@ -289,6 +317,8 @@ pub const VERIFICATION_DEMAND_PROBABILITIES: &[f64] = &[0.05, 0.15, 0.30, 0.25, 
 pub const VERIFICATION_PROBLEM_INSTANCE: ExactVerificationReference = ExactVerificationReference {
     source: YAN_2026_REFERENCE.source,
     url: YAN_2026_REFERENCE.url,
+    literature_verified: false,
+    verification_source: "repo_exact_solver_not_verified_against_literature",
     periods: 5,
     lead_time: 2,
     success_probability: 0.75,

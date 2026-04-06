@@ -23,7 +23,7 @@ from common import (
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Validate the Rust random-yield inventory implementation against exact DP and literature-defined heuristics."
+        description="Validate the Rust random-yield inventory implementation against repo exact DP and benchmark heuristics. If public literature numbers are unavailable, the verification remains explicitly non-literature-verified."
     )
     parser.add_argument("--simulation_seeds", type=int, default=256)
     parser.add_argument("--output_json", default=None)
@@ -59,6 +59,11 @@ def _markdown(payload: dict) -> str:
     exact_summary = payload["exact_validation"]["exact_summary"]
     primary = payload["primary_simulation_validation"]
     lines = [
+        "| Verification Status | Value |",
+        "| --- | --- |",
+        f"| `verification_source` | `{payload['exact_validation']['verification_reference']['verification_source']}` |",
+        f"| `literature_verified` | `{payload['exact_validation']['verification_reference']['literature_verified']}` |",
+        "",
         "| Verification Metric | Value |",
         "| --- | ---: |",
         f"| `optimal_discounted_cost` | `{exact_summary['optimal_discounted_cost']:.6f}` |",
@@ -70,8 +75,8 @@ def _markdown(payload: dict) -> str:
         "",
         "| Policy | Params | Mean Discounted Cost | Std | Note |",
         "| --- | --- | ---: | ---: | --- |",
-        f"| `linear_inflation` | `{primary['linear_inflation_params']}` | `{primary['heuristics']['linear_inflation']['mean_cost']:.3f}` | `{primary['heuristics']['linear_inflation']['cost_std']:.3f}` | primary reference simulation |",
-        f"| `weighted_newsvendor` | `[]` | `{primary['heuristics']['weighted_newsvendor']['mean_cost']:.3f}` | `{primary['heuristics']['weighted_newsvendor']['cost_std']:.3f}` | primary reference simulation |",
+        f"| `linear_inflation` | `{primary['linear_inflation_params']}` | `{primary['heuristics']['linear_inflation']['mean_cost']:.3f}` | `{primary['heuristics']['linear_inflation']['cost_std']:.3f}` | repo-native primary reference; not literature-verified |",
+        f"| `weighted_newsvendor` | `[]` | `{primary['heuristics']['weighted_newsvendor']['mean_cost']:.3f}` | `{primary['heuristics']['weighted_newsvendor']['cost_std']:.3f}` | repo-native primary reference; not literature-verified |",
     ]
     return "\n".join(lines)
 

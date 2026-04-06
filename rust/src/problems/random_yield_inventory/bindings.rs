@@ -29,6 +29,8 @@ fn primary_reference_to_py(
     dict.set_item("name", reference.name)?;
     dict.set_item("source", reference.source)?;
     dict.set_item("url", reference.url)?;
+    dict.set_item("literature_verified", reference.literature_verified)?;
+    dict.set_item("verification_source", reference.verification_source)?;
     dict.set_item("periods", reference.periods)?;
     dict.set_item("lead_time", reference.lead_time)?;
     dict.set_item("demand_mean", reference.demand_mean)?;
@@ -53,6 +55,8 @@ fn verification_reference_to_py(
     let dict = PyDict::new_bound(py);
     dict.set_item("source", reference.source)?;
     dict.set_item("url", reference.url)?;
+    dict.set_item("literature_verified", reference.literature_verified)?;
+    dict.set_item("verification_source", reference.verification_source)?;
     dict.set_item("periods", reference.periods)?;
     dict.set_item("lead_time", reference.lead_time)?;
     dict.set_item("success_probability", reference.success_probability)?;
@@ -126,6 +130,11 @@ fn literature_family_to_py(
     dict.set_item("yield_model", family.yield_model)?;
     dict.set_item("model_match", family.model_match)?;
     dict.set_item("access_level", family.access_level)?;
+    dict.set_item(
+        "reported_numbers_available",
+        family.reported_numbers_available,
+    )?;
+    dict.set_item("repo_assertion_basis", family.repo_assertion_basis)?;
     dict.set_item("benchmark_policies", family.benchmark_policies.to_vec())?;
     dict.set_item("lead_times", family.lead_times.to_vec())?;
     dict.set_item("demand_means", family.demand_means.to_vec())?;
