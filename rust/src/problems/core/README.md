@@ -60,11 +60,13 @@ It defines:
 Typical examples:
 
 - on-hand inventory
+- source supply nodes
 - backlog
 - age buckets
 - repair queues
 - returnable stock
 - shipments moving through a lead-time pipeline
+- edge-indexed transit pipelines with edge-specific lead times
 
 ### 2. Stochastic Layer
 

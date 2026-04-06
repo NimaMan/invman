@@ -4,6 +4,7 @@ pub enum StockRole {
     AgeBucket,
     Pipeline,
     Backlog,
+    SupplySource,
     Reserve,
     WorkInProcess,
     DemandSink,

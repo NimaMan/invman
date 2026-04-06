@@ -1,6 +1,7 @@
 pub mod bindings;
 pub mod demand;
 pub mod env;
+pub mod flownet;
 pub mod heuristics;
 pub mod references;
 pub mod rollout;

@@ -4,4 +4,5 @@ pub struct PipelineSpec {
     pub from: String,
     pub to: String,
     pub stages: usize,
+    pub attributes: Vec<String>,
 }

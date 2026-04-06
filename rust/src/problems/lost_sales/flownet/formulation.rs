@@ -1,6 +1,6 @@
 use crate::problems::core::control::{
-    ActionShape, ActionSpec, ControlLayer, FeasibilityConstraint, IssuanceRule,
-    ObservationMode, ObservationSpec, ServiceSpec, ShortageReaction,
+    ActionShape, ActionSpec, ControlLayer, FeasibilityConstraint, IssuanceRule, ObservationMode,
+    ObservationSpec, ServiceSpec, ShortageReaction,
 };
 use crate::problems::core::events::{
     AccountingEventKind, ControlEventKind, EventCatalog, EventKind, EventSpec, ExogenousEventKind,
@@ -41,6 +41,9 @@ pub fn canonical_lost_sales_flownet() -> FlowNetFormulation {
                 from: String::from("supplier"),
                 to: String::from("on_hand_inventory"),
                 stages: 1,
+                attributes: vec![String::from(
+                    "single inbound lead-time pipeline with one scalar stage per outstanding order position",
+                )],
             }],
             flow_edges: vec![
                 FlowEdgeSpec {
