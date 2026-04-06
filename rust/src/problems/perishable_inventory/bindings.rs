@@ -365,7 +365,7 @@ fn perishable_inventory_exact_mdp_summary(
     warm_up_periods_ratio=0.2,
     temperature=0.25,
     split_type="oblique",
-    leaf_type="constant",
+    leaf_type="linear",
     issuing_policy="fifo",
     allowed_values=None
 ))]
@@ -437,7 +437,7 @@ fn perishable_inventory_soft_tree_rollout(
     gamma=0.99,
     temperature=0.25,
     split_type="oblique",
-    leaf_type="constant",
+    leaf_type="linear",
     issuing_policy="fifo",
     allowed_values=None
 ))]
@@ -509,7 +509,7 @@ fn perishable_inventory_soft_tree_discounted_return(
     warm_up_periods_ratio=0.2,
     temperature=0.25,
     split_type="oblique",
-    leaf_type="constant",
+    leaf_type="linear",
     issuing_policy="fifo",
     allowed_values=None
 ))]
@@ -581,7 +581,7 @@ fn perishable_inventory_soft_tree_population_rollout(
     gamma=0.99,
     temperature=0.25,
     split_type="oblique",
-    leaf_type="constant",
+    leaf_type="linear",
     issuing_policy="fifo",
     allowed_values=None
 ))]
@@ -650,7 +650,7 @@ fn perishable_inventory_soft_tree_population_discounted_return(
     warm_up_periods_ratio=0.2,
     temperature=0.25,
     split_type="oblique",
-    leaf_type="constant",
+    leaf_type="linear",
     issuing_policy="fifo",
     allowed_values=None,
     demand_mean=None
@@ -720,7 +720,7 @@ fn perishable_inventory_soft_tree_rollout_from_demands(
     procurement_cost=0.0,
     temperature=0.25,
     split_type="oblique",
-    leaf_type="constant",
+    leaf_type="linear",
     issuing_policy="fifo",
     allowed_values=None,
     demand_mean=None

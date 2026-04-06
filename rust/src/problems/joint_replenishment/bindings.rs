@@ -230,7 +230,7 @@ fn joint_replenishment_exact_dp_summary(py: Python<'_>) -> PyResult<PyObject> {
     discount_factor=0.99,
     temperature=0.25,
     split_type="oblique",
-    leaf_type="constant",
+    leaf_type="linear",
     allowed_values=None
 ))]
 fn joint_replenishment_soft_tree_rollout(
@@ -298,7 +298,7 @@ fn joint_replenishment_soft_tree_rollout(
     discount_factor=0.99,
     temperature=0.25,
     split_type="oblique",
-    leaf_type="constant",
+    leaf_type="linear",
     allowed_values=None
 ))]
 fn joint_replenishment_soft_tree_population_rollout(
@@ -365,7 +365,7 @@ fn joint_replenishment_soft_tree_population_rollout(
     discount_factor=0.99,
     temperature=0.25,
     split_type="oblique",
-    leaf_type="constant",
+    leaf_type="linear",
     allowed_values=None
 ))]
 fn joint_replenishment_soft_tree_rollout_from_paths(

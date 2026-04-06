@@ -243,7 +243,7 @@ fn random_yield_inventory_exact_dp_summary(py: Python<'_>) -> PyResult<PyObject>
     demand_distribution="poisson",
     temperature=0.25,
     split_type="oblique",
-    leaf_type="constant",
+    leaf_type="linear",
     allowed_values=None
 ))]
 fn random_yield_inventory_soft_tree_rollout(
@@ -310,7 +310,7 @@ fn random_yield_inventory_soft_tree_rollout(
     demand_distribution="poisson",
     temperature=0.25,
     split_type="oblique",
-    leaf_type="constant",
+    leaf_type="linear",
     allowed_values=None
 ))]
 fn random_yield_inventory_soft_tree_population_rollout(
@@ -376,7 +376,7 @@ fn random_yield_inventory_soft_tree_population_rollout(
     discount_factor=0.99,
     temperature=0.25,
     split_type="oblique",
-    leaf_type="constant",
+    leaf_type="linear",
     allowed_values=None
 ))]
 fn random_yield_inventory_soft_tree_rollout_from_paths(
