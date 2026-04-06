@@ -274,23 +274,96 @@ The current best interpretation is:
 5. Backend drift exists and should be cleaned up, but it is not the main reason the recent
    `Q=50` rerun is underperforming.
 
+## Local scale search
+
+Once the normalization moved out of the env and into the policy, the next question became:
+
+- is `Q`-style state scaling important only for the ordinal head,
+- or is scale a first-order search parameter for the broader fixed-cost benchmark surface too?
+
+The following local proxy sweeps answer that question on the same benchmark:
+
+- problem: `lit_pois_mu5_l4_p4_k5`
+- backend: Rust
+- training: `200` CMA iterations
+- evaluation: horizon `100000`, `3` seeds
+
+Files:
+
+- ordinal local sweep:
+  `autoresearch/fixed_cost_ordinal_stability/scale_local_p50_results.md`
+- depth-1 tree local sweep:
+  `autoresearch/fixed_cost_ordinal_stability/scale_tree_d1_local_p50_results.md`
+- depth-2 tree local sweep:
+  `autoresearch/fixed_cost_ordinal_stability/scale_tree_d2_local_p50_results.md`
+- combined comparison:
+  `autoresearch/fixed_cost_ordinal_stability/scale_policy_comparison_local_p50_results.md`
+
+### Cross-policy comparison at population 50
+
+| Scale | Ordinal | Tree d1 | Tree d2 |
+| ---: | ---: | ---: | ---: |
+| 10 | 8.8424 | 8.7678 | 8.7771 |
+| 15 | 9.5515 | 8.8061 | 8.7684 |
+| 20 | 8.8334 | 8.7719 | 8.7729 |
+| 25 | 8.8308 | 9.7522 | 8.7770 |
+| 30 | 8.9003 | 8.7736 | 8.7779 |
+| 40 | 9.0223 | 8.7738 | 9.7537 |
+| 50 | 10.0741 | 9.7787 | 9.7795 |
+
+### What the scale sweeps say
+
+1. Scale is a first-order search parameter, not an ordinal-only quirk.
+
+   Every tested policy family changes materially when the state is rescaled.
+
+2. The good region is roughly in the `10` to `30` band.
+
+   For the ordinal head, the best local proxy points are `20` and `25`.
+   For the depth-2 tree, the whole `10` to `30` band is essentially flat and strong.
+
+3. The old fixed-cost `50` scaling is not preferred at this short proxy budget.
+
+   All three policies are worse at `50` than at the better points in the `10` to `30` range.
+
+4. The sensitivity shape is policy-family specific.
+
+   The ordinal head degrades fairly smoothly as the scale grows beyond `30`.
+   The depth-2 tree is robust up to `30` and then drops sharply at `40`.
+   The depth-1 tree shows isolated bad spikes, which suggests local-basin effects rather than a
+   perfectly smooth monotone curve.
+
+5. The depth-2 tree is the most robust family in this local proxy search.
+
+   On this benchmark and budget, it stays in the `8.77` band from `10` through `30`.
+
+These local sweeps do not replace the long canonical evaluations, but they are already decisive
+about search geometry:
+
+- scaling matters,
+- the relevant good region is problem- and policy-family dependent,
+- and hardcoding one old scale into the env is the wrong abstraction boundary.
+
 ## Next decisive experiments
 
 The shortest path to a clean answer is:
 
-1. restore the old `pipeline` semantics under an explicit name, rather than overloading the
-   current demand-mean-scaled version:
-   - state scale by `max_order_size`
-   - old random `1..Q` initialization for lead-time orders
+1. promote the best local scale candidates to the long canonical budget:
+   - ordinal: `20`, `25`, maybe `30`
+   - tree depth-2: `10`, `20`, `25`, `30`
+   - tree depth-1: rerun `25` and `50` once more to confirm whether those spikes are real or just
+     single-seed basin artifacts
 2. rerun the old canonical `L=4, p=4, K=5` ordinal policy on current Rust with the exact promoted
-   protocol:
+   protocol and policy-side scaling:
    - `training_episodes=5000`
    - `training_horizon=2000`
-   - `Q=50`
+   - explicit `state_scale`
    - same evaluation setup
-3. rerun the same exact protocol on current Python
+3. rerun the trusted tree policies under the same promoted protocol with the winning scale band
+4. rerun the same exact protocol on current Python
 4. compare:
-   - if both recover the `~8.77` basin, the recent miss was mainly a budget/protocol issue
+   - if the promoted reruns recover the `~8.77` basin, the remaining issue was mainly search
+     geometry and protocol mismatch
    - if Python recovers and Rust does not, the remaining gap is a backend implementation issue
 
 ## Reproducible helper
@@ -299,9 +372,17 @@ Use the helper scripts in this folder to reproduce the analysis:
 
 - `summarize_fixed_cost_ordinal_history.py`
 - `ablate_state_drift.py`
+- `replay_exact_ordinal.py`
+- `collect_policy_scale_results.py`
 
 `summarize_fixed_cost_ordinal_history.py` reads benchmark result JSONs and prints a compact table.
 
 `ablate_state_drift.py` evaluates the archived good ordinal checkpoint under the current env,
 old-scale emulation, old-init emulation, and the fully old env to isolate which semantic change
 caused the regression.
+
+`replay_exact_ordinal.py` is now the generic fixed-cost replay helper for the single-policy scale
+experiments in this note.
+
+`collect_policy_scale_results.py` turns completed scale-sweep result directories into markdown
+tables for a chosen policy family.
