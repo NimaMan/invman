@@ -4,8 +4,8 @@ This folder is the conceptual backbone for inventory problems.
 
 It is not another environment implementation and it is not a registry of named families.
 
-The purpose of `problems/core` is to define the shared blueprint we use to describe any inventory
-problem before we write a problem-specific `env.rs`.
+The purpose of `problems/core` is to define the shared FlowNet language we use to describe any
+inventory problem before we write a problem-specific `env.rs`.
 
 ## Fundamental Questions
 
@@ -164,10 +164,12 @@ The current Rust skeleton now uses the folder structure directly:
 rust/src/problems/core/
   README.md
   mod.rs
-  blueprint/
+  flownet/
+    README.md
     mod.rs
-    problem_template.rs
-    problem_instance.rs
+    question.rs
+    formulation.rs
+    instance.rs
     validation.rs
   events/
     mod.rs
@@ -211,10 +213,10 @@ rust/src/problems/core/
 
 Responsibilities:
 
-- `blueprint/`
-  - top-level problem blueprint
+- `flownet/`
+  - the canonical stock-flow problem language
   - the fundamental question set
-  - instance placeholders and validation helpers
+  - formulation, instance, and validation helpers
 - `events/`
   - the typed event vocabulary used by schedules
   - event categories and named event specs
@@ -238,10 +240,12 @@ As this matures further, the likely structure is:
 rust/src/problems/core/
   README.md
   mod.rs
-  blueprint/
+  flownet/
+    README.md
     mod.rs
-    problem_template.rs
-    problem_instance.rs
+    question.rs
+    formulation.rs
+    instance.rs
     validation.rs
   events/
     mod.rs
@@ -284,4 +288,4 @@ rust/src/problems/core/
 ```
 
 The important thing is that `core` is now centered on the fundamental modeling questions and the
-layered blueprint they imply, rather than on a hand-written taxonomy of the current families.
+layered FlowNet they imply, rather than on a hand-written taxonomy of the current families.

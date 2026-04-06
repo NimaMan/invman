@@ -28,7 +28,7 @@ The crate mirrors the Python package structure:
   - heuristic search
   - problem-specific action mappings when needed
 - `src/problems/core/`
-  - cross-problem blueprint layer
+  - cross-problem FlowNet layer
   - the fundamental questions every inventory problem should answer
   - physical, stochastic, control, objective, and timing skeletons
 - `src/problems/<problem>/`
@@ -112,7 +112,7 @@ Rules for `references.rs`:
 
 ## Problem-Space Backbone
 
-`src/problems/core/` is the blueprint layer above the executable problem modules.
+`src/problems/core/` is the FlowNet layer above the executable problem modules.
 
 It does not replace `env.rs` or `rollout.rs`. Instead it defines the common modeling questions
 behind any problem family:
@@ -133,7 +133,8 @@ Those questions are then organized into five layers:
 - objective
 - timing
 
-The detailed design notes for that backbone live in `src/problems/core/README.md`.
+The detailed design notes for that backbone live in `src/problems/core/README.md`, and the
+canonical problem-language types live in `src/problems/core/flownet/`.
 
 Rules for the first test:
 

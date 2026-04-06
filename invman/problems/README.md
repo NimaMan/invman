@@ -126,7 +126,7 @@ should follow one standard from the start.
 
 Rust now also has a descriptive cross-problem layer under `rust/src/problems/core/`.
 
-That layer is not another simulator. It is the shared problem blueprint for the repo.
+That layer is not another simulator. It is the shared FlowNet language for the repo.
 
 It starts from the fundamental modeling questions:
 
@@ -152,7 +152,8 @@ Those questions are organized into five layers:
 - objective
 - timing
 
-The canonical entrypoint for that design should be `rust/src/problems/core/README.md`.
+The canonical entrypoints for that design are `rust/src/problems/core/README.md` and
+`rust/src/problems/core/flownet/`.
 
 Every new problem family must have:
 

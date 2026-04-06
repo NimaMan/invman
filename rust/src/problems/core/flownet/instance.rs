@@ -1,14 +1,14 @@
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct InstanceParameter {
+pub struct FlowNetParameter {
     pub name: String,
     pub value: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct InventoryProblemInstance {
+pub struct FlowNetInstance {
     pub name: String,
-    pub blueprint_name: String,
-    pub parameters: Vec<InstanceParameter>,
+    pub flownet_name: String,
+    pub parameters: Vec<FlowNetParameter>,
     pub horizon_periods: Option<usize>,
     pub notes: Vec<String>,
 }
