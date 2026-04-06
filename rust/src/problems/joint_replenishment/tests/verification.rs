@@ -1,6 +1,4 @@
-use crate::problems::joint_replenishment::env::{
-    build_policy_state, initialize_state, step_state,
-};
+use crate::problems::joint_replenishment::env::{build_policy_state, initialize_state, step_state};
 use crate::problems::joint_replenishment::finite_horizon_dp::{
     evaluate_named_heuristic, solve_optimal_policy,
 };
@@ -15,12 +13,20 @@ use crate::problems::joint_replenishment::references::{
 #[test]
 fn reference_set_has_expected_shape() {
     assert_eq!(VANVUCHELEN_2020_REFERENCE.benchmark_policies.len(), 3);
-    assert_eq!(SMALL_SCALE_SETTINGS.len(), 4);
+    assert!(VANVUCHELEN_2020_REFERENCE.reported_numbers_available);
+    assert!(!VANVUCHELEN_2020_REFERENCE.numbers_anchor_repo_assertions);
+    assert_eq!(SMALL_SCALE_SETTINGS.len(), 16);
     assert_eq!(PRIMARY_REFERENCE_INSTANCE.num_items, 2);
     assert_eq!(PRIMARY_REFERENCE_INSTANCE.truck_capacity, 6);
+    assert_eq!(PRIMARY_REFERENCE_INSTANCE.minor_order_costs[0], 40.0);
     assert_eq!(PRIMARY_REFERENCE_INSTANCE.demand_ranges[0].high, 5);
     assert_eq!(PRIMARY_REFERENCE_INSTANCE.demand_ranges[1].high, 3);
     assert_eq!(VERIFICATION_PROBLEM_INSTANCE.periods, 4);
+    assert!(!VERIFICATION_PROBLEM_INSTANCE.literature_verified);
+    assert_eq!(
+        VERIFICATION_PROBLEM_INSTANCE.verification_source,
+        "repo_exact_solver_not_verified_against_literature"
+    );
 }
 
 #[test]
@@ -84,10 +90,7 @@ fn heuristic_initial_orders_match_reference_freeze() {
     )
     .expect("DYN-OUT heuristic must succeed");
 
-    assert_eq!(
-        moq_action,
-        reference.expected_moq_first_action.to_vec()
-    );
+    assert_eq!(moq_action, reference.expected_moq_first_action.to_vec());
     assert_eq!(
         dynout_action,
         reference.expected_dynout_first_action.to_vec()
