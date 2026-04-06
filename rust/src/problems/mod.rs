@@ -2,6 +2,7 @@ pub mod ameliorating_inventory;
 pub mod decentralized_inventory_control;
 pub mod dual_sourcing;
 pub mod joint_replenishment;
+pub mod joint_pricing_inventory;
 pub mod lost_sales;
 pub mod lost_sales_fixed_order_cost;
 pub mod multi_echelon;

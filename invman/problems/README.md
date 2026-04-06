@@ -32,8 +32,9 @@ Current problem families in the repo:
 - `ameliorating_inventory`
 - `procurement_removal_inventory`
 - `vendor_managed_inventory`
+- `joint_pricing_inventory`
 
-The first four have Python problem packages today. The later nine are currently Rust-first.
+The first four have Python problem packages today. The later twelve are currently Rust-first.
 
 ### Current Python Packages
 
@@ -95,6 +96,9 @@ These families are implemented first under `rust/src/problems/<problem>/`:
 - `vendor_managed_inventory/`
   - single-vendor single-retailer consignment-style replenishment with DC stock, one-period
     shipment lead time, vendor shipment heuristics, and exact reduced finite-horizon verification
+- `joint_pricing_inventory/`
+  - single-item joint pricing-and-ordering control with a discrete price ladder, price-sensitive
+    demand, pricing heuristics, and exact reduced finite-horizon verification
 
 Learned policy classes stay separate under `invman/policies/`. The problem packages own the
 simulation, baseline heuristics, and reference benchmarks.
