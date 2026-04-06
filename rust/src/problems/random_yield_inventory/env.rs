@@ -70,34 +70,12 @@ pub fn expected_inventory_position(
     Ok(state.inventory_level + success_probability * state.pipeline_orders.iter().sum::<f64>())
 }
 
-pub fn build_policy_state(
-    state: &RandomYieldInventoryState,
-    success_probability: f64,
-    total_periods: usize,
-) -> PyResult<Vec<f32>> {
-    let expected_position = expected_inventory_position(state, success_probability)?;
-    let scale = state
-        .inventory_level
-        .abs()
-        .max(expected_position.abs())
-        .max(state.pipeline_orders.iter().copied().sum::<f64>())
-        .max(1.0) as f32;
-    let mut features = Vec::with_capacity(state.pipeline_orders.len() + 3);
-    features.push(state.inventory_level as f32 / scale);
-    features.push(expected_position as f32 / scale);
-    features.extend(
-        state
-            .pipeline_orders
-            .iter()
-            .map(|value| *value as f32 / scale),
-    );
-    let remaining_fraction = if total_periods == 0 {
-        0.0
-    } else {
-        (total_periods.saturating_sub(state.period) as f32) / total_periods as f32
-    };
-    features.push(remaining_fraction);
-    Ok(features)
+pub fn build_raw_state(state: &RandomYieldInventoryState) -> Vec<f32> {
+    let mut raw_state = Vec::with_capacity(state.pipeline_orders.len() + 2);
+    raw_state.push(state.inventory_level as f32);
+    raw_state.extend(state.pipeline_orders.iter().map(|value| *value as f32));
+    raw_state.push(state.period as f32);
+    raw_state
 }
 
 pub fn round_order_quantity(order_quantity: f64) -> f64 {

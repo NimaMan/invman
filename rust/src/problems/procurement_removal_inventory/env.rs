@@ -40,7 +40,10 @@ pub fn validate_costs(
         holding_cost_per_unit,
         shortage_cost_per_unit,
     ];
-    if values.iter().any(|value| !value.is_finite() || *value < 0.0) {
+    if values
+        .iter()
+        .any(|value| !value.is_finite() || *value < 0.0)
+    {
         return Err(PyValueError::new_err(
             "all costs and credits must be finite and non-negative",
         ));
@@ -81,42 +84,12 @@ pub fn initialize_state(
     Ok(state)
 }
 
-pub fn build_policy_state(
-    state: &ProcurementRemovalState,
-    expected_demand: f64,
-    periods: usize,
-    returnable_purchase_cap: usize,
-) -> PyResult<Vec<f32>> {
+pub fn build_raw_state(state: &ProcurementRemovalState) -> PyResult<Vec<f32>> {
     validate_state(state)?;
-    if !expected_demand.is_finite() || expected_demand < 0.0 {
-        return Err(PyValueError::new_err(
-            "expected_demand must be finite and non-negative",
-        ));
-    }
-
-    let non_returnable_inventory = state.inventory_level - state.returnable_inventory;
-    let scale = state
-        .inventory_level
-        .max(returnable_purchase_cap)
-        .max(expected_demand.ceil() as usize)
-        .max(1) as f32;
-    let remaining_fraction = if periods == 0 {
-        0.0
-    } else {
-        (periods.saturating_sub(state.period) as f32) / periods as f32
-    };
     Ok(vec![
-        state.inventory_level as f32 / scale,
-        state.returnable_inventory as f32 / scale,
-        non_returnable_inventory as f32 / scale,
-        if state.inventory_level > 0 {
-            state.returnable_inventory as f32 / state.inventory_level as f32
-        } else {
-            0.0
-        },
-        expected_demand as f32 / scale,
-        returnable_purchase_cap as f32 / scale,
-        remaining_fraction,
+        state.inventory_level as f32,
+        state.returnable_inventory as f32,
+        state.period as f32,
     ])
 }
 

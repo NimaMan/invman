@@ -1,5 +1,5 @@
 use crate::problems::procurement_removal_inventory::env::{
-    build_policy_state, initialize_state, step_state, terminal_salvage_credit,
+    build_raw_state, initialize_state, step_state, terminal_salvage_credit,
 };
 use crate::problems::procurement_removal_inventory::finite_horizon_dp::{
     evaluate_named_heuristic, solve_optimal_policy,
@@ -24,7 +24,11 @@ fn reference_set_has_expected_shape() {
     );
     assert_eq!(
         MAGGIAR_2025_REFERENCE.benchmark_policies,
-        &["directbackprop_drl", "structure_informed_policy_network", "interval_stock"]
+        &[
+            "directbackprop_drl",
+            "structure_informed_policy_network",
+            "interval_stock"
+        ]
     );
     assert_eq!(PRIMARY_REFERENCE_INSTANCE.returnable_purchase_cap, 2);
     assert_eq!(PRIMARY_REFERENCE_INSTANCE.benchmark_returnable_buffer, 2);
@@ -33,28 +37,23 @@ fn reference_set_has_expected_shape() {
 }
 
 #[test]
-fn policy_state_layout_matches_expected_shape() {
+fn raw_state_layout_matches_expected_shape() {
     let state = initialize_state(
         VERIFICATION_PROBLEM_INSTANCE.initial_inventory_level,
         VERIFICATION_PROBLEM_INSTANCE.initial_returnable_inventory,
     )
     .expect("state must build");
-    let features = build_policy_state(
-        &state,
-        1.7,
-        VERIFICATION_PROBLEM_INSTANCE.periods,
-        VERIFICATION_PROBLEM_INSTANCE.returnable_purchase_cap,
-    )
-    .expect("policy state must build");
+    let raw_state = build_raw_state(&state).expect("raw state must build");
 
-    assert_eq!(features.len(), 7);
-    assert!((features[0] - 1.0).abs() < 1e-6);
-    assert!((features[1] - 0.5).abs() < 1e-6);
-    assert!((features[2] - 0.5).abs() < 1e-6);
-    assert!((features[3] - 0.5).abs() < 1e-6);
-    assert!((features[4] - 0.85).abs() < 1e-6);
-    assert!((features[5] - 0.5).abs() < 1e-6);
-    assert!((features[6] - 1.0).abs() < 1e-6);
+    assert_eq!(raw_state, vec![2.0, 1.0, 0.0]);
+}
+
+#[test]
+fn raw_state_preserves_high_inventory_magnitude() {
+    let state = initialize_state(8, 3).expect("state must build");
+    let raw_state = build_raw_state(&state).expect("raw state must build");
+
+    assert_eq!(raw_state, vec![8.0, 3.0, 0.0]);
 }
 
 #[test]

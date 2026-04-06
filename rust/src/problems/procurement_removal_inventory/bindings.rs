@@ -7,7 +7,7 @@ use crate::problems::procurement_removal_inventory::demand::{
     parse_demand_distribution_kind,
 };
 use crate::problems::procurement_removal_inventory::env::{
-    build_policy_state, initialize_state, step_state,
+    build_raw_state, initialize_state, step_state,
 };
 use crate::problems::procurement_removal_inventory::heuristics::{
     interval_stock_action, policy_rollout, policy_rollout_from_demands,
@@ -73,15 +73,12 @@ fn simulation_summary_to_py(py: Python<'_>, summary: &PolicySimulationSummary) -
 }
 
 #[pyfunction]
-fn procurement_removal_inventory_build_policy_state(
+fn procurement_removal_inventory_build_raw_state(
     inventory_level: usize,
     returnable_inventory: usize,
-    expected_demand: f64,
-    periods: usize,
-    returnable_purchase_cap: usize,
 ) -> PyResult<Vec<f32>> {
     let state = initialize_state(inventory_level, returnable_inventory)?;
-    build_policy_state(&state, expected_demand, periods, returnable_purchase_cap)
+    build_raw_state(&state)
 }
 
 #[pyfunction]
@@ -601,7 +598,7 @@ fn procurement_removal_inventory_policy_rollout_from_demands(
 
 pub fn register_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(
-        procurement_removal_inventory_build_policy_state,
+        procurement_removal_inventory_build_raw_state,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(procurement_removal_inventory_step, m)?)?;

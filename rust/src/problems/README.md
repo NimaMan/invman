@@ -84,6 +84,19 @@ entrypoints for that design are:
 - `rust/src/problems/core/README.md`
 - `rust/src/problems/core/flownet/`
 
+## State Interface Rule
+
+Environment-state rule:
+
+- `env.rs` owns the raw environment state and transition logic
+- `env.rs` may expose raw state vectors for policies, but those vectors should be direct state
+  quantities in a stable order
+- `env.rs` should not silently normalize, rescale, ratio-encode, or otherwise transform state for
+  a learned policy
+- if a learned policy uses scaled or derived features, that conversion belongs in the policy or
+  rollout layer and must be explicit there
+- tests should freeze the raw state ordering separately from any policy-specific feature encoding
+
 ## Reference Rule
 
 Reference and verification rule:

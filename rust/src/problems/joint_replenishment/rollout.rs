@@ -7,9 +7,11 @@ use rayon::prelude::*;
 use crate::core::policies::soft_tree::{
     action_vector_from_flat_params, SoftTreeActionSpec, SoftTreeLeafType, SoftTreeSplitType,
 };
-use crate::problems::joint_replenishment::demand::{sample_demands, validate_demand_ranges, DemandRange};
+use crate::problems::joint_replenishment::demand::{
+    sample_demands, validate_demand_ranges, DemandRange,
+};
 use crate::problems::joint_replenishment::env::{
-    build_policy_state, initialize_state, step_state, validate_state, JointReplenishmentState,
+    build_raw_state, initialize_state, step_state, validate_state, JointReplenishmentState,
 };
 
 #[derive(Clone)]
@@ -49,8 +51,7 @@ fn validate_config(
     if config.action_spec.action_dim != num_items {
         return Err(PyValueError::new_err(format!(
             "action_spec.action_dim {} does not match num_items {}",
-            config.action_spec.action_dim,
-            num_items
+            config.action_spec.action_dim, num_items
         )));
     }
     if config.input_dim != num_items + 2 {
@@ -71,9 +72,7 @@ fn validate_config(
         ));
     }
     if !(0.0..=1.0).contains(&config.discount_factor) {
-        return Err(PyValueError::new_err(
-            "discount_factor must lie in [0, 1]",
-        ));
+        return Err(PyValueError::new_err("discount_factor must lie in [0, 1]"));
     }
     Ok(())
 }
@@ -83,7 +82,7 @@ fn action_quantities(
     state: &JointReplenishmentState,
     config: &JointReplenishmentRolloutConfig,
 ) -> PyResult<Vec<usize>> {
-    let policy_state = build_policy_state(state, config.periods)?;
+    let policy_state = policy_state(state, config.periods)?;
     action_vector_from_flat_params(
         &policy_state,
         flat_params,
@@ -94,6 +93,34 @@ fn action_quantities(
         config.leaf_type,
         &config.action_spec,
     )
+}
+
+fn policy_state(
+    state: &JointReplenishmentState,
+    total_periods: usize,
+) -> PyResult<Vec<f32>> {
+    let raw_state = build_raw_state(state)?;
+    let period = raw_state.last().copied().unwrap_or(0.0) as usize;
+    let inventory_levels = &raw_state[..raw_state.len().saturating_sub(1)];
+    let total_inventory = inventory_levels.iter().map(|value| *value as i32).sum::<i32>();
+    let scale = inventory_levels
+        .iter()
+        .map(|value| value.abs())
+        .fold(1.0_f32, f32::max)
+        .max(total_inventory.abs() as f32)
+        .max(1.0);
+    let mut features = inventory_levels
+        .iter()
+        .map(|value| *value / scale)
+        .collect::<Vec<_>>();
+    features.push(total_inventory as f32 / scale);
+    let remaining_fraction = if total_periods == 0 {
+        0.0
+    } else {
+        (total_periods.saturating_sub(period) as f32) / total_periods as f32
+    };
+    features.push(remaining_fraction);
+    Ok(features)
 }
 
 pub fn rollout(

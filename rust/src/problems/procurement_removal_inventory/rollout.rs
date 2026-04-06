@@ -11,7 +11,7 @@ use crate::problems::procurement_removal_inventory::demand::{
     sample_demand, DemandDistributionKind,
 };
 use crate::problems::procurement_removal_inventory::env::{
-    build_policy_state, clip_action, step_state, terminal_salvage_credit, validate_state,
+    build_raw_state, clip_action, step_state, terminal_salvage_credit, validate_state,
     ProcurementRemovalState,
 };
 
@@ -52,11 +52,48 @@ fn validate_config(config: &ProcurementRemovalRolloutConfig) -> PyResult<()> {
         return Err(PyValueError::new_err("periods must be at least 1"));
     }
     if !(0.0..=1.0).contains(&config.discount_factor) {
-        return Err(PyValueError::new_err(
-            "discount_factor must lie in [0, 1]",
-        ));
+        return Err(PyValueError::new_err("discount_factor must lie in [0, 1]"));
     }
     Ok(())
+}
+
+fn policy_state(
+    state: &ProcurementRemovalState,
+    expected_demand: f64,
+    periods: usize,
+    returnable_purchase_cap: usize,
+) -> PyResult<Vec<f32>> {
+    if !expected_demand.is_finite() || expected_demand < 0.0 {
+        return Err(PyValueError::new_err(
+            "expected_demand must be finite and non-negative",
+        ));
+    }
+    let raw_state = build_raw_state(state)?;
+    let inventory_level = raw_state[0];
+    let returnable_inventory = raw_state[1];
+    let period = raw_state[2] as usize;
+    let non_returnable_inventory = inventory_level - returnable_inventory;
+    let scale = returnable_purchase_cap
+        .max(expected_demand.ceil() as usize)
+        .max(1) as f32;
+    let remaining_fraction = if periods == 0 {
+        0.0
+    } else {
+        (periods.saturating_sub(period) as f32) / periods as f32
+    };
+    Ok(vec![
+        inventory_level / scale,
+        returnable_inventory / scale,
+        non_returnable_inventory / scale,
+        if inventory_level > 0.0 {
+            returnable_inventory / inventory_level
+        } else {
+            0.0
+        },
+        expected_demand as f32 / scale,
+        returnable_purchase_cap as f32 / scale,
+        remaining_fraction,
+    ])
 }
 
 pub fn rollout(
@@ -72,7 +109,7 @@ pub fn rollout(
     let mut discounted_cost = 0.0;
 
     for period in 0..config.periods {
-        let policy_state = build_policy_state(
+        let policy_state = policy_state(
             &state,
             config.demand_mean,
             config.periods,
@@ -153,7 +190,7 @@ pub fn rollout_from_demands(
     let mut state = initial_state.clone();
     let mut discounted_cost = 0.0;
     for (period, demand) in demands.iter().copied().enumerate() {
-        let policy_state = build_policy_state(
+        let policy_state = policy_state(
             &state,
             config.demand_mean,
             demands.len(),

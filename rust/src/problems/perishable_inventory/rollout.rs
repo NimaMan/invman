@@ -9,8 +9,7 @@ use crate::core::policies::soft_tree::{
     action_vector_from_flat_params, SoftTreeActionSpec, SoftTreeLeafType, SoftTreeSplitType,
 };
 use crate::problems::perishable_inventory::env::{
-    build_policy_state, initialize_state, step_state, validate_state, IssuingPolicy,
-    PerishableState,
+    build_raw_state, initialize_state, step_state, validate_state, IssuingPolicy, PerishableState,
 };
 use crate::problems::perishable_inventory::heuristics::PolicyTraceSummary;
 
@@ -124,6 +123,14 @@ fn sample_gamma_demand(rng: &mut StdRng, gamma: &Gamma<f64>) -> usize {
     gamma.sample(rng).round().max(0.0) as usize
 }
 
+fn policy_state(state: &PerishableState, demand_mean: f64) -> Vec<f32> {
+    let scale = demand_mean.max(1.0) as f32;
+    build_raw_state(state)
+        .into_iter()
+        .map(|value| value / scale)
+        .collect()
+}
+
 pub fn rollout(
     flat_params: &[f32],
     config: &PerishableInventoryRolloutConfig,
@@ -136,7 +143,7 @@ pub fn rollout(
     let mut epoch_costs = Vec::with_capacity(config.horizon);
 
     for _ in 0..config.horizon {
-        let policy_state = build_policy_state(&state, config.demand_mean);
+        let policy_state = policy_state(&state, config.demand_mean);
         let action = action_vector_from_flat_params(
             &policy_state,
             flat_params,
@@ -178,7 +185,7 @@ pub fn rollout_discounted_return(
     let mut epoch_costs = Vec::with_capacity(config.horizon);
 
     for _ in 0..config.horizon {
-        let policy_state = build_policy_state(&state, config.demand_mean);
+        let policy_state = policy_state(&state, config.demand_mean);
         let action = action_vector_from_flat_params(
             &policy_state,
             flat_params,
@@ -218,7 +225,7 @@ pub fn rollout_from_demands(
     let mut epoch_costs = Vec::with_capacity(demands.len());
 
     for demand in demands.iter().copied() {
-        let policy_state = build_policy_state(&state, config.demand_mean);
+        let policy_state = policy_state(&state, config.demand_mean);
         let action = action_vector_from_flat_params(
             &policy_state,
             flat_params,
@@ -268,7 +275,7 @@ pub fn rollout_trace_summary_from_demands(
     let mut positive_order_periods = 0usize;
 
     for demand in demands.iter().copied() {
-        let policy_state = build_policy_state(&state, config.demand_mean);
+        let policy_state = policy_state(&state, config.demand_mean);
         let order_quantity = action_vector_from_flat_params(
             &policy_state,
             flat_params,
@@ -346,7 +353,7 @@ pub fn rollout_from_demands_discounted_return(
     let mut epoch_costs = Vec::with_capacity(demands.len());
 
     for demand in demands.iter().copied() {
-        let policy_state = build_policy_state(&state, config.demand_mean);
+        let policy_state = policy_state(&state, config.demand_mean);
         let action = action_vector_from_flat_params(
             &policy_state,
             flat_params,

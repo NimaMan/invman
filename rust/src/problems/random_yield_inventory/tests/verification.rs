@@ -1,5 +1,5 @@
 use crate::problems::random_yield_inventory::env::{
-    build_policy_state, initialize_state, step_state,
+    build_raw_state, initialize_state, step_state, RandomYieldInventoryState,
 };
 use crate::problems::random_yield_inventory::finite_horizon_dp::{
     evaluate_named_heuristic, solve_optimal_policy,
@@ -90,14 +90,15 @@ fn literature_benchmark_catalog_tracks_match_quality() {
 }
 
 #[test]
-fn policy_state_layout_matches_expected_shape() {
-    let state = initialize_state(3.0, &[5.0, 2.0]).expect("state must build");
-    let features = build_policy_state(&state, 0.75, 12).expect("policy state must build");
+fn raw_state_layout_matches_expected_shape() {
+    let state = RandomYieldInventoryState {
+        period: 2,
+        inventory_level: 3.0,
+        pipeline_orders: vec![5.0, 2.0],
+    };
+    let raw_state = build_raw_state(&state);
 
-    assert_eq!(features.len(), 5);
-    assert!((features[0] - 0.36363637).abs() < 1e-6);
-    assert!((features[1] - 1.0).abs() < 1e-6);
-    assert!((features[4] - 1.0).abs() < 1e-6);
+    assert_eq!(raw_state, vec![3.0, 5.0, 2.0, 2.0]);
 }
 
 #[test]

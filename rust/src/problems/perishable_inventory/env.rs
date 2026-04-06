@@ -67,15 +67,14 @@ pub fn initialize_state(_demand_mean: f64, shelf_life: usize, lead_time: usize) 
     }
 }
 
-pub fn build_policy_state(state: &PerishableState, demand_mean: f64) -> Vec<f32> {
-    let scale = demand_mean.max(1.0) as f32;
-    let mut policy_state = state
+pub fn build_raw_state(state: &PerishableState) -> Vec<f32> {
+    let mut raw_state = state
         .pipeline_orders
         .iter()
-        .map(|value| *value as f32 / scale)
+        .map(|value| *value as f32)
         .collect::<Vec<_>>();
-    policy_state.extend(state.on_hand.iter().map(|value| *value as f32 / scale));
-    policy_state
+    raw_state.extend(state.on_hand.iter().map(|value| *value as f32));
+    raw_state
 }
 
 pub fn inventory_position(state: &PerishableState) -> usize {

@@ -25,3 +25,9 @@ Current anchors:
   - `de_moor2022_m2_exp1_l1_cp7_lifo`
   - `de_moor2022_m2_exp2_l1_cp7_fifo`
 - practical benchmark instance: `de_moor2022_m4_exp6_l2_cp7_fifo`
+
+State interface:
+
+- `env.rs` exposes raw inventory and pipeline quantities in observation order
+- any scaling used by a learned policy belongs in `rollout.rs` or the policy itself
+- environment code must not silently normalize policy inputs

@@ -29,7 +29,10 @@ fn validate_cost_vector(name: &str, values: &[f64], expected_len: usize) -> PyRe
             expected_len
         )));
     }
-    if values.iter().any(|value| !value.is_finite() || *value < 0.0) {
+    if values
+        .iter()
+        .any(|value| !value.is_finite() || *value < 0.0)
+    {
         return Err(PyValueError::new_err(format!(
             "{name} must contain finite non-negative values",
         )));
@@ -59,32 +62,15 @@ pub fn total_inventory(state: &JointReplenishmentState) -> i32 {
     state.inventory_levels.iter().sum()
 }
 
-pub fn build_policy_state(
-    state: &JointReplenishmentState,
-    total_periods: usize,
-) -> PyResult<Vec<f32>> {
+pub fn build_raw_state(state: &JointReplenishmentState) -> PyResult<Vec<f32>> {
     validate_state(state)?;
-    let scale = state
+    let mut raw_state = state
         .inventory_levels
         .iter()
-        .map(|value| value.abs())
-        .max()
-        .unwrap_or(1)
-        .max(total_inventory(state).abs())
-        .max(1) as f32;
-    let mut features = state
-        .inventory_levels
-        .iter()
-        .map(|value| *value as f32 / scale)
+        .map(|value| *value as f32)
         .collect::<Vec<_>>();
-    features.push(total_inventory(state) as f32 / scale);
-    let remaining_fraction = if total_periods == 0 {
-        0.0
-    } else {
-        (total_periods.saturating_sub(state.period) as f32) / total_periods as f32
-    };
-    features.push(remaining_fraction);
-    Ok(features)
+    raw_state.push(state.period as f32);
+    Ok(raw_state)
 }
 
 pub fn trucks_required(order_quantities: &[usize], truck_capacity: usize) -> PyResult<usize> {

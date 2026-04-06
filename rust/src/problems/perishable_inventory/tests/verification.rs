@@ -1,12 +1,12 @@
-use crate::problems::perishable_inventory::env::{build_policy_state, PerishableState};
-use crate::problems::perishable_inventory::value_iteration_mdp::{
-    best_base_stock_level_by_expected_return, build_exact_mdp, build_policy_table_9x9,
-    expected_discounted_return_from_zero_state, value_iteration_best_action_values,
-};
+use crate::problems::perishable_inventory::env::{build_raw_state, PerishableState};
 use crate::problems::perishable_inventory::references::{
     build_lifetime_sweep_instances, get_primary_reference_instance, get_reference_instance,
     list_reference_instances, BENCHMARK_POLICIES, DE_MOOR_2022_REFERENCE,
     FARRINGTON_2025_REFERENCE, VERIFICATION_PROBLEM_INSTANCE, VERIFICATION_PROBLEM_INSTANCES,
+};
+use crate::problems::perishable_inventory::value_iteration_mdp::{
+    best_base_stock_level_by_expected_return, build_exact_mdp, build_policy_table_9x9,
+    expected_discounted_return_from_zero_state, value_iteration_best_action_values,
 };
 
 #[test]
@@ -96,7 +96,7 @@ fn policy_state_order_matches_official_observation_layout() {
         pipeline_orders: vec![5, 3],
         on_hand: vec![4, 2, 1],
     };
-    let policy_state = build_policy_state(&state, 1.0);
+    let policy_state = build_raw_state(&state);
 
     assert_eq!(policy_state, vec![5.0, 3.0, 4.0, 2.0, 1.0]);
 }

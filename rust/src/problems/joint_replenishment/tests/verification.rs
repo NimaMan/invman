@@ -1,4 +1,6 @@
-use crate::problems::joint_replenishment::env::{build_policy_state, initialize_state, step_state};
+use crate::problems::joint_replenishment::env::{
+    build_raw_state, initialize_state, step_state, JointReplenishmentState,
+};
 use crate::problems::joint_replenishment::finite_horizon_dp::{
     evaluate_named_heuristic, solve_optimal_policy,
 };
@@ -30,14 +32,13 @@ fn reference_set_has_expected_shape() {
 }
 
 #[test]
-fn policy_state_layout_matches_expected_shape() {
-    let state = initialize_state(&[2, -1]).expect("state must build");
-    let features = build_policy_state(&state, 4).expect("policy state must build");
-    assert_eq!(features.len(), 4);
-    assert!((features[0] - 1.0).abs() < 1e-6);
-    assert!((features[1] + 0.5).abs() < 1e-6);
-    assert!((features[2] - 0.5).abs() < 1e-6);
-    assert!((features[3] - 1.0).abs() < 1e-6);
+fn raw_state_layout_matches_expected_shape() {
+    let state = JointReplenishmentState {
+        period: 2,
+        inventory_levels: vec![2, -1],
+    };
+    let raw_state = build_raw_state(&state).expect("raw state must build");
+    assert_eq!(raw_state, vec![2.0, -1.0, 2.0]);
 }
 
 #[test]
