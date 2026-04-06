@@ -88,6 +88,7 @@ It defines:
 
 - action schema
 - observation model
+- service semantics
 - feasibility constraints
 
 Examples:
@@ -96,6 +97,8 @@ Examples:
 - dual-source ordering
 - shipment allocation
 - removal decisions
+- FIFO / LIFO issuance discipline
+- lost-sales versus backlog service reaction
 - local-information control
 
 ### 4. Objective Layer
@@ -196,6 +199,7 @@ rust/src/problems/core/
     mod.rs
     action.rs
     observation.rs
+    service.rs
     constraints.rs
   objective/
     mod.rs
@@ -225,7 +229,7 @@ Responsibilities:
 - `stochastic/`
   - demand, yield, failure, return, disruption, and forecast process placeholders
 - `control/`
-  - actions, observations, and feasibility constraints
+  - actions, observations, service semantics, and feasibility constraints
 - `objective/`
   - cost / reward terms and discounting
 - `timing/`
@@ -272,6 +276,7 @@ rust/src/problems/core/
     mod.rs
     action.rs
     observation.rs
+    service.rs
     constraints.rs
   objective/
     mod.rs

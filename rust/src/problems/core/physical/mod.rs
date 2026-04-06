@@ -32,4 +32,12 @@ impl PhysicalLayer {
     pub fn has_material_movement(&self) -> bool {
         !self.flow_edges.is_empty() || !self.pipelines.is_empty()
     }
+
+    pub fn stock_node(&self, name: &str) -> Option<&StockNodeSpec> {
+        self.stock_nodes.iter().find(|node| node.name == name)
+    }
+
+    pub fn has_stock_node(&self, name: &str) -> bool {
+        self.stock_node(name).is_some()
+    }
 }

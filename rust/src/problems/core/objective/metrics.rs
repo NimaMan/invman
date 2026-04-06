@@ -3,6 +3,7 @@ pub enum PerformanceMetric {
     FillRate,
     CycleServiceLevel,
     AverageInventory,
+    AverageWaste,
     AverageBacklog,
     TotalCost,
     Custom(String),

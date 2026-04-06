@@ -1,4 +1,5 @@
 use crate::problems::core::flownet::formulation::FlowNetFormulation;
+use crate::problems::core::physical::StockRole;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FlowNetValidationIssue {
@@ -34,6 +35,54 @@ pub fn validate_flownet(
         issues.push(FlowNetValidationIssue {
             message: String::from("control layer must define at least one observation"),
         });
+    }
+    if formulation
+        .physical
+        .stock_nodes
+        .iter()
+        .any(|node| node.role == StockRole::DemandSink)
+        && !formulation.control.has_service_policies()
+    {
+        issues.push(FlowNetValidationIssue {
+            message: String::from(
+                "control layer must define service semantics when the physical layer includes a demand sink",
+            ),
+        });
+    }
+    for service in &formulation.control.service_policies {
+        if service.inventory_sources.is_empty() {
+            issues.push(FlowNetValidationIssue {
+                message: format!(
+                    "service policy '{}' must define at least one inventory source",
+                    service.name
+                ),
+            });
+        }
+        match formulation.physical.stock_node(&service.demand_target) {
+            Some(node) if node.role == StockRole::DemandSink => {}
+            Some(_) => issues.push(FlowNetValidationIssue {
+                message: format!(
+                    "service policy '{}' must target a demand sink stock node",
+                    service.name
+                ),
+            }),
+            None => issues.push(FlowNetValidationIssue {
+                message: format!(
+                    "service policy '{}' references unknown demand target '{}'",
+                    service.name, service.demand_target
+                ),
+            }),
+        }
+        for source in &service.inventory_sources {
+            if !formulation.physical.has_stock_node(source) {
+                issues.push(FlowNetValidationIssue {
+                    message: format!(
+                        "service policy '{}' references unknown inventory source '{}'",
+                        service.name, source
+                    ),
+                });
+            }
+        }
     }
     if !formulation.objective.has_scoring_terms() {
         issues.push(FlowNetValidationIssue {

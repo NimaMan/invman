@@ -1,6 +1,7 @@
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum StockRole {
     OnHand,
+    AgeBucket,
     Pipeline,
     Backlog,
     Reserve,
