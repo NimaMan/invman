@@ -50,4 +50,34 @@ problem family cleanly before trying to generalize execution.
 - demand is realized and served from available stock
 - period costs are charged
 
-Those answers are encoded in `formulation.rs`, `instance.rs`, and `validation.rs`.
+Those answers are encoded in `formulation.rs`, `instance.rs`, and `verification/`.
+
+## Verification
+
+The `verification/` folder is where this formulation is checked against:
+
+- structural FlowNet validity
+- canonical event ordering assumptions
+- executable heuristic reproduction for the standard lost-sales benchmark
+- literature policy anchors for the policies we do not yet execute here
+
+The first benchmark anchor is the repository's canonical `vanilla_l4_p4_poisson5` instance:
+
+- optimal reference: `4.73`
+- capped base stock: `4.80`
+- myopic2: `4.82`
+- myopic1: `5.06`
+- svbs: `5.83`
+
+Current executable verification covers:
+
+- `myopic2`
+- `myopic1`
+- `svbs`
+- rollout-backed learned policy measurements through the Rust soft-tree, linear, and neural
+  rollout entrypoints
+
+Current literature-only anchors are:
+
+- `optimal_reference`
+- `capped_base_stock`
