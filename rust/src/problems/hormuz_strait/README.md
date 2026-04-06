@@ -41,6 +41,8 @@ Folder layout:
 
 - `flownet/`
   - FlowNet formulation and the first source-backed instance
+- `maritime_traffic/`
+  - ship-passage sources and processed snapshots for before/after conflict traffic analysis
 - `scenarios/`
   - month-ahead price-scenario definitions and simulator
 - `data/raw/`
