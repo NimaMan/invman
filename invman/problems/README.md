@@ -124,6 +124,36 @@ The newer Rust-first families currently include the twelve families listed above
 Older Python packages were added incrementally and are not fully uniform. New problem families
 should follow one standard from the start.
 
+Rust now also has a descriptive cross-problem layer under `rust/src/problems/core/`.
+
+That layer is not another simulator. It is the shared problem blueprint for the repo.
+
+It starts from the fundamental modeling questions:
+
+- what inventory states exist
+- how material moves or transforms
+- what random events occur
+- what the controller can choose
+- what the controller can observe, and when
+- how performance is scored
+- what timing rules and constraints shape the system
+
+Reference and verification rule:
+
+- literature-backed repo assertions require publicly reported benchmark numbers from the paper
+- if a paper gives the model or heuristic but not usable benchmark numbers, it can still be cited as background, but not as a verification anchor
+- in that case the problem should use a repo-native exact solver instance for implementation verification and label it explicitly as `not literature-verified`
+
+Those questions are organized into five layers:
+
+- physical
+- stochastic
+- control
+- objective
+- timing
+
+The canonical entrypoint for that design should be `rust/src/problems/core/README.md`.
+
 Every new problem family must have:
 
 - a canonical literature interpretation
@@ -160,7 +190,6 @@ Required artifacts for every new problem family:
   - period cost accounting
 - `heuristics/` or `heuristics.py`
   - classical benchmark policies for that family
-  - any parameter-search helpers required by those heuristics
 - `rollout.rs` or `benchmark.py` / rollout helpers
   - learned-policy evaluation path
   - deterministic rollout helpers from fixed demand paths when needed
@@ -375,9 +404,9 @@ Use this layout by default:
   - `tests/mod.rs`
   - `tests/verification.rs`
 
-If literature-backed verification needs an exact finite-state solver or analytical evaluator, put it
-in a role-specific module such as `finite_horizon_dp.rs`, `value_iteration_mdp.rs`, or
-`rolling_scarf_dp.rs` and keep it separate from `heuristics/`.
+If literature-backed verification needs an exact finite-state solver or analytical evaluator, keep
+it outside `heuristics/` in a clearly named role-specific module such as `finite_horizon_dp.rs`,
+`value_iteration_mdp.rs`, or `rolling_scarf_dp.rs`.
 
 Artifact responsibilities:
 
@@ -405,6 +434,7 @@ Common optional helper modules:
 - `policies.rs`
 - `finite_horizon_dp.rs`
 - `value_iteration_mdp.rs`
+- `policy_evaluation.rs`
 - `rolling_scarf_dp.rs`
 
 ## Recommended First Tests

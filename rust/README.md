@@ -27,6 +27,10 @@ The crate mirrors the Python package structure:
   - rollout kernels
   - heuristic search
   - problem-specific action mappings when needed
+- `src/problems/core/`
+  - cross-problem blueprint layer
+  - the fundamental questions every inventory problem should answer
+  - physical, stochastic, control, objective, and timing skeletons
 - `src/problems/<problem>/`
   - canonical Rust-side home for both executable code and human-readable artifacts
   - artifact subfolders such as `literature/`, `practical/`, `experiments/`, and `verification/`
@@ -78,7 +82,7 @@ Optional files:
 File responsibilities:
 
 - `env.rs`: state definition, transition logic, and period cost accounting
-- `heuristics/`: classical benchmark policies and heuristic search helpers, split by policy family
+- `heuristics/`: classical benchmark policies, split by policy family
 - `rollout.rs`: learned-policy rollout kernels used by training and evaluation
 - `references.rs`: literature instances, published values, repo canonical instance, and
   `VERIFICATION_PROBLEM_INSTANCE`
@@ -90,9 +94,9 @@ File responsibilities:
 - `src/problems/<problem>/experiments/`: paper-facing experiment definitions for reported benchmark
   studies
 - `src/problems/<problem>/verification/`: human-readable targets for what the tests assert
-- problem-specific solver helpers when needed, with names that say what they do:
-  `finite_horizon_dp.rs`, `value_iteration_mdp.rs`, `rolling_scarf_dp.rs`, and similar modules
-  used to reproduce literature anchors cleanly outside the test file
+- problem-specific exact or search-style helper modules should stay clearly named, such as
+  `finite_horizon_dp.rs`, `value_iteration_mdp.rs`, `policy_evaluation.rs`, or
+  `rolling_scarf_dp.rs`
 
 Rules for `references.rs`:
 
@@ -106,13 +110,38 @@ Rules for `references.rs`:
   - repo-native benchmark values
   - deterministic worked-example values used only for correctness testing
 
+## Problem-Space Backbone
+
+`src/problems/core/` is the blueprint layer above the executable problem modules.
+
+It does not replace `env.rs` or `rollout.rs`. Instead it defines the common modeling questions
+behind any problem family:
+
+- what inventory states exist
+- how material moves or transforms
+- what random events occur
+- what the controller can choose
+- what the controller can observe, and when
+- how performance is scored
+- what timing rules and constraints shape the system
+
+Those questions are then organized into five layers:
+
+- physical
+- stochastic
+- control
+- objective
+- timing
+
+The detailed design notes for that backbone live in `src/problems/core/README.md`.
+
 Rules for the first test:
 
 - every new family must ship with one verification test before policy training work starts
 - the verification test should prove both:
   - environment mechanics are correct
   - at least one benchmark heuristic produces the expected result on the verification instance
-- if exact tabular verification logic is needed, put it in a clearly named solver module such as
+- if exact tabular verification logic is needed, put it in a clearly named module such as
   `finite_horizon_dp.rs` or `value_iteration_mdp.rs` rather than embedding it directly in
   `tests/verification.rs`
 
