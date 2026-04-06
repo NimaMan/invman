@@ -27,9 +27,10 @@ The crate mirrors the Python package structure:
   - rollout kernels
   - heuristic search
   - problem-specific action mappings when needed
-- `problems/<problem>/`
-  - canonical Rust-side artifact home for literature, practical benchmarks, experiment plans, and
-    verification notes
+- `src/problems/<problem>/`
+  - canonical Rust-side home for both executable code and human-readable artifacts
+  - artifact subfolders such as `literature/`, `practical/`, `experiments/`, and `verification/`
+    live next to the code files
 
 Current problem modules:
 
@@ -43,13 +44,13 @@ Current problem modules:
 
 ## Standard Module Contract
 
-All new Rust problem families should use the same split contract: code in `src/`, human-readable
-artifacts in `problems/`.
+All new Rust problem families should use one canonical folder under `src/problems/`.
 
 Required files:
 
 ```text
-problems/<problem>/
+src/problems/<problem>/
+  mod.rs
   README.md
   literature/
   practical/
@@ -57,9 +58,6 @@ problems/<problem>/
     reports/
   experiments/
   verification/
-
-src/problems/<problem>/
-  mod.rs
   env.rs
   heuristics/
     mod.rs
@@ -86,12 +84,12 @@ File responsibilities:
   `VERIFICATION_PROBLEM_INSTANCE`
 - `bindings.rs`: Python-facing entrypoints
 - `tests/verification.rs`: the exact correctness anchor for the problem dynamics and heuristics
-- `problems/<problem>/literature/`: the human-readable interpretation of the carried paper family
-- `problems/<problem>/practical/datasets/`: checked-in practical benchmark traces or descriptors
-- `problems/<problem>/practical/reports/`: checked-in canonical benchmark snapshots
-- `problems/<problem>/experiments/`: paper-facing experiment definitions for reported benchmark
+- `src/problems/<problem>/literature/`: the human-readable interpretation of the carried paper family
+- `src/problems/<problem>/practical/datasets/`: checked-in practical benchmark traces or descriptors
+- `src/problems/<problem>/practical/reports/`: checked-in canonical benchmark snapshots
+- `src/problems/<problem>/experiments/`: paper-facing experiment definitions for reported benchmark
   studies
-- `problems/<problem>/verification/`: human-readable targets for what the tests assert
+- `src/problems/<problem>/verification/`: human-readable targets for what the tests assert
 - problem-specific solver helpers when needed, with names that say what they do:
   `finite_horizon_dp.rs`, `value_iteration_mdp.rs`, `rolling_scarf_dp.rs`, and similar modules
   used to reproduce literature anchors cleanly outside the test file

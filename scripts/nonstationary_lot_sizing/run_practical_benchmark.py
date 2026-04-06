@@ -14,6 +14,7 @@ import invman_rust
 DEFAULT_DATASET = (
     PACKAGE_ROOT
     / "rust"
+    / "src"
     / "problems"
     / "nonstationary_lot_sizing"
     / "practical"
@@ -24,6 +25,7 @@ DEFAULT_DATASET = (
 DEFAULT_OUTPUT_JSON = (
     PACKAGE_ROOT
     / "rust"
+    / "src"
     / "problems"
     / "nonstationary_lot_sizing"
     / "practical"
@@ -34,11 +36,12 @@ DEFAULT_OUTPUT_JSON = (
 DEFAULT_OUTPUT_MARKDOWN = (
     PACKAGE_ROOT
     / "rust"
+    / "src"
     / "problems"
     / "nonstationary_lot_sizing"
     / "practical"
     / "reports"
-    / "latest_report.md"
+    / "README.md"
 )
 
 

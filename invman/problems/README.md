@@ -3,10 +3,10 @@
 Each inventory-control problem lives in its own subpackage under `invman/problems` or, for newer
 families, under `rust/src/problems/` first.
 
-For Rust-first families, the canonical problem home is split into:
+For Rust-first families, the canonical problem home is:
 
-- `rust/src/problems/<problem>/` for executable code only
-- `rust/problems/<problem>/` for literature, practical, experiments, and verification artifacts
+- `rust/src/problems/<problem>/`
+  this folder contains both executable code and the family-level artifact subfolders
 
 Markdown convention:
 
@@ -103,8 +103,8 @@ These families are implemented first under `rust/src/problems/<problem>/`:
 Learned policy classes stay separate under `invman/policies/`. The problem packages own the
 simulation, baseline heuristics, and reference benchmarks.
 
-For mature Rust-first families, the non-code artifact home should live under
-`rust/problems/<problem>/`.
+For mature Rust-first families, literature, practical, experiments, and verification artifacts
+should live directly under `rust/src/problems/<problem>/`.
 
 ## Current Direction
 
@@ -117,7 +117,7 @@ That means:
 - the Rust module must already contain the environment, heuristic baselines, rollout path, and
   verification anchors before the family counts as implemented
 
-The newer Rust-first families currently include the nine families listed above.
+The newer Rust-first families currently include the twelve families listed above.
 
 ## Standard For New Problems
 
@@ -199,7 +199,7 @@ problem family is already correct.
 ## Experiment Design Contract
 
 Each mature Rust-first family should also carry an `experiments/` folder under
-`rust/problems/<problem>/`.
+`rust/src/problems/<problem>/`.
 
 This is the paper-reporting layer. It is where we define:
 
@@ -220,12 +220,12 @@ Current paper objective:
 
 Minimum expected file:
 
-- `rust/problems/<problem>/experiments/README.md`
+- `rust/src/problems/<problem>/experiments/README.md`
 
 Typical generated outputs:
 
-- `rust/problems/<problem>/experiments/reports/latest_report.json`
-- `rust/problems/<problem>/experiments/reports/README.md`
+- `rust/src/problems/<problem>/experiments/reports/latest_report.json`
+- `rust/src/problems/<problem>/experiments/reports/README.md`
 
 That file should define at least:
 
@@ -269,14 +269,14 @@ benchmarking standard rather than only adding more problem families.
 
 For a practical benchmark, define:
 
-- one checked-in dataset descriptor under `rust/problems/<problem>/practical/datasets/`
+- one checked-in dataset descriptor under `rust/src/problems/<problem>/practical/datasets/`
 - one runner under `scripts/<problem>/run_practical_benchmark.py`
 - one standard report with:
   - dataset metadata
   - calibration protocol, if any
   - policy rows
   - operational metrics
-- one checked-in markdown/json report under `rust/problems/<problem>/practical/reports/`
+- one checked-in markdown/json report under `rust/src/problems/<problem>/practical/reports/`
 
 The standard report should include, when meaningful for the family:
 
@@ -351,12 +351,12 @@ carry that explicitly as policy configuration and save it with the model and res
 
 ## Rust-First Folder Contract
 
-For Rust-first additions, keep the executable module under `rust/src/problems/<problem>/` and put
-the canonical artifact home under `rust/problems/<problem>/`.
+For Rust-first additions, keep both the executable module and the canonical artifact home under
+`rust/src/problems/<problem>/`.
 
 Use this layout by default:
 
-- `rust/problems/<problem>/`
+- `rust/src/problems/<problem>/`
   - `README.md`
   - `literature/`
   - `practical/`
@@ -364,7 +364,6 @@ Use this layout by default:
     - `reports/`
   - `experiments/`
   - `verification/`
-- `rust/src/problems/<problem>/`
   - `env.rs`
   - `heuristics/`
     - `mod.rs`
@@ -382,18 +381,18 @@ in a role-specific module such as `finite_horizon_dp.rs`, `value_iteration_mdp.r
 
 Artifact responsibilities:
 
-- `rust/problems/<problem>/README.md`
+- `rust/src/problems/<problem>/README.md`
   - human-readable home for the family
   - points to code, literature notes, practical benchmarks, and verification targets
-- `rust/problems/<problem>/literature/`
+- `rust/src/problems/<problem>/literature/`
   - benchmark interpretation, source scope, and paper notes
-- `rust/problems/<problem>/practical/datasets/`
+- `rust/src/problems/<problem>/practical/datasets/`
   - checked-in practical dataset descriptors or trace files
-- `rust/problems/<problem>/practical/reports/`
+- `rust/src/problems/<problem>/practical/reports/`
   - checked-in canonical report snapshots
-- `rust/problems/<problem>/experiments/`
+- `rust/src/problems/<problem>/experiments/`
   - paper-facing experiment definitions and reported-instance selections
-- `rust/problems/<problem>/verification/`
+- `rust/src/problems/<problem>/verification/`
   - human-readable verification targets and semantics
 - `scripts/<problem>/run_practical_benchmark.py`
   - executable entrypoint that refreshes the practical report

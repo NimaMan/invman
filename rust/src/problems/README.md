@@ -1,12 +1,14 @@
-# Rust Problem Homes
+# Rust Problems
 
-This directory is the canonical non-code home for Rust-first problem families.
+This directory is the canonical home for Rust-first problem families.
 
-Use it together with `rust/src/problems/<problem>/`:
+Each family lives entirely under `rust/src/problems/<problem>/`, combining:
 
-- `rust/src/problems/<problem>/` holds executable code only
-- `rust/problems/<problem>/` holds literature notes, practical benchmark assets, and
-  experiment definitions plus human-readable verification targets
+- executable code
+- literature notes
+- practical benchmark assets
+- experiment definitions
+- human-readable verification targets
 
 Markdown convention:
 
@@ -16,7 +18,7 @@ Markdown convention:
 Standard layout:
 
 ```text
-rust/problems/<problem>/
+rust/src/problems/<problem>/
   README.md
   literature/
   practical/
@@ -25,6 +27,13 @@ rust/problems/<problem>/
   experiments/
     reports/
   verification/
+  mod.rs
+  env.rs
+  heuristics/
+  rollout.rs
+  references.rs
+  bindings.rs
+  tests/
 ```
 
 The first families migrated to this structure are:
@@ -32,8 +41,8 @@ The first families migrated to this structure are:
 - `perishable_inventory`
 - `nonstationary_lot_sizing`
 
-Other Rust-first families can adopt the same structure incrementally without changing their crate
-code layout.
+Other Rust-first families should migrate to the same structure so the code and artifact base stay
+co-located.
 
 The default paper-facing file for a mature family is:
 

@@ -85,5 +85,5 @@ Runner:
 
 Default outputs:
 
-- `rust/problems/perishable_inventory/experiments/reports/latest_report.json`
-- `rust/problems/perishable_inventory/experiments/reports/README.md`
+- `rust/src/problems/perishable_inventory/experiments/reports/latest_report.json`
+- `rust/src/problems/perishable_inventory/experiments/reports/README.md`
