@@ -1,7 +1,7 @@
 use crate::problems::core::flownet::{FlowNetInstance, FlowNetParameter};
 use crate::problems::hormuz_strait::flownet::formulation::HORMUZ_STRAIT_FLOWNET_NAME;
 use crate::problems::hormuz_strait::references::{
-    top_destination_2024, top_origin_2024, HormuzScenarioReference, HORMUZ_FULL_CLOSURE_SCENARIO_V1,
+    top_destination_2024, top_origin_2024, HormuzScenarioReference, HORMUZ_FULL_CLOSURE_SCENARIO,
 };
 
 pub fn instance_from_reference(reference: &HormuzScenarioReference) -> FlowNetInstance {
@@ -75,5 +75,5 @@ pub fn instance_from_reference(reference: &HormuzScenarioReference) -> FlowNetIn
 }
 
 pub fn baseline_closure_instance() -> FlowNetInstance {
-    instance_from_reference(&HORMUZ_FULL_CLOSURE_SCENARIO_V1)
+    instance_from_reference(&HORMUZ_FULL_CLOSURE_SCENARIO)
 }

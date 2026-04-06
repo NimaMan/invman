@@ -16,7 +16,7 @@ pub struct HormuzPriceScenarioPreset {
     pub daily_volatility_usd_per_bbl: f64,
 }
 
-pub const MONTH_AHEAD_SCENARIO_PRESETS_V1: &[HormuzPriceScenarioPreset] = &[
+pub const MONTH_AHEAD_SCENARIO_PRESETS: &[HormuzPriceScenarioPreset] = &[
     HormuzPriceScenarioPreset {
         scenario_id: "de_escalation_and_gradual_reopening",
         label: "De-escalation and gradual reopening",
@@ -99,6 +99,6 @@ pub const MONTH_AHEAD_SCENARIO_PRESETS_V1: &[HormuzPriceScenarioPreset] = &[
     },
 ];
 
-pub fn month_ahead_scenario_presets_v1() -> &'static [HormuzPriceScenarioPreset] {
-    MONTH_AHEAD_SCENARIO_PRESETS_V1
+pub fn month_ahead_scenario_presets() -> &'static [HormuzPriceScenarioPreset] {
+    MONTH_AHEAD_SCENARIO_PRESETS
 }

@@ -1,0 +1,21 @@
+node_id,label,role,baseline_flow_million_bpd_2024,selection_basis,notes
+saudi_arabia_origin,Saudi Arabia origin exports,origin_exporter,5.477689579234973,eia_hormuz_fig3_origin_2024,Largest origin flow in the 2024 EIA figure data.
+iraq_origin,Iraq origin exports,origin_exporter,3.223645852459016,eia_hormuz_fig3_origin_2024,Second-largest origin flow in the 2024 EIA figure data.
+uae_origin,United Arab Emirates origin exports,origin_exporter,1.8900929781420766,eia_hormuz_fig3_origin_2024,Major exporter with bypass optionality outside Hormuz.
+iran_origin,Iran origin exports,origin_exporter,1.3996683715846996,eia_hormuz_fig3_origin_2024,Material Hormuz exporter in the current pattern.
+kuwait_origin,Kuwait origin exports,origin_exporter,1.3257541338797816,eia_hormuz_fig3_origin_2024,Material Hormuz exporter in the current pattern.
+qatar_origin,Qatar origin exports,origin_exporter,0.6490193579234973,eia_hormuz_fig3_origin_2024,Oil and condensate only; LNG remains out of the current first-degree scope.
+other_hormuz_origins,Other Hormuz exporters,origin_exporter,0.35274353551912263,eia_hormuz_fig3_origin_2024,Residual exporter bucket.
+strait_of_hormuz,Strait of Hormuz chokepoint,transit_asset,20.261741721311477,eia_hormuz_fig1_2024,Primary disrupted maritime chokepoint.
+aggregate_bypass_capacity,Aggregate Saudi and UAE bypass capacity,transit_asset,2.6,eia_hormuz_tie_2025_alt_routes,EIA estimate of effective unused bypass capacity.
+china_market,China destination market,demand_market,4.7846856393442625,eia_hormuz_fig3_destination_2024,Largest destination market in the 2024 EIA figure data.
+india_market,India destination market,demand_market,1.8853302295081966,eia_hormuz_fig3_destination_2024,Top Asian destination market.
+south_korea_market,South Korea destination market,demand_market,1.7266257540983607,eia_hormuz_fig3_destination_2024,Top Asian destination market.
+japan_market,Japan destination market,demand_market,1.5153605710382514,eia_hormuz_fig3_destination_2024,Top Asian destination market.
+other_asia_market,Other Asia destination market,demand_market,2.071853393442623,eia_hormuz_fig3_destination_2024,Residual Asian destination bucket.
+europe_market,Europe destination market,demand_market,0.7206034344262295,eia_hormuz_fig3_destination_2024,European destination bucket.
+united_states_market,United States destination market,demand_market,0.4843527459016393,eia_hormuz_fig3_destination_2024,Smaller direct receiver with larger indirect price exposure.
+saudi_arabia_market,Saudi Arabia destination market,demand_market,0.22803622404371585,eia_hormuz_fig3_destination_2024,Represents local Gulf demand visible in the destination data.
+other_destinations_market,Other destination markets,demand_market,0.9017658169398892,eia_hormuz_fig3_destination_2024,Residual destination bucket.
+gulf_refining_and_storage_hub,Gulf refining and storage hub,refining_storage_hub,0.0,eia_hormuz_tie_2025_local_refining_note,Captures the documented rise in local Gulf refining and storage absorption.
+strategic_reserve_and_floating_storage,Strategic reserve and floating storage,reserve_buffer,0.0,first_degree_modeling_assumption,Inventory-response buffer added so reserve release is explicit in the model.

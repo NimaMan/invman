@@ -144,7 +144,7 @@ pub const HORMUZ_2024_DESTINATION_FLOWS: &[HormuzFlowRecord] = &[
     },
 ];
 
-pub const HORMUZ_NODE_SET_V1: &[HormuzNodeDefinition] = &[
+pub const HORMUZ_FLOW_NODES: &[HormuzNodeDefinition] = &[
     HormuzNodeDefinition {
         node_id: "saudi_arabia_origin",
         label: "Saudi Arabia origin exports",
@@ -302,13 +302,13 @@ pub const HORMUZ_NODE_SET_V1: &[HormuzNodeDefinition] = &[
         label: "Strategic reserve and floating storage buffer",
         role: HormuzNodeRole::ReserveBuffer,
         baseline_flow_million_bpd_2024: 0.0,
-        source_basis: "modeling_assumption_v1",
+        source_basis: "first_degree_modeling_assumption",
         notes: "Explicit inventory-response node added so reserve release can be a first-class control action.",
     },
 ];
 
-pub const HORMUZ_FULL_CLOSURE_SCENARIO_V1: HormuzScenarioReference = HormuzScenarioReference {
-    name: "hormuz_full_closure_2024_v1",
+pub const HORMUZ_FULL_CLOSURE_SCENARIO: HormuzScenarioReference = HormuzScenarioReference {
+    name: "hormuz_full_closure_2024_baseline",
     baseline_year: 2024,
     node_count: 20,
     closure_fraction: 1.0,
@@ -321,7 +321,7 @@ pub const HORMUZ_FULL_CLOSURE_SCENARIO_V1: HormuzScenarioReference = HormuzScena
         HORMUZ_2024_TOP_FOUR_ASIAN_DESTINATION_SHARE_OF_CRUDE_FLOWS,
 };
 
-pub const HORMUZ_MARKET_ANCHORS_V1: HormuzMarketAnchorReference = HormuzMarketAnchorReference {
+pub const HORMUZ_CURRENT_MARKET_ANCHORS: HormuzMarketAnchorReference = HormuzMarketAnchorReference {
     analysis_date: "2026-04-06",
     latest_observed_close_date: "2026-04-02",
     latest_observed_brent_usd_per_bbl: BRENT_SPOT_PRICE_2026_04_02_USD_PER_BBL,
@@ -331,8 +331,8 @@ pub const HORMUZ_MARKET_ANCHORS_V1: HormuzMarketAnchorReference = HormuzMarketAn
     opec_may_2026_supply_adjustment_million_bpd: OPEC_MAY_2026_SUPPLY_ADJUSTMENT_MILLION_BPD,
 };
 
-pub fn node_count_v1() -> usize {
-    HORMUZ_NODE_SET_V1.len()
+pub fn flow_node_count() -> usize {
+    HORMUZ_FLOW_NODES.len()
 }
 
 pub fn top_origin_2024() -> &'static HormuzFlowRecord {
@@ -343,6 +343,6 @@ pub fn top_destination_2024() -> &'static HormuzFlowRecord {
     &HORMUZ_2024_DESTINATION_FLOWS[0]
 }
 
-pub fn current_market_anchors_v1() -> &'static HormuzMarketAnchorReference {
-    &HORMUZ_MARKET_ANCHORS_V1
+pub fn current_market_anchors() -> &'static HormuzMarketAnchorReference {
+    &HORMUZ_CURRENT_MARKET_ANCHORS
 }

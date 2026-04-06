@@ -98,7 +98,7 @@ SOURCES = [
 ]
 
 
-NODE_SET_V1 = [
+FLOW_NODE_DEFINITIONS = [
     {
         "node_id": "saudi_arabia_origin",
         "label": "Saudi Arabia origin exports",
@@ -145,7 +145,7 @@ NODE_SET_V1 = [
         "role": "origin_exporter",
         "baseline_flow_million_bpd_2024": "0.6490193579234973",
         "selection_basis": "eia_hormuz_fig3_origin_2024",
-        "notes": "Oil and condensate only; LNG remains out of scope in v1.",
+        "notes": "Oil and condensate only; LNG remains out of the current first-degree scope.",
     },
     {
         "node_id": "other_hormuz_origins",
@@ -256,13 +256,13 @@ NODE_SET_V1 = [
         "label": "Strategic reserve and floating storage",
         "role": "reserve_buffer",
         "baseline_flow_million_bpd_2024": "0.0",
-        "selection_basis": "modeling_assumption_v1",
+        "selection_basis": "first_degree_modeling_assumption",
         "notes": "Inventory-response buffer added so reserve release is explicit in the model.",
     },
 ]
 
 
-SCENARIO_PARAMETERS_V1 = [
+MONTH_AHEAD_SCENARIO_PARAMETERS = [
     {
         "parameter": "baseline_year",
         "value": "2024",
@@ -274,15 +274,15 @@ SCENARIO_PARAMETERS_V1 = [
         "parameter": "node_count",
         "value": "20",
         "units": "count",
-        "source_id": "modeling_assumption_v1",
+        "source_id": "first_degree_modeling_assumption",
         "notes": "Mixed exporter, transit, market, and reserve node set.",
     },
     {
         "parameter": "closure_fraction",
         "value": "1.0",
         "units": "share",
-        "source_id": "modeling_assumption_v1",
-        "notes": "v1 scenario assumes full closure of Hormuz.",
+        "source_id": "first_degree_modeling_assumption",
+        "notes": "The baseline month-ahead closure scenario assumes full closure of Hormuz.",
     },
     {
         "parameter": "total_oil_flow_million_bpd_2024",
@@ -329,12 +329,12 @@ SCENARIO_PARAMETERS_V1 = [
 ]
 
 
-MARKET_ANCHORS_V1 = [
+CURRENT_MARKET_ANCHORS = [
     {
         "anchor_id": "analysis_date",
         "value": "2026-04-06",
         "units": "date",
-        "source_id": "modeling_assumption_v1",
+        "source_id": "first_degree_modeling_assumption",
         "notes": "Simulation analysis date.",
     },
     {
@@ -489,7 +489,7 @@ def build_processed_tables(fig1_rows: list[list[str]], fig3_rows: list[list[str]
         destination_rows,
     )
     write_csv(
-        PROCESSED_DIR / "hormuz_node_set_v1.csv",
+        PROCESSED_DIR / "hormuz_flow_nodes.csv",
         [
             "node_id",
             "label",
@@ -498,17 +498,17 @@ def build_processed_tables(fig1_rows: list[list[str]], fig3_rows: list[list[str]
             "selection_basis",
             "notes",
         ],
-        NODE_SET_V1,
+        FLOW_NODE_DEFINITIONS,
     )
     write_csv(
-        PROCESSED_DIR / "hormuz_scenario_parameters_v1.csv",
+        PROCESSED_DIR / "month_ahead_scenario_parameters.csv",
         ["parameter", "value", "units", "source_id", "notes"],
-        SCENARIO_PARAMETERS_V1,
+        MONTH_AHEAD_SCENARIO_PARAMETERS,
     )
     write_csv(
-        PROCESSED_DIR / "market_anchors_v1.csv",
+        PROCESSED_DIR / "current_market_anchors.csv",
         ["anchor_id", "value", "units", "source_id", "notes"],
-        MARKET_ANCHORS_V1,
+        CURRENT_MARKET_ANCHORS,
     )
 
 

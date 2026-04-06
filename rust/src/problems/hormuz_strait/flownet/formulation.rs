@@ -167,7 +167,7 @@ pub fn canonical_hormuz_strait_flownet() -> FlowNetFormulation {
             ],
             material_attributes: vec![
                 MaterialAttribute {
-                    name: String::from("node_set_v1"),
+                    name: String::from("flow_node_layout"),
                     allowed_values: vec![
                         String::from("7 origin exporters"),
                         String::from("1 chokepoint"),

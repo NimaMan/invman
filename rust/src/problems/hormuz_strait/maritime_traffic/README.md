@@ -34,8 +34,14 @@ Current purpose in FlowNet:
   transits remain possible
 - support war-risk and congestion states around anchorages and approaches
 
+Current raw-source coverage:
+
+- pre-hostilities baseline dashboard for `2026-02-16` to `2026-02-22`
+- conflict-start and acute-disruption advisories for `2026-02-28`, `2026-03-06`, `2026-03-08`,
+  `2026-03-10`, `2026-03-16`, and `2026-03-18`
+- UNCTAD's 2025 structural baseline for the mid-June 2025 average transit level
+
 Important boundary:
 
 - Bab el-Mandeb traffic in these JMIC notes is useful as a regional shipping-risk signal
 - it is not a physical substitute route for Gulf-origin crude moving to Asia through Hormuz
-

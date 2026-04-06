@@ -3,11 +3,11 @@ use rand::SeedableRng;
 use rand_distr::{Distribution, Normal};
 
 use crate::problems::hormuz_strait::references::{
-    current_market_anchors_v1, HORMUZ_2024_AVAILABLE_BYPASS_CAPACITY_MILLION_BPD,
+    current_market_anchors, HORMUZ_2024_AVAILABLE_BYPASS_CAPACITY_MILLION_BPD,
     HORMUZ_2024_TOTAL_OIL_FLOW_MILLION_BPD,
 };
 
-use super::presets::{month_ahead_scenario_presets_v1, HormuzPriceScenarioPreset};
+use super::presets::{month_ahead_scenario_presets, HormuzPriceScenarioPreset};
 use super::report::{
     HormuzDailyPriceSummary, HormuzMonthAheadSimulationReport, HormuzScenarioAssumption,
     HormuzScenarioSimulationSummary,
@@ -77,7 +77,7 @@ fn daily_market_state(
     day_index: usize,
     days: usize,
 ) -> DailyMarketState {
-    let anchors = current_market_anchors_v1();
+    let anchors = current_market_anchors();
     let progress = linear_progress(day_index, days);
     let closure_fraction = preset.closure_fraction_day_0
         + (preset.closure_fraction_day_n - preset.closure_fraction_day_0) * progress;
@@ -133,7 +133,7 @@ fn simulate_scenario(
     paths: usize,
     seed: u64,
 ) -> HormuzScenarioSimulationSummary {
-    let anchors = current_market_anchors_v1();
+    let anchors = current_market_anchors();
     let daily_market: Vec<DailyMarketState> = (0..days)
         .map(|day_index| daily_market_state(preset, day_index, days))
         .collect();
@@ -268,8 +268,8 @@ pub fn simulate_month_ahead_price_scenarios(
     paths: usize,
     seed: u64,
 ) -> HormuzMonthAheadSimulationReport {
-    let anchors = current_market_anchors_v1();
-    let scenario_seeds = month_ahead_scenario_presets_v1()
+    let anchors = current_market_anchors();
+    let scenario_seeds = month_ahead_scenario_presets()
         .iter()
         .enumerate()
         .map(|(index, preset)| simulate_scenario(*preset, days, paths, seed + index as u64 * 9973))

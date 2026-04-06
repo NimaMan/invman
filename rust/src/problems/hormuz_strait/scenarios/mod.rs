@@ -6,7 +6,7 @@ pub mod simulator;
 #[allow(unused_imports)]
 pub use market::{baseline_rebalance_brent_price_usd_per_bbl, current_market_context};
 #[allow(unused_imports)]
-pub use presets::{month_ahead_scenario_presets_v1, HormuzPriceScenarioPreset};
+pub use presets::{month_ahead_scenario_presets, HormuzPriceScenarioPreset};
 #[allow(unused_imports)]
 pub use report::{
     HormuzDailyPriceSummary, HormuzMonthAheadSimulationReport, HormuzScenarioAssumption,

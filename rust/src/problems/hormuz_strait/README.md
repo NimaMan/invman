@@ -15,6 +15,7 @@ Current scope:
 
 - baseline year: `2024`
 - executable month-ahead Brent scenario engine anchored to `2026-04-06`
+- reproducible one-year backtest package for `2025-04-06` to `2026-04-06`
 - disruption scenarios ranging from gradual reopening to full closure with limited response
 - first operational node set: `20` nodes
 
@@ -41,6 +42,9 @@ Folder layout:
 
 - `flownet/`
   - FlowNet formulation and the first source-backed instance
+- `history/`
+  - one-year backtest dataset, provenance records, and generated summary results for prices, events,
+    and shipping disruption proxies
 - `maritime_traffic/`
   - ship-passage sources and processed snapshots for before/after conflict traffic analysis
 - `scenarios/`
