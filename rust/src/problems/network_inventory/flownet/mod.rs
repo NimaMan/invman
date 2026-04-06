@@ -13,6 +13,6 @@ pub use instance::{
 pub use verification::{
     exact_verification_instance_matches_reference_freeze,
     primary_reference_instance_matches_diamond_network,
-    validate_network_inventory_flownet_structure, verify_node_base_stock_reference_action,
-    verify_worked_transition_reference,
+    validate_network_inventory_flownet_structure, verify_exact_reference_policy_performance,
+    verify_node_base_stock_reference_action, verify_worked_transition_reference,
 };

@@ -57,8 +57,10 @@ Those answers are encoded in `formulation.rs`, `instance.rs`, and `verification/
 
 ## Verification
 
-The `verification/` folder checks three things:
+The `verification/` folder checks four things:
 
 - the FlowNet formulation is structurally valid
 - the primary literature reference instance maps cleanly into a FlowNet instance
 - FIFO and LIFO service semantics match the current Rust `step_state` implementation
+- the primary literature reference keeps the expected optimal and best-base-stock discounted
+  returns, with the correct best base-stock level

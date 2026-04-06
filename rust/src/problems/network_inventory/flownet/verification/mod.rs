@@ -1,8 +1,10 @@
-mod exact_alignment;
+pub mod policy_performance;
 mod reference_alignment;
 mod step_semantics;
 mod structure;
 
+#[allow(unused_imports)]
+pub use policy_performance::verify_exact_reference_policy_performance;
 #[allow(unused_imports)]
 pub use reference_alignment::{
     exact_verification_instance_matches_reference_freeze,

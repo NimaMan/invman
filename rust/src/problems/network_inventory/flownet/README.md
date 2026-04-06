@@ -70,5 +70,4 @@ The `verification/` folder checks four things:
 - the FlowNet formulation is structurally valid
 - the primary diamond-network reference instance maps cleanly into a FlowNet instance
 - the worked transition reference matches the current Rust `step_state` accounting
-- the exact-verification freeze keeps the expected node-base-stock first action and, in test-only
-  form, the exact DP numbers
+- the exact-verification freeze keeps the expected optimal and node-base-stock discounted costs

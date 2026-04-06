@@ -1,11 +1,14 @@
 use pyo3::prelude::*;
+use pyo3::types::PyDict;
 use pyo3::wrap_pyfunction;
 
 use crate::core::policies::soft_tree::{build_action_spec, parse_leaf_type, parse_split_type};
-use crate::problems::network_inventory::demand::{
-    parse_demand_distribution_kind, DemandModel,
+use crate::problems::core::flownet::{
+    PolicyPerformanceVerificationSummary, PolicyScoreOrdering, PolicyVerificationRole,
 };
+use crate::problems::network_inventory::demand::{parse_demand_distribution_kind, DemandModel};
 use crate::problems::network_inventory::env::{NetworkEdge, NetworkInventoryGraph};
+use crate::problems::network_inventory::flownet::verification::verify_exact_reference_policy_performance;
 use crate::problems::network_inventory::heuristics::{
     node_base_stock_requests, policy_rollout_from_paths,
 };
@@ -61,6 +64,73 @@ fn build_demand_models(
             })
         })
         .collect()
+}
+
+fn policy_verification_role_to_str(role: PolicyVerificationRole) -> &'static str {
+    match role {
+        PolicyVerificationRole::OptimalReference => "optimal_reference",
+        PolicyVerificationRole::Heuristic => "heuristic",
+        PolicyVerificationRole::LearnedPolicyThreshold => "learned_policy_threshold",
+    }
+}
+
+fn policy_score_ordering_to_str(ordering: PolicyScoreOrdering) -> &'static str {
+    match ordering {
+        PolicyScoreOrdering::LowerIsBetter => "lower_is_better",
+        PolicyScoreOrdering::HigherIsBetter => "higher_is_better",
+    }
+}
+
+fn policy_performance_summary_to_py(
+    py: Python<'_>,
+    summary: &PolicyPerformanceVerificationSummary,
+) -> PyResult<PyObject> {
+    let dict = PyDict::new_bound(py);
+    dict.set_item("reference_name", &summary.reference_name)?;
+    dict.set_item("horizon_periods", summary.horizon_periods)?;
+    dict.set_item(
+        "score_ordering",
+        policy_score_ordering_to_str(summary.score_ordering),
+    )?;
+    dict.set_item(
+        "all_observed_targets_within_tolerance",
+        summary.all_observed_targets_within_tolerance(),
+    )?;
+    dict.set_item(
+        "observed_targets_are_sorted_from_best_to_worst",
+        summary.observed_targets_are_sorted_from_best_to_worst(),
+    )?;
+
+    let results = summary
+        .results
+        .iter()
+        .map(|result| {
+            let result_dict = PyDict::new_bound(py);
+            result_dict.set_item("policy_name", &result.target.policy_name)?;
+            result_dict.set_item("role", policy_verification_role_to_str(result.target.role))?;
+            result_dict.set_item("expected_score", result.target.expected_score)?;
+            result_dict.set_item("tolerance", result.target.tolerance)?;
+            result_dict.set_item("observed_score", result.observed_score)?;
+            result_dict.set_item("abs_gap", result.abs_gap)?;
+            result_dict.set_item("within_tolerance", result.within_tolerance)?;
+            Ok(result_dict.into_any().unbind().into())
+        })
+        .collect::<PyResult<Vec<PyObject>>>()?;
+    dict.set_item("results", results)?;
+
+    let untargeted = summary
+        .untargeted_measurements
+        .iter()
+        .map(|measurement| {
+            let measurement_dict = PyDict::new_bound(py);
+            measurement_dict.set_item("policy_name", &measurement.policy_name)?;
+            measurement_dict.set_item("observed_score", measurement.observed_score)?;
+            Ok(measurement_dict.into_any().unbind().into())
+        })
+        .collect::<PyResult<Vec<PyObject>>>()?;
+    dict.set_item("untargeted_measurements", untargeted)?;
+
+    Ok(dict.into_any().unbind().into())
 }
 
 #[pyfunction]
@@ -347,6 +417,13 @@ fn network_inventory_node_base_stock_requests(
     node_base_stock_requests(&graph, &state, &base_stock_levels)
 }
 
+#[pyfunction]
+fn network_inventory_flownet_policy_verification_summary(py: Python<'_>) -> PyResult<PyObject> {
+    let summary = verify_exact_reference_policy_performance()
+        .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
+    policy_performance_summary_to_py(py, &summary)
+}
+
 pub fn register_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(network_inventory_soft_tree_rollout, m)?)?;
     m.add_function(wrap_pyfunction!(
@@ -363,6 +440,10 @@ pub fn register_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     )?)?;
     m.add_function(wrap_pyfunction!(
         network_inventory_node_base_stock_requests,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        network_inventory_flownet_policy_verification_summary,
         m
     )?)?;
     Ok(())

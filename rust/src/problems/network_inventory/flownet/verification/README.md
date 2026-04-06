@@ -14,6 +14,6 @@ The verification surface is split into four parts:
 - `step_semantics.rs`
   - checks that the worked transition reference and the node-base-stock first action match the
     current `env.rs` and heuristic semantics
-- `exact_alignment.rs`
-  - contains test-only exact-DP checks against the reduced verification reference; this depends on
-    the current exact solver module, which is only compiled for Rust tests
+- `policy_performance.rs`
+  - checks that the reduced exact-verification reference keeps the expected optimal and
+    node-base-stock discounted costs in normal library builds, not only in test-only code paths
