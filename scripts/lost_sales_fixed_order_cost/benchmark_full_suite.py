@@ -37,6 +37,7 @@ def parse_args():
     parser.add_argument("--search_horizon", type=int, default=None)
     parser.add_argument("--eval_horizon", type=int, default=int(1e6))
     parser.add_argument("--eval_seeds", type=int, default=10)
+    parser.add_argument("--state_scale", type=float, default=None)
     parser.add_argument(
         "--references",
         nargs="+",
@@ -233,6 +234,8 @@ def _build_instance_payload(parsed, root: Path, instance: dict, selected_ids: se
                 policy_id=spec["id"],
             )
         args = configure_run_args(parsed, spec, root, reference_name)
+        if parsed.state_scale is not None:
+            args.state_scale = float(parsed.state_scale)
         payload, result_path = _load_or_run_experiment(args, reuse_existing=parsed.reuse_existing)
         learned_policies[spec["id"]] = {
             "results_path": str(result_path),
@@ -298,10 +301,14 @@ def _shared_child_command_args(parsed, *, mp_num_processors: int) -> list[str]:
         str(parsed.eval_horizon),
         "--eval_seeds",
         str(parsed.eval_seeds),
+        "--state_scale",
+        str(parsed.state_scale) if parsed.state_scale is not None else "",
         "--instance_jobs",
         "1",
         "--skip_suite_summary",
     ]
+    if command[command.index("--state_scale") + 1] == "":
+        del command[command.index("--state_scale"):command.index("--state_scale") + 2]
     if parsed.same_seed:
         command.append("--same_seed")
     if parsed.search_horizon is not None:

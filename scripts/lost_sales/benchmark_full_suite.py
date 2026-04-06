@@ -31,6 +31,7 @@ def parse_args():
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--eval_horizon", type=int, default=int(1e6))
     parser.add_argument("--eval_seeds", type=int, default=10)
+    parser.add_argument("--state_scale", type=float, default=None)
     parser.add_argument("--references", nargs="+", default=None)
     parser.add_argument("--only", nargs="+", default=None)
     parser.add_argument("--reuse_existing", action="store_true")
@@ -201,6 +202,8 @@ def main():
                     policy_id=spec["id"],
                 )
                 args = configure_run_args(parsed, spec, root, reference_name)
+                if parsed.state_scale is not None:
+                    args.state_scale = float(parsed.state_scale)
                 payload, result_path = _load_or_run_experiment(args, reuse_existing=parsed.reuse_existing)
                 learned_policies[spec["id"]] = {
                     "results_path": str(result_path),
