@@ -18,6 +18,7 @@ fn invman_rust(m: &Bound<'_, PyModule>) -> PyResult<()> {
     problems::lost_sales::bindings::register_py(m)?;
     problems::lost_sales_fixed_order_cost::bindings::register_py(m)?;
     problems::dual_sourcing::bindings::register_py(m)?;
+    problems::hormuz_strait::bindings::register_py(m)?;
     problems::joint_replenishment::bindings::register_py(m)?;
     problems::joint_pricing_inventory::bindings::register_py(m)?;
     problems::multi_echelon::bindings::register_py(m)?;

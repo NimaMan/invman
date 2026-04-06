@@ -2,6 +2,7 @@ pub mod ameliorating_inventory;
 pub mod core;
 pub mod decentralized_inventory_control;
 pub mod dual_sourcing;
+pub mod hormuz_strait;
 pub mod joint_pricing_inventory;
 pub mod joint_replenishment;
 pub mod lost_sales;
