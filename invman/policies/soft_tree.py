@@ -147,7 +147,11 @@ class SoftTreePolicy(ESModule):
     def _project_controls(self, action_value):
         action_value = np.asarray(action_value, dtype=np.float32).reshape(self.control_dim)
         rounded = round_nearest(action_value).astype(np.int64)
-        if self.control_mode == "scalar_quantity" and self.control_dim == 1 and self.leaf_type == "linear":
+        if (
+            self.control_mode == "scalar_quantity"
+            and self.control_dim == 1
+            and self.leaf_type in {"linear", "sigmoid_linear"}
+        ):
             scalar = int(max(int(rounded[0]), 0))
             return scalar, np.asarray(scalar, dtype=np.int64)
         clipped = np.clip(

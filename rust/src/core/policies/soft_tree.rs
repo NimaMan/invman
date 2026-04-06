@@ -372,6 +372,13 @@ pub fn action_vector_from_flat_params(
             action_value[action_idx] += leaf_prob * scaled;
         }
     }
+    if action_spec.action_dim == 1
+        && action_spec.action_mode == SoftTreeActionMode::ScalarQuantity
+        && matches!(leaf_type, SoftTreeLeafType::Linear | SoftTreeLeafType::SigmoidLinear)
+    {
+        let rounded = action_value[0].round().max(0.0) as usize;
+        return Ok(vec![rounded]);
+    }
     Ok(project_action_value(&action_value, action_spec))
 }
 
