@@ -19,6 +19,31 @@ Use the repo's literature-aligned vanilla grid:
 
 This is the current full paper instance set for vanilla lost sales in `invman`.
 
+## Report Table Shape
+
+The intended paper presentation is an instance-grid table, not only the single canonical `L=4`,
+`p=4` slice.
+
+A typical table layout is:
+
+- rows:
+  - heuristic baselines
+  - selected learned policies
+- columns:
+  - lead times `L in {2, 4, 6, 8, 10}`
+  - grouped by demand family and shortage cost
+
+So one reported vanilla table block corresponds to:
+
+- fixed shortage cost `p`
+- fixed demand family
+- varying lead time `L`
+
+and the full paper section then stacks those blocks across:
+
+- `p in {4, 19}`
+- demand families `{Poisson, Geometric}`
+
 ## Learned Policy Families
 
 Report the selected stable shortlist:
@@ -63,8 +88,10 @@ python scripts/lost_sales/benchmark_full_suite.py \
   --run_tag lost_sales_selected_paper_suite_scale20_rust_seed42 \
   --seed 42 \
   --mp_num_processors 4 \
+  --instance_jobs 2 \
   --eval_horizon 1000000 \
   --eval_seeds 10 \
+  --state_scale 20 \
   --only \
     linear_soft_gated_direct_quantity \
     linear_soft_gated_ordinal_quantity \

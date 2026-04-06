@@ -1,5 +1,7 @@
 import argparse
+import concurrent.futures
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -36,6 +38,17 @@ def parse_args():
     parser.add_argument("--only", nargs="+", default=None)
     parser.add_argument("--reuse_existing", action="store_true")
     parser.add_argument("--reuse_existing_instance_summary", action="store_true")
+    parser.add_argument(
+        "--instance_jobs",
+        type=int,
+        default=1,
+        help="Number of reference instances to process concurrently.",
+    )
+    parser.add_argument(
+        "--skip_suite_summary",
+        action="store_true",
+        help=argparse.SUPPRESS,
+    )
     return parser.parse_args()
 
 
@@ -148,21 +161,200 @@ def _summarize_instances(instances: list[dict]) -> dict:
     return {"policies": policies}
 
 
+def _build_instance_payload(parsed, root: Path, instance: dict, selected_ids: set[str] | None, tracker=None):
+    reference_name = instance["name"]
+    instance_summary_path = _instance_summary_path(root, reference_name)
+    if parsed.reuse_existing_instance_summary and instance_summary_path.exists():
+        return json.loads(instance_summary_path.read_text(encoding="utf-8"))
+
+    if tracker is not None:
+        tracker.update("benchmarking_heuristics", reference_name=reference_name)
+    heuristic_summary = benchmark_reference_instance(
+        reference_name,
+        eval_horizon=parsed.eval_horizon,
+        eval_seeds=parsed.eval_seeds,
+    )
+
+    learned_policies = {}
+    for spec in EXPERIMENT_SPECS:
+        if selected_ids is not None and spec["id"] not in selected_ids:
+            continue
+        if tracker is not None:
+            tracker.update(
+                "running_policy",
+                reference_name=reference_name,
+                policy_id=spec["id"],
+            )
+        args = configure_run_args(parsed, spec, root, reference_name)
+        if parsed.state_scale is not None:
+            args.state_scale = float(parsed.state_scale)
+        payload, result_path = _load_or_run_experiment(args, reuse_existing=parsed.reuse_existing)
+        learned_policies[spec["id"]] = {
+            "results_path": str(result_path),
+            "policy_spec": spec,
+            "evaluation": payload["evaluation"],
+            "payload": payload,
+            "checkpoint_glob": str((root / "models" / f"{args.experiment_name}_*").resolve()),
+        }
+
+    heuristic_eval = heuristic_summary["evaluation"]
+    best_heuristic_name, best_heuristic_entry = min(
+        heuristic_eval.items(),
+        key=lambda kv: kv[1]["mean_cost"],
+    )
+    best_heuristic_cost = float(best_heuristic_entry["mean_cost"])
+    comparative = {
+        "best_heuristic_name": best_heuristic_name,
+        "best_heuristic_cost": best_heuristic_cost,
+        "policy_gaps": {},
+    }
+    for policy_id, item in learned_policies.items():
+        learned_cost = float(item["evaluation"]["learned_policy"]["mean_cost"])
+        comparative["policy_gaps"][policy_id] = {
+            "gap_vs_best_heuristic": learned_cost - best_heuristic_cost,
+            "relative_gap_pct_vs_best_heuristic": 100.0 * (learned_cost - best_heuristic_cost) / best_heuristic_cost,
+        }
+
+    payload = {
+        "reference_instance": reference_name,
+        "reference_description": instance["description"],
+        "params": instance["params"],
+        "literature_metadata": instance["literature_metadata"],
+        "protocol": _instance_protocol(parsed),
+        "heuristics": heuristic_summary,
+        "literature_references": {
+            "optimal": heuristic_summary["optimal_reference"],
+            "capped_base_stock": heuristic_summary["capped_base_stock_reference"],
+        },
+        "learned_policies": learned_policies,
+        "comparative_summary": comparative,
+    }
+    instance_summary_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    return payload
+
+
+def _effective_instance_jobs(parsed, num_instances: int) -> int:
+    requested = max(1, int(parsed.instance_jobs))
+    total_rollout_workers = max(1, int(parsed.mp_num_processors))
+    return max(1, min(requested, num_instances, total_rollout_workers))
+
+
+def _shared_child_command_args(parsed, *, mp_num_processors: int) -> list[str]:
+    command = [
+        sys.executable,
+        str(Path(__file__).resolve()),
+        "--grid_name",
+        parsed.grid_name,
+        "--run_tag",
+        parsed.run_tag,
+        "--seed",
+        str(parsed.seed),
+        "--mp_num_processors",
+        str(mp_num_processors),
+        "--eval_horizon",
+        str(parsed.eval_horizon),
+        "--eval_seeds",
+        str(parsed.eval_seeds),
+        "--state_scale",
+        str(parsed.state_scale) if parsed.state_scale is not None else "",
+        "--instance_jobs",
+        "1",
+        "--skip_suite_summary",
+    ]
+    if command[command.index("--state_scale") + 1] == "":
+        del command[command.index("--state_scale"):command.index("--state_scale") + 2]
+    if parsed.same_seed:
+        command.append("--same_seed")
+    if parsed.reuse_existing:
+        command.append("--reuse_existing")
+    if parsed.reuse_existing_instance_summary:
+        command.append("--reuse_existing_instance_summary")
+    if parsed.only:
+        command.extend(["--only", *parsed.only])
+    return command
+
+
+def _run_instance_subprocess(parsed, reference_name: str, *, mp_num_processors: int):
+    command = _shared_child_command_args(parsed, mp_num_processors=mp_num_processors)
+    command.extend(["--references", reference_name])
+    subprocess.run(command, check=True, cwd=PACKAGE_ROOT)
+
+
+def _collect_instance_payloads(parsed, root: Path, grid_instances: list[dict], selected_ids: set[str] | None, tracker=None):
+    actual_jobs = _effective_instance_jobs(parsed, len(grid_instances))
+    if actual_jobs == 1 or len(grid_instances) <= 1:
+        return [
+            _build_instance_payload(parsed, root, instance, selected_ids, tracker=tracker)
+            for instance in grid_instances
+        ]
+
+    per_instance_mp_num_processors = max(1, int(parsed.mp_num_processors) // actual_jobs)
+    pending_instances = []
+    instance_payloads = []
+    for instance in grid_instances:
+        instance_summary_path = _instance_summary_path(root, instance["name"])
+        if parsed.reuse_existing_instance_summary and instance_summary_path.exists():
+            instance_payloads.append(json.loads(instance_summary_path.read_text(encoding="utf-8")))
+        else:
+            pending_instances.append(instance)
+
+    print(
+        json.dumps(
+            {
+                "instance_parallelism": {
+                    "instance_jobs": actual_jobs,
+                    "per_instance_mp_num_processors": per_instance_mp_num_processors,
+                    "pending_instances": [instance["name"] for instance in pending_instances],
+                }
+            },
+            indent=2,
+        )
+    )
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=actual_jobs) as executor:
+        futures = {
+            executor.submit(
+                _run_instance_subprocess,
+                parsed,
+                instance["name"],
+                mp_num_processors=per_instance_mp_num_processors,
+            ): instance["name"]
+            for instance in pending_instances
+        }
+        for future in concurrent.futures.as_completed(futures):
+            future.result()
+
+    for instance in pending_instances:
+        instance_summary_path = _instance_summary_path(root, instance["name"])
+        instance_payloads.append(json.loads(instance_summary_path.read_text(encoding="utf-8")))
+
+    order = {instance["name"]: idx for idx, instance in enumerate(grid_instances)}
+    instance_payloads.sort(key=lambda payload: order[payload["reference_instance"]])
+    return instance_payloads
+
+
 def main():
     parsed = parse_args()
     root = _suite_root(parsed.run_tag)
     _ensure_dirs(root)
 
-    with RunStatusTracker(
-        _suite_status_path(root),
-        metadata={
-            "run_tag": parsed.run_tag,
-            "problem": "lost_sales",
-            "grid_name": parsed.grid_name,
-            "seed": int(parsed.seed),
-        },
-    ) as tracker:
-        tracker.update("loading_grid")
+    tracker = None
+    tracker_cm = None
+    if not parsed.skip_suite_summary:
+        tracker_cm = RunStatusTracker(
+            _suite_status_path(root),
+            metadata={
+                "run_tag": parsed.run_tag,
+                "problem": "lost_sales",
+                "grid_name": parsed.grid_name,
+                "seed": int(parsed.seed),
+            },
+        )
+        tracker = tracker_cm.__enter__()
+
+    try:
+        if tracker is not None:
+            tracker.update("loading_grid")
         grid = get_benchmark_grid(parsed.grid_name)
         grid_instances = grid["instances"]
         if parsed.references is not None:
@@ -172,81 +364,22 @@ def main():
             grid_instances = grid_instances[: int(parsed.limit)]
 
         selected_ids = set(parsed.only) if parsed.only else None
-        instance_payloads = []
-        for instance in grid_instances:
-            reference_name = instance["name"]
-            instance_summary_path = _instance_summary_path(root, reference_name)
-            tracker.update(
-                "instance_start",
-                reference_name=reference_name,
-                reused_summary=bool(parsed.reuse_existing_instance_summary and instance_summary_path.exists()),
+        if parsed.skip_suite_summary:
+            instance_payloads = _collect_instance_payloads(
+                parsed,
+                root,
+                grid_instances,
+                selected_ids,
+                tracker=None,
             )
-            if parsed.reuse_existing_instance_summary and instance_summary_path.exists():
-                instance_payloads.append(json.loads(instance_summary_path.read_text(encoding="utf-8")))
-                continue
-
-            tracker.update("benchmarking_heuristics", reference_name=reference_name)
-            heuristic_summary = benchmark_reference_instance(
-                reference_name,
-                eval_horizon=parsed.eval_horizon,
-                eval_seeds=parsed.eval_seeds,
+        else:
+            instance_payloads = _collect_instance_payloads(
+                parsed,
+                root,
+                grid_instances,
+                selected_ids,
+                tracker=tracker,
             )
-
-            learned_policies = {}
-            for spec in EXPERIMENT_SPECS:
-                if selected_ids is not None and spec["id"] not in selected_ids:
-                    continue
-                tracker.update(
-                    "running_policy",
-                    reference_name=reference_name,
-                    policy_id=spec["id"],
-                )
-                args = configure_run_args(parsed, spec, root, reference_name)
-                if parsed.state_scale is not None:
-                    args.state_scale = float(parsed.state_scale)
-                payload, result_path = _load_or_run_experiment(args, reuse_existing=parsed.reuse_existing)
-                learned_policies[spec["id"]] = {
-                    "results_path": str(result_path),
-                    "policy_spec": spec,
-                    "evaluation": payload["evaluation"],
-                    "payload": payload,
-                    "checkpoint_glob": str((root / "models" / f"{args.experiment_name}_*").resolve()),
-                }
-
-            heuristic_eval = heuristic_summary["evaluation"]
-            best_heuristic_name, best_heuristic_entry = min(
-                heuristic_eval.items(),
-                key=lambda kv: kv[1]["mean_cost"],
-            )
-            best_heuristic_cost = float(best_heuristic_entry["mean_cost"])
-            comparative = {
-                "best_heuristic_name": best_heuristic_name,
-                "best_heuristic_cost": best_heuristic_cost,
-                "policy_gaps": {},
-            }
-            for policy_id, item in learned_policies.items():
-                learned_cost = float(item["evaluation"]["learned_policy"]["mean_cost"])
-                comparative["policy_gaps"][policy_id] = {
-                    "gap_vs_best_heuristic": learned_cost - best_heuristic_cost,
-                    "relative_gap_pct_vs_best_heuristic": 100.0 * (learned_cost - best_heuristic_cost) / best_heuristic_cost,
-                }
-
-            payload = {
-                "reference_instance": reference_name,
-                "reference_description": instance["description"],
-                "params": instance["params"],
-                "literature_metadata": instance["literature_metadata"],
-                "protocol": _instance_protocol(parsed),
-                "heuristics": heuristic_summary,
-                "literature_references": {
-                    "optimal": heuristic_summary["optimal_reference"],
-                    "capped_base_stock": heuristic_summary["capped_base_stock_reference"],
-                },
-                "learned_policies": learned_policies,
-                "comparative_summary": comparative,
-            }
-            instance_summary_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-            instance_payloads.append(payload)
 
         summary = {
             "run_tag": parsed.run_tag,
@@ -259,16 +392,24 @@ def main():
             "aggregate": _summarize_instances(instance_payloads),
         }
 
-        tracker.update("writing_suite_summary", num_instances=len(instance_payloads))
+        if parsed.skip_suite_summary:
+            return
+
+        if tracker is not None:
+            tracker.update("writing_suite_summary", num_instances=len(instance_payloads))
         summary_json, summary_md = _summary_paths(root)
         summary_json.write_text(json.dumps(summary, indent=2), encoding="utf-8")
         summary_md.write_text(_render_markdown(summary), encoding="utf-8")
-        tracker.mark_completed(
-            summary_json=str(summary_json),
-            summary_md=str(summary_md),
-            num_instances=len(instance_payloads),
-        )
+        if tracker is not None:
+            tracker.mark_completed(
+                summary_json=str(summary_json),
+                summary_md=str(summary_md),
+                num_instances=len(instance_payloads),
+            )
         print(json.dumps({"summary_json": str(summary_json), "summary_md": str(summary_md)}, indent=2))
+    finally:
+        if tracker_cm is not None:
+            tracker_cm.__exit__(*sys.exc_info())
 
 
 if __name__ == "__main__":

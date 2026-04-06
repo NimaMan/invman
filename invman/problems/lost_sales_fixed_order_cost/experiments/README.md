@@ -19,6 +19,30 @@ Use the repo's literature-aligned fixed-cost subset:
 
 This is the current full paper instance set for fixed-order-cost lost sales in `invman`.
 
+## Report Table Shape
+
+The intended fixed-cost paper presentation is again an instance-grid table.
+
+A typical table layout is:
+
+- rows:
+  - benchmark heuristics `s,S`, `s,nQ`, modified `s,S,q`
+  - selected learned policies
+- columns:
+  - lead time `L`
+  - grouped by shortage cost `p` and fixed setup cost `K`
+
+So one reported fixed-cost table block corresponds to:
+
+- fixed shortage cost `p`
+- fixed setup cost `K`
+- varying lead time `L`
+
+and the full paper section stacks those blocks across:
+
+- `p in {4, 19}`
+- `K in {5, 25}`
+
 ## Learned Policy Families
 
 Report the selected stable shortlist:
@@ -64,6 +88,7 @@ python scripts/lost_sales_fixed_order_cost/benchmark_full_suite.py \
   --instance_jobs 2 \
   --eval_horizon 1000000 \
   --eval_seeds 10 \
+  --state_scale 20 \
   --only \
     linear_soft_gated_direct_quantity \
     linear_soft_gated_ordinal_quantity \
