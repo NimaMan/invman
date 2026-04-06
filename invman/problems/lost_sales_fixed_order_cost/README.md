@@ -141,3 +141,7 @@ Supporting files:
 - `env.py`
 
 Detailed benchmark notes live in `docs/benchmarks/fixed_cost_l4_refresh.md`.
+
+Paper-suite notes live in:
+
+- [experiments/README.md](/home/nima/code/ml/invman/invman/problems/lost_sales_fixed_order_cost/experiments/README.md)

@@ -122,3 +122,7 @@ Stable vanilla lost-sales benchmark entrypoints now come in two modes:
 
 - `scripts/lost_sales/benchmark_canonical_suite.py`: one canonical preflight instance
 - `scripts/lost_sales/benchmark_full_suite.py`: full 20-instance literature-aligned grid
+
+Paper-suite notes live in:
+
+- [experiments/README.md](/home/nima/code/ml/invman/invman/problems/lost_sales/experiments/README.md)
