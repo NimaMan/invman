@@ -14,9 +14,11 @@ from pathlib import Path
 
 
 ACCESS_DATE = "2026-04-06"
-WINDOW_START = date.fromisoformat("2025-04-06")
 WINDOW_END = date.fromisoformat("2026-04-06")
 CRISIS_START = date.fromisoformat("2026-02-28")
+ONE_YEAR_START = date.fromisoformat("2025-04-06")
+TEN_YEAR_START = date.fromisoformat("2016-04-06")
+TWENTY_YEAR_START = date.fromisoformat("2006-04-06")
 PROBLEM_ROOT = Path(__file__).resolve().parents[2]
 HISTORY_ROOT = PROBLEM_ROOT / "history"
 RAW_DIR = HISTORY_ROOT / "data" / "raw"
@@ -35,6 +37,60 @@ class SourceSpec:
     local_path: str
     notes: str
     fetch_url: str | None = None
+
+
+@dataclass(frozen=True)
+class HistoryWindowSpec:
+    slug: str
+    label: str
+    start: date
+    end: date
+    daily_filename: str
+    monthly_filename: str
+    chart_filename: str
+    summary_stem: str
+    dataset_name: str
+    description: str
+
+
+WINDOW_SPECS = (
+    HistoryWindowSpec(
+        slug="one_year",
+        label="One-year backtest",
+        start=ONE_YEAR_START,
+        end=WINDOW_END,
+        daily_filename="brent_wti_daily_prices.csv",
+        monthly_filename="brent_wti_monthly_summary.csv",
+        chart_filename="one_year_brent_wti_price_history_chart.json",
+        summary_stem="one_year_backtest_summary",
+        dataset_name="one_year_hormuz_backtest",
+        description="Crisis-focused verification window used for first-degree FlowNet backtesting.",
+    ),
+    HistoryWindowSpec(
+        slug="ten_year",
+        label="Ten-year market context",
+        start=TEN_YEAR_START,
+        end=WINDOW_END,
+        daily_filename="brent_wti_ten_year_daily_prices.csv",
+        monthly_filename="brent_wti_ten_year_monthly_summary.csv",
+        chart_filename="ten_year_brent_wti_price_history_chart.json",
+        summary_stem="ten_year_market_context_summary",
+        dataset_name="ten_year_hormuz_market_context",
+        description="Ten-year oil-price context around the Hormuz disruption period.",
+    ),
+    HistoryWindowSpec(
+        slug="twenty_year",
+        label="Twenty-year market context",
+        start=TWENTY_YEAR_START,
+        end=WINDOW_END,
+        daily_filename="brent_wti_twenty_year_daily_prices.csv",
+        monthly_filename="brent_wti_twenty_year_monthly_summary.csv",
+        chart_filename="twenty_year_brent_wti_price_history_chart.json",
+        summary_stem="twenty_year_market_context_summary",
+        dataset_name="twenty_year_hormuz_market_context",
+        description="Twenty-year oil-price context for longer-cycle comparison against the current crisis.",
+    ),
+)
 
 
 DOWNLOAD_SOURCES = [
@@ -338,7 +394,7 @@ def download(url: str) -> bytes:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Build the reproducible one-year Hormuz backtest dataset."
+        description="Build the reproducible Hormuz history package across one-year, ten-year, and twenty-year windows."
     )
     parser.add_argument(
         "--refresh-downloads",
@@ -372,21 +428,21 @@ def read_series(path: Path, value_key: str) -> dict[date, float]:
             if not raw_value or raw_value == ".":
                 continue
             observation_date = date.fromisoformat(row["observation_date"])
-            if WINDOW_START <= observation_date <= WINDOW_END:
-                values[observation_date] = float(raw_value)
+            values[observation_date] = float(raw_value)
     return values
 
 
-def build_daily_prices() -> list[dict[str, str]]:
-    brent = read_series(RAW_DIR / "fred_dcoilbrenteu.csv", "DCOILBRENTEU")
-    wti = read_series(RAW_DIR / "fred_dcoilwtico.csv", "DCOILWTICO")
-    anchors = read_market_anchors()
-    latest_close_date = date.fromisoformat(anchors["latest_observed_close_date"])
-    brent[latest_close_date] = float(anchors["latest_observed_brent_usd_per_bbl"])
-    wti[latest_close_date] = float(anchors["latest_observed_wti_usd_per_bbl"])
-
+def build_daily_prices(
+    window_start: date,
+    window_end: date,
+    brent: dict[date, float],
+    wti: dict[date, float],
+    latest_close_date: date,
+) -> list[dict[str, str]]:
     rows: list[dict[str, str]] = []
     for observation_date in sorted(set(brent) | set(wti)):
+        if not (window_start <= observation_date <= window_end):
+            continue
         row = {
             "date": observation_date.isoformat(),
             "brent_usd_per_bbl": f"{brent.get(observation_date, float('nan')):.2f}"
@@ -534,8 +590,17 @@ def pct_change(current: float, baseline: float) -> float | None:
     return (current - baseline) / baseline * 100.0
 
 
+def percentile_rank(values: list[float], target: float) -> float | None:
+    if not values:
+        return None
+    less_or_equal = sum(1 for value in values if value <= target)
+    return less_or_equal / len(values) * 100.0
+
+
 def build_summary_payload(
-    daily_prices: list[dict[str, str]], shipping_proxies: list[dict[str, str]]
+    window_spec: HistoryWindowSpec,
+    daily_prices: list[dict[str, str]],
+    shipping_proxies: list[dict[str, str]],
 ) -> dict[str, object]:
     brent_series = [
         (date.fromisoformat(row["date"]), float(row["brent_usd_per_bbl"]))
@@ -554,6 +619,12 @@ def build_summary_payload(
     ]
     crisis_brent_values = [value for _, value in crisis_brent]
     crisis_peak_day, crisis_peak_value = max(crisis_brent, key=lambda item: item[1])
+    brent_min_day, brent_min_value = min(brent_series, key=lambda item: item[1])
+    brent_max_day, brent_max_value = max(brent_series, key=lambda item: item[1])
+    wti_min_day, wti_min_value = min(wti_series, key=lambda item: item[1])
+    wti_max_day, wti_max_value = max(wti_series, key=lambda item: item[1])
+    brent_values = [value for _, value in brent_series]
+    wti_values = [value for _, value in wti_series]
 
     shipping_totals: list[tuple[date, float]] = []
     for row in shipping_proxies:
@@ -574,33 +645,50 @@ def build_summary_payload(
     latest_shipping_day, latest_shipping_total = max(shipping_totals, key=lambda item: item[0])
 
     payload = {
-        "dataset_name": "one_year_hormuz_backtest",
+        "dataset_name": window_spec.dataset_name,
+        "dataset_label": window_spec.label,
+        "window_description": window_spec.description,
         "access_date": ACCESS_DATE,
-        "window_start": WINDOW_START.isoformat(),
-        "window_end": WINDOW_END.isoformat(),
+        "window_start": window_spec.start.isoformat(),
+        "window_end": window_spec.end.isoformat(),
+        "window_days": (window_spec.end - window_spec.start).days + 1,
+        "window_years": round(((window_spec.end - window_spec.start).days + 1) / 365.25, 2),
         "crisis_start": CRISIS_START.isoformat(),
         "brent": {
+            "observation_count": len(brent_series),
             "first_observation_date": brent_series[0][0].isoformat(),
             "first_observation_usd_per_bbl": brent_series[0][1],
             "latest_observation_date": brent_series[-1][0].isoformat(),
             "latest_observation_usd_per_bbl": brent_series[-1][1],
-            "window_average_usd_per_bbl": mean([value for _, value in brent_series]),
-            "window_min_usd_per_bbl": min(value for _, value in brent_series),
-            "window_max_usd_per_bbl": max(value for _, value in brent_series),
+            "latest_percentile_in_window": percentile_rank(
+                brent_values, brent_series[-1][1]
+            ),
+            "window_average_usd_per_bbl": mean(brent_values),
+            "window_min_date": brent_min_day.isoformat(),
+            "window_min_usd_per_bbl": brent_min_value,
+            "window_max_date": brent_max_day.isoformat(),
+            "window_max_usd_per_bbl": brent_max_value,
             "change_from_window_start_pct": pct_change(brent_series[-1][1], brent_series[0][1]),
             "pre_crisis_30d_average_usd_per_bbl": mean(pre_crisis_brent),
             "crisis_window_average_usd_per_bbl": mean(crisis_brent_values),
             "crisis_peak_date": crisis_peak_day.isoformat(),
             "crisis_peak_usd_per_bbl": crisis_peak_value,
+            "crisis_peak_percentile_in_window": percentile_rank(
+                brent_values, crisis_peak_value
+            ),
         },
         "wti": {
+            "observation_count": len(wti_series),
             "first_observation_date": wti_series[0][0].isoformat(),
             "first_observation_usd_per_bbl": wti_series[0][1],
             "latest_observation_date": wti_series[-1][0].isoformat(),
             "latest_observation_usd_per_bbl": wti_series[-1][1],
-            "window_average_usd_per_bbl": mean([value for _, value in wti_series]),
-            "window_min_usd_per_bbl": min(value for _, value in wti_series),
-            "window_max_usd_per_bbl": max(value for _, value in wti_series),
+            "latest_percentile_in_window": percentile_rank(wti_values, wti_series[-1][1]),
+            "window_average_usd_per_bbl": mean(wti_values),
+            "window_min_date": wti_min_day.isoformat(),
+            "window_min_usd_per_bbl": wti_min_value,
+            "window_max_date": wti_max_day.isoformat(),
+            "window_max_usd_per_bbl": wti_max_value,
             "change_from_window_start_pct": pct_change(wti_series[-1][1], wti_series[0][1]),
         },
         "shipping": {
@@ -616,38 +704,67 @@ def build_summary_payload(
             ),
         },
         "interpretation": {
-            "price_series_note": "FRED daily spot series carry the year-long history, with the latest EIA daily-prices close appended on 2026-04-02.",
+            "price_series_note": "FRED daily spot series carry the long history, with the latest EIA daily-prices close appended on 2026-04-02.",
             "shipping_series_note": "Shipping counts are AIS-derived lower-bound observations during the crisis window and indicate disruption severity rather than exact physical throughput.",
+            "horizon_note": window_spec.description,
         },
     }
     return payload
 
 
+def build_price_chart_payload(
+    window_spec: HistoryWindowSpec,
+    daily_prices: list[dict[str, str]],
+) -> dict[str, object]:
+    return {
+        "dataset_name": window_spec.dataset_name,
+        "dataset_label": window_spec.label,
+        "window_slug": window_spec.slug,
+        "window_start": window_spec.start.isoformat(),
+        "window_end": window_spec.end.isoformat(),
+        "crisis_start": CRISIS_START.isoformat(),
+        "point_count": len(daily_prices),
+        "labels": [row["date"] for row in daily_prices],
+        "brent": [
+            float(row["brent_usd_per_bbl"]) if row["brent_usd_per_bbl"] else None
+            for row in daily_prices
+        ],
+        "wti": [
+            float(row["wti_usd_per_bbl"]) if row["wti_usd_per_bbl"] else None
+            for row in daily_prices
+        ],
+    }
+
+
 def write_summary_results(
-    daily_prices: list[dict[str, str]], shipping_proxies: list[dict[str, str]]
+    window_spec: HistoryWindowSpec,
+    daily_prices: list[dict[str, str]],
+    shipping_proxies: list[dict[str, str]],
 ) -> None:
-    payload = build_summary_payload(daily_prices, shipping_proxies)
+    payload = build_summary_payload(window_spec, daily_prices, shipping_proxies)
     brent = payload["brent"]
     wti = payload["wti"]
     shipping = payload["shipping"]
     markdown = "\n".join(
         [
-            "# one_year_backtest_summary",
+            f"# {window_spec.summary_stem}",
             "",
-            "Generated from the reproducible one-year Hormuz history package.",
+            f"Generated from the reproducible {window_spec.label.lower()} within the Hormuz history package.",
             "",
             "## Key results",
             "",
-            f"- Brent moved from `${brent['first_observation_usd_per_bbl']:.2f}/b` on `{brent['first_observation_date']}` to `${brent['latest_observation_usd_per_bbl']:.2f}/b` on `{brent['latest_observation_date']}`, a `{brent['change_from_window_start_pct']:.1f}%` increase over the backtest window.",
-            f"- WTI moved from `${wti['first_observation_usd_per_bbl']:.2f}/b` on `{wti['first_observation_date']}` to `${wti['latest_observation_usd_per_bbl']:.2f}/b` on `{wti['latest_observation_date']}`, a `{wti['change_from_window_start_pct']:.1f}%` increase.",
-            f"- Brent averaged `${brent['window_average_usd_per_bbl']:.2f}/b` across the full year, with a pre-crisis 30-day average of `${brent['pre_crisis_30d_average_usd_per_bbl']:.2f}/b` and a crisis-window average of `${brent['crisis_window_average_usd_per_bbl']:.2f}/b`.",
-            f"- The highest Brent observation in the crisis window was `${brent['crisis_peak_usd_per_bbl']:.2f}/b` on `{brent['crisis_peak_date']}`.",
+            f"- Brent moved from `${brent['first_observation_usd_per_bbl']:.2f}/b` on `{brent['first_observation_date']}` to `${brent['latest_observation_usd_per_bbl']:.2f}/b` on `{brent['latest_observation_date']}`, a `{brent['change_from_window_start_pct']:.1f}%` move across the `{payload['window_years']:.2f}`-year window.",
+            f"- WTI moved from `${wti['first_observation_usd_per_bbl']:.2f}/b` on `{wti['first_observation_date']}` to `${wti['latest_observation_usd_per_bbl']:.2f}/b` on `{wti['latest_observation_date']}`, a `{wti['change_from_window_start_pct']:.1f}%` move.",
+            f"- Brent ranged from `${brent['window_min_usd_per_bbl']:.2f}/b` on `{brent['window_min_date']}` to `${brent['window_max_usd_per_bbl']:.2f}/b` on `{brent['window_max_date']}`. The latest Brent close sits at the `{brent['latest_percentile_in_window']:.1f}` percentile of the window.",
+            f"- WTI ranged from `${wti['window_min_usd_per_bbl']:.2f}/b` on `{wti['window_min_date']}` to `${wti['window_max_usd_per_bbl']:.2f}/b` on `{wti['window_max_date']}`. The latest WTI close sits at the `{wti['latest_percentile_in_window']:.1f}` percentile of the window.",
+            f"- Within this horizon, the current crisis window still stands out: Brent averaged `${brent['pre_crisis_30d_average_usd_per_bbl']:.2f}/b` in the 30 days before `{payload['crisis_start']}` versus `${brent['crisis_window_average_usd_per_bbl']:.2f}/b` during the crisis segment, with a crisis peak of `${brent['crisis_peak_usd_per_bbl']:.2f}/b` on `{brent['crisis_peak_date']}`.",
             f"- Observed AIS commercial transits through Hormuz fell from `{shipping['pre_hostilities_observed_commercial_transits']:.0f}` on `{shipping['pre_hostilities_date']}` to a trough of `{shipping['trough_observed_commercial_transits']:.0f}` on `{shipping['trough_date']}`, a `{shipping['trough_drop_vs_pre_hostilities_pct']:.1f}%` collapse.",
             f"- By `{shipping['latest_observation_date']}`, observed AIS commercial transits were still only `{shipping['latest_observed_commercial_transits']:.0f}`, a `{shipping['latest_drop_vs_pre_hostilities_pct']:.1f}%` gap versus the pre-hostilities snapshot.",
             "",
             "## Interpretation",
             "",
-            "- The backtest window contains a clear regime break after `2026-02-28`: prices rise sharply while observed commercial transits collapse to single digits.",
+            f"- {payload['interpretation']['horizon_note']}",
+            "- The history contains a clear regime break after `2026-02-28`: prices rise sharply while observed commercial transits collapse to single digits.",
             "- This is enough evidence for a first-degree FlowNet to treat Hormuz transit capacity as a time-varying shock state rather than a static parameter.",
             "- Shipping counts should be interpreted as lower-bound disruption indicators because JMIC repeatedly warns about AIS suppression, GNSS disruption, and possible dark transits.",
             "",
@@ -660,8 +777,19 @@ def write_summary_results(
             "Use `--refresh-downloads` only when intentionally refreshing the downloadable raw snapshots.",
         ]
     )
-    (RESULTS_DIR / "one_year_backtest_summary.md").write_text(markdown + "\n", encoding="utf-8")
-    (RESULTS_DIR / "one_year_backtest_summary.json").write_text(
+    (RESULTS_DIR / f"{window_spec.summary_stem}.md").write_text(markdown + "\n", encoding="utf-8")
+    (RESULTS_DIR / f"{window_spec.summary_stem}.json").write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+
+def write_price_chart_payload(
+    window_spec: HistoryWindowSpec,
+    daily_prices: list[dict[str, str]],
+) -> None:
+    payload = build_price_chart_payload(window_spec, daily_prices)
+    (PROCESSED_DIR / window_spec.chart_filename).write_text(
         json.dumps(payload, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
@@ -672,38 +800,55 @@ def main() -> None:
     ensure_dirs()
     write_sources(refresh_downloads=args.refresh_downloads)
 
-    daily_prices = build_daily_prices()
-    monthly_prices = build_monthly_prices(daily_prices)
+    brent = read_series(RAW_DIR / "fred_dcoilbrenteu.csv", "DCOILBRENTEU")
+    wti = read_series(RAW_DIR / "fred_dcoilwtico.csv", "DCOILWTICO")
+    anchors = read_market_anchors()
+    latest_close_date = date.fromisoformat(anchors["latest_observed_close_date"])
+    brent[latest_close_date] = float(anchors["latest_observed_brent_usd_per_bbl"])
+    wti[latest_close_date] = float(anchors["latest_observed_wti_usd_per_bbl"])
+
     shipping_proxies = build_shipping_proxies()
 
-    write_csv(
-        PROCESSED_DIR / "brent_wti_daily_prices.csv",
-        [
-            "date",
-            "brent_usd_per_bbl",
-            "wti_usd_per_bbl",
-            "brent_source_id",
-            "wti_source_id",
-            "notes",
-        ],
-        daily_prices,
-    )
-    write_csv(
-        PROCESSED_DIR / "brent_wti_monthly_summary.csv",
-        [
-            "year_month",
-            "window_start",
-            "window_end",
-            "observation_count",
-            "brent_avg_usd_per_bbl",
-            "brent_min_usd_per_bbl",
-            "brent_max_usd_per_bbl",
-            "wti_avg_usd_per_bbl",
-            "wti_min_usd_per_bbl",
-            "wti_max_usd_per_bbl",
-        ],
-        monthly_prices,
-    )
+    for window_spec in WINDOW_SPECS:
+        daily_prices = build_daily_prices(
+            window_start=window_spec.start,
+            window_end=window_spec.end,
+            brent=brent,
+            wti=wti,
+            latest_close_date=latest_close_date,
+        )
+        monthly_prices = build_monthly_prices(daily_prices)
+        write_csv(
+            PROCESSED_DIR / window_spec.daily_filename,
+            [
+                "date",
+                "brent_usd_per_bbl",
+                "wti_usd_per_bbl",
+                "brent_source_id",
+                "wti_source_id",
+                "notes",
+            ],
+            daily_prices,
+        )
+        write_csv(
+            PROCESSED_DIR / window_spec.monthly_filename,
+            [
+                "year_month",
+                "window_start",
+                "window_end",
+                "observation_count",
+                "brent_avg_usd_per_bbl",
+                "brent_min_usd_per_bbl",
+                "brent_max_usd_per_bbl",
+                "wti_avg_usd_per_bbl",
+                "wti_min_usd_per_bbl",
+                "wti_max_usd_per_bbl",
+            ],
+            monthly_prices,
+        )
+        write_price_chart_payload(window_spec, daily_prices)
+        write_summary_results(window_spec, daily_prices, shipping_proxies)
+
     write_csv(
         PROCESSED_DIR / "hormuz_market_event_timeline.csv",
         [
@@ -731,9 +876,8 @@ def main() -> None:
         ],
         shipping_proxies,
     )
-    write_summary_results(daily_prices, shipping_proxies)
 
-    print("Built Hormuz history backtest dataset under:")
+    print("Built Hormuz history package under:")
     print(HISTORY_ROOT)
 
 

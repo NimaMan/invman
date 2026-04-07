@@ -1,0 +1,59 @@
+{
+  "access_date": "2026-04-06",
+  "brent": {
+    "change_from_window_start_pct": 88.82805563776266,
+    "crisis_peak_date": "2026-04-02",
+    "crisis_peak_percentile_in_window": 99.08982983775228,
+    "crisis_peak_usd_per_bbl": 127.61,
+    "crisis_window_average_usd_per_bbl": 103.17636363636365,
+    "first_observation_date": "2006-04-06",
+    "first_observation_usd_per_bbl": 67.58,
+    "latest_observation_date": "2026-04-02",
+    "latest_observation_usd_per_bbl": 127.61,
+    "latest_percentile_in_window": 99.08982983775228,
+    "observation_count": 5054,
+    "pre_crisis_30d_average_usd_per_bbl": 70.95409090909091,
+    "window_average_usd_per_bbl": 77.01063711911358,
+    "window_max_date": "2008-07-03",
+    "window_max_usd_per_bbl": 143.95,
+    "window_min_date": "2020-04-21",
+    "window_min_usd_per_bbl": 9.12
+  },
+  "crisis_start": "2026-02-28",
+  "dataset_label": "Twenty-year market context",
+  "dataset_name": "twenty_year_hormuz_market_context",
+  "interpretation": {
+    "horizon_note": "Twenty-year oil-price context for longer-cycle comparison against the current crisis.",
+    "price_series_note": "FRED daily spot series carry the long history, with the latest EIA daily-prices close appended on 2026-04-02.",
+    "shipping_series_note": "Shipping counts are AIS-derived lower-bound observations during the crisis window and indicate disruption severity rather than exact physical throughput."
+  },
+  "shipping": {
+    "latest_drop_vs_pre_hostilities_pct": -97.2972972972973,
+    "latest_observation_date": "2026-03-17",
+    "latest_observed_commercial_transits": 4.0,
+    "pre_hostilities_date": "2026-02-28",
+    "pre_hostilities_observed_commercial_transits": 148.0,
+    "trough_date": "2026-03-03",
+    "trough_drop_vs_pre_hostilities_pct": -99.32432432432432,
+    "trough_observed_commercial_transits": 1.0
+  },
+  "window_days": 7306,
+  "window_description": "Twenty-year oil-price context for longer-cycle comparison against the current crisis.",
+  "window_end": "2026-04-06",
+  "window_start": "2006-04-06",
+  "window_years": 20.0,
+  "wti": {
+    "change_from_window_start_pct": 68.44689080630766,
+    "first_observation_date": "2006-04-06",
+    "first_observation_usd_per_bbl": 67.22,
+    "latest_observation_date": "2026-04-02",
+    "latest_observation_usd_per_bbl": 113.23,
+    "latest_percentile_in_window": 97.6271186440678,
+    "observation_count": 5015,
+    "window_average_usd_per_bbl": 72.46398005982054,
+    "window_max_date": "2008-07-03",
+    "window_max_usd_per_bbl": 145.31,
+    "window_min_date": "2020-04-20",
+    "window_min_usd_per_bbl": -36.98
+  }
+}

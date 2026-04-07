@@ -6,14 +6,14 @@ The Hormuz FlowNet should be validated against history before it is used for for
 
 This history package supports that by giving the model:
 
-- a reliable daily oil-price series over the last year
+- a reliable daily oil-price series over the one-year, ten-year, and twenty-year horizons
 - the dated conflict and policy milestones that matter most
 - a daily crisis-window proxy for observed passage collapse through the Strait of Hormuz
 
 ## Included
 
-- daily Brent and WTI spot history
-- monthly Brent and WTI summaries
+- daily Brent and WTI spot history across named horizons
+- monthly Brent and WTI summaries across named horizons
 - key dated events from official EIA, OPEC, MSCIO/JMIC, and UNCTAD sources
 - daily AIS-derived Strait of Hormuz cargo and tanker transits for the acute crisis window from
   `2026-02-28` through `2026-03-17`
@@ -44,4 +44,5 @@ The first-degree Hormuz FlowNet should try to explain:
 - broad Brent/WTI direction
 - the timing of the crisis break after `2026-02-28`
 - the scale of observed traffic collapse
+- where the current price regime sits relative to the last ten and twenty years
 - the market response to risk and mitigation signals
