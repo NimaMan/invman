@@ -21,8 +21,8 @@ pub fn lead_time_mean_cover_target(
             "safety_buffer must be finite and non-negative",
         ));
     }
-    let target = installed_base as f64 * failure_probability * procurement_lead_time as f64
-        + safety_buffer;
+    let target =
+        installed_base as f64 * failure_probability * procurement_lead_time as f64 + safety_buffer;
     Ok(target.ceil().max(0.0) as usize)
 }
 

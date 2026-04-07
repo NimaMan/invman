@@ -1,8 +1,6 @@
 use pyo3::PyResult;
 
-use crate::problems::spare_parts_inventory::env::{
-    inventory_position, SparePartsInventoryState,
-};
+use crate::problems::spare_parts_inventory::env::{inventory_position, SparePartsInventoryState};
 
 pub fn base_stock_order_quantity(
     state: &SparePartsInventoryState,

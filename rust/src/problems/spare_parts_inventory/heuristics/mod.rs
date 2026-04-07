@@ -2,9 +2,7 @@ mod base_stock;
 mod lead_time_mean_cover;
 
 pub use base_stock::base_stock_order_quantity;
-pub use lead_time_mean_cover::{
-    lead_time_mean_cover_order_quantity, lead_time_mean_cover_target,
-};
+pub use lead_time_mean_cover::{lead_time_mean_cover_order_quantity, lead_time_mean_cover_target};
 
 use pyo3::exceptions::PyValueError;
 use pyo3::PyResult;
@@ -44,7 +42,12 @@ fn policy_order_quantity(
                     "lead_time_mean_cover expects params [safety_buffer]",
                 ));
             }
-            lead_time_mean_cover_order_quantity(state, installed_base, failure_probability, params[0])
+            lead_time_mean_cover_order_quantity(
+                state,
+                installed_base,
+                failure_probability,
+                params[0],
+            )
         }
         _ => Err(PyValueError::new_err(format!(
             "unsupported policy '{policy_name}'"
@@ -71,9 +74,7 @@ pub fn policy_rollout_from_paths(
         initial_state.repair_pipeline.len(),
     )?;
     if !(0.0..=1.0).contains(&discount_factor) {
-        return Err(PyValueError::new_err(
-            "discount_factor must lie in [0, 1]",
-        ));
+        return Err(PyValueError::new_err("discount_factor must lie in [0, 1]"));
     }
 
     let mut state = initial_state.clone();
@@ -88,8 +89,13 @@ pub fn policy_rollout_from_paths(
                 failures, operating_units
             )));
         }
-        let order_quantity =
-            policy_order_quantity(policy_name, params, &state, installed_base, failure_probability)?;
+        let order_quantity = policy_order_quantity(
+            policy_name,
+            params,
+            &state,
+            installed_base,
+            failure_probability,
+        )?;
         let outcome = step_state(
             &state,
             order_quantity,
@@ -134,9 +140,7 @@ pub fn simulate_policy(
         return Err(PyValueError::new_err("replications must be at least 1"));
     }
     if !(0.0..=1.0).contains(&discount_factor) {
-        return Err(PyValueError::new_err(
-            "discount_factor must lie in [0, 1]",
-        ));
+        return Err(PyValueError::new_err("discount_factor must lie in [0, 1]"));
     }
 
     let mut rng = StdRng::seed_from_u64(seed);
@@ -147,10 +151,18 @@ pub fn simulate_policy(
         let mut discount = 1.0;
 
         for _ in 0..periods {
-            let failures =
-                sample_failures(&mut rng, operational_units(&state, installed_base)?, failure_probability)?;
-            let order_quantity =
-                policy_order_quantity(policy_name, params, &state, installed_base, failure_probability)?;
+            let failures = sample_failures(
+                &mut rng,
+                operational_units(&state, installed_base)?,
+                failure_probability,
+            )?;
+            let order_quantity = policy_order_quantity(
+                policy_name,
+                params,
+                &state,
+                installed_base,
+                failure_probability,
+            )?;
             let outcome = step_state(
                 &state,
                 order_quantity,
@@ -169,8 +181,11 @@ pub fn simulate_policy(
     }
 
     let mean_cost = costs.iter().sum::<f64>() / costs.len() as f64;
-    let variance =
-        costs.iter().map(|value| (value - mean_cost).powi(2)).sum::<f64>() / costs.len() as f64;
+    let variance = costs
+        .iter()
+        .map(|value| (value - mean_cost).powi(2))
+        .sum::<f64>()
+        / costs.len() as f64;
     Ok(PolicySimulationSummary {
         mean_cost,
         cost_std: variance.sqrt(),

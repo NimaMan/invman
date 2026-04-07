@@ -59,7 +59,10 @@ fn state_key_from_state(state: &SparePartsInventoryState) -> ExactStateKey {
     }
 }
 
-fn state_from_key(state: &ExactStateKey, reference: &ExactVerificationReference) -> PyResult<SparePartsInventoryState> {
+fn state_from_key(
+    state: &ExactStateKey,
+    reference: &ExactVerificationReference,
+) -> PyResult<SparePartsInventoryState> {
     let mut rebuilt = initialize_state(
         state.on_hand_inventory,
         state.backlog,
@@ -87,8 +90,10 @@ fn solve_optimal_from_state(
     }
 
     let concrete_state = state_from_key(&state, reference)?;
-    let failure_distribution =
-        failure_probabilities(operational_units(&concrete_state, reference.installed_base)?, reference.failure_probability)?;
+    let failure_distribution = failure_probabilities(
+        operational_units(&concrete_state, reference.installed_base)?,
+        reference.failure_probability,
+    )?;
 
     let mut best_cost = f64::INFINITY;
     let mut best_action = 0usize;
@@ -183,8 +188,10 @@ fn evaluate_heuristic_from_state(
     }
     .min(reference.max_order_quantity);
 
-    let failure_distribution =
-        failure_probabilities(operational_units(&concrete_state, reference.installed_base)?, reference.failure_probability)?;
+    let failure_distribution = failure_probabilities(
+        operational_units(&concrete_state, reference.installed_base)?,
+        reference.failure_probability,
+    )?;
     let mut expected_cost = 0.0;
     for (failures, probability) in failure_distribution.iter().enumerate() {
         if *probability <= 0.0 {
@@ -205,8 +212,8 @@ fn evaluate_heuristic_from_state(
             normalized_policy_name,
             cache,
         )?;
-        expected_cost +=
-            probability * (outcome.period_cost + reference.discount_factor * continuation.discounted_cost);
+        expected_cost += probability
+            * (outcome.period_cost + reference.discount_factor * continuation.discounted_cost);
     }
 
     let result = ExactPolicyEvaluation {

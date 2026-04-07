@@ -9,8 +9,8 @@ use crate::core::policies::soft_tree::{
 };
 use crate::problems::spare_parts_inventory::demand::sample_failures;
 use crate::problems::spare_parts_inventory::env::{
-    build_policy_state, initialize_state, operational_units, step_state, validate_state,
-    SparePartsInventoryState,
+    build_raw_state, initialize_state, inventory_position, operational_units, step_state,
+    validate_state, SparePartsInventoryState,
 };
 
 #[derive(Clone)]
@@ -70,9 +70,7 @@ fn validate_config(
         )));
     }
     if !(0.0..=1.0).contains(&config.discount_factor) {
-        return Err(PyValueError::new_err(
-            "discount_factor must lie in [0, 1]",
-        ));
+        return Err(PyValueError::new_err("discount_factor must lie in [0, 1]"));
     }
     Ok(())
 }
@@ -82,12 +80,7 @@ fn action_quantity(
     state: &SparePartsInventoryState,
     config: &SparePartsInventoryRolloutConfig,
 ) -> PyResult<usize> {
-    let policy_state = build_policy_state(
-        state,
-        config.installed_base,
-        config.failure_probability,
-        config.periods,
-    )?;
+    let policy_state = policy_state(state, config)?;
     let action = action_vector_from_flat_params(
         &policy_state,
         flat_params,
@@ -99,6 +92,53 @@ fn action_quantity(
         &config.action_spec,
     )?;
     Ok(action[0])
+}
+
+fn policy_state(
+    state: &SparePartsInventoryState,
+    config: &SparePartsInventoryRolloutConfig,
+) -> PyResult<Vec<f32>> {
+    let _ = build_raw_state(state)?;
+    let inventory_position = inventory_position(state) as f64;
+    let operational_units = operational_units(state, config.installed_base)? as f64;
+    let procurement_on_order = state.procurement_pipeline.iter().sum::<usize>() as f64;
+    let repair_in_process = state.repair_pipeline.iter().sum::<usize>() as f64;
+    let scale = state
+        .on_hand_inventory
+        .max(state.backlog)
+        .max(config.installed_base)
+        .max(procurement_on_order as usize)
+        .max(repair_in_process as usize)
+        .max(inventory_position.abs() as usize)
+        .max(1) as f32;
+
+    let mut features =
+        Vec::with_capacity(state.procurement_pipeline.len() + state.repair_pipeline.len() + 7);
+    features.push(state.on_hand_inventory as f32 / scale);
+    features.push(state.backlog as f32 / scale);
+    features.push(inventory_position as f32 / scale);
+    features.push(operational_units as f32 / scale);
+    features.extend(
+        state
+            .procurement_pipeline
+            .iter()
+            .map(|value| *value as f32 / scale),
+    );
+    features.extend(
+        state
+            .repair_pipeline
+            .iter()
+            .map(|value| *value as f32 / scale),
+    );
+    features.push(config.installed_base as f32 / scale);
+    features.push(config.failure_probability as f32);
+    let remaining_fraction = if config.periods == 0 {
+        0.0
+    } else {
+        (config.periods.saturating_sub(state.period) as f32) / config.periods as f32
+    };
+    features.push(remaining_fraction);
+    Ok(features)
 }
 
 pub fn rollout(

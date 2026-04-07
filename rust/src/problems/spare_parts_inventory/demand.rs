@@ -55,9 +55,8 @@ pub fn failure_probabilities(
     probabilities[0] = q.powf(n);
     for failures in 0..operational_units {
         let failures_f64 = failures as f64;
-        probabilities[failures + 1] = probabilities[failures]
-            * ((n - failures_f64) / (failures_f64 + 1.0))
-            * (p / q);
+        probabilities[failures + 1] =
+            probabilities[failures] * ((n - failures_f64) / (failures_f64 + 1.0)) * (p / q);
     }
     let total_probability = probabilities.iter().sum::<f64>();
     if total_probability <= 0.0 || !total_probability.is_finite() {
