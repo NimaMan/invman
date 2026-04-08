@@ -1,8 +1,9 @@
+use crate::core::policies::soft_tree::build_action_spec;
 use crate::problems::one_warehouse_multi_retailer::allocation::{
     min_shortage_shipments, proportional_shipments,
 };
 use crate::problems::one_warehouse_multi_retailer::env::{
-    build_policy_state, initialize_state, retailer_inventory_positions, step_state,
+    build_raw_state, initialize_state, retailer_inventory_positions, step_state,
 };
 use crate::problems::one_warehouse_multi_retailer::finite_horizon_dp::{
     evaluate_named_heuristic, solve_optimal_policy,
@@ -11,6 +12,9 @@ use crate::problems::one_warehouse_multi_retailer::heuristics::echelon_base_stoc
 use crate::problems::one_warehouse_multi_retailer::references::{
     KAYNOV_2024_REFERENCE, PRIMARY_REFERENCE_INSTANCE, TABLE_A3_INSTANCES,
     VERIFICATION_PROBLEM_INSTANCE, WORKED_TRANSITION_REFERENCE,
+};
+use crate::problems::one_warehouse_multi_retailer::rollout::{
+    policy_action_from_tree, OneWarehouseMultiRetailerRolloutConfig, PolicyActionMode,
 };
 
 fn nested_pipeline_vec(pipelines: &[&[usize]]) -> Vec<Vec<usize>> {
@@ -34,14 +38,11 @@ fn reference_set_has_expected_shape() {
 }
 
 #[test]
-fn policy_state_layout_matches_expected_shape() {
-    let state = initialize_state(3, &[2, 2], &[1, 0], &vec![vec![1], vec![0]])
-        .expect("state must build");
-    let features = build_policy_state(&state, 4).expect("policy state must build");
-    assert_eq!(features.len(), 9);
-    assert!((features[0] - 0.33333334).abs() < 1e-6);
-    assert!((features[7] - 1.0).abs() < 1e-6);
-    assert!((features[8] - 1.0).abs() < 1e-6);
+fn raw_state_layout_matches_expected_shape() {
+    let state =
+        initialize_state(3, &[2, 2], &[1, 0], &vec![vec![1], vec![0]]).expect("state must build");
+    let raw_state = build_raw_state(&state).expect("raw state must build");
+    assert_eq!(raw_state, vec![3.0, 2.0, 2.0, 1.0, 0.0, 1.0, 0.0, 0.0]);
 }
 
 #[test]
@@ -123,10 +124,77 @@ fn allocation_and_base_stock_orders_match_reference_freeze() {
         action,
         reference.expected_proportional_first_action.to_vec()
     );
-    assert_eq!(proportional, reference.expected_proportional_shipments.to_vec());
+    assert_eq!(
+        proportional,
+        reference.expected_proportional_shipments.to_vec()
+    );
     assert_eq!(
         min_shortage,
         reference.expected_min_shortage_shipments.to_vec()
+    );
+}
+
+#[test]
+fn proportional_allocation_uses_all_available_inventory_when_orders_exceed_supply() {
+    let shipments =
+        proportional_shipments(5, &[4, 4, 4]).expect("proportional allocation must compute");
+    assert_eq!(shipments.iter().sum::<usize>(), 5);
+    assert_eq!(shipments, vec![2, 2, 1]);
+}
+
+#[test]
+fn symmetric_echelon_target_mode_expands_shared_retailer_target() {
+    let reference = VERIFICATION_PROBLEM_INSTANCE;
+    let state = initialize_state(
+        reference.initial_warehouse_inventory,
+        reference.initial_warehouse_pipeline,
+        reference.initial_retailer_inventory,
+        &nested_pipeline_vec(reference.initial_retailer_pipeline),
+    )
+    .expect("state must build");
+    let config = OneWarehouseMultiRetailerRolloutConfig {
+        input_dim: 1
+            + state.warehouse_pipeline.len()
+            + state.retailer_inventory.len()
+            + state
+                .retailer_pipeline
+                .iter()
+                .map(|pipeline| pipeline.len())
+                .sum::<usize>()
+            + 2,
+        depth: 1,
+        action_spec: build_action_spec(
+            "discrete_grid",
+            vec![0, 0],
+            vec![6, 4],
+            Some(vec![vec![0, 3, 6], vec![0, 2, 4]]),
+        )
+        .expect("action spec must build"),
+        periods: reference.periods,
+        demand_models: vec![],
+        allocation_policy: crate::problems::one_warehouse_multi_retailer::allocation::AllocationPolicy::Proportional,
+        retailer_target_inventory_positions: None,
+        holding_cost_warehouse: reference.holding_cost_warehouse,
+        holding_cost_retailers: reference.holding_cost_retailers.to_vec(),
+        penalty_costs_retailers: reference.penalty_costs_retailers.to_vec(),
+        customer_behavior: reference.customer_behavior,
+        emergency_shipment_probability: reference.emergency_shipment_probability,
+        discount_factor: reference.discount_factor,
+        policy_action_mode: PolicyActionMode::SymmetricEchelonTargets,
+        temperature: 0.1,
+        split_type: crate::core::policies::soft_tree::SoftTreeSplitType::AxisAligned,
+        leaf_type: crate::core::policies::soft_tree::SoftTreeLeafType::Constant,
+    };
+    let flat_params = vec![
+        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, // split weights + bias
+        0.0, 0.0, 0.0, 0.0, // identical leaf logits => projected controls [3, 2]
+    ];
+    let action = policy_action_from_tree(&flat_params, &state, &config)
+        .expect("symmetric action must compute");
+    assert_eq!(action.retailer_target_inventory_positions, Some(vec![2, 2]));
+    assert_eq!(
+        action.orders,
+        echelon_base_stock_orders(&state, 3, &[2, 2]).expect("orders must compute")
     );
 }
 
@@ -152,7 +220,9 @@ fn finite_horizon_dp_and_heuristics_match_reference_numbers() {
     );
     assert_eq!(
         optimal.first_action,
-        VERIFICATION_PROBLEM_INSTANCE.expected_optimal_first_action.to_vec()
+        VERIFICATION_PROBLEM_INSTANCE
+            .expected_optimal_first_action
+            .to_vec()
     );
     assert!(
         (proportional.discounted_cost
@@ -162,7 +232,9 @@ fn finite_horizon_dp_and_heuristics_match_reference_numbers() {
     );
     assert_eq!(
         proportional.first_action,
-        VERIFICATION_PROBLEM_INSTANCE.expected_proportional_first_action.to_vec()
+        VERIFICATION_PROBLEM_INSTANCE
+            .expected_proportional_first_action
+            .to_vec()
     );
     assert!(
         (min_shortage.discounted_cost
@@ -172,6 +244,8 @@ fn finite_horizon_dp_and_heuristics_match_reference_numbers() {
     );
     assert_eq!(
         min_shortage.first_action,
-        VERIFICATION_PROBLEM_INSTANCE.expected_min_shortage_first_action.to_vec()
+        VERIFICATION_PROBLEM_INSTANCE
+            .expected_min_shortage_first_action
+            .to_vec()
     );
 }

@@ -111,10 +111,7 @@ pub fn sample_demand<R: Rng + ?Sized>(rng: &mut R, model: &DemandModel) -> PyRes
                 0
             } else {
                 let distribution = Poisson::new(model.param1).map_err(|err| {
-                    PyValueError::new_err(format!(
-                        "invalid Poisson mean {}: {err}",
-                        model.param1
-                    ))
+                    PyValueError::new_err(format!("invalid Poisson mean {}: {err}", model.param1))
                 })?;
                 distribution.sample(rng).round().max(0.0) as usize
             }

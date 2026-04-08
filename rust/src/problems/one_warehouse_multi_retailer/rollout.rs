@@ -14,9 +14,17 @@ use crate::problems::one_warehouse_multi_retailer::demand::{
     sample_demand, validate_demand_models, DemandModel,
 };
 use crate::problems::one_warehouse_multi_retailer::env::{
-    build_policy_state, retailer_inventory_positions, step_state, validate_state,
+    retailer_inventory_positions, step_state, validate_state, warehouse_echelon_inventory_position,
     CustomerBehaviorModel, OneWarehouseMultiRetailerState,
 };
+use crate::problems::one_warehouse_multi_retailer::heuristics::echelon_base_stock_orders;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PolicyActionMode {
+    DirectOrders,
+    EchelonTargets,
+    SymmetricEchelonTargets,
+}
 
 #[derive(Clone)]
 pub struct OneWarehouseMultiRetailerRolloutConfig {
@@ -33,9 +41,31 @@ pub struct OneWarehouseMultiRetailerRolloutConfig {
     pub customer_behavior: CustomerBehaviorModel,
     pub emergency_shipment_probability: f64,
     pub discount_factor: f64,
+    pub policy_action_mode: PolicyActionMode,
     pub temperature: f32,
     pub split_type: SoftTreeSplitType,
     pub leaf_type: SoftTreeLeafType,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct PolicyAction {
+    pub orders: Vec<usize>,
+    pub retailer_target_inventory_positions: Option<Vec<usize>>,
+}
+
+pub fn parse_policy_action_mode(value: &str) -> PyResult<PolicyActionMode> {
+    match value {
+        "direct_orders" | "direct" | "order_quantities" => Ok(PolicyActionMode::DirectOrders),
+        "echelon_targets" | "echelon_base_stock_targets" | "targets" => {
+            Ok(PolicyActionMode::EchelonTargets)
+        }
+        "symmetric_echelon_targets" | "symmetric_targets" | "shared_retailer_targets" => {
+            Ok(PolicyActionMode::SymmetricEchelonTargets)
+        }
+        other => Err(PyValueError::new_err(format!(
+            "unsupported policy_action_mode '{other}'; expected 'direct_orders', 'echelon_targets', or 'symmetric_echelon_targets'"
+        ))),
+    }
 }
 
 fn validate_config(
@@ -60,12 +90,20 @@ fn validate_config(
             ));
         }
     }
-    if config.action_spec.action_dim != num_retailers + 1 {
+    let expected_action_dim = match config.policy_action_mode {
+        PolicyActionMode::DirectOrders | PolicyActionMode::EchelonTargets => num_retailers + 1,
+        PolicyActionMode::SymmetricEchelonTargets => 2,
+    };
+    if config.action_spec.action_dim != expected_action_dim {
         return Err(PyValueError::new_err(format!(
-            "action_spec.action_dim {} does not match expected {}",
-            config.action_spec.action_dim,
-            num_retailers + 1
+            "action_spec.action_dim {} does not match expected {} for {:?}",
+            config.action_spec.action_dim, expected_action_dim, config.policy_action_mode
         )));
+    }
+    if config.policy_action_mode == PolicyActionMode::SymmetricEchelonTargets && num_retailers == 0 {
+        return Err(PyValueError::new_err(
+            "symmetric_echelon_targets requires at least one retailer",
+        ));
     }
     let expected_input_dim = 1
         + initial_state.warehouse_pipeline.len()
@@ -83,18 +121,74 @@ fn validate_config(
         )));
     }
     if !(0.0..=1.0).contains(&config.discount_factor) {
-        return Err(PyValueError::new_err(
-            "discount_factor must lie in [0, 1]",
-        ));
+        return Err(PyValueError::new_err("discount_factor must lie in [0, 1]"));
     }
     if config.allocation_policy == AllocationPolicy::MinShortage
         && config.retailer_target_inventory_positions.is_none()
+        && config.policy_action_mode != PolicyActionMode::EchelonTargets
+        && config.policy_action_mode != PolicyActionMode::SymmetricEchelonTargets
     {
         return Err(PyValueError::new_err(
             "min_shortage rollout requires retailer_target_inventory_positions",
         ));
     }
     Ok(())
+}
+
+fn build_policy_state(
+    state: &OneWarehouseMultiRetailerState,
+    total_periods: usize,
+) -> PyResult<Vec<f32>> {
+    validate_state(state)?;
+    let total_system_position = warehouse_echelon_inventory_position(state)?;
+    let scale = state
+        .warehouse_inventory
+        .abs()
+        .max(total_system_position.abs())
+        .max(
+            state
+                .retailer_inventory
+                .iter()
+                .map(|value| value.abs())
+                .max()
+                .unwrap_or(1),
+        )
+        .max(1) as f32;
+
+    let mut features = Vec::with_capacity(
+        1 + state.warehouse_pipeline.len()
+            + state.retailer_inventory.len()
+            + state
+                .retailer_pipeline
+                .iter()
+                .map(|pipeline| pipeline.len())
+                .sum::<usize>()
+            + 2,
+    );
+    features.push(state.warehouse_inventory as f32 / scale);
+    features.extend(
+        state
+            .warehouse_pipeline
+            .iter()
+            .map(|value| *value as f32 / scale),
+    );
+    features.extend(
+        state
+            .retailer_inventory
+            .iter()
+            .map(|value| *value as f32 / scale),
+    );
+    for pipeline in state.retailer_pipeline.iter() {
+        features.extend(pipeline.iter().map(|value| *value as f32 / scale));
+    }
+    features.push(total_system_position as f32 / scale);
+    let remaining_fraction = if total_periods == 0 {
+        0.0
+    } else {
+        (total_periods.saturating_sub(state.period) as f32) / total_periods as f32
+    };
+    features.push(remaining_fraction);
+    Ok(features)
 }
 
 fn action_vector(
@@ -115,28 +209,72 @@ fn action_vector(
     )
 }
 
+pub fn policy_action_from_tree(
+    flat_params: &[f32],
+    state: &OneWarehouseMultiRetailerState,
+    config: &OneWarehouseMultiRetailerRolloutConfig,
+) -> PyResult<PolicyAction> {
+    let actions = action_vector(flat_params, state, config)?;
+    match config.policy_action_mode {
+        PolicyActionMode::DirectOrders => Ok(PolicyAction {
+            orders: actions,
+            retailer_target_inventory_positions: config
+                .retailer_target_inventory_positions
+                .clone(),
+        }),
+        PolicyActionMode::EchelonTargets => {
+            if actions.len() < 2 {
+                return Err(PyValueError::new_err(
+                    "echelon target mode requires warehouse and retailer targets",
+                ));
+            }
+            Ok(PolicyAction {
+                orders: echelon_base_stock_orders(state, actions[0], &actions[1..])?,
+                retailer_target_inventory_positions: Some(actions[1..].to_vec()),
+            })
+        }
+        PolicyActionMode::SymmetricEchelonTargets => {
+            if actions.len() != 2 {
+                return Err(PyValueError::new_err(
+                    "symmetric echelon target mode requires exactly two controls",
+                ));
+            }
+            let retailer_targets = vec![actions[1]; state.retailer_inventory.len()];
+            Ok(PolicyAction {
+                orders: echelon_base_stock_orders(state, actions[0], &retailer_targets)?,
+                retailer_target_inventory_positions: Some(retailer_targets),
+            })
+        }
+    }
+}
+
 fn retailer_shipments<R: Rng + ?Sized>(
     rng: &mut R,
     state: &OneWarehouseMultiRetailerState,
-    retailer_orders: &[usize],
+    policy_action: &PolicyAction,
     config: &OneWarehouseMultiRetailerRolloutConfig,
 ) -> PyResult<Vec<usize>> {
     let available_warehouse_inventory =
         (state.warehouse_inventory + state.warehouse_pipeline[0] as i32).max(0) as usize;
     match config.allocation_policy {
         AllocationPolicy::Proportional => {
-            proportional_shipments(available_warehouse_inventory, retailer_orders)
+            proportional_shipments(available_warehouse_inventory, &policy_action.orders[1..])
         }
         AllocationPolicy::RandomSequential => {
-            random_sequential_shipments(rng, available_warehouse_inventory, retailer_orders)
+            random_sequential_shipments(
+                rng,
+                available_warehouse_inventory,
+                &policy_action.orders[1..],
+            )
         }
         AllocationPolicy::MinShortage => min_shortage_shipments(
             available_warehouse_inventory,
-            retailer_orders,
+            &policy_action.orders[1..],
             &retailer_inventory_positions(state)?,
-            config
+            policy_action
                 .retailer_target_inventory_positions
                 .as_deref()
+                .or(config.retailer_target_inventory_positions.as_deref())
                 .expect("validated above"),
         ),
     }
@@ -160,8 +298,8 @@ pub fn rollout(
             .iter()
             .map(|model| sample_demand(&mut rng, model))
             .collect::<PyResult<Vec<_>>>()?;
-        let actions = action_vector(flat_params, &state, config)?;
-        let retailer_shipments = retailer_shipments(&mut rng, &state, &actions[1..], config)?;
+        let policy_action = policy_action_from_tree(flat_params, &state, config)?;
+        let retailer_shipments = retailer_shipments(&mut rng, &state, &policy_action, config)?;
         let emergency_draws = if config.customer_behavior == CustomerBehaviorModel::PartialBackorder
         {
             Some(
@@ -174,7 +312,7 @@ pub fn rollout(
         };
         let outcome = step_state(
             &state,
-            actions[0],
+            policy_action.orders[0],
             &retailer_shipments,
             &realized_demands,
             config.holding_cost_warehouse,
@@ -216,8 +354,8 @@ pub fn rollout_from_paths(
                 "each realized demand vector must match the number of retailers",
             ));
         }
-        let actions = action_vector(flat_params, &state, config)?;
-        let retailer_shipments = retailer_shipments(&mut rng, &state, &actions[1..], config)?;
+        let policy_action = policy_action_from_tree(flat_params, &state, config)?;
+        let retailer_shipments = retailer_shipments(&mut rng, &state, &policy_action, config)?;
         let emergency_draws = if config.customer_behavior == CustomerBehaviorModel::PartialBackorder
         {
             Some(
@@ -230,7 +368,7 @@ pub fn rollout_from_paths(
         };
         let outcome = step_state(
             &state,
-            actions[0],
+            policy_action.orders[0],
             &retailer_shipments,
             demand,
             config.holding_cost_warehouse,

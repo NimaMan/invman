@@ -109,56 +109,26 @@ pub fn warehouse_echelon_inventory_position(
         + retailer_positions.iter().sum::<i32>())
 }
 
-pub fn build_policy_state(
-    state: &OneWarehouseMultiRetailerState,
-    total_periods: usize,
-) -> PyResult<Vec<f32>> {
+pub fn build_raw_state(state: &OneWarehouseMultiRetailerState) -> PyResult<Vec<f32>> {
     validate_state(state)?;
-    let total_system_position = warehouse_echelon_inventory_position(state)?;
-    let scale = state
-        .warehouse_inventory
-        .abs()
-        .max(total_system_position.abs())
-        .max(
-            state
-                .retailer_inventory
-                .iter()
-                .map(|value| value.abs())
-                .max()
-                .unwrap_or(1),
-        )
-        .max(1) as f32;
-
-    let mut features = Vec::with_capacity(
+    let mut raw_state = Vec::with_capacity(
         1 + state.warehouse_pipeline.len()
             + state.retailer_inventory.len()
-            + state.retailer_pipeline.iter().map(|pipeline| pipeline.len()).sum::<usize>()
-            + 2,
+            + state
+                .retailer_pipeline
+                .iter()
+                .map(|pipeline| pipeline.len())
+                .sum::<usize>()
+            + 1,
     );
-    features.push(state.warehouse_inventory as f32 / scale);
-    features.extend(
-        state
-            .warehouse_pipeline
-            .iter()
-            .map(|value| *value as f32 / scale),
-    );
-    features.extend(
-        state
-            .retailer_inventory
-            .iter()
-            .map(|value| *value as f32 / scale),
-    );
+    raw_state.push(state.warehouse_inventory as f32);
+    raw_state.extend(state.warehouse_pipeline.iter().map(|value| *value as f32));
+    raw_state.extend(state.retailer_inventory.iter().map(|value| *value as f32));
     for pipeline in state.retailer_pipeline.iter() {
-        features.extend(pipeline.iter().map(|value| *value as f32 / scale));
+        raw_state.extend(pipeline.iter().map(|value| *value as f32));
     }
-    features.push(total_system_position as f32 / scale);
-    let remaining_fraction = if total_periods == 0 {
-        0.0
-    } else {
-        (total_periods.saturating_sub(state.period) as f32) / total_periods as f32
-    };
-    features.push(remaining_fraction);
-    Ok(features)
+    raw_state.push(state.period as f32);
+    Ok(raw_state)
 }
 
 pub fn step_state(
@@ -265,8 +235,8 @@ pub fn step_state(
             }
             CustomerBehaviorModel::PartialBackorder => {
                 let shortage_before_emergency = (demand - retailer_available).max(0) as usize;
-                let can_trigger_emergency = emergency_draws
-                    .expect("validated above for partial_backorder")[retailer_idx];
+                let can_trigger_emergency =
+                    emergency_draws.expect("validated above for partial_backorder")[retailer_idx];
                 let emergency_shipment = if shortage_before_emergency > 0 && can_trigger_emergency {
                     shortage_before_emergency.min(warehouse_ending_inventory.max(0) as usize)
                 } else {

@@ -3,14 +3,19 @@ use std::collections::HashMap;
 use pyo3::exceptions::PyValueError;
 use pyo3::PyResult;
 
+use crate::core::policies::soft_tree::{
+    action_vector_from_flat_params, SoftTreeActionSpec, SoftTreeLeafType, SoftTreeSplitType,
+};
 use crate::problems::one_warehouse_multi_retailer::allocation::{
     min_shortage_shipments, proportional_shipments, AllocationPolicy,
 };
 use crate::problems::one_warehouse_multi_retailer::env::{
-    retailer_inventory_positions, step_state, validate_state, OneWarehouseMultiRetailerState,
+    retailer_inventory_positions, step_state, validate_state, warehouse_echelon_inventory_position,
+    OneWarehouseMultiRetailerState,
 };
 use crate::problems::one_warehouse_multi_retailer::heuristics::echelon_base_stock_orders;
 use crate::problems::one_warehouse_multi_retailer::references::ExactVerificationReference;
+use crate::problems::one_warehouse_multi_retailer::rollout::PolicyActionMode;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 struct ExactStateKey {
@@ -25,6 +30,19 @@ struct ExactStateKey {
 pub struct ExactPolicyEvaluation {
     pub discounted_cost: f64,
     pub first_action: Vec<usize>,
+}
+
+#[derive(Clone, Debug)]
+pub struct ExactSoftTreeConfig {
+    pub flat_params: Vec<f32>,
+    pub input_dim: usize,
+    pub depth: usize,
+    pub action_spec: SoftTreeActionSpec,
+    pub allocation_policy: AllocationPolicy,
+    pub policy_action_mode: PolicyActionMode,
+    pub temperature: f32,
+    pub split_type: SoftTreeSplitType,
+    pub leaf_type: SoftTreeLeafType,
 }
 
 fn validate_exact_reference(reference: &ExactVerificationReference) -> PyResult<()> {
@@ -65,7 +83,9 @@ fn validate_exact_reference(reference: &ExactVerificationReference) -> PyResult<
                 retailer_idx
             )));
         }
-        let probability_sum = reference.demand_probabilities[retailer_idx].iter().sum::<f64>();
+        let probability_sum = reference.demand_probabilities[retailer_idx]
+            .iter()
+            .sum::<f64>();
         if (probability_sum - 1.0).abs() > 1e-12 {
             return Err(PyValueError::new_err(format!(
                 "demand probabilities for retailer {} sum to {}, expected 1",
@@ -76,10 +96,7 @@ fn validate_exact_reference(reference: &ExactVerificationReference) -> PyResult<
     Ok(())
 }
 
-fn as_state_key(
-    period: usize,
-    state: &OneWarehouseMultiRetailerState,
-) -> ExactStateKey {
+fn as_state_key(period: usize, state: &OneWarehouseMultiRetailerState) -> ExactStateKey {
     ExactStateKey {
         period,
         warehouse_inventory: state.warehouse_inventory,
@@ -204,8 +221,10 @@ fn solve_optimal_from_state(
     let mut best_action = vec![0usize; reference.max_action_levels.len()];
     let available_warehouse_inventory =
         (state.warehouse_inventory + state.warehouse_pipeline[0] as i32).max(0) as usize;
-    let feasible_shipments =
-        enumerate_feasible_shipments(&reference.max_action_levels[1..], available_warehouse_inventory);
+    let feasible_shipments = enumerate_feasible_shipments(
+        &reference.max_action_levels[1..],
+        available_warehouse_inventory,
+    );
 
     for warehouse_order in 0..=reference.max_action_levels[0] {
         for retailer_shipments in feasible_shipments.iter() {
@@ -271,21 +290,118 @@ pub fn solve_optimal_policy(
 
 fn heuristic_action(
     state: &OneWarehouseMultiRetailerState,
-    reference: &ExactVerificationReference,
+    warehouse_base_stock_level: usize,
+    retailer_base_stock_levels: &[usize],
 ) -> PyResult<Vec<usize>> {
     echelon_base_stock_orders(
         state,
-        reference.heuristic_warehouse_base_stock_level,
-        reference.heuristic_retailer_base_stock_levels,
+        warehouse_base_stock_level,
+        retailer_base_stock_levels,
     )
 }
 
-fn evaluate_heuristic_from_state(
+fn build_policy_state(
+    state: &OneWarehouseMultiRetailerState,
+    total_periods: usize,
+) -> PyResult<Vec<f32>> {
+    validate_state(state)?;
+    let total_system_position = warehouse_echelon_inventory_position(state)?;
+    let scale = state
+        .warehouse_inventory
+        .abs()
+        .max(total_system_position.abs())
+        .max(
+            state
+                .retailer_inventory
+                .iter()
+                .map(|value| value.abs())
+                .max()
+                .unwrap_or(1),
+        )
+        .max(1) as f32;
+
+    let mut features = Vec::with_capacity(
+        1 + state.warehouse_pipeline.len()
+            + state.retailer_inventory.len()
+            + state
+                .retailer_pipeline
+                .iter()
+                .map(|pipeline| pipeline.len())
+                .sum::<usize>()
+            + 2,
+    );
+    features.push(state.warehouse_inventory as f32 / scale);
+    features.extend(
+        state.warehouse_pipeline
+            .iter()
+            .map(|value| *value as f32 / scale),
+    );
+    features.extend(
+        state.retailer_inventory
+            .iter()
+            .map(|value| *value as f32 / scale),
+    );
+    for pipeline in state.retailer_pipeline.iter() {
+        features.extend(pipeline.iter().map(|value| *value as f32 / scale));
+    }
+    features.push(total_system_position as f32 / scale);
+    let remaining_fraction = if total_periods == 0 {
+        0.0
+    } else {
+        (total_periods.saturating_sub(state.period) as f32) / total_periods as f32
+    };
+    features.push(remaining_fraction);
+    Ok(features)
+}
+
+fn soft_tree_action(
+    state: &OneWarehouseMultiRetailerState,
+    reference: &ExactVerificationReference,
+    config: &ExactSoftTreeConfig,
+) -> PyResult<(Vec<usize>, Option<Vec<usize>>)> {
+    let policy_state = build_policy_state(state, reference.periods)?;
+    if policy_state.len() != config.input_dim {
+        return Err(PyValueError::new_err(
+            "soft tree input_dim does not match the policy-state dimension",
+        ));
+    }
+    let controls = action_vector_from_flat_params(
+        &policy_state,
+        &config.flat_params,
+        config.input_dim,
+        config.depth,
+        config.temperature,
+        config.split_type,
+        config.leaf_type,
+        &config.action_spec,
+    )?;
+    match config.policy_action_mode {
+        PolicyActionMode::DirectOrders => Ok((controls, None)),
+        PolicyActionMode::EchelonTargets => Ok((
+            echelon_base_stock_orders(state, controls[0], &controls[1..])?,
+            Some(controls[1..].to_vec()),
+        )),
+        PolicyActionMode::SymmetricEchelonTargets => {
+            if controls.len() != 2 {
+                return Err(PyValueError::new_err(
+                    "symmetric echelon target mode requires exactly two controls",
+                ));
+            }
+            let retailer_targets = vec![controls[1]; state.retailer_inventory.len()];
+            Ok((
+                echelon_base_stock_orders(state, controls[0], &retailer_targets)?,
+                Some(retailer_targets),
+            ))
+        }
+    }
+}
+
+fn evaluate_soft_tree_from_state(
     state_key: &ExactStateKey,
     reference: &ExactVerificationReference,
-    allocation_policy: AllocationPolicy,
+    config: &ExactSoftTreeConfig,
     demand_scenarios: &[(Vec<usize>, f64)],
-    cache: &mut HashMap<(ExactStateKey, AllocationPolicy), ExactPolicyEvaluation>,
+    cache: &mut HashMap<ExactStateKey, ExactPolicyEvaluation>,
 ) -> PyResult<ExactPolicyEvaluation> {
     if state_key.period == reference.periods {
         return Ok(ExactPolicyEvaluation {
@@ -293,17 +409,78 @@ fn evaluate_heuristic_from_state(
             first_action: vec![0; reference.max_action_levels.len()],
         });
     }
-    let cache_key = (state_key.clone(), allocation_policy);
+    if let Some(cached) = cache.get(state_key) {
+        return Ok(cached.clone());
+    }
+    let state = to_state(state_key);
+    let (action, retailer_targets) = soft_tree_action(&state, reference, config)?;
+    let retailer_shipments = retailer_shipments_for_action(
+        &state,
+        &action[1..],
+        config.allocation_policy,
+        retailer_targets.as_deref().unwrap_or(&action[1..]),
+    )?;
+
+    let mut expected_cost = 0.0;
+    for (demands, probability) in demand_scenarios.iter() {
+        let outcome = step_state(
+            &state,
+            action[0],
+            &retailer_shipments,
+            demands,
+            reference.holding_cost_warehouse,
+            reference.holding_cost_retailers,
+            reference.penalty_costs_retailers,
+            reference.customer_behavior,
+            reference.emergency_shipment_probability,
+            None,
+        )?;
+        let next_key = as_state_key(state_key.period + 1, &outcome.next_state);
+        let continuation =
+            evaluate_soft_tree_from_state(&next_key, reference, config, demand_scenarios, cache)?;
+        expected_cost += probability
+            * (outcome.period_cost + reference.discount_factor * continuation.discounted_cost);
+    }
+
+    let result = ExactPolicyEvaluation {
+        discounted_cost: expected_cost,
+        first_action: action,
+    };
+    cache.insert(state_key.clone(), result.clone());
+    Ok(result)
+}
+
+fn evaluate_heuristic_from_state(
+    state_key: &ExactStateKey,
+    reference: &ExactVerificationReference,
+    warehouse_base_stock_level: usize,
+    retailer_base_stock_levels: &[usize],
+    allocation_policy: AllocationPolicy,
+    demand_scenarios: &[(Vec<usize>, f64)],
+    cache: &mut HashMap<(ExactStateKey, usize, Vec<usize>, AllocationPolicy), ExactPolicyEvaluation>,
+) -> PyResult<ExactPolicyEvaluation> {
+    if state_key.period == reference.periods {
+        return Ok(ExactPolicyEvaluation {
+            discounted_cost: 0.0,
+            first_action: vec![0; reference.max_action_levels.len()],
+        });
+    }
+    let cache_key = (
+        state_key.clone(),
+        warehouse_base_stock_level,
+        retailer_base_stock_levels.to_vec(),
+        allocation_policy,
+    );
     if let Some(cached) = cache.get(&cache_key) {
         return Ok(cached.clone());
     }
     let state = to_state(state_key);
-    let action = heuristic_action(&state, reference)?;
+    let action = heuristic_action(&state, warehouse_base_stock_level, retailer_base_stock_levels)?;
     let retailer_shipments = retailer_shipments_for_action(
         &state,
         &action[1..],
         allocation_policy,
-        reference.heuristic_retailer_base_stock_levels,
+        retailer_base_stock_levels,
     )?;
 
     let mut expected_cost = 0.0;
@@ -324,6 +501,8 @@ fn evaluate_heuristic_from_state(
         let continuation = evaluate_heuristic_from_state(
             &next_key,
             reference,
+            warehouse_base_stock_level,
+            retailer_base_stock_levels,
             allocation_policy,
             demand_scenarios,
             cache,
@@ -340,19 +519,22 @@ fn evaluate_heuristic_from_state(
     Ok(result)
 }
 
-pub fn evaluate_named_heuristic(
+pub fn evaluate_echelon_base_stock_policy(
     reference: &ExactVerificationReference,
-    heuristic_name: &str,
+    warehouse_base_stock_level: usize,
+    retailer_base_stock_levels: &[usize],
+    allocation_policy: AllocationPolicy,
 ) -> PyResult<ExactPolicyEvaluation> {
     validate_exact_reference(reference)?;
-    let allocation_policy = match heuristic_name {
-        "echelon_base_stock_proportional" => AllocationPolicy::Proportional,
-        "echelon_base_stock_min_shortage" => AllocationPolicy::MinShortage,
-        _ => {
-            return Err(PyValueError::new_err(format!(
-                "unsupported heuristic '{heuristic_name}'",
-            )))
-        }
+    if retailer_base_stock_levels.len() != reference.retailer_lead_times.len() {
+        return Err(PyValueError::new_err(
+            "retailer_base_stock_levels length must match the number of retailers",
+        ));
+    }
+    if allocation_policy == AllocationPolicy::RandomSequential {
+        return Err(PyValueError::new_err(
+            "finite_horizon_dp does not support random_sequential allocation",
+        ));
     };
     let initial_state = OneWarehouseMultiRetailerState {
         period: 0,
@@ -371,8 +553,58 @@ pub fn evaluate_named_heuristic(
     evaluate_heuristic_from_state(
         &initial_key,
         reference,
+        warehouse_base_stock_level,
+        retailer_base_stock_levels,
         allocation_policy,
         &scenarios,
         &mut cache,
     )
+}
+
+pub fn evaluate_named_heuristic(
+    reference: &ExactVerificationReference,
+    heuristic_name: &str,
+) -> PyResult<ExactPolicyEvaluation> {
+    let allocation_policy = match heuristic_name {
+        "echelon_base_stock_proportional" => AllocationPolicy::Proportional,
+        "echelon_base_stock_min_shortage" => AllocationPolicy::MinShortage,
+        _ => {
+            return Err(PyValueError::new_err(format!(
+                "unsupported heuristic '{heuristic_name}'",
+            )))
+        }
+    };
+    evaluate_echelon_base_stock_policy(
+        reference,
+        reference.heuristic_warehouse_base_stock_level,
+        reference.heuristic_retailer_base_stock_levels,
+        allocation_policy,
+    )
+}
+
+pub fn evaluate_soft_tree_policy(
+    reference: &ExactVerificationReference,
+    config: &ExactSoftTreeConfig,
+) -> PyResult<ExactPolicyEvaluation> {
+    validate_exact_reference(reference)?;
+    if config.allocation_policy == AllocationPolicy::RandomSequential {
+        return Err(PyValueError::new_err(
+            "finite_horizon_dp does not support random_sequential allocation",
+        ));
+    }
+    let initial_state = OneWarehouseMultiRetailerState {
+        period: 0,
+        warehouse_inventory: reference.initial_warehouse_inventory,
+        warehouse_pipeline: reference.initial_warehouse_pipeline.to_vec(),
+        retailer_inventory: reference.initial_retailer_inventory.to_vec(),
+        retailer_pipeline: reference
+            .initial_retailer_pipeline
+            .iter()
+            .map(|pipeline| pipeline.to_vec())
+            .collect(),
+    };
+    let initial_key = as_state_key(0, &initial_state);
+    let scenarios = demand_scenarios(reference);
+    let mut cache = HashMap::new();
+    evaluate_soft_tree_from_state(&initial_key, reference, config, &scenarios, &mut cache)
 }
