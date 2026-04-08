@@ -72,6 +72,11 @@ Typical examples:
 
 This layer describes the shocks that hit the physical system.
 
+Those shocks do not need to be estimated inside FlowNet.
+
+For real systems, they can be supplied from outside as scenario inputs, stress paths, or externally
+generated event streams.
+
 It defines:
 
 - demand
@@ -85,6 +90,11 @@ It defines:
 ### 3. Control Layer
 
 This layer describes what the decision-maker can do and what information they have.
+
+FlowNet does not require an optimizer inside this layer.
+
+It is enough to specify the admissible control regime and then simulate how the system evolves under
+that supplied control.
 
 It defines:
 

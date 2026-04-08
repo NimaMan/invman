@@ -2,6 +2,9 @@
 
 `rust/src/problems/` is the canonical home for Rust-first problem families.
 
+Real-world source-backed applications built on top of those families live separately under
+`rust/src/case_studies/`.
+
 Each mature Rust-first family should keep its code and artifacts co-located under
 `rust/src/problems/<problem>/`, including:
 
@@ -77,6 +80,10 @@ That means:
   verification anchors before the family counts as implemented
 
 Rust also has a descriptive cross-problem layer under `rust/src/problems/core/`.
+
+And the crate now has a separate case-study layer under `rust/src/case_studies/` for concrete
+systems such as Hormuz. Those folders are expected to use the same FlowNet language, but they are
+not treated as reusable benchmark families.
 
 That layer is not another simulator. It is the shared problem blueprint for the repo. The canonical
 entrypoints for that design are:

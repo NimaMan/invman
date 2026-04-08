@@ -27,14 +27,18 @@ The crate mirrors the Python package structure:
   - rollout kernels
   - heuristic search
   - problem-specific action mappings when needed
+- `src/case_studies/<case_study>/`
+  - source-backed real-world applications built on top of the problem layer
+  - scenario engines, reproducible datasets, and public-facing artifacts for a concrete system
 - `src/problems/core/`
   - cross-problem FlowNet layer
   - the fundamental questions every inventory problem should answer
   - physical, stochastic, control, objective, and timing skeletons
 - `src/problems/<problem>/`
-  - canonical Rust-side home for both executable code and human-readable artifacts
-  - artifact subfolders such as `literature/`, `practical/`, `experiments/`, and `verification/`
-    live next to the code files
+  - canonical Rust-side home for reusable executable families and their human-readable artifacts
+- `src/case_studies/<case_study>/`
+  - canonical Rust-side home for concrete source-backed applications that use those families or the
+    FlowNet language directly
 
 Current problem modules:
 
@@ -45,6 +49,10 @@ Current problem modules:
 - `src/problems/perishable_inventory/`
 - `src/problems/nonstationary_lot_sizing/`
 - `src/problems/random_yield_inventory/`
+
+Current case studies:
+
+- `src/case_studies/hormuz_strait/`
 
 ## Standard Module Contract
 
