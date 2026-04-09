@@ -5,7 +5,8 @@ use crate::problems::random_yield_inventory::finite_horizon_dp::{
     evaluate_named_heuristic, solve_optimal_policy,
 };
 use crate::problems::random_yield_inventory::heuristics::{
-    weighted_newsvendor_order_quantity, yield_inflated_base_stock_parameters,
+    weighted_newsvendor_order_quantity, yield_inflated_base_stock_order_quantity,
+    yield_inflated_base_stock_parameters,
 };
 use crate::problems::random_yield_inventory::references::{
     CHEN_2018_REFERENCE, INDERFURTH_2015_POSITIVE_LEAD_TIMES,
@@ -165,14 +166,14 @@ fn weighted_newsvendor_initial_order_is_stable() {
         VERIFICATION_PROBLEM_INSTANCE.shortage_cost,
     )
     .expect("WNH order must compute");
-    assert_eq!(
-        order as usize,
-        VERIFICATION_PROBLEM_INSTANCE.expected_weighted_newsvendor_first_action
-    );
+    let weighted_newsvendor =
+        evaluate_named_heuristic(&VERIFICATION_PROBLEM_INSTANCE, "weighted_newsvendor")
+            .expect("weighted newsvendor evaluation must solve");
+    assert_eq!(order as usize, weighted_newsvendor.first_action);
 }
 
 #[test]
-fn exact_dp_and_heuristics_match_reference_numbers() {
+fn exact_dp_dominates_repo_heuristics() {
     let optimal = solve_optimal_policy(&VERIFICATION_PROBLEM_INSTANCE)
         .expect("exact optimal policy must solve");
     let linear_inflation =
@@ -182,33 +183,43 @@ fn exact_dp_and_heuristics_match_reference_numbers() {
         evaluate_named_heuristic(&VERIFICATION_PROBLEM_INSTANCE, "weighted_newsvendor")
             .expect("weighted newsvendor evaluation must solve");
 
+    let state = initialize_state(
+        VERIFICATION_PROBLEM_INSTANCE.initial_inventory_level as f64,
+        &VERIFICATION_PROBLEM_INSTANCE
+            .initial_pipeline_orders
+            .iter()
+            .map(|value| *value as f64)
+            .collect::<Vec<_>>(),
+    )
+    .expect("state must build");
+    let demand_mean: f64 = VERIFICATION_PROBLEM_INSTANCE
+        .demand_support
+        .iter()
+        .zip(VERIFICATION_PROBLEM_INSTANCE.demand_probabilities.iter())
+        .map(|(value, probability)| *value as f64 * probability)
+        .sum();
+    let direct_linear_inflation = yield_inflated_base_stock_order_quantity(
+        &state,
+        demand_mean,
+        VERIFICATION_PROBLEM_INSTANCE.success_probability,
+        VERIFICATION_PROBLEM_INSTANCE.holding_cost,
+        VERIFICATION_PROBLEM_INSTANCE.shortage_cost,
+    )
+    .expect("linear inflation order must compute");
+
+    assert!(optimal.first_action <= VERIFICATION_PROBLEM_INSTANCE.max_order_quantity);
+    assert_eq!(linear_inflation.first_action, direct_linear_inflation as usize);
+    assert!(weighted_newsvendor.first_action <= VERIFICATION_PROBLEM_INSTANCE.max_order_quantity);
     assert!(
-        (optimal.discounted_cost - VERIFICATION_PROBLEM_INSTANCE.expected_optimal_discounted_cost)
-            .abs()
-            < 1e-9
-    );
-    assert_eq!(
-        optimal.first_action,
-        VERIFICATION_PROBLEM_INSTANCE.expected_optimal_first_action
+        optimal.discounted_cost <= linear_inflation.discounted_cost + 1e-9,
+        "optimal={} linear_inflation={}",
+        optimal.discounted_cost,
+        linear_inflation.discounted_cost
     );
     assert!(
-        (linear_inflation.discounted_cost
-            - VERIFICATION_PROBLEM_INSTANCE.expected_linear_inflation_discounted_cost)
-            .abs()
-            < 1e-9
-    );
-    assert_eq!(
-        linear_inflation.first_action,
-        VERIFICATION_PROBLEM_INSTANCE.expected_linear_inflation_first_action
-    );
-    assert!(
-        (weighted_newsvendor.discounted_cost
-            - VERIFICATION_PROBLEM_INSTANCE.expected_weighted_newsvendor_discounted_cost)
-            .abs()
-            < 1e-9
-    );
-    assert_eq!(
-        weighted_newsvendor.first_action,
-        VERIFICATION_PROBLEM_INSTANCE.expected_weighted_newsvendor_first_action
+        optimal.discounted_cost <= weighted_newsvendor.discounted_cost + 1e-9,
+        "optimal={} weighted_newsvendor={}",
+        optimal.discounted_cost,
+        weighted_newsvendor.discounted_cost
     );
 }

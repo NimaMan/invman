@@ -64,11 +64,6 @@ pub struct VerificationProblemInstance {
     pub search_seed: u64,
     pub search_horizon: usize,
     pub warm_up_periods_ratio: f64,
-    pub expected_optimal_average_cost: f64,
-    pub expected_capped_dual_index_gap_pct: f64,
-    pub expected_dual_index_gap_pct: f64,
-    pub expected_single_index_gap_pct: f64,
-    pub expected_tailored_base_surge_gap_pct: f64,
     pub exact_abs_tolerance: f64,
     pub literature_gap_abs_tolerance_pct: f64,
 }
@@ -290,24 +285,20 @@ pub const WORKED_TRANSITION_REFERENCE: WorkedTransitionReference = WorkedTransit
     expected_period_cost: 330.0,
 };
 
-pub const VERIFICATION_PROBLEM_INSTANCE: VerificationProblemInstance = VerificationProblemInstance {
-    name: "dual_sourcing_l2_ce105_rust_benchmark",
-    reference_instance_name: "dual_l2_ce105",
-    inventory_lower: -12,
-    inventory_upper: 24,
-    solver_tolerance: 1e-8,
-    max_iterations: 250,
-    search_seed: 123,
-    search_horizon: 6000,
-    warm_up_periods_ratio: 0.2,
-    expected_optimal_average_cost: 216.76980198489306,
-    expected_capped_dual_index_gap_pct: 0.005815127525288233,
-    expected_dual_index_gap_pct: 0.11637083351998534,
-    expected_single_index_gap_pct: 0.5675135576276968,
-    expected_tailored_base_surge_gap_pct: 0.0614632843353391,
-    exact_abs_tolerance: 1e-6,
-    literature_gap_abs_tolerance_pct: 0.01,
-};
+pub const VERIFICATION_PROBLEM_INSTANCE: VerificationProblemInstance =
+    VerificationProblemInstance {
+        name: "dual_sourcing_l2_ce105_rust_benchmark",
+        reference_instance_name: "dual_l2_ce105",
+        inventory_lower: -12,
+        inventory_upper: 24,
+        solver_tolerance: 1e-8,
+        max_iterations: 250,
+        search_seed: 123,
+        search_horizon: 6000,
+        warm_up_periods_ratio: 0.2,
+        exact_abs_tolerance: 1e-6,
+        literature_gap_abs_tolerance_pct: 0.01,
+    };
 
 pub fn list_reference_instances() -> &'static [DualSourcingReferenceInstance] {
     &DUAL_SOURCING_REFERENCE_INSTANCES

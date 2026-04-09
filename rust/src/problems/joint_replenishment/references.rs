@@ -65,12 +65,6 @@ pub struct ExactVerificationReference {
     pub moq_review_period: usize,
     pub moq_rounding_threshold: f64,
     pub dynout_item_targets: &'static [usize],
-    pub expected_optimal_discounted_cost: f64,
-    pub expected_optimal_first_action: &'static [usize],
-    pub expected_moq_discounted_cost: f64,
-    pub expected_moq_first_action: &'static [usize],
-    pub expected_dynout_discounted_cost: f64,
-    pub expected_dynout_first_action: &'static [usize],
     pub notes: &'static str,
 }
 
@@ -347,11 +341,5 @@ pub const VERIFICATION_PROBLEM_INSTANCE: ExactVerificationReference = ExactVerif
     moq_review_period: 1,
     moq_rounding_threshold: 2.0,
     dynout_item_targets: &[8, 5],
-    expected_optimal_discounted_cost: 266.3863465996094,
-    expected_optimal_first_action: &[6, 6],
-    expected_moq_discounted_cost: 386.10114499218747,
-    expected_moq_first_action: &[7, 5],
-    expected_dynout_discounted_cost: 383.9596796015626,
-    expected_dynout_first_action: &[6, 6],
-    notes: "Finite-horizon repo-native exact verifier built on the paper's small-scale setting 1 model family. The public paper gives the setting parameters but not exact benchmark rows for repo assertions, so the expected costs and first actions are frozen from the repo exact DP and heuristic evaluations.",
+    notes: "Finite-horizon repo-native exact verifier built on the paper's small-scale setting 1 model family. The public paper gives the setting parameters but not exact benchmark rows for repo assertions, so the reduced verifier stores only the problem instance and generates exact values at verification time.",
 };

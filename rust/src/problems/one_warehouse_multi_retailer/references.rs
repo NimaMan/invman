@@ -89,14 +89,6 @@ pub struct ExactVerificationReference {
     pub demand_supports: &'static [&'static [u32]],
     pub demand_probabilities: &'static [&'static [f64]],
     pub max_action_levels: &'static [usize],
-    pub expected_optimal_discounted_cost: f64,
-    pub expected_optimal_first_action: &'static [usize],
-    pub expected_proportional_discounted_cost: f64,
-    pub expected_proportional_first_action: &'static [usize],
-    pub expected_proportional_shipments: &'static [usize],
-    pub expected_min_shortage_discounted_cost: f64,
-    pub expected_min_shortage_first_action: &'static [usize],
-    pub expected_min_shortage_shipments: &'static [usize],
     pub notes: &'static str,
 }
 
@@ -608,13 +600,5 @@ pub const VERIFICATION_PROBLEM_INSTANCE: ExactVerificationReference = ExactVerif
         VERIFICATION_RETAILER_PROBABILITIES,
     ],
     max_action_levels: &[3, 3, 3],
-    expected_optimal_discounted_cost: 8.485000000000001,
-    expected_optimal_first_action: &[0, 0, 1],
-    expected_proportional_discounted_cost: 9.2225,
-    expected_proportional_first_action: &[0, 0, 2],
-    expected_proportional_shipments: &[0, 2],
-    expected_min_shortage_discounted_cost: 9.2225,
-    expected_min_shortage_first_action: &[0, 0, 2],
-    expected_min_shortage_shipments: &[0, 2],
     notes: "Repo-native exact verifier shaped after the lost-sales OWMR setting with positive lead times. Two retailers, binary demand support, and a two-period horizon keep the finite-horizon dynamic program cheap enough for routine testing. The carried echelon base-stock heuristic parameters are exact-searched within the verifier.",
 };

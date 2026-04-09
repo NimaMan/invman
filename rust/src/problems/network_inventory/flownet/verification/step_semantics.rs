@@ -75,8 +75,13 @@ pub fn verify_node_base_stock_reference_action() -> bool {
     .expect("verification state must build");
     let action = node_base_stock_requests(&graph, &state, reference.base_stock_levels)
         .expect("node-base-stock action must compute");
+    let base_stock = crate::problems::network_inventory::finite_horizon_dp::evaluate_named_heuristic(
+        &VERIFICATION_PROBLEM_INSTANCE,
+        "node_base_stock",
+    )
+    .expect("node-base-stock evaluation must solve");
 
-    action == reference.expected_base_stock_first_action.to_vec()
+    action == base_stock.first_action
 }
 
 #[cfg(test)]

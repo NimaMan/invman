@@ -11,55 +11,50 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 from common import (
-    base_stock_params,
     dumps_json,
     ensure_parent,
     evaluate_heuristic_policy,
     get_exact_dp_summary,
     get_exact_verification_reference,
     get_primary_reference,
-    lead_time_mean_cover_params,
+    interval_stock_params,
+    returnability_buffer_params,
 )
 
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Validate spare_parts_inventory against the repo exact DP verifier and report heuristic performance on the primary reference instance."
+        description="Validate procurement_removal_inventory against the repo exact DP verifier and report heuristic performance on the primary reference instance."
     )
-    parser.add_argument("--simulation_replications", type=int, default=256)
-    parser.add_argument("--simulation_seed", type=int, default=123)
+    parser.add_argument("--simulation_seeds", type=int, default=256)
     parser.add_argument("--output_json", default=None)
     return parser.parse_args()
 
 
 def _exact_validation() -> dict:
+    exact_reference = get_exact_verification_reference()
+    exact_summary = get_exact_dp_summary()
     return {
-        "verification_reference": get_exact_verification_reference(),
-        "exact_summary": get_exact_dp_summary(),
+        "verification_reference": exact_reference,
+        "exact_summary": exact_summary,
     }
 
 
-def _primary_simulation_validation(replications: int, seed: int) -> dict:
+def _primary_simulation_validation(num_seeds: int) -> dict:
     reference = get_primary_reference()
-    base_stock = evaluate_heuristic_policy(
+    seeds = list(range(123, 123 + num_seeds))
+    interval = evaluate_heuristic_policy(reference, "interval_stock", seeds)
+    buffer = evaluate_heuristic_policy(
         reference,
-        "base_stock",
-        replications=replications,
-        seed=seed,
-    )
-    mean_cover = evaluate_heuristic_policy(
-        reference,
-        "lead_time_mean_cover",
-        replications=replications,
-        seed=seed,
+        "returnability_buffer_interval_stock",
+        seeds,
     )
     return {
         "reference": reference,
-        "replications": replications,
-        "seed": seed,
+        "num_seeds": num_seeds,
         "heuristics": {
-            "base_stock": base_stock,
-            "lead_time_mean_cover": mean_cover,
+            "interval_stock": interval,
+            "returnability_buffer_interval_stock": buffer,
         },
     }
 
@@ -77,13 +72,13 @@ def _markdown(payload: dict) -> str:
         "| --- | ---: |",
         f"| `optimal_discounted_cost` | `{exact_summary['optimal_discounted_cost']:.6f}` |",
         f"| `optimal_first_action` | `{exact_summary['optimal_first_action']}` |",
-        f"| `base_stock_discounted_cost` | `{exact_summary['base_stock_discounted_cost']:.6f}` |",
-        f"| `lead_time_mean_cover_discounted_cost` | `{exact_summary['lead_time_mean_cover_discounted_cost']:.6f}` |",
+        f"| `interval_stock_discounted_cost` | `{exact_summary['interval_stock_discounted_cost']:.6f}` |",
+        f"| `returnability_buffer_discounted_cost` | `{exact_summary['returnability_buffer_discounted_cost']:.6f}` |",
         "",
         "| Policy | Params | Mean Discounted Cost | Std | Note |",
         "| --- | --- | ---: | ---: | --- |",
-        f"| `base_stock` | `{base_stock_params(primary['reference'])}` | `{primary['heuristics']['base_stock']['mean_discounted_cost']:.3f}` | `{primary['heuristics']['base_stock']['std_discounted_cost']:.3f}` | repo-native primary reference; not literature-verified |",
-        f"| `lead_time_mean_cover` | `{lead_time_mean_cover_params(primary['reference'])}` | `{primary['heuristics']['lead_time_mean_cover']['mean_discounted_cost']:.3f}` | `{primary['heuristics']['lead_time_mean_cover']['std_discounted_cost']:.3f}` | repo-native primary reference; not literature-verified |",
+        f"| `interval_stock` | `{interval_stock_params(primary['reference'])}` | `{primary['heuristics']['interval_stock']['mean_discounted_cost']:.3f}` | `{primary['heuristics']['interval_stock']['std_discounted_cost']:.3f}` | repo-native primary reference; not literature-verified |",
+        f"| `returnability_buffer_interval_stock` | `{returnability_buffer_params(primary['reference'])}` | `{primary['heuristics']['returnability_buffer_interval_stock']['mean_discounted_cost']:.3f}` | `{primary['heuristics']['returnability_buffer_interval_stock']['std_discounted_cost']:.3f}` | repo-native primary reference; not literature-verified |",
     ]
     return "\n".join(lines)
 
@@ -92,10 +87,7 @@ def main():
     parsed = parse_args()
     payload = {
         "exact_validation": _exact_validation(),
-        "primary_simulation_validation": _primary_simulation_validation(
-            parsed.simulation_replications,
-            parsed.simulation_seed,
-        ),
+        "primary_simulation_validation": _primary_simulation_validation(parsed.simulation_seeds),
     }
     payload["markdown"] = _markdown(payload)
 

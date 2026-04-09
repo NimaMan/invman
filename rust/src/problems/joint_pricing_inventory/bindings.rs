@@ -6,10 +6,17 @@ use crate::core::policies::soft_tree::{build_action_spec, parse_leaf_type, parse
 use crate::problems::joint_pricing_inventory::demand::{
     parse_demand_distribution_kind, validate_price_ladder,
 };
-use crate::problems::joint_pricing_inventory::env::{build_policy_state, step_state};
+use crate::problems::joint_pricing_inventory::env::{build_raw_state, step_state};
+use crate::problems::joint_pricing_inventory::finite_horizon_dp::{
+    evaluate_named_heuristic, solve_optimal_policy,
+};
 use crate::problems::joint_pricing_inventory::heuristics::{
     inventory_sensitive_base_stock_action, policy_rollout_from_demands, simulate_policy,
     static_price_base_stock_action, PolicySimulationSummary,
+};
+use crate::problems::joint_pricing_inventory::references::{
+    ExactVerificationReference, JointPricingInventoryReferenceInstance, PRIMARY_REFERENCE_INSTANCE,
+    VERIFICATION_PROBLEM_INSTANCE,
 };
 use crate::problems::joint_pricing_inventory::rollout::{
     build_initial_state, population_rollout, rollout, rollout_from_demands,
@@ -58,29 +65,187 @@ fn build_rollout_config(
     })
 }
 
-fn simulation_summary_to_py(py: Python<'_>, summary: &PolicySimulationSummary) -> PyResult<PyObject> {
+fn simulation_summary_to_py(
+    py: Python<'_>,
+    summary: &PolicySimulationSummary,
+) -> PyResult<PyObject> {
     let dict = PyDict::new_bound(py);
     dict.set_item("mean_discounted_cost", summary.mean_discounted_cost)?;
     dict.set_item("std_discounted_cost", summary.std_discounted_cost)?;
     Ok(dict.into_any().unbind().into())
 }
 
+fn primary_reference_to_py(
+    py: Python<'_>,
+    reference: &JointPricingInventoryReferenceInstance,
+) -> PyResult<PyObject> {
+    let dict = PyDict::new_bound(py);
+    dict.set_item("name", reference.name)?;
+    dict.set_item("source", reference.source)?;
+    dict.set_item("url", reference.url)?;
+    dict.set_item("periods", reference.periods)?;
+    dict.set_item(
+        "demand_distribution_kind",
+        reference.demand_distribution_kind,
+    )?;
+    dict.set_item("price_levels", reference.price_levels.to_vec())?;
+    dict.set_item("price_demand_means", reference.price_demand_means.to_vec())?;
+    dict.set_item("initial_inventory_level", reference.initial_inventory_level)?;
+    dict.set_item(
+        "procurement_cost_per_unit",
+        reference.procurement_cost_per_unit,
+    )?;
+    dict.set_item("holding_cost_per_unit", reference.holding_cost_per_unit)?;
+    dict.set_item("stockout_cost_per_unit", reference.stockout_cost_per_unit)?;
+    dict.set_item("salvage_value_per_unit", reference.salvage_value_per_unit)?;
+    dict.set_item("max_order_quantity", reference.max_order_quantity)?;
+    dict.set_item(
+        "benchmark_static_order_up_to",
+        reference.benchmark_static_order_up_to,
+    )?;
+    dict.set_item(
+        "benchmark_static_price_index",
+        reference.benchmark_static_price_index,
+    )?;
+    dict.set_item(
+        "benchmark_inventory_sensitive_order_up_to",
+        reference.benchmark_inventory_sensitive_order_up_to,
+    )?;
+    dict.set_item(
+        "benchmark_markdown_threshold",
+        reference.benchmark_markdown_threshold,
+    )?;
+    dict.set_item(
+        "benchmark_high_price_index",
+        reference.benchmark_high_price_index,
+    )?;
+    dict.set_item(
+        "benchmark_low_price_index",
+        reference.benchmark_low_price_index,
+    )?;
+    dict.set_item("literature_verified", false)?;
+    dict.set_item(
+        "verification_source",
+        "repo_exact_solver_not_verified_against_literature",
+    )?;
+    dict.set_item("notes", reference.notes)?;
+    Ok(dict.into_any().unbind().into())
+}
+
+fn verification_reference_to_py(
+    py: Python<'_>,
+    reference: &ExactVerificationReference,
+) -> PyResult<PyObject> {
+    let dict = PyDict::new_bound(py);
+    dict.set_item("source", reference.source)?;
+    dict.set_item("url", reference.url)?;
+    dict.set_item("literature_verified", false)?;
+    dict.set_item(
+        "verification_source",
+        "repo_exact_solver_not_verified_against_literature",
+    )?;
+    dict.set_item("periods", reference.periods)?;
+    dict.set_item("discount_factor", reference.discount_factor)?;
+    dict.set_item("price_levels", reference.price_levels.to_vec())?;
+    dict.set_item(
+        "price_demand_supports",
+        reference
+            .price_demand_supports
+            .iter()
+            .map(|support| support.to_vec())
+            .collect::<Vec<_>>(),
+    )?;
+    dict.set_item(
+        "price_demand_probabilities",
+        reference
+            .price_demand_probabilities
+            .iter()
+            .map(|probabilities| probabilities.to_vec())
+            .collect::<Vec<_>>(),
+    )?;
+    dict.set_item("initial_inventory_level", reference.initial_inventory_level)?;
+    dict.set_item(
+        "procurement_cost_per_unit",
+        reference.procurement_cost_per_unit,
+    )?;
+    dict.set_item("holding_cost_per_unit", reference.holding_cost_per_unit)?;
+    dict.set_item("stockout_cost_per_unit", reference.stockout_cost_per_unit)?;
+    dict.set_item("salvage_value_per_unit", reference.salvage_value_per_unit)?;
+    dict.set_item("max_order_quantity", reference.max_order_quantity)?;
+    dict.set_item("static_order_up_to", reference.static_order_up_to)?;
+    dict.set_item("static_price_index", reference.static_price_index)?;
+    dict.set_item(
+        "inventory_sensitive_order_up_to",
+        reference.inventory_sensitive_order_up_to,
+    )?;
+    dict.set_item("markdown_threshold", reference.markdown_threshold)?;
+    dict.set_item("high_price_index", reference.high_price_index)?;
+    dict.set_item("low_price_index", reference.low_price_index)?;
+    dict.set_item("notes", reference.notes)?;
+    Ok(dict.into_any().unbind().into())
+}
+
 #[pyfunction]
-fn joint_pricing_inventory_build_policy_state(
-    inventory_level: usize,
-    price_levels: Vec<f64>,
-    demand_means: Vec<f64>,
-    periods: usize,
-    max_order_quantity: usize,
-) -> PyResult<Vec<f32>> {
+fn joint_pricing_inventory_primary_reference_instance(py: Python<'_>) -> PyResult<PyObject> {
+    primary_reference_to_py(py, &PRIMARY_REFERENCE_INSTANCE)
+}
+
+#[pyfunction]
+fn joint_pricing_inventory_exact_verification_instance(py: Python<'_>) -> PyResult<PyObject> {
+    verification_reference_to_py(py, &VERIFICATION_PROBLEM_INSTANCE)
+}
+
+#[pyfunction]
+fn joint_pricing_inventory_exact_dp_summary(py: Python<'_>) -> PyResult<PyObject> {
+    let optimal = solve_optimal_policy(&VERIFICATION_PROBLEM_INSTANCE)?;
+    let static_policy =
+        evaluate_named_heuristic(&VERIFICATION_PROBLEM_INSTANCE, "static_price_base_stock")?;
+    let inventory_sensitive = evaluate_named_heuristic(
+        &VERIFICATION_PROBLEM_INSTANCE,
+        "inventory_sensitive_base_stock",
+    )?;
+
+    let dict = PyDict::new_bound(py);
+    dict.set_item(
+        "verification_reference",
+        verification_reference_to_py(py, &VERIFICATION_PROBLEM_INSTANCE)?,
+    )?;
+    dict.set_item("optimal_discounted_cost", optimal.discounted_cost)?;
+    dict.set_item(
+        "optimal_first_action",
+        (optimal.first_action.0, optimal.first_action.1),
+    )?;
+    dict.set_item("static_discounted_cost", static_policy.discounted_cost)?;
+    dict.set_item(
+        "static_first_action",
+        (static_policy.first_action.0, static_policy.first_action.1),
+    )?;
+    dict.set_item(
+        "inventory_sensitive_discounted_cost",
+        inventory_sensitive.discounted_cost,
+    )?;
+    dict.set_item(
+        "inventory_sensitive_first_action",
+        (
+            inventory_sensitive.first_action.0,
+            inventory_sensitive.first_action.1,
+        ),
+    )?;
+    dict.set_item(
+        "static_gap_to_optimal",
+        static_policy.discounted_cost - optimal.discounted_cost,
+    )?;
+    dict.set_item(
+        "inventory_sensitive_gap_to_optimal",
+        inventory_sensitive.discounted_cost - optimal.discounted_cost,
+    )?;
+    Ok(dict.into_any().unbind().into())
+}
+
+#[pyfunction]
+fn joint_pricing_inventory_build_raw_state(inventory_level: usize) -> PyResult<Vec<f32>> {
     let state = build_initial_state(inventory_level)?;
-    build_policy_state(
-        &state,
-        &price_levels,
-        &demand_means,
-        periods,
-        max_order_quantity,
-    )
+    Ok(build_raw_state(&state))
 }
 
 #[pyfunction]
@@ -190,7 +355,7 @@ fn joint_pricing_inventory_inventory_sensitive_base_stock_action(
     discount_factor=0.99,
     temperature=0.25,
     split_type="oblique",
-    leaf_type="constant",
+    leaf_type="linear",
     allowed_values=None
 ))]
 fn joint_pricing_inventory_soft_tree_rollout(
@@ -264,7 +429,7 @@ fn joint_pricing_inventory_soft_tree_rollout(
     discount_factor=0.99,
     temperature=0.25,
     split_type="oblique",
-    leaf_type="constant",
+    leaf_type="linear",
     allowed_values=None
 ))]
 fn joint_pricing_inventory_soft_tree_population_rollout(
@@ -336,7 +501,7 @@ fn joint_pricing_inventory_soft_tree_population_rollout(
     discount_factor=0.99,
     temperature=0.25,
     split_type="oblique",
-    leaf_type="constant",
+    leaf_type="linear",
     allowed_values=None
 ))]
 fn joint_pricing_inventory_soft_tree_rollout_from_demands(
@@ -487,7 +652,22 @@ fn joint_pricing_inventory_simulate_policy(
 }
 
 pub fn register_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(joint_pricing_inventory_build_policy_state, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        joint_pricing_inventory_primary_reference_instance,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        joint_pricing_inventory_exact_verification_instance,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        joint_pricing_inventory_exact_dp_summary,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        joint_pricing_inventory_build_raw_state,
+        m
+    )?)?;
     m.add_function(wrap_pyfunction!(joint_pricing_inventory_step, m)?)?;
     m.add_function(wrap_pyfunction!(
         joint_pricing_inventory_static_price_base_stock_action,
@@ -497,7 +677,10 @@ pub fn register_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
         joint_pricing_inventory_inventory_sensitive_base_stock_action,
         m
     )?)?;
-    m.add_function(wrap_pyfunction!(joint_pricing_inventory_soft_tree_rollout, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        joint_pricing_inventory_soft_tree_rollout,
+        m
+    )?)?;
     m.add_function(wrap_pyfunction!(
         joint_pricing_inventory_soft_tree_population_rollout,
         m
@@ -510,6 +693,9 @@ pub fn register_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
         joint_pricing_inventory_policy_rollout_from_demands,
         m
     )?)?;
-    m.add_function(wrap_pyfunction!(joint_pricing_inventory_simulate_policy, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        joint_pricing_inventory_simulate_policy,
+        m
+    )?)?;
     Ok(())
 }

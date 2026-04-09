@@ -195,14 +195,6 @@ fn exact_reference_to_py(py: Python<'_>, reference: &ExactVerificationReference)
         reference.demand_probabilities.iter().map(|row| row.to_vec()).collect::<Vec<_>>(),
     )?;
     dict.set_item("max_action_levels", reference.max_action_levels.to_vec())?;
-    dict.set_item("expected_optimal_discounted_cost", reference.expected_optimal_discounted_cost)?;
-    dict.set_item("expected_optimal_first_action", reference.expected_optimal_first_action.to_vec())?;
-    dict.set_item("expected_proportional_discounted_cost", reference.expected_proportional_discounted_cost)?;
-    dict.set_item("expected_proportional_first_action", reference.expected_proportional_first_action.to_vec())?;
-    dict.set_item("expected_proportional_shipments", reference.expected_proportional_shipments.to_vec())?;
-    dict.set_item("expected_min_shortage_discounted_cost", reference.expected_min_shortage_discounted_cost)?;
-    dict.set_item("expected_min_shortage_first_action", reference.expected_min_shortage_first_action.to_vec())?;
-    dict.set_item("expected_min_shortage_shipments", reference.expected_min_shortage_shipments.to_vec())?;
     dict.set_item("notes", reference.notes)?;
     Ok(dict.into_any().unbind().into())
 }

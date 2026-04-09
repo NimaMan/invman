@@ -142,14 +142,6 @@ pub fn verification_instance_from_reference(
                 name: String::from("base_stock_levels"),
                 value: format!("{:?}", reference.base_stock_levels),
             },
-            FlowNetParameter {
-                name: String::from("expected_optimal_first_action"),
-                value: format!("{:?}", reference.expected_optimal_first_action),
-            },
-            FlowNetParameter {
-                name: String::from("expected_base_stock_first_action"),
-                value: format!("{:?}", reference.expected_base_stock_first_action),
-            },
         ],
         horizon_periods: Some(reference.periods),
         notes: vec![String::from(reference.notes)],

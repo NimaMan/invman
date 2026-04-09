@@ -18,7 +18,7 @@ pub fn primary_reference_instance_matches_diamond_network() -> bool {
     has_num_nodes && has_source_mask && has_diamond_edges
 }
 
-pub fn exact_verification_instance_matches_reference_freeze() -> bool {
+pub fn exact_verification_instance_matches_problem_parameters() -> bool {
     let instance = exact_verification_instance();
     let has_periods = instance
         .parameters
@@ -28,17 +28,18 @@ pub fn exact_verification_instance_matches_reference_freeze() -> bool {
         .parameters
         .iter()
         .any(|parameter| parameter.name == "discount_factor" && parameter.value == "0.99");
-    let has_base_stock_action = instance.parameters.iter().any(|parameter| {
-        parameter.name == "expected_base_stock_first_action" && parameter.value == "[0, 1, 1, 1]"
-    });
+    let has_base_stock_levels = instance
+        .parameters
+        .iter()
+        .any(|parameter| parameter.name == "base_stock_levels" && parameter.value == "[0, 2, 2, 3]");
 
-    has_periods && has_discount_factor && has_base_stock_action
+    has_periods && has_discount_factor && has_base_stock_levels
 }
 
 #[cfg(test)]
 mod tests {
     use super::{
-        exact_verification_instance_matches_reference_freeze,
+        exact_verification_instance_matches_problem_parameters,
         primary_reference_instance_matches_diamond_network,
     };
 
@@ -48,7 +49,7 @@ mod tests {
     }
 
     #[test]
-    fn exact_verification_instance_maps_to_expected_freeze() {
-        assert!(exact_verification_instance_matches_reference_freeze());
+    fn exact_verification_instance_maps_to_problem_parameters() {
+        assert!(exact_verification_instance_matches_problem_parameters());
     }
 }

@@ -73,12 +73,6 @@ pub struct ExactVerificationReference {
     pub two_dimensional_total_target: usize,
     pub two_dimensional_young_target: usize,
     pub young_age_cutoff: usize,
-    pub expected_optimal_discounted_cost: f64,
-    pub expected_optimal_first_action: usize,
-    pub expected_newsvendor_discounted_cost: f64,
-    pub expected_newsvendor_first_action: usize,
-    pub expected_two_dimensional_discounted_cost: f64,
-    pub expected_two_dimensional_first_action: usize,
     pub notes: &'static str,
 }
 
@@ -161,14 +155,8 @@ pub const WORKED_TRANSITION_REFERENCE: WorkedTransitionReference = WorkedTransit
     expected_period_cost: -9.5,
 };
 
-pub const VERIFICATION_DEMAND_SCENARIOS: &[&[u32]] = &[
-    &[0, 0],
-    &[1, 0],
-    &[0, 1],
-    &[1, 1],
-    &[0, 2],
-    &[1, 2],
-];
+pub const VERIFICATION_DEMAND_SCENARIOS: &[&[u32]] =
+    &[&[0, 0], &[1, 0], &[0, 1], &[1, 1], &[0, 2], &[1, 2]];
 pub const VERIFICATION_DEMAND_PROBABILITIES: &[f64] = &[0.10, 0.20, 0.20, 0.25, 0.10, 0.15];
 
 pub const VERIFICATION_PROBLEM_INSTANCE: ExactVerificationReference = ExactVerificationReference {
@@ -190,11 +178,5 @@ pub const VERIFICATION_PROBLEM_INSTANCE: ExactVerificationReference = ExactVerif
     two_dimensional_total_target: 4,
     two_dimensional_young_target: 2,
     young_age_cutoff: 0,
-    expected_optimal_discounted_cost: -15.7721557632,
-    expected_optimal_first_action: 1,
-    expected_newsvendor_discounted_cost: -9.3213290886,
-    expected_newsvendor_first_action: 1,
-    expected_two_dimensional_discounted_cost: 1.8326922297499997,
-    expected_two_dimensional_first_action: 2,
     notes: "Repo-native exact verifier on a reduced average-age blending instance with three age classes and two products. The instance keeps the core amelioration trade-off but is small enough for finite-horizon DP.",
 };

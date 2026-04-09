@@ -67,10 +67,6 @@ pub struct ExactVerificationReference {
     pub demand_probabilities: &'static [&'static [f64]],
     pub max_edge_requests: &'static [usize],
     pub base_stock_levels: &'static [usize],
-    pub expected_optimal_discounted_cost: f64,
-    pub expected_optimal_first_action: &'static [usize],
-    pub expected_base_stock_discounted_cost: f64,
-    pub expected_base_stock_first_action: &'static [usize],
     pub notes: &'static str,
 }
 
@@ -185,9 +181,5 @@ pub const VERIFICATION_PROBLEM_INSTANCE: ExactVerificationReference = ExactVerif
     ],
     max_edge_requests: &[2, 2, 2, 2],
     base_stock_levels: &[0, 2, 2, 3],
-    expected_optimal_discounted_cost: 4.2126,
-    expected_optimal_first_action: &[0, 0, 0, 1],
-    expected_base_stock_discounted_cost: 7.152850000000001,
-    expected_base_stock_first_action: &[0, 1, 1, 1],
     notes: "Repo-native exact verifier on a reduced general network with one source, two parallel intermediate nodes, and one customer-facing sink supplied by two upstream edges. This keeps the graph genuinely networked while staying small enough for routine finite-horizon DP checks.",
 };

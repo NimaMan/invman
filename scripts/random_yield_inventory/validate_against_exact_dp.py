@@ -70,8 +70,6 @@ def _markdown(payload: dict) -> str:
         f"| `optimal_first_action` | `{exact_summary['optimal_first_action']}` |",
         f"| `linear_inflation_discounted_cost` | `{exact_summary['linear_inflation_discounted_cost']:.6f}` |",
         f"| `weighted_newsvendor_discounted_cost` | `{exact_summary['weighted_newsvendor_discounted_cost']:.6f}` |",
-        f"| `matches_expected_optimal_discounted_cost` | `{exact_summary['matches_expected_optimal_discounted_cost']}` |",
-        f"| `matches_expected_optimal_first_action` | `{exact_summary['matches_expected_optimal_first_action']}` |",
         "",
         "| Policy | Params | Mean Discounted Cost | Std | Note |",
         "| --- | --- | ---: | ---: | --- |",

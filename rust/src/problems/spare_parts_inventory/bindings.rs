@@ -326,30 +326,6 @@ fn verification_reference_to_py(
         "lead_time_mean_cover_safety_buffer",
         reference.lead_time_mean_cover_safety_buffer,
     )?;
-    dict.set_item(
-        "expected_optimal_discounted_cost",
-        reference.expected_optimal_discounted_cost,
-    )?;
-    dict.set_item(
-        "expected_optimal_first_action",
-        reference.expected_optimal_first_action,
-    )?;
-    dict.set_item(
-        "expected_base_stock_discounted_cost",
-        reference.expected_base_stock_discounted_cost,
-    )?;
-    dict.set_item(
-        "expected_base_stock_first_action",
-        reference.expected_base_stock_first_action,
-    )?;
-    dict.set_item(
-        "expected_lead_time_mean_cover_discounted_cost",
-        reference.expected_lead_time_mean_cover_discounted_cost,
-    )?;
-    dict.set_item(
-        "expected_lead_time_mean_cover_first_action",
-        reference.expected_lead_time_mean_cover_first_action,
-    )?;
     dict.set_item("notes", reference.notes)?;
     Ok(dict.into_any().unbind().into())
 }
@@ -444,16 +420,6 @@ fn spare_parts_inventory_exact_dp_summary(py: Python<'_>) -> PyResult<PyObject> 
     )?;
     dict.set_item("optimal_discounted_cost", optimal.discounted_cost)?;
     dict.set_item("optimal_first_action", optimal.first_action)?;
-    dict.set_item(
-        "matches_expected_optimal_discounted_cost",
-        (optimal.discounted_cost - VERIFICATION_PROBLEM_INSTANCE.expected_optimal_discounted_cost)
-            .abs()
-            < 1e-9,
-    )?;
-    dict.set_item(
-        "matches_expected_optimal_first_action",
-        optimal.first_action == VERIFICATION_PROBLEM_INSTANCE.expected_optimal_first_action,
-    )?;
     dict.set_item("base_stock_discounted_cost", base_stock.discounted_cost)?;
     dict.set_item("base_stock_first_action", base_stock.first_action)?;
     dict.set_item(

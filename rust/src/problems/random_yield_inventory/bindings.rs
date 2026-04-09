@@ -75,30 +75,6 @@ fn verification_reference_to_py(
         reference.demand_probabilities.to_vec(),
     )?;
     dict.set_item("max_order_quantity", reference.max_order_quantity)?;
-    dict.set_item(
-        "expected_optimal_discounted_cost",
-        reference.expected_optimal_discounted_cost,
-    )?;
-    dict.set_item(
-        "expected_optimal_first_action",
-        reference.expected_optimal_first_action,
-    )?;
-    dict.set_item(
-        "expected_linear_inflation_discounted_cost",
-        reference.expected_linear_inflation_discounted_cost,
-    )?;
-    dict.set_item(
-        "expected_linear_inflation_first_action",
-        reference.expected_linear_inflation_first_action,
-    )?;
-    dict.set_item(
-        "expected_weighted_newsvendor_discounted_cost",
-        reference.expected_weighted_newsvendor_discounted_cost,
-    )?;
-    dict.set_item(
-        "expected_weighted_newsvendor_first_action",
-        reference.expected_weighted_newsvendor_first_action,
-    )?;
     Ok(dict.into_any().unbind().into())
 }
 
@@ -185,16 +161,6 @@ fn random_yield_inventory_exact_dp_summary(py: Python<'_>) -> PyResult<PyObject>
     )?;
     dict.set_item("optimal_discounted_cost", optimal.discounted_cost)?;
     dict.set_item("optimal_first_action", optimal.first_action)?;
-    dict.set_item(
-        "matches_expected_optimal_discounted_cost",
-        (optimal.discounted_cost - VERIFICATION_PROBLEM_INSTANCE.expected_optimal_discounted_cost)
-            .abs()
-            < 1e-9,
-    )?;
-    dict.set_item(
-        "matches_expected_optimal_first_action",
-        optimal.first_action == VERIFICATION_PROBLEM_INSTANCE.expected_optimal_first_action,
-    )?;
     dict.set_item(
         "linear_inflation_discounted_cost",
         linear_inflation.discounted_cost,

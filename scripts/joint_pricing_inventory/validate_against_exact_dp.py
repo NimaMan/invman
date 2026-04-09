@@ -11,55 +11,57 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 from common import (
-    base_stock_params,
     dumps_json,
     ensure_parent,
     evaluate_heuristic_policy,
     get_exact_dp_summary,
     get_exact_verification_reference,
     get_primary_reference,
-    lead_time_mean_cover_params,
+    inventory_sensitive_base_stock_params,
+    static_price_base_stock_params,
 )
 
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Validate spare_parts_inventory against the repo exact DP verifier and report heuristic performance on the primary reference instance."
+        description="Validate joint_pricing_inventory against the repo exact DP verifier and report heuristic performance on the primary reference instance."
     )
-    parser.add_argument("--simulation_replications", type=int, default=256)
+    parser.add_argument("--simulation_replications", type=int, default=512)
     parser.add_argument("--simulation_seed", type=int, default=123)
     parser.add_argument("--output_json", default=None)
     return parser.parse_args()
 
 
 def _exact_validation() -> dict:
+    exact_reference = get_exact_verification_reference()
+    exact_summary = get_exact_dp_summary()
     return {
-        "verification_reference": get_exact_verification_reference(),
-        "exact_summary": get_exact_dp_summary(),
+        "verification_reference": exact_reference,
+        "exact_summary": exact_summary,
     }
 
 
 def _primary_simulation_validation(replications: int, seed: int) -> dict:
     reference = get_primary_reference()
-    base_stock = evaluate_heuristic_policy(
+    static_policy = evaluate_heuristic_policy(
         reference,
-        "base_stock",
+        "static_price_base_stock",
         replications=replications,
         seed=seed,
     )
-    mean_cover = evaluate_heuristic_policy(
+    inventory_sensitive = evaluate_heuristic_policy(
         reference,
-        "lead_time_mean_cover",
+        "inventory_sensitive_base_stock",
         replications=replications,
         seed=seed,
     )
     return {
         "reference": reference,
-        "replications": replications,
-        "seed": seed,
+        "replications": int(replications),
+        "seed": int(seed),
         "heuristics": {
-            "base_stock": base_stock,
-            "lead_time_mean_cover": mean_cover,
+            "static_price_base_stock": static_policy,
+            "inventory_sensitive_base_stock": inventory_sensitive,
         },
     }
 
@@ -77,13 +79,13 @@ def _markdown(payload: dict) -> str:
         "| --- | ---: |",
         f"| `optimal_discounted_cost` | `{exact_summary['optimal_discounted_cost']:.6f}` |",
         f"| `optimal_first_action` | `{exact_summary['optimal_first_action']}` |",
-        f"| `base_stock_discounted_cost` | `{exact_summary['base_stock_discounted_cost']:.6f}` |",
-        f"| `lead_time_mean_cover_discounted_cost` | `{exact_summary['lead_time_mean_cover_discounted_cost']:.6f}` |",
+        f"| `static_discounted_cost` | `{exact_summary['static_discounted_cost']:.6f}` |",
+        f"| `inventory_sensitive_discounted_cost` | `{exact_summary['inventory_sensitive_discounted_cost']:.6f}` |",
         "",
         "| Policy | Params | Mean Discounted Cost | Std | Note |",
         "| --- | --- | ---: | ---: | --- |",
-        f"| `base_stock` | `{base_stock_params(primary['reference'])}` | `{primary['heuristics']['base_stock']['mean_discounted_cost']:.3f}` | `{primary['heuristics']['base_stock']['std_discounted_cost']:.3f}` | repo-native primary reference; not literature-verified |",
-        f"| `lead_time_mean_cover` | `{lead_time_mean_cover_params(primary['reference'])}` | `{primary['heuristics']['lead_time_mean_cover']['mean_discounted_cost']:.3f}` | `{primary['heuristics']['lead_time_mean_cover']['std_discounted_cost']:.3f}` | repo-native primary reference; not literature-verified |",
+        f"| `static_price_base_stock` | `{static_price_base_stock_params(primary['reference'])}` | `{primary['heuristics']['static_price_base_stock']['mean_cost']:.3f}` | `{primary['heuristics']['static_price_base_stock']['cost_std']:.3f}` | repo-native primary reference; not literature-verified |",
+        f"| `inventory_sensitive_base_stock` | `{inventory_sensitive_base_stock_params(primary['reference'])}` | `{primary['heuristics']['inventory_sensitive_base_stock']['mean_cost']:.3f}` | `{primary['heuristics']['inventory_sensitive_base_stock']['cost_std']:.3f}` | repo-native primary reference; not literature-verified |",
     ]
     return "\n".join(lines)
 

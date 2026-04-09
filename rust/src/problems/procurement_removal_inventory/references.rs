@@ -77,12 +77,6 @@ pub struct ExactVerificationReference {
     pub returnability_buffer_order_up_to: usize,
     pub returnability_buffer_remove_down_to: usize,
     pub returnability_buffer: usize,
-    pub expected_optimal_discounted_cost: f64,
-    pub expected_optimal_first_action: (usize, usize),
-    pub expected_interval_stock_discounted_cost: f64,
-    pub expected_interval_stock_first_action: (usize, usize),
-    pub expected_returnability_buffer_discounted_cost: f64,
-    pub expected_returnability_buffer_first_action: (usize, usize),
     pub notes: &'static str,
 }
 
@@ -169,11 +163,5 @@ pub const VERIFICATION_PROBLEM_INSTANCE: ExactVerificationReference = ExactVerif
     returnability_buffer_order_up_to: 3,
     returnability_buffer_remove_down_to: 4,
     returnability_buffer: 1,
-    expected_optimal_discounted_cost: 31.78026111369698,
-    expected_optimal_first_action: (0, 0),
-    expected_interval_stock_discounted_cost: 34.16378859151237,
-    expected_interval_stock_first_action: (1, 0),
-    expected_returnability_buffer_discounted_cost: 38.766489332683825,
-    expected_returnability_buffer_first_action: (2, 0),
     notes: "Repo-native exact verifier on a reduced procurement-removal instance with a small discrete demand support. This preserves the returnable-quota state and the order/remove action pair while keeping the finite-horizon DP small enough for exact regression tests.",
 };

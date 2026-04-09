@@ -138,12 +138,6 @@ pub struct ExactVerificationReference {
     pub max_order_quantity: usize,
     pub base_stock_level: usize,
     pub lead_time_mean_cover_safety_buffer: f64,
-    pub expected_optimal_discounted_cost: f64,
-    pub expected_optimal_first_action: usize,
-    pub expected_base_stock_discounted_cost: f64,
-    pub expected_base_stock_first_action: usize,
-    pub expected_lead_time_mean_cover_discounted_cost: f64,
-    pub expected_lead_time_mean_cover_first_action: usize,
     pub notes: &'static str,
 }
 
@@ -869,11 +863,5 @@ pub const VERIFICATION_PROBLEM_INSTANCE: ExactVerificationReference = ExactVerif
     max_order_quantity: 4,
     base_stock_level: 3,
     lead_time_mean_cover_safety_buffer: 1.0,
-    expected_optimal_discounted_cost: 28.39366298236964,
-    expected_optimal_first_action: 2,
-    expected_base_stock_discounted_cost: 28.39366298236964,
-    expected_base_stock_first_action: 2,
-    expected_lead_time_mean_cover_discounted_cost: 28.91224647176473,
-    expected_lead_time_mean_cover_first_action: 3,
     notes: "Repo-native exact verifier on a reduced repairable spare-parts instance. The state is small enough for routine finite-horizon DP while preserving installed-base failures, repair returns, and procurement decisions.",
 };

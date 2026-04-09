@@ -69,12 +69,6 @@ pub struct ExactVerificationReference {
     pub markdown_threshold: usize,
     pub high_price_index: usize,
     pub low_price_index: usize,
-    pub expected_optimal_discounted_cost: f64,
-    pub expected_optimal_first_action: (usize, usize),
-    pub expected_static_discounted_cost: f64,
-    pub expected_static_first_action: (usize, usize),
-    pub expected_inventory_sensitive_discounted_cost: f64,
-    pub expected_inventory_sensitive_first_action: (usize, usize),
     pub notes: &'static str,
 }
 
@@ -180,11 +174,5 @@ pub const VERIFICATION_PROBLEM_INSTANCE: ExactVerificationReference = ExactVerif
     markdown_threshold: 3,
     high_price_index: 2,
     low_price_index: 0,
-    expected_optimal_discounted_cost: -33.178121049724,
-    expected_optimal_first_action: (2, 1),
-    expected_static_discounted_cost: -32.50820139235,
-    expected_static_first_action: (2, 1),
-    expected_inventory_sensitive_discounted_cost: -27.594377111812527,
-    expected_inventory_sensitive_first_action: (2, 2),
     notes: "Repo-native exact verifier on a reduced joint pricing-inventory instance with a small discrete price ladder and price-specific demand distributions. This keeps the coupled order-price action while making exact finite-horizon DP feasible for regression tests.",
 };

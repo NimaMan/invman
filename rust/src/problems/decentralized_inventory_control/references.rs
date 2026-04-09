@@ -93,12 +93,6 @@ pub struct ExactVerificationReference {
     pub sterman_target_positions: &'static [f64],
     pub sterman_adjustment_times: &'static [f64],
     pub sterman_supply_line_weights: &'static [f64],
-    pub expected_optimal_discounted_cost: f64,
-    pub expected_optimal_first_action: &'static [usize],
-    pub expected_base_stock_discounted_cost: f64,
-    pub expected_base_stock_first_action: &'static [usize],
-    pub expected_sterman_discounted_cost: f64,
-    pub expected_sterman_first_action: &'static [usize],
     pub notes: &'static str,
 }
 
@@ -211,11 +205,5 @@ pub const VERIFICATION_PROBLEM_INSTANCE: ExactVerificationReference = ExactVerif
     sterman_target_positions: &[4.0, 4.0],
     sterman_adjustment_times: &[1.0, 1.0],
     sterman_supply_line_weights: &[1.0, 1.0],
-    expected_optimal_discounted_cost: 3.9601249999999997,
-    expected_optimal_first_action: &[0, 0],
-    expected_base_stock_discounted_cost: 6.420275,
-    expected_base_stock_first_action: &[0, 2],
-    expected_sterman_discounted_cost: 6.6653,
-    expected_sterman_first_action: &[2, 4],
     notes: "Repo-native exact verifier on a reduced two-agent Beer-Game-shaped serial chain. The instance keeps local forecasts and positive lead times but stays small enough for routine finite-horizon DP assertions.",
 };

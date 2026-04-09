@@ -78,12 +78,6 @@ pub struct ExactVerificationReference {
     pub retailer_base_stock_level: usize,
     pub dc_reserve_base_stock_level: usize,
     pub dc_reserve_quantity: usize,
-    pub expected_optimal_discounted_cost: f64,
-    pub expected_optimal_first_action: usize,
-    pub expected_retailer_base_stock_discounted_cost: f64,
-    pub expected_retailer_base_stock_first_action: usize,
-    pub expected_dc_reserve_base_stock_discounted_cost: f64,
-    pub expected_dc_reserve_base_stock_first_action: usize,
     pub notes: &'static str,
 }
 
@@ -164,11 +158,5 @@ pub const VERIFICATION_PROBLEM_INSTANCE: ExactVerificationReference = ExactVerif
     retailer_base_stock_level: 3,
     dc_reserve_base_stock_level: 4,
     dc_reserve_quantity: 1,
-    expected_optimal_discounted_cost: 13.59747009224256,
-    expected_optimal_first_action: 3,
-    expected_retailer_base_stock_discounted_cost: 16.663512633478277,
-    expected_retailer_base_stock_first_action: 1,
-    expected_dc_reserve_base_stock_discounted_cost: 14.30075222445595,
-    expected_dc_reserve_base_stock_first_action: 2,
     notes: "Repo-native exact verifier on a reduced single-retailer VMI instance with a small discrete demand support. It preserves the DC stock constraint, one-period shipment pipeline, and vendor-controlled replenishment action while keeping the finite-horizon DP small enough for exact regression tests.",
 };

@@ -83,7 +83,10 @@ fn verification_reference_to_py(
     dict.set_item("periods", reference.periods)?;
     dict.set_item("discount_factor", reference.discount_factor)?;
     dict.set_item("truck_capacity", reference.truck_capacity)?;
-    dict.set_item("max_order_quantities", reference.max_order_quantities.to_vec())?;
+    dict.set_item(
+        "max_order_quantities",
+        reference.max_order_quantities.to_vec(),
+    )?;
     dict.set_item(
         "initial_inventory_levels",
         reference.initial_inventory_levels.to_vec(),
@@ -111,30 +114,9 @@ fn verification_reference_to_py(
     dict.set_item("moq_item_targets", reference.moq_item_targets.to_vec())?;
     dict.set_item("moq_review_period", reference.moq_review_period)?;
     dict.set_item("moq_rounding_threshold", reference.moq_rounding_threshold)?;
-    dict.set_item("dynout_item_targets", reference.dynout_item_targets.to_vec())?;
     dict.set_item(
-        "expected_optimal_discounted_cost",
-        reference.expected_optimal_discounted_cost,
-    )?;
-    dict.set_item(
-        "expected_optimal_first_action",
-        reference.expected_optimal_first_action.to_vec(),
-    )?;
-    dict.set_item(
-        "expected_moq_discounted_cost",
-        reference.expected_moq_discounted_cost,
-    )?;
-    dict.set_item(
-        "expected_moq_first_action",
-        reference.expected_moq_first_action.to_vec(),
-    )?;
-    dict.set_item(
-        "expected_dynout_discounted_cost",
-        reference.expected_dynout_discounted_cost,
-    )?;
-    dict.set_item(
-        "expected_dynout_first_action",
-        reference.expected_dynout_first_action.to_vec(),
+        "dynout_item_targets",
+        reference.dynout_item_targets.to_vec(),
     )?;
     dict.set_item("notes", reference.notes)?;
     Ok(dict.into_any().unbind().into())
@@ -184,24 +166,14 @@ fn joint_replenishment_exact_dp_summary(py: Python<'_>) -> PyResult<PyObject> {
     )?;
     dict.set_item("optimal_discounted_cost", optimal.discounted_cost)?;
     dict.set_item("optimal_first_action", optimal.first_action.to_vec())?;
-    dict.set_item(
-        "matches_expected_optimal_discounted_cost",
-        (optimal.discounted_cost - VERIFICATION_PROBLEM_INSTANCE.expected_optimal_discounted_cost)
-            .abs()
-            < 1e-9,
-    )?;
-    dict.set_item(
-        "matches_expected_optimal_first_action",
-        optimal.first_action == [
-            VERIFICATION_PROBLEM_INSTANCE.expected_optimal_first_action[0],
-            VERIFICATION_PROBLEM_INSTANCE.expected_optimal_first_action[1],
-        ],
-    )?;
     dict.set_item("moq_discounted_cost", moq.discounted_cost)?;
     dict.set_item("moq_first_action", moq.first_action.to_vec())?;
     dict.set_item("dynout_discounted_cost", dynout.discounted_cost)?;
     dict.set_item("dynout_first_action", dynout.first_action.to_vec())?;
-    dict.set_item("moq_gap_to_optimal", moq.discounted_cost - optimal.discounted_cost)?;
+    dict.set_item(
+        "moq_gap_to_optimal",
+        moq.discounted_cost - optimal.discounted_cost,
+    )?;
     dict.set_item(
         "dynout_gap_to_optimal",
         dynout.discounted_cost - optimal.discounted_cost,

@@ -62,12 +62,6 @@ pub struct ExactVerificationReference {
     pub demand_support: &'static [u32],
     pub demand_probabilities: &'static [f64],
     pub max_order_quantity: usize,
-    pub expected_optimal_discounted_cost: f64,
-    pub expected_optimal_first_action: usize,
-    pub expected_linear_inflation_discounted_cost: f64,
-    pub expected_linear_inflation_first_action: usize,
-    pub expected_weighted_newsvendor_discounted_cost: f64,
-    pub expected_weighted_newsvendor_first_action: usize,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -331,10 +325,4 @@ pub const VERIFICATION_PROBLEM_INSTANCE: ExactVerificationReference = ExactVerif
     demand_support: VERIFICATION_DEMAND_SUPPORT,
     demand_probabilities: VERIFICATION_DEMAND_PROBABILITIES,
     max_order_quantity: 8,
-    expected_optimal_discounted_cost: 40.05989760985441,
-    expected_optimal_first_action: 4,
-    expected_linear_inflation_discounted_cost: 47.71379457283354,
-    expected_linear_inflation_first_action: 4,
-    expected_weighted_newsvendor_discounted_cost: 60.3935751430189,
-    expected_weighted_newsvendor_first_action: 8,
 };

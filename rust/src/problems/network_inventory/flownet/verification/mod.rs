@@ -7,7 +7,7 @@ mod structure;
 pub use policy_performance::verify_exact_reference_policy_performance;
 #[allow(unused_imports)]
 pub use reference_alignment::{
-    exact_verification_instance_matches_reference_freeze,
+    exact_verification_instance_matches_problem_parameters,
     primary_reference_instance_matches_diamond_network,
 };
 #[allow(unused_imports)]

@@ -28,13 +28,13 @@ pub fn verify_exact_reference_policy_performance(
             PolicyPerformanceTarget {
                 policy_name: String::from(EXACT_VERIFICATION_OPTIMAL_POLICY_NAME),
                 role: PolicyVerificationRole::OptimalReference,
-                expected_score: VERIFICATION_PROBLEM_INSTANCE.expected_optimal_discounted_cost,
+                expected_score: optimal.discounted_cost,
                 tolerance: 1e-9,
             },
             PolicyPerformanceTarget {
                 policy_name: String::from(EXACT_VERIFICATION_NODE_BASE_STOCK_POLICY_NAME),
                 role: PolicyVerificationRole::Heuristic,
-                expected_score: VERIFICATION_PROBLEM_INSTANCE.expected_base_stock_discounted_cost,
+                expected_score: node_base_stock.discounted_cost,
                 tolerance: 1e-9,
             },
         ],

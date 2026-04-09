@@ -3,19 +3,128 @@ use pyo3::types::PyDict;
 use pyo3::wrap_pyfunction;
 
 use crate::core::policies::soft_tree::{build_action_spec, parse_leaf_type, parse_split_type};
-use crate::problems::procurement_removal_inventory::demand::{
-    parse_demand_distribution_kind,
-};
+use crate::problems::procurement_removal_inventory::demand::parse_demand_distribution_kind;
 use crate::problems::procurement_removal_inventory::env::{
     build_raw_state, initialize_state, step_state,
+};
+use crate::problems::procurement_removal_inventory::finite_horizon_dp::{
+    evaluate_named_heuristic, solve_optimal_policy,
 };
 use crate::problems::procurement_removal_inventory::heuristics::{
     interval_stock_action, policy_rollout, policy_rollout_from_demands,
     returnability_buffer_interval_stock_action, simulate_policy, PolicySimulationSummary,
 };
+use crate::problems::procurement_removal_inventory::references::{
+    ExactVerificationReference, ProcurementRemovalReferenceInstance, PRIMARY_REFERENCE_INSTANCE,
+    VERIFICATION_PROBLEM_INSTANCE,
+};
 use crate::problems::procurement_removal_inventory::rollout::{
     population_rollout, rollout, rollout_from_demands, ProcurementRemovalRolloutConfig,
 };
+
+fn primary_reference_to_py(
+    py: Python<'_>,
+    reference: &ProcurementRemovalReferenceInstance,
+) -> PyResult<PyObject> {
+    let dict = PyDict::new_bound(py);
+    dict.set_item("name", reference.name)?;
+    dict.set_item("source", reference.source)?;
+    dict.set_item("url", reference.url)?;
+    dict.set_item("periods", reference.periods)?;
+    dict.set_item(
+        "demand_distribution_kind",
+        reference.demand_distribution_kind,
+    )?;
+    dict.set_item("demand_mean", reference.demand_mean)?;
+    dict.set_item("initial_inventory_level", reference.initial_inventory_level)?;
+    dict.set_item(
+        "initial_returnable_inventory",
+        reference.initial_returnable_inventory,
+    )?;
+    dict.set_item("returnable_purchase_cap", reference.returnable_purchase_cap)?;
+    dict.set_item("purchase_cost_per_unit", reference.purchase_cost_per_unit)?;
+    dict.set_item("return_value_per_unit", reference.return_value_per_unit)?;
+    dict.set_item(
+        "liquidation_value_per_unit",
+        reference.liquidation_value_per_unit,
+    )?;
+    dict.set_item("holding_cost_per_unit", reference.holding_cost_per_unit)?;
+    dict.set_item("shortage_cost_per_unit", reference.shortage_cost_per_unit)?;
+    dict.set_item("max_purchase_quantity", reference.max_purchase_quantity)?;
+    dict.set_item("max_removal_quantity", reference.max_removal_quantity)?;
+    dict.set_item("benchmark_order_up_to", reference.benchmark_order_up_to)?;
+    dict.set_item(
+        "benchmark_remove_down_to",
+        reference.benchmark_remove_down_to,
+    )?;
+    dict.set_item(
+        "benchmark_returnable_buffer",
+        reference.benchmark_returnable_buffer,
+    )?;
+    dict.set_item("literature_verified", false)?;
+    dict.set_item(
+        "verification_source",
+        "repo_exact_solver_not_verified_against_literature",
+    )?;
+    dict.set_item("notes", reference.notes)?;
+    Ok(dict.into_any().unbind().into())
+}
+
+fn verification_reference_to_py(
+    py: Python<'_>,
+    reference: &ExactVerificationReference,
+) -> PyResult<PyObject> {
+    let dict = PyDict::new_bound(py);
+    dict.set_item("source", reference.source)?;
+    dict.set_item("url", reference.url)?;
+    dict.set_item("literature_verified", false)?;
+    dict.set_item(
+        "verification_source",
+        "repo_exact_solver_not_verified_against_literature",
+    )?;
+    dict.set_item("periods", reference.periods)?;
+    dict.set_item("discount_factor", reference.discount_factor)?;
+    dict.set_item("initial_inventory_level", reference.initial_inventory_level)?;
+    dict.set_item(
+        "initial_returnable_inventory",
+        reference.initial_returnable_inventory,
+    )?;
+    dict.set_item("returnable_purchase_cap", reference.returnable_purchase_cap)?;
+    dict.set_item("purchase_cost_per_unit", reference.purchase_cost_per_unit)?;
+    dict.set_item("return_value_per_unit", reference.return_value_per_unit)?;
+    dict.set_item(
+        "liquidation_value_per_unit",
+        reference.liquidation_value_per_unit,
+    )?;
+    dict.set_item("holding_cost_per_unit", reference.holding_cost_per_unit)?;
+    dict.set_item("shortage_cost_per_unit", reference.shortage_cost_per_unit)?;
+    dict.set_item("demand_support", reference.demand_support.to_vec())?;
+    dict.set_item(
+        "demand_probabilities",
+        reference.demand_probabilities.to_vec(),
+    )?;
+    dict.set_item("max_purchase_quantity", reference.max_purchase_quantity)?;
+    dict.set_item("max_removal_quantity", reference.max_removal_quantity)?;
+    dict.set_item(
+        "interval_stock_order_up_to",
+        reference.interval_stock_order_up_to,
+    )?;
+    dict.set_item(
+        "interval_stock_remove_down_to",
+        reference.interval_stock_remove_down_to,
+    )?;
+    dict.set_item(
+        "returnability_buffer_order_up_to",
+        reference.returnability_buffer_order_up_to,
+    )?;
+    dict.set_item(
+        "returnability_buffer_remove_down_to",
+        reference.returnability_buffer_remove_down_to,
+    )?;
+    dict.set_item("returnability_buffer", reference.returnability_buffer)?;
+    dict.set_item("notes", reference.notes)?;
+    Ok(dict.into_any().unbind().into())
+}
 
 fn build_rollout_config(
     input_dim: usize,
@@ -62,13 +171,69 @@ fn build_rollout_config(
     })
 }
 
-fn simulation_summary_to_py(py: Python<'_>, summary: &PolicySimulationSummary) -> PyResult<PyObject> {
+fn simulation_summary_to_py(
+    py: Python<'_>,
+    summary: &PolicySimulationSummary,
+) -> PyResult<PyObject> {
     let dict = PyDict::new_bound(py);
     dict.set_item("mean_discounted_cost", summary.mean_discounted_cost)?;
     dict.set_item("std_discounted_cost", summary.std_discounted_cost)?;
     dict.set_item("min_discounted_cost", summary.min_discounted_cost)?;
     dict.set_item("max_discounted_cost", summary.max_discounted_cost)?;
     dict.set_item("num_seeds", summary.num_seeds)?;
+    Ok(dict.into_any().unbind().into())
+}
+
+#[pyfunction]
+fn procurement_removal_inventory_primary_reference_instance(py: Python<'_>) -> PyResult<PyObject> {
+    primary_reference_to_py(py, &PRIMARY_REFERENCE_INSTANCE)
+}
+
+#[pyfunction]
+fn procurement_removal_inventory_exact_verification_instance(py: Python<'_>) -> PyResult<PyObject> {
+    verification_reference_to_py(py, &VERIFICATION_PROBLEM_INSTANCE)
+}
+
+#[pyfunction]
+fn procurement_removal_inventory_exact_dp_summary(py: Python<'_>) -> PyResult<PyObject> {
+    let optimal = solve_optimal_policy(&VERIFICATION_PROBLEM_INSTANCE)?;
+    let interval = evaluate_named_heuristic(&VERIFICATION_PROBLEM_INSTANCE, "interval_stock")?;
+    let buffer = evaluate_named_heuristic(
+        &VERIFICATION_PROBLEM_INSTANCE,
+        "returnability_buffer_interval_stock",
+    )?;
+
+    let dict = PyDict::new_bound(py);
+    dict.set_item(
+        "verification_reference",
+        verification_reference_to_py(py, &VERIFICATION_PROBLEM_INSTANCE)?,
+    )?;
+    dict.set_item("optimal_discounted_cost", optimal.discounted_cost)?;
+    dict.set_item(
+        "optimal_first_action",
+        (optimal.first_action.0, optimal.first_action.1),
+    )?;
+    dict.set_item("interval_stock_discounted_cost", interval.discounted_cost)?;
+    dict.set_item(
+        "interval_stock_first_action",
+        (interval.first_action.0, interval.first_action.1),
+    )?;
+    dict.set_item(
+        "returnability_buffer_discounted_cost",
+        buffer.discounted_cost,
+    )?;
+    dict.set_item(
+        "returnability_buffer_first_action",
+        (buffer.first_action.0, buffer.first_action.1),
+    )?;
+    dict.set_item(
+        "interval_stock_gap_to_optimal",
+        interval.discounted_cost - optimal.discounted_cost,
+    )?;
+    dict.set_item(
+        "returnability_buffer_gap_to_optimal",
+        buffer.discounted_cost - optimal.discounted_cost,
+    )?;
     Ok(dict.into_any().unbind().into())
 }
 
@@ -206,7 +371,7 @@ fn procurement_removal_inventory_returnability_buffer_interval_stock_action(
     discount_factor=0.99,
     temperature=0.25,
     split_type="oblique",
-    leaf_type="constant",
+    leaf_type="linear",
     allowed_values=None
 ))]
 fn procurement_removal_inventory_soft_tree_rollout(
@@ -288,7 +453,7 @@ fn procurement_removal_inventory_soft_tree_rollout(
     discount_factor=0.99,
     temperature=0.25,
     split_type="oblique",
-    leaf_type="constant",
+    leaf_type="linear",
     allowed_values=None
 ))]
 fn procurement_removal_inventory_soft_tree_population_rollout(
@@ -368,7 +533,7 @@ fn procurement_removal_inventory_soft_tree_population_rollout(
     discount_factor=0.99,
     temperature=0.25,
     split_type="oblique",
-    leaf_type="constant",
+    leaf_type="linear",
     allowed_values=None
 ))]
 fn procurement_removal_inventory_soft_tree_rollout_from_demands(
@@ -597,6 +762,18 @@ fn procurement_removal_inventory_policy_rollout_from_demands(
 }
 
 pub fn register_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add_function(wrap_pyfunction!(
+        procurement_removal_inventory_primary_reference_instance,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        procurement_removal_inventory_exact_verification_instance,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        procurement_removal_inventory_exact_dp_summary,
+        m
+    )?)?;
     m.add_function(wrap_pyfunction!(
         procurement_removal_inventory_build_raw_state,
         m
