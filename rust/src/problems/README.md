@@ -114,6 +114,15 @@ Reference and verification rule:
 - in that case the problem should use a repo-native exact solver instance for implementation
   verification and label it explicitly as `not literature-verified`
 
+Algorithm-row rule:
+
+- `literature_verified` applies to repo exact algorithms and repo heuristic implementations
+- that label means the repo implementation has at least one public literature benchmark anchor with
+  matching reported numbers for that algorithm family
+- published learned-policy rows from papers, such as PPO or A3C, should be carried as published
+  rows, not labeled as `literature_verified` repo algorithms
+- experiment reports should separate published paper numbers from repo reproduced absolute costs
+
 Every new problem family must have:
 
 - a canonical literature interpretation

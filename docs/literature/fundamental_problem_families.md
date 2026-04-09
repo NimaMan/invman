@@ -37,6 +37,15 @@ New problem families should be prioritized when they satisfy all four conditions
 - they admit at least one verification anchor: either exact published numbers, or a small
   deterministic worked instance if the paper does not publish exact costs
 
+Verification-label rule:
+
+- `literature_verified` is meant for repo exact algorithms and repo heuristic implementations
+- published policy rows from papers should be carried as published rows, not marked as verified repo
+  algorithms
+- benchmark tables should distinguish clearly between:
+  - published literature numbers
+  - repo reproduced numbers
+
 That rule changes the implementation order slightly from a pure OR taxonomy. We want to add one new
 axis at a time.
 
