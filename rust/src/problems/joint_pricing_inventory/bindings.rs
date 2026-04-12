@@ -14,7 +14,7 @@ use crate::problems::joint_pricing_inventory::heuristics::{
     inventory_sensitive_base_stock_action, policy_rollout_from_demands, simulate_policy,
     static_price_base_stock_action, PolicySimulationSummary,
 };
-use crate::problems::joint_pricing_inventory::references::{
+use crate::problems::joint_pricing_inventory::literature::{
     ExactVerificationReference, JointPricingInventoryReferenceInstance, PRIMARY_REFERENCE_INSTANCE,
     VERIFICATION_PROBLEM_INSTANCE,
 };

@@ -189,8 +189,7 @@ pub fn simulate_policy(
         discounted_costs.push(discounted_cost);
     }
 
-    let mean_discounted_cost =
-        discounted_costs.iter().sum::<f64>() / discounted_costs.len() as f64;
+    let mean_discounted_cost = discounted_costs.iter().sum::<f64>() / discounted_costs.len() as f64;
     let variance = discounted_costs
         .iter()
         .map(|value| (value - mean_discounted_cost).powi(2))

@@ -8,7 +8,7 @@ use crate::problems::joint_pricing_inventory::finite_horizon_dp::{
 use crate::problems::joint_pricing_inventory::heuristics::{
     inventory_sensitive_base_stock_action, static_price_base_stock_action,
 };
-use crate::problems::joint_pricing_inventory::references::{
+use crate::problems::joint_pricing_inventory::literature::{
     PRIMARY_REFERENCE_INSTANCE, QIN_2022_REFERENCE, VERIFICATION_PROBLEM_INSTANCE,
     WORKED_TRANSITION_REFERENCE, ZHOU_2022_REFERENCE,
 };

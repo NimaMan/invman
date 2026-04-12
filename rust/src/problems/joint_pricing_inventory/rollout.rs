@@ -11,7 +11,7 @@ use crate::problems::joint_pricing_inventory::demand::{
     sample_demand, validate_price_ladder, DemandDistributionKind,
 };
 use crate::problems::joint_pricing_inventory::env::{
-    build_policy_state, clip_action, initialize_state, step_state, terminal_salvage_credit,
+    build_raw_state, clip_action, initialize_state, step_state, terminal_salvage_credit,
     JointPricingInventoryState,
 };
 
@@ -50,15 +50,54 @@ fn validate_config(config: &JointPricingInventoryRolloutConfig) -> PyResult<()> 
         return Err(PyValueError::new_err("periods must be at least 1"));
     }
     if !(0.0..=1.0).contains(&config.discount_factor) {
-        return Err(PyValueError::new_err(
-            "discount_factor must lie in [0, 1]",
-        ));
+        return Err(PyValueError::new_err("discount_factor must lie in [0, 1]"));
     }
     validate_price_ladder(&config.price_levels, &config.demand_means)
 }
 
 pub fn build_initial_state(inventory_level: usize) -> PyResult<JointPricingInventoryState> {
     initialize_state(inventory_level)
+}
+
+fn policy_state(
+    state: &JointPricingInventoryState,
+    price_levels: &[f64],
+    demand_means: &[f64],
+    periods: usize,
+    max_order_quantity: usize,
+) -> PyResult<Vec<f32>> {
+    validate_price_ladder(price_levels, demand_means)?;
+    let raw_state = build_raw_state(state);
+    let inventory_level = raw_state[0];
+    let period = raw_state[1] as usize;
+    let max_demand_mean = demand_means
+        .iter()
+        .copied()
+        .fold(0.0_f64, |acc, value| acc.max(value));
+    let mean_demand_mean = demand_means.iter().sum::<f64>() / demand_means.len() as f64;
+    let scale = (inventory_level as usize)
+        .max(max_order_quantity)
+        .max(max_demand_mean.ceil() as usize)
+        .max(1) as f32;
+    let price_scale = price_levels
+        .iter()
+        .copied()
+        .fold(0.0_f64, |acc, value| acc.max(value))
+        .max(1.0) as f32;
+    let remaining_fraction = if periods == 0 {
+        0.0
+    } else {
+        (periods.saturating_sub(period) as f32) / periods as f32
+    };
+    Ok(vec![
+        inventory_level / scale,
+        demand_means[0] as f32 / scale,
+        demand_means[demand_means.len() - 1] as f32 / scale,
+        mean_demand_mean as f32 / scale,
+        price_levels[0] as f32 / price_scale,
+        price_levels[price_levels.len() - 1] as f32 / price_scale,
+        remaining_fraction,
+    ])
 }
 
 pub fn rollout(
@@ -73,7 +112,7 @@ pub fn rollout(
     let mut discounted_cost = 0.0;
 
     for period in 0..config.periods {
-        let policy_state = build_policy_state(
+        let policy_state = policy_state(
             &state,
             &config.price_levels,
             &config.demand_means,
@@ -96,8 +135,12 @@ pub fn rollout(
             config.max_order_quantity,
             config.price_levels.len(),
         )?;
-        let realized_demand =
-            sample_demand(&mut rng, price_index, &config.demand_means, config.demand_kind)?;
+        let realized_demand = sample_demand(
+            &mut rng,
+            price_index,
+            &config.demand_means,
+            config.demand_kind,
+        )?;
         let outcome = step_state(
             &state,
             order_quantity,
@@ -149,7 +192,7 @@ pub fn rollout_from_demands(
     let mut state = initial_state.clone();
     let mut discounted_cost = 0.0;
     for (period, demand) in demands.iter().copied().enumerate() {
-        let policy_state = build_policy_state(
+        let policy_state = policy_state(
             &state,
             &config.price_levels,
             &config.demand_means,

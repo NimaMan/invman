@@ -9,7 +9,7 @@ use crate::problems::joint_pricing_inventory::env::{
 use crate::problems::joint_pricing_inventory::heuristics::{
     inventory_sensitive_base_stock_action, static_price_base_stock_action,
 };
-use crate::problems::joint_pricing_inventory::references::ExactVerificationReference;
+use crate::problems::joint_pricing_inventory::literature::ExactVerificationReference;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 struct ExactStateKey {
@@ -55,9 +55,7 @@ fn validate_exact_reference(reference: &ExactVerificationReference) -> PyResult<
         }
     }
     if !(0.0..=1.0).contains(&reference.discount_factor) {
-        return Err(PyValueError::new_err(
-            "discount_factor must lie in [0, 1]",
-        ));
+        return Err(PyValueError::new_err("discount_factor must lie in [0, 1]"));
     }
     Ok(())
 }
@@ -225,8 +223,7 @@ fn evaluate_heuristic_from_state(
             cache,
         )?;
         expected_cost += probability
-            * (outcome.period_cost
-                + reference.discount_factor * continuation.discounted_cost);
+            * (outcome.period_cost + reference.discount_factor * continuation.discounted_cost);
     }
 
     let result = ExactPolicyEvaluation {

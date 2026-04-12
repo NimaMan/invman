@@ -39,7 +39,10 @@ pub fn validate_costs(
         stockout_cost_per_unit,
         salvage_value_per_unit,
     ];
-    if values.iter().any(|value| !value.is_finite() || *value < 0.0) {
+    if values
+        .iter()
+        .any(|value| !value.is_finite() || *value < 0.0)
+    {
         return Err(PyValueError::new_err(
             "all costs and salvage values must be finite and non-negative",
         ));
@@ -54,43 +57,8 @@ pub fn initialize_state(inventory_level: usize) -> PyResult<JointPricingInventor
     })
 }
 
-pub fn build_policy_state(
-    state: &JointPricingInventoryState,
-    price_levels: &[f64],
-    demand_means: &[f64],
-    periods: usize,
-    max_order_quantity: usize,
-) -> PyResult<Vec<f32>> {
-    validate_price_ladder(price_levels, demand_means)?;
-    let max_demand_mean = demand_means
-        .iter()
-        .copied()
-        .fold(0.0_f64, |acc, value| acc.max(value));
-    let mean_demand_mean = demand_means.iter().sum::<f64>() / demand_means.len() as f64;
-    let scale = state
-        .inventory_level
-        .max(max_order_quantity)
-        .max(max_demand_mean.ceil() as usize)
-        .max(1) as f32;
-    let price_scale = price_levels
-        .iter()
-        .copied()
-        .fold(0.0_f64, |acc, value| acc.max(value))
-        .max(1.0) as f32;
-    let remaining_fraction = if periods == 0 {
-        0.0
-    } else {
-        (periods.saturating_sub(state.period) as f32) / periods as f32
-    };
-    Ok(vec![
-        state.inventory_level as f32 / scale,
-        demand_means[0] as f32 / scale,
-        demand_means[demand_means.len() - 1] as f32 / scale,
-        mean_demand_mean as f32 / scale,
-        price_levels[0] as f32 / price_scale,
-        price_levels[price_levels.len() - 1] as f32 / price_scale,
-        remaining_fraction,
-    ])
+pub fn build_raw_state(state: &JointPricingInventoryState) -> Vec<f32> {
+    vec![state.inventory_level as f32, state.period as f32]
 }
 
 pub fn clip_action(

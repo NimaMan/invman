@@ -28,7 +28,10 @@ pub fn validate_price_ladder(price_levels: &[f64], demand_means: &[f64]) -> PyRe
             "price_levels and demand_means must have the same length",
         ));
     }
-    if price_levels.iter().any(|price| !price.is_finite() || *price <= 0.0) {
+    if price_levels
+        .iter()
+        .any(|price| !price.is_finite() || *price <= 0.0)
+    {
         return Err(PyValueError::new_err(
             "price_levels must be finite and strictly positive",
         ));

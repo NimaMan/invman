@@ -135,6 +135,9 @@ Current literature-verified package anchors:
   - executable heuristic reproduction for the standard benchmark heuristics currently covers
     `myopic1`, `myopic2`, and `svbs`
   - not every carried literature row in that family is executable or verified
+- `dual_sourcing`
+  - the bounded-DP benchmark layer reproduces the published Gijsbrechts et al. (2022) Figure 9
+    optimality-gap labels for the carried six-instance family
 - `lost_sales_fixed_order_cost`
   - the Rust exact solver and exact heuristic evaluators reproduce the published Bijvank et al.
     (2015) Table 1 validation instance
