@@ -300,6 +300,56 @@ def test_build_policy_supports_structured_dual_sourcing_tree():
     assert model.control_dim == 3
 
 
+def test_build_policy_supports_factorized_dual_index_tree():
+    env = DualSourcingEnv(horizon=10, track_demand=True)
+    args = _make_args("soft_tree_dual_index_delta_targets")
+    args.problem = "dual_sourcing"
+    model = build_policy(args, env)
+    assert isinstance(model, SoftTreePolicy)
+    assert model.action_adapter == "dual_sourcing_dual_index_delta_targets"
+    assert model.action_dim == 2
+    assert model.control_dim == 2
+    assert model.control_mode == "discrete_grid"
+
+
+def test_build_policy_supports_factorized_capped_dual_sourcing_tree():
+    env = DualSourcingEnv(horizon=10, track_demand=True)
+    args = _make_args("soft_tree_capped_dual_index_delta_targets")
+    args.problem = "dual_sourcing"
+    model = build_policy(args, env)
+    assert isinstance(model, SoftTreePolicy)
+    assert model.action_adapter == "dual_sourcing_capped_dual_index_delta_targets"
+    assert model.action_dim == 2
+    assert model.control_dim == 3
+
+
+def test_build_policy_supports_smallcap_factorized_capped_dual_sourcing_tree():
+    env = DualSourcingEnv(horizon=10, track_demand=True)
+    args = _make_args("soft_tree_capped_dual_index_delta_smallcap_targets")
+    args.problem = "dual_sourcing"
+    model = build_policy(args, env)
+    assert isinstance(model, SoftTreePolicy)
+    assert model.action_adapter == "dual_sourcing_capped_dual_index_delta_smallcap_targets"
+    assert model.action_dim == 2
+    assert model.control_dim == 3
+    assert model.control_mode == "discrete_grid"
+    assert model.control_spec["allowed_values"][2] == [1, 2, 3, 4, 6, 8, 12]
+
+
+def test_build_policy_supports_axis_constant_smallcap_factorized_capped_dual_sourcing_tree():
+    env = DualSourcingEnv(horizon=10, track_demand=True)
+    args = _make_args("soft_tree_axis_constant_capped_dual_index_delta_smallcap_targets")
+    args.problem = "dual_sourcing"
+    model = build_policy(args, env)
+    assert isinstance(model, SoftTreePolicy)
+    assert model.action_adapter == "dual_sourcing_capped_dual_index_delta_smallcap_targets"
+    assert model.action_dim == 2
+    assert model.control_dim == 3
+    assert model.control_mode == "discrete_grid"
+    assert model.split_type == "axis_aligned"
+    assert model.leaf_type == "constant"
+
+
 def test_build_policy_supports_structured_dual_sourcing_nn():
     env = DualSourcingEnv(horizon=10, track_demand=True)
     args = _make_args(

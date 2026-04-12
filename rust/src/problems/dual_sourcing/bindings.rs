@@ -11,11 +11,11 @@ use crate::problems::dual_sourcing::heuristics::{
     search_capped_dual_index_from_demands, search_dual_index_from_demands,
     search_single_index_from_demands, search_tailored_base_surge_from_demands,
 };
-use crate::problems::dual_sourcing::policies::parse_action_adapter;
-use crate::problems::dual_sourcing::references::{
+use crate::problems::dual_sourcing::literature::{
     get_figure_9_gap_reference, get_primary_reference_instance, get_reference_instance,
     list_reference_instances, DualSourcingReferenceInstance,
 };
+use crate::problems::dual_sourcing::policies::parse_action_adapter;
 use crate::problems::dual_sourcing::rollout::{
     population_rollout as dual_sourcing_population_rollout, rollout as dual_sourcing_rollout,
     rollout_from_demands as dual_sourcing_rollout_from_demands, DualSourcingRolloutConfig,
@@ -39,7 +39,11 @@ fn bounded_dp_config(
     }
 }
 
-fn deterministic_initial_state(regular_lead_time: usize, demand_low: usize, demand_high: usize) -> Vec<i64> {
+fn deterministic_initial_state(
+    regular_lead_time: usize,
+    demand_low: usize,
+    demand_high: usize,
+) -> Vec<i64> {
     let mean_demand = 0.5 * (demand_low + demand_high) as f64;
     let mut state = vec![((regular_lead_time + 1) as f64 * mean_demand).round() as i64];
     state.extend(vec![0; regular_lead_time.saturating_sub(1)]);
@@ -61,14 +65,20 @@ fn reference_instance_to_py(
     dict.set_item("holding_cost", instance.holding_cost)?;
     dict.set_item("shortage_cost", instance.shortage_cost)?;
     dict.set_item("regular_max_order_size", instance.regular_max_order_size)?;
-    dict.set_item("expedited_max_order_size", instance.expedited_max_order_size)?;
+    dict.set_item(
+        "expedited_max_order_size",
+        instance.expedited_max_order_size,
+    )?;
     dict.set_item("demand_low", instance.demand_low)?;
     dict.set_item("demand_high", instance.demand_high)?;
-    dict.set_item("initial_state", deterministic_initial_state(
-        instance.regular_lead_time,
-        instance.demand_low,
-        instance.demand_high,
-    ))?;
+    dict.set_item(
+        "initial_state",
+        deterministic_initial_state(
+            instance.regular_lead_time,
+            instance.demand_low,
+            instance.demand_high,
+        ),
+    )?;
     dict.set_item("notes", instance.notes)?;
 
     if let Some(figure_9) = get_figure_9_gap_reference(instance.name) {
@@ -84,6 +94,118 @@ fn reference_instance_to_py(
     } else {
         dict.set_item("published_optimality_gap_pct", py.None())?;
     }
+
+    Ok(dict.into_any().unbind().into())
+}
+
+fn experiment_grid_to_py(
+    py: Python<'_>,
+    grid: &crate::problems::dual_sourcing::experiments::DualSourcingExperimentGrid,
+) -> PyResult<PyObject> {
+    let dict = PyDict::new_bound(py);
+    dict.set_item("name", grid.name)?;
+    dict.set_item("description", grid.description)?;
+    dict.set_item("source", grid.source)?;
+    dict.set_item("url", grid.url)?;
+    dict.set_item(
+        "reference_instance_names",
+        grid.reference_instance_names.to_vec(),
+    )?;
+    dict.set_item("regular_lead_times", grid.regular_lead_times.to_vec())?;
+    dict.set_item("expedited_order_costs", grid.expedited_order_costs.to_vec())?;
+    dict.set_item("regular_order_cost", grid.regular_order_cost)?;
+    dict.set_item("holding_cost", grid.holding_cost)?;
+    dict.set_item("shortage_cost", grid.shortage_cost)?;
+    dict.set_item("demand_low", grid.demand_low)?;
+    dict.set_item("demand_high", grid.demand_high)?;
+    dict.set_item("regular_max_order_size", grid.regular_max_order_size)?;
+    dict.set_item("expedited_max_order_size", grid.expedited_max_order_size)?;
+    dict.set_item("horizon", grid.horizon)?;
+    dict.set_item("eval_horizon", grid.eval_horizon)?;
+    dict.set_item("eval_seeds", grid.eval_seeds)?;
+    dict.set_item("search_seed", grid.search_seed)?;
+    dict.set_item("inventory_lower", grid.inventory_lower)?;
+    dict.set_item("inventory_upper", grid.inventory_upper)?;
+    dict.set_item("solver_tolerance", grid.solver_tolerance)?;
+    dict.set_item("max_iterations", grid.max_iterations)?;
+    dict.set_item("warm_up_periods_ratio", grid.warm_up_periods_ratio)?;
+    dict.set_item("state_features", grid.state_features)?;
+    dict.set_item("notes", grid.notes)?;
+    Ok(dict.into_any().unbind().into())
+}
+
+fn experiment_instance_to_py(
+    py: Python<'_>,
+    instance: &crate::problems::dual_sourcing::experiments::DualSourcingExperimentInstance,
+) -> PyResult<PyObject> {
+    let dict = PyDict::new_bound(py);
+    dict.set_item("name", instance.name.as_str())?;
+    dict.set_item("description", instance.description.as_str())?;
+    dict.set_item("reference_instance_name", instance.reference_instance_name)?;
+    dict.set_item("source", instance.source)?;
+    dict.set_item("url", instance.url)?;
+
+    let params = PyDict::new_bound(py);
+    params.set_item("problem", "dual_sourcing")?;
+    params.set_item("regular_lead_time", instance.regular_lead_time)?;
+    params.set_item("expedited_lead_time", instance.expedited_lead_time)?;
+    params.set_item("regular_order_cost", instance.regular_order_cost)?;
+    params.set_item("expedited_order_cost", instance.expedited_order_cost)?;
+    params.set_item("holding_cost", instance.holding_cost)?;
+    params.set_item("shortage_cost", instance.shortage_cost)?;
+    params.set_item("regular_max_order_size", instance.regular_max_order_size)?;
+    params.set_item(
+        "expedited_max_order_size",
+        instance.expedited_max_order_size,
+    )?;
+    params.set_item("dual_demand_low", instance.demand_low)?;
+    params.set_item("dual_demand_high", instance.demand_high)?;
+    params.set_item("horizon", instance.horizon)?;
+    params.set_item("eval_horizon", instance.eval_horizon)?;
+    params.set_item("eval_seeds", instance.eval_seeds)?;
+    params.set_item("track_demand", true)?;
+    params.set_item("warm_up_periods_ratio", instance.warm_up_periods_ratio)?;
+    params.set_item("state_features", instance.state_features)?;
+    params.set_item("seed", instance.seed)?;
+    dict.set_item("params", params)?;
+
+    let search = PyDict::new_bound(py);
+    search.set_item("inventory_lower", instance.inventory_lower)?;
+    search.set_item("inventory_upper", instance.inventory_upper)?;
+    search.set_item("tolerance", instance.solver_tolerance)?;
+    search.set_item("max_iterations", instance.max_iterations)?;
+    search.set_item("search_seed", instance.seed)?;
+    search.set_item("search_horizon", instance.horizon)?;
+    dict.set_item("search", search)?;
+
+    let evaluation = PyDict::new_bound(py);
+    evaluation.set_item("eval_horizon", instance.eval_horizon)?;
+    evaluation.set_item("eval_seeds", instance.eval_seeds)?;
+    dict.set_item("evaluation", evaluation)?;
+
+    let literature_metadata = PyDict::new_bound(py);
+    literature_metadata.set_item("source", instance.source)?;
+    literature_metadata.set_item("url", instance.url)?;
+    literature_metadata.set_item("literature_verified", instance.literature_verified)?;
+    literature_metadata.set_item(
+        "literature_verification_metric",
+        instance.literature_verification_metric,
+    )?;
+    literature_metadata.set_item("benchmark_family", instance.benchmark_family)?;
+    literature_metadata.set_item("benchmark_policies", instance.benchmark_policies.to_vec())?;
+    literature_metadata.set_item("notes", instance.notes.as_str())?;
+    if let Some(gaps) = get_figure_9_gap_reference(instance.reference_instance_name) {
+        let published = PyDict::new_bound(py);
+        published.set_item("capped_dual_index", gaps.capped_dual_index_gap_pct)?;
+        published.set_item("dual_index", gaps.dual_index_gap_pct)?;
+        published.set_item("single_index", gaps.single_index_gap_pct)?;
+        published.set_item("tailored_base_surge", gaps.tailored_base_surge_gap_pct)?;
+        published.set_item("a3c", gaps.a3c_gap_pct)?;
+        literature_metadata.set_item("published_optimality_gap_pct", published)?;
+    } else {
+        literature_metadata.set_item("published_optimality_gap_pct", py.None())?;
+    }
+    dict.set_item("literature_metadata", literature_metadata)?;
 
     Ok(dict.into_any().unbind().into())
 }
@@ -154,6 +276,35 @@ fn dual_sourcing_get_reference_instance(py: Python<'_>, name: &str) -> PyResult<
         ))
     })?;
     reference_instance_to_py(py, instance)
+}
+
+#[pyfunction]
+fn dual_sourcing_list_experiment_grids(py: Python<'_>) -> PyResult<Vec<PyObject>> {
+    crate::problems::dual_sourcing::experiments::list_experiment_grids()
+        .iter()
+        .map(|grid| experiment_grid_to_py(py, grid))
+        .collect()
+}
+
+#[pyfunction]
+fn dual_sourcing_get_experiment_grid(py: Python<'_>, name: &str) -> PyResult<PyObject> {
+    let grid = crate::problems::dual_sourcing::experiments::get_experiment_grid(name).ok_or_else(
+        || {
+            pyo3::exceptions::PyValueError::new_err(format!(
+                "unknown dual-sourcing experiment grid '{name}'"
+            ))
+        },
+    )?;
+    experiment_grid_to_py(py, grid)
+}
+
+#[pyfunction]
+fn dual_sourcing_expand_experiment_grid(py: Python<'_>, name: &str) -> PyResult<Vec<PyObject>> {
+    crate::problems::dual_sourcing::experiments::expand_experiment_grid(name)
+        .map_err(pyo3::exceptions::PyValueError::new_err)?
+        .iter()
+        .map(|instance| experiment_instance_to_py(py, instance))
+        .collect()
 }
 
 #[pyfunction]
@@ -641,14 +792,11 @@ pub fn register_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
         dual_sourcing_primary_reference_instance_name,
         m
     )?)?;
-    m.add_function(wrap_pyfunction!(
-        dual_sourcing_list_reference_instances,
-        m
-    )?)?;
-    m.add_function(wrap_pyfunction!(
-        dual_sourcing_get_reference_instance,
-        m
-    )?)?;
+    m.add_function(wrap_pyfunction!(dual_sourcing_list_reference_instances, m)?)?;
+    m.add_function(wrap_pyfunction!(dual_sourcing_get_reference_instance, m)?)?;
+    m.add_function(wrap_pyfunction!(dual_sourcing_list_experiment_grids, m)?)?;
+    m.add_function(wrap_pyfunction!(dual_sourcing_get_experiment_grid, m)?)?;
+    m.add_function(wrap_pyfunction!(dual_sourcing_expand_experiment_grid, m)?)?;
     m.add_function(wrap_pyfunction!(
         dual_sourcing_bounded_average_cost_optimal_summary,
         m

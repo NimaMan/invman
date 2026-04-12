@@ -36,13 +36,21 @@ def evaluate_default_heuristics(args):
     return results
 
 
-def benchmark_reference_instance(args, inventory_lower: int = -40, inventory_upper: int = 60):
+def benchmark_reference_instance(
+    args,
+    inventory_lower: int = -40,
+    inventory_upper: int = 60,
+    tolerance: float = 1e-6,
+    max_iterations: int = 200,
+):
     benchmark_args = copy(args)
     heuristic_results = evaluate_default_heuristics(benchmark_args)
     dp_result = solve_bounded_dp(
         benchmark_args,
         inventory_lower=inventory_lower,
         inventory_upper=inventory_upper,
+        tolerance=tolerance,
+        max_iterations=max_iterations,
     )
     return {
         "heuristics": heuristic_results,

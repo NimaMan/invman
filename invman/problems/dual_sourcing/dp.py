@@ -46,6 +46,7 @@ def solve_bounded_dp(
     values = np.zeros(len(state_space), dtype=np.float64)
     policy = {}
     reference_idx = state_to_idx[state_space[0]]
+    gain_estimate = 0.0
 
     for iteration in range(1, max_iterations + 1):
         new_values = np.empty_like(values)
@@ -83,7 +84,10 @@ def solve_bounded_dp(
             new_values[state_idx] = best_cost
             new_policy[state] = best_action
 
+        # Relative value iteration normalizes the bias function by subtracting the
+        # reference-state value; the removed baseline is the current gain estimate.
         baseline = float(new_values[reference_idx])
+        gain_estimate = baseline
         new_values -= baseline
         max_delta = float(np.max(np.abs(new_values - values)))
         values = new_values
@@ -94,18 +98,8 @@ def solve_bounded_dp(
     initial_state = tuple([int(round((regular_lead_time + 1) * 0.5 * (args.dual_demand_low + args.dual_demand_high)))] + [0] * max(0, regular_lead_time - 1))
     if initial_state not in policy:
         initial_state = state_space[0]
-    regular_order, expedited_order = policy[initial_state]
-    average_cost = 0.0
-    for demand in demand_values:
-        end_inventory = int(initial_state[0]) + int(expedited_order) - int(demand)
-        average_cost += demand_prob * (
-            float(args.regular_order_cost) * int(regular_order)
-            + float(args.expedited_order_cost) * int(expedited_order)
-            + float(args.holding_cost) * max(end_inventory, 0)
-            + float(args.shortage_cost) * max(-end_inventory, 0)
-        )
     return BoundedDPResult(
-        average_cost=float(average_cost),
+        average_cost=float(gain_estimate),
         best_action_by_state=policy,
         inventory_bounds=(int(inventory_lower), int(inventory_upper)),
         iterations=int(iteration),

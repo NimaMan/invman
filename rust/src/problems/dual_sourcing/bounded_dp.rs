@@ -10,7 +10,7 @@ use crate::problems::dual_sourcing::heuristics::{
     named_policy_action, search_capped_dual_index_from_demands, search_dual_index_from_demands,
     search_single_index_from_demands, search_tailored_base_surge_from_demands, target_upper_bound,
 };
-use crate::problems::dual_sourcing::references::{
+use crate::problems::dual_sourcing::literature::{
     get_figure_9_gap_reference, get_reference_instance, DualSourcingReferenceInstance,
     PublishedOptimalityGapReference,
 };
@@ -71,7 +71,10 @@ fn deterministic_initial_state(reference: &DualSourcingReferenceInstance) -> Vec
     state
 }
 
-fn enumerate_state_space(reference: &DualSourcingReferenceInstance, config: &BoundedDpConfig) -> Vec<Vec<i64>> {
+fn enumerate_state_space(
+    reference: &DualSourcingReferenceInstance,
+    config: &BoundedDpConfig,
+) -> Vec<Vec<i64>> {
     fn recurse(
         dim: usize,
         total_dims: usize,
@@ -303,9 +306,9 @@ pub fn evaluate_bounded_average_cost_named_policy(
                 reference,
                 config,
             );
-            let next_idx = *state_to_idx
-                .get(&next_state)
-                .ok_or_else(|| PyValueError::new_err("next state missing from bounded state space"))?;
+            let next_idx = *state_to_idx.get(&next_state).ok_or_else(|| {
+                PyValueError::new_err("next state missing from bounded state space")
+            })?;
             expected_cost += demand_probability * period_cost;
             *next_state_mass.entry(next_idx).or_insert(0.0) += demand_probability;
         }
@@ -385,7 +388,9 @@ pub fn benchmark_reference_instance(
     warm_up_periods_ratio: f64,
 ) -> PyResult<BenchmarkReport> {
     let reference = get_reference_instance(reference_name).ok_or_else(|| {
-        PyValueError::new_err(format!("unknown dual-sourcing reference instance '{reference_name}'"))
+        PyValueError::new_err(format!(
+            "unknown dual-sourcing reference instance '{reference_name}'"
+        ))
     })?;
     let figure_9 = get_figure_9_gap_reference(reference_name);
     let (initial_state, demands) = fixed_demand_path(reference, search_seed, search_horizon);

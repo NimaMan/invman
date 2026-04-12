@@ -18,8 +18,14 @@ def normalize_action_adapter(action_adapter: str) -> str:
         "single_index_targets": "dual_sourcing_single_index_targets",
         "dual_sourcing_dual_index_targets": "dual_sourcing_dual_index_targets",
         "dual_index_targets": "dual_sourcing_dual_index_targets",
+        "dual_sourcing_dual_index_delta_targets": "dual_sourcing_dual_index_delta_targets",
+        "dual_index_delta_targets": "dual_sourcing_dual_index_delta_targets",
         "dual_sourcing_capped_dual_index_targets": "dual_sourcing_capped_dual_index_targets",
         "capped_dual_index_targets": "dual_sourcing_capped_dual_index_targets",
+        "dual_sourcing_capped_dual_index_delta_targets": "dual_sourcing_capped_dual_index_delta_targets",
+        "capped_dual_index_delta_targets": "dual_sourcing_capped_dual_index_delta_targets",
+        "dual_sourcing_capped_dual_index_delta_smallcap_targets": "dual_sourcing_capped_dual_index_delta_smallcap_targets",
+        "capped_dual_index_delta_smallcap_targets": "dual_sourcing_capped_dual_index_delta_smallcap_targets",
         "dual_sourcing_base_surge_targets": "dual_sourcing_base_surge_targets",
         "base_surge_targets": "dual_sourcing_base_surge_targets",
     }
@@ -76,6 +82,18 @@ def build_control_spec(
             "max_values": [int(target_upper), int(target_upper)],
             "allowed_values": None,
         }
+    if normalized == "dual_sourcing_dual_index_delta_targets":
+        small_target_upper = min(int(target_upper), int(expedited_max_order_size))
+        return {
+            "action_dim": 2,
+            "action_mode": "discrete_grid",
+            "min_values": [0, 0],
+            "max_values": [int(small_target_upper), int(regular_max_order_size)],
+            "allowed_values": [
+                list(range(int(small_target_upper) + 1)),
+                list(range(int(regular_max_order_size) + 1)),
+            ],
+        }
     if normalized == "dual_sourcing_capped_dual_index_targets":
         return {
             "action_dim": 3,
@@ -83,6 +101,38 @@ def build_control_spec(
             "min_values": [0, 0, 0],
             "max_values": [int(target_upper), int(target_upper), int(regular_max_order_size)],
             "allowed_values": None,
+        }
+    if normalized == "dual_sourcing_capped_dual_index_delta_targets":
+        return {
+            "action_dim": 3,
+            "action_mode": "vector_quantity",
+            "min_values": [0, 0, 0],
+            "max_values": [
+                int(target_upper),
+                int(regular_max_order_size),
+                int(regular_max_order_size),
+            ],
+            "allowed_values": None,
+        }
+    if normalized == "dual_sourcing_capped_dual_index_delta_smallcap_targets":
+        small_target_upper = min(int(target_upper), int(expedited_max_order_size))
+        small_cap_values = sorted(
+            {
+                value
+                for value in (1, 2, 3, 4, 6, 8, int(regular_max_order_size))
+                if 1 <= int(value) <= int(regular_max_order_size)
+            }
+        )
+        return {
+            "action_dim": 3,
+            "action_mode": "discrete_grid",
+            "min_values": [0, 0, small_cap_values[0]],
+            "max_values": [int(small_target_upper), int(regular_max_order_size), small_cap_values[-1]],
+            "allowed_values": [
+                list(range(int(small_target_upper) + 1)),
+                list(range(int(regular_max_order_size) + 1)),
+                small_cap_values,
+            ],
         }
     if normalized == "dual_sourcing_base_surge_targets":
         return {
@@ -132,9 +182,37 @@ def _action_from_controls(action_adapter: str, controls: list[int], raw_state: l
         regular = min(max(0, s_r - regular_inventory_position - expedited), max_regular)
         return regular, expedited
 
+    if action_adapter == "dual_sourcing_dual_index_delta_targets":
+        s_e = int(controls[0])
+        delta_r = int(controls[1])
+        s_r = s_e + max(delta_r, 0)
+        expedited = min(max(0, s_e - expedited_inventory_position), max_expedited)
+        regular = min(max(0, s_r - regular_inventory_position - expedited), max_regular)
+        return regular, expedited
+
     if action_adapter == "dual_sourcing_capped_dual_index_targets":
         s_e = int(controls[0])
         s_r = max(int(controls[1]), s_e)
+        cap_r = int(controls[2])
+        expedited = min(max(0, s_e - expedited_inventory_position), max_expedited)
+        desired_regular = max(0, s_r - regular_inventory_position - expedited)
+        regular = min(desired_regular, cap_r, max_regular)
+        return regular, expedited
+
+    if action_adapter == "dual_sourcing_capped_dual_index_delta_targets":
+        s_e = int(controls[0])
+        delta_r = int(controls[1])
+        s_r = s_e + max(delta_r, 0)
+        cap_r = int(controls[2])
+        expedited = min(max(0, s_e - expedited_inventory_position), max_expedited)
+        desired_regular = max(0, s_r - regular_inventory_position - expedited)
+        regular = min(desired_regular, cap_r, max_regular)
+        return regular, expedited
+
+    if action_adapter == "dual_sourcing_capped_dual_index_delta_smallcap_targets":
+        s_e = int(controls[0])
+        delta_r = int(controls[1])
+        s_r = s_e + max(delta_r, 0)
         cap_r = int(controls[2])
         expedited = min(max(0, s_e - expedited_inventory_position), max_expedited)
         desired_regular = max(0, s_r - regular_inventory_position - expedited)

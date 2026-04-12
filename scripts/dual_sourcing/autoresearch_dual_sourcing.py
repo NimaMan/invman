@@ -16,7 +16,16 @@ from invman.problems.dual_sourcing.reference_instances import build_reference_ar
 
 BUDGETS = {
     "screening": {"training_episodes": 300, "es_population": 8, "horizon": 1000, "eval_horizon": 5000, "eval_seeds": 2},
-    "full": {"training_episodes": 1500, "es_population": 10, "horizon": 2000, "eval_horizon": 10000, "eval_seeds": 3},
+    "full": {
+        "training_episodes": 1500,
+        "es_population": 128,
+        "es_population_sampling": "categorical",
+        "es_population_candidates": [32, 64, 96, 128],
+        "es_population_probabilities": [0.05, 0.15, 0.25, 0.55],
+        "horizon": 2000,
+        "eval_horizon": 10000,
+        "eval_seeds": 3,
+    },
 }
 
 
@@ -42,8 +51,27 @@ def parse_args():
 
 
 def _git_short_commit(project_root: Path) -> str:
-    result = subprocess.run(["git", "-C", str(project_root.parent), "rev-parse", "--short", "HEAD"], check=True, capture_output=True, text=True)
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(project_root), "rev-parse", "--short", "HEAD"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except subprocess.CalledProcessError:
+        return "unknown"
     return result.stdout.strip()
+
+
+def _apply_budget(args, budget):
+    args.training_episodes = budget["training_episodes"]
+    args.es_population = budget["es_population"]
+    args.es_population_sampling = budget.get("es_population_sampling", "fixed")
+    args.es_population_candidates = budget.get("es_population_candidates")
+    args.es_population_probabilities = budget.get("es_population_probabilities")
+    args.horizon = budget["horizon"]
+    args.eval_horizon = budget["eval_horizon"]
+    args.eval_seeds = budget["eval_seeds"]
 
 
 def main():
@@ -64,11 +92,7 @@ def main():
     args.sigma_init = parsed.sigma_init
     args.seed = parsed.seed
     args.mp_num_processors = parsed.mp_num_processors
-    args.training_episodes = budget["training_episodes"]
-    args.es_population = budget["es_population"]
-    args.horizon = budget["horizon"]
-    args.eval_horizon = budget["eval_horizon"]
-    args.eval_seeds = budget["eval_seeds"]
+    _apply_budget(args, budget)
     args.experiment_name = f"{parsed.run_tag}_{parsed.budget}_{args.policy_name}"
 
     root = PACKAGE_ROOT / "outputs" / "autoresearch" / parsed.run_tag

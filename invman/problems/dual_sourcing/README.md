@@ -70,6 +70,7 @@ The package-level reference metadata is stored in:
 and records:
 
 - the six literature settings
+- the Gijs Figure 9 experiment grid
 - the benchmark policy families
 - the published benchmark claims that exist in the paper
 
@@ -88,8 +89,50 @@ Published benchmark claim:
 - A3C is within `2%` of optimal on all six small-scale settings
 - capped dual-index is the strongest heuristic benchmark in the Gijsbrechts experiments
 
-The literature does not provide a clean per-instance table of exact costs for all six settings, so exact
-costs in this repo are repo-native benchmark values on the published problem family.
+The literature does not provide a clean per-instance table of absolute costs for all six settings. Figure 9
+does, however, print per-instance optimality-gap labels for the heuristic families and A3C, and those
+published gap values are stored in `reference_instances.py`. Exact absolute costs in this repo therefore
+remain repo-native benchmark values on the published problem family.
+
+### Published Figure 9 Gap Labels
+
+These are the rounded optimality gaps printed on the bars in Gijsbrechts et al. (2022), Figure 9:
+
+| instance | capped dual-index | dual-index | single-index | tailored base-surge | A3C |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `dual_l2_ce105` | 0.00 | 0.11 | 0.56 | 0.06 | 0.52 |
+| `dual_l2_ce110` | 0.03 | 0.18 | 1.03 | 0.99 | 0.80 |
+| `dual_l3_ce105` | 0.00 | 0.27 | 0.98 | 0.01 | 0.82 |
+| `dual_l3_ce110` | 0.06 | 0.36 | 2.11 | 0.71 | 0.51 |
+| `dual_l4_ce105` | 0.00 | 0.36 | 1.43 | 0.00 | 1.85 |
+| `dual_l4_ce110` | 0.11 | 0.49 | 2.44 | 0.58 | 1.33 |
+
+These gap labels are the main literature-grounded validation target for this package. The paper still
+does not publish the corresponding absolute optimal or heuristic cost table.
+
+If we require exact absolute heuristic costs as literature values, those still need a source beyond
+Gijsbrechts Figure 9. Until such a table is located and verified, absolute costs produced by this repo
+must remain labeled as repo-native.
+
+### Validation Workflow
+
+Use `scripts/dual_sourcing/validate_reference_grid.py` for the literature-facing check. It now reports:
+
+- `bounded_dp.average_cost`: repo-native bounded-DP baseline
+- `reference.published_optimality_gap_pct`: the Figure 9 gap labels stored for that instance
+- `repo_optimality_gap_pct`: heuristic gaps reproduced by the current code against the bounded DP
+- `repo_gap_minus_paper_pct`: difference between the reproduced heuristic gaps and the published gaps
+
+Interpretation:
+
+- use the Figure 9 gap labels to validate ranking and rough performance fidelity against the paper
+- use the bounded DP only as the repo-native absolute baseline, not as a claim that the paper’s exact
+  optimal costs were reproduced verbatim
+
+Python package helpers for the Gijs experiment family:
+
+- `get_benchmark_grid()`
+- `build_grid_instances()`
 
 ## Current repo findings
 
@@ -111,6 +154,15 @@ Current heuristic baseline on the same full-budget evaluation protocol:
 
 So the current learned tree is materially better than the first smoke run, but still about `5.2%` worse
 than the best heuristic on the primary literature instance.
+
+Updated `l_r=3` diagnosis:
+
+- `dual_l3_ce105` and `dual_l3_ce110` were not mainly failing because the tree could not see the right
+  state; they were failing because the regular-order control surface was too loose
+- the successful fix was to move from the wider oblique linear family to a tighter
+  axis-aligned constant-leaf tree over a small-cap capped-dual-index control grid
+- that design keeps the learned controls close to the benchmark heuristic structure and sharply
+  improves both problematic `l_r=3` rows in current screening runs
 
 ## What we know about policy structure
 
@@ -136,13 +188,13 @@ but not yet to dual sourcing.
 
 ## Next policy direction
 
-The next policy family to try here should keep the policy learned and state dependent, but change the
-output space away from direct order quantities.
+The repo has now moved beyond direct-order trees and plain target-position trees. The most promising
+next step is to keep the small-cap capped-dual-index control family, but spend budget on the
+better-behaved tree classes first:
 
-The best next candidate is a target-position policy:
+- axis-aligned splits before oblique splits on the `l_r=3` rows
+- constant-leaf or otherwise tightly discretized controls before wider linear leaves
+- only after that, larger or more flexible policy classes
 
-- the learned policy outputs target expedited and regular positions, and optionally a regular cap
-- a deterministic action mapper converts those targets into `(q_regular, q_expedited)`
-
-This is more structured than the current direct vector-action tree, but still more general than the
-constant-parameter benchmark heuristics because the targets can be state dependent and learned.
+The evidence so far is that dual sourcing benefits more from tighter inductive bias around the
+benchmark heuristic geometry than from simply increasing function-class flexibility.

@@ -6,7 +6,10 @@ pub enum DualSourcingActionAdapter {
     Identity,
     SingleIndexTargets,
     DualIndexTargets,
+    DualIndexDeltaTargets,
     CappedDualIndexTargets,
+    CappedDualIndexDeltaTargets,
+    CappedDualIndexDeltaSmallCapTargets,
     BaseSurgeTargets,
 }
 
@@ -19,8 +22,18 @@ pub fn parse_action_adapter(action_adapter: &str) -> PyResult<DualSourcingAction
         "dual_sourcing_dual_index_targets" | "dual_index_targets" => {
             Ok(DualSourcingActionAdapter::DualIndexTargets)
         }
+        "dual_sourcing_dual_index_delta_targets" | "dual_index_delta_targets" => {
+            Ok(DualSourcingActionAdapter::DualIndexDeltaTargets)
+        }
         "dual_sourcing_capped_dual_index_targets" | "capped_dual_index_targets" => {
             Ok(DualSourcingActionAdapter::CappedDualIndexTargets)
+        }
+        "dual_sourcing_capped_dual_index_delta_targets" | "capped_dual_index_delta_targets" => {
+            Ok(DualSourcingActionAdapter::CappedDualIndexDeltaTargets)
+        }
+        "dual_sourcing_capped_dual_index_delta_smallcap_targets"
+        | "capped_dual_index_delta_smallcap_targets" => {
+            Ok(DualSourcingActionAdapter::CappedDualIndexDeltaSmallCapTargets)
         }
         "dual_sourcing_base_surge_targets" | "base_surge_targets" => {
             Ok(DualSourcingActionAdapter::BaseSurgeTargets)
@@ -78,6 +91,20 @@ pub fn action_from_controls(
             let regular = (s_r - regular_inventory_position - expedited as i64).max(0) as usize;
             Ok(vec![regular.min(regular_max_order_size), expedited])
         }
+        DualSourcingActionAdapter::DualIndexDeltaTargets => {
+            if controls.len() != 2 {
+                return Err(PyValueError::new_err(
+                    "dual-index delta control vector must have length 2",
+                ));
+            }
+            let s_e = controls[0] as i64;
+            let delta_r = controls[1] as i64;
+            let s_r = s_e + delta_r.max(0);
+            let expedited = (s_e - expedited_inventory_position).max(0) as usize;
+            let expedited = expedited.min(expedited_max_order_size);
+            let regular = (s_r - regular_inventory_position - expedited as i64).max(0) as usize;
+            Ok(vec![regular.min(regular_max_order_size), expedited])
+        }
         DualSourcingActionAdapter::CappedDualIndexTargets => {
             if controls.len() != 3 {
                 return Err(PyValueError::new_err(
@@ -86,6 +113,44 @@ pub fn action_from_controls(
             }
             let s_e = controls[0] as i64;
             let s_r = controls[1].max(controls[0]) as i64;
+            let cap_r = controls[2];
+            let expedited = (s_e - expedited_inventory_position).max(0) as usize;
+            let expedited = expedited.min(expedited_max_order_size);
+            let desired_regular =
+                (s_r - regular_inventory_position - expedited as i64).max(0) as usize;
+            Ok(vec![
+                desired_regular.min(cap_r).min(regular_max_order_size),
+                expedited,
+            ])
+        }
+        DualSourcingActionAdapter::CappedDualIndexDeltaTargets => {
+            if controls.len() != 3 {
+                return Err(PyValueError::new_err(
+                    "capped dual-index delta control vector must have length 3",
+                ));
+            }
+            let s_e = controls[0] as i64;
+            let delta_r = controls[1] as i64;
+            let s_r = s_e + delta_r.max(0);
+            let cap_r = controls[2];
+            let expedited = (s_e - expedited_inventory_position).max(0) as usize;
+            let expedited = expedited.min(expedited_max_order_size);
+            let desired_regular =
+                (s_r - regular_inventory_position - expedited as i64).max(0) as usize;
+            Ok(vec![
+                desired_regular.min(cap_r).min(regular_max_order_size),
+                expedited,
+            ])
+        }
+        DualSourcingActionAdapter::CappedDualIndexDeltaSmallCapTargets => {
+            if controls.len() != 3 {
+                return Err(PyValueError::new_err(
+                    "capped dual-index delta small-cap control vector must have length 3",
+                ));
+            }
+            let s_e = controls[0] as i64;
+            let delta_r = controls[1] as i64;
+            let s_r = s_e + delta_r.max(0);
             let cap_r = controls[2];
             let expedited = (s_e - expedited_inventory_position).max(0) as usize;
             let expedited = expedited.min(expedited_max_order_size);

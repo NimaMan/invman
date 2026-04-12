@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PublishedBenchmarkReference {
     pub source: &'static str,
@@ -95,7 +97,12 @@ pub const VEERARAGHAVAN_2008_REFERENCE: PublishedBenchmarkReference = PublishedB
 pub const SHEOPURI_2010_REFERENCE: PublishedBenchmarkReference = PublishedBenchmarkReference {
     source: "Sheopuri et al. (2010), Operations Research 58(3):734-745",
     url: "https://doi.org/10.1287/opre.1090.0799",
-    benchmark_policies: &["single_index", "dual_index", "best_weighted_bounds", "tailored_base_surge"],
+    benchmark_policies: &[
+        "single_index",
+        "dual_index",
+        "best_weighted_bounds",
+        "tailored_base_surge",
+    ],
     notes: "This paper extends the classical dual-sourcing policy family beyond the original dual-index rule. It is the right policy-family source for capped or weighted dual-sourcing heuristics, but it is not the source of the six exact Figure 9 benchmark gap labels used by Gijsbrechts et al. (2022).",
 };
 

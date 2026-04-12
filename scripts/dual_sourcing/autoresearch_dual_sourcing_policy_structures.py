@@ -22,7 +22,10 @@ BUDGETS = {
     },
     "full": {
         "training_episodes": 1500,
-        "es_population": 10,
+        "es_population": 128,
+        "es_population_sampling": "categorical",
+        "es_population_candidates": [32, 64, 96, 128],
+        "es_population_probabilities": [0.05, 0.15, 0.25, 0.55],
         "horizon": 2000,
         "eval_horizon": 10000,
         "eval_seeds": 3,
@@ -78,6 +81,9 @@ def _prepare_args(parsed, root, action_adapter, depth):
     args.same_seed = parsed.same_seed
     args.training_episodes = budget["training_episodes"]
     args.es_population = budget["es_population"]
+    args.es_population_sampling = budget.get("es_population_sampling", "fixed")
+    args.es_population_candidates = budget.get("es_population_candidates")
+    args.es_population_probabilities = budget.get("es_population_probabilities")
     args.horizon = budget["horizon"]
     args.eval_horizon = budget["eval_horizon"]
     args.eval_seeds = budget["eval_seeds"]

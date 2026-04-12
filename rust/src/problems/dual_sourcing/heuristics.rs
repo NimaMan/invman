@@ -21,9 +21,9 @@ pub fn target_upper_bound(
     expedited_max_order_size: usize,
 ) -> usize {
     let mean_demand = 0.5 * (demand_low + demand_high) as f64;
-    let upper =
-        ((regular_lead_time + 2) as f64 * mean_demand + 2.0 * expedited_max_order_size as f64)
-            .round() as usize;
+    let upper = ((regular_lead_time + 2) as f64 * mean_demand
+        + 2.0 * expedited_max_order_size as f64)
+        .round() as usize;
     expedited_max_order_size.max(upper.min(24))
 }
 

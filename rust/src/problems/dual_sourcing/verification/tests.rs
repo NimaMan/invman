@@ -1,6 +1,9 @@
 use crate::problems::dual_sourcing::bounded_dp::{benchmark_reference_instance, BoundedDpConfig};
 use crate::problems::dual_sourcing::env::{epoch_cost, step_state};
-use crate::problems::dual_sourcing::references::{
+use crate::problems::dual_sourcing::experiments::{
+    expand_experiment_grid, get_experiment_grid, GIJSBRECHTS_2022_FIGURE9_FAMILY_NAME,
+};
+use crate::problems::dual_sourcing::literature::{
     get_figure_9_gap_reference, get_primary_reference_instance, get_reference_instance,
     list_reference_instances, FIGURE_9_GAP_REFERENCES, GIJSBRECHTS_2022_REFERENCE,
     PRIMARY_REFERENCE_INSTANCE, SHEOPURI_2010_REFERENCE, VEERARAGHAVAN_2008_REFERENCE,
@@ -52,21 +55,34 @@ fn benchmark_rows_match_gijsbrechts_small_scale_family() {
 
 #[test]
 fn figure_9_gap_labels_are_frozen() {
-    let dual_l2_ce105 = get_figure_9_gap_reference("dual_l2_ce105").expect("gap row must exist");
-    let dual_l4_ce110 = get_figure_9_gap_reference("dual_l4_ce110").expect("gap row must exist");
+    let expected = [
+        ("dual_l2_ce105", 0.00, 0.11, 0.56, 0.06, 0.52),
+        ("dual_l2_ce110", 0.03, 0.18, 1.03, 0.99, 0.80),
+        ("dual_l3_ce105", 0.00, 0.27, 0.98, 0.01, 0.82),
+        ("dual_l3_ce110", 0.06, 0.36, 2.11, 0.71, 0.51),
+        ("dual_l4_ce105", 0.00, 0.36, 1.43, 0.00, 1.85),
+        ("dual_l4_ce110", 0.11, 0.49, 2.44, 0.58, 1.33),
+    ];
 
-    assert_eq!(FIGURE_9_GAP_REFERENCES.len(), 6);
-    assert_eq!(dual_l2_ce105.capped_dual_index_gap_pct, 0.00);
-    assert_eq!(dual_l2_ce105.dual_index_gap_pct, 0.11);
-    assert_eq!(dual_l2_ce105.single_index_gap_pct, 0.56);
-    assert_eq!(dual_l2_ce105.tailored_base_surge_gap_pct, 0.06);
-    assert_eq!(dual_l2_ce105.a3c_gap_pct, 0.52);
+    assert_eq!(FIGURE_9_GAP_REFERENCES.len(), expected.len());
 
-    assert_eq!(dual_l4_ce110.capped_dual_index_gap_pct, 0.11);
-    assert_eq!(dual_l4_ce110.dual_index_gap_pct, 0.49);
-    assert_eq!(dual_l4_ce110.single_index_gap_pct, 2.44);
-    assert_eq!(dual_l4_ce110.tailored_base_surge_gap_pct, 0.58);
-    assert_eq!(dual_l4_ce110.a3c_gap_pct, 1.33);
+    for (
+        instance_name,
+        capped_dual_index_gap_pct,
+        dual_index_gap_pct,
+        single_index_gap_pct,
+        tailored_base_surge_gap_pct,
+        a3c_gap_pct,
+    ) in expected
+    {
+        let gap = get_figure_9_gap_reference(instance_name).expect("gap row must exist");
+        assert_eq!(gap.instance_name, instance_name);
+        assert_eq!(gap.capped_dual_index_gap_pct, capped_dual_index_gap_pct);
+        assert_eq!(gap.dual_index_gap_pct, dual_index_gap_pct);
+        assert_eq!(gap.single_index_gap_pct, single_index_gap_pct);
+        assert_eq!(gap.tailored_base_surge_gap_pct, tailored_base_surge_gap_pct);
+        assert_eq!(gap.a3c_gap_pct, a3c_gap_pct);
+    }
 }
 
 #[test]
@@ -129,4 +145,31 @@ fn single_verification_instance_matches_repo_and_literature_tolerances() {
                 <= verification.literature_gap_abs_tolerance_pct
         );
     }
+}
+
+#[test]
+fn gijs_experiment_grid_has_expected_axes_and_size() {
+    let grid = get_experiment_grid(GIJSBRECHTS_2022_FIGURE9_FAMILY_NAME)
+        .expect("Gijs Figure 9 grid must exist");
+    assert_eq!(grid.reference_instance_names.len(), 6);
+    assert_eq!(grid.regular_lead_times, &[2, 3, 4]);
+    assert_eq!(grid.expedited_order_costs, &[105.0, 110.0]);
+    assert_eq!(grid.regular_order_cost, 100.0);
+    assert_eq!(grid.holding_cost, 5.0);
+    assert_eq!(grid.shortage_cost, 495.0);
+
+    let instances = expand_experiment_grid(GIJSBRECHTS_2022_FIGURE9_FAMILY_NAME)
+        .expect("Gijs Figure 9 grid expands");
+    assert_eq!(instances.len(), 6);
+    assert_eq!(
+        instances.first().expect("first instance").name,
+        "dual_l2_ce105"
+    );
+    assert_eq!(
+        instances.last().expect("last instance").name,
+        "dual_l4_ce110"
+    );
+    assert!(instances
+        .iter()
+        .all(|instance| instance.literature_verified));
 }

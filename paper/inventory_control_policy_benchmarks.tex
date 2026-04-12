@@ -576,6 +576,52 @@ forgiving, so many non-categorical direct and tree heads realize essentially the
 Fixed-cost lost sales is not: there the action-head geometry and the demand family much more
 strongly determine which replenishment boundary CMA-ES can actually find.
 
+\subsection{Dual sourcing}
+
+The current dual-sourcing study points in the same overall direction, but even more sharply:
+policy \emph{design} matters more than raw flexibility.
+
+For the hard $l_r=3$ rows in the Gijs Figure~9 family, we compared several structured learned
+policies that all use the same reduced pipeline state and the same CMA-ES screening budget, but
+different action parameterizations. The best current family is not the widest tree. It is a
+small axis-aligned soft tree with constant leaves over a capped-dual-index-delta control grid.
+
+The relevant learned control family is
+\[
+(s_e,\Delta_r,\bar c_r),
+\qquad
+s_r = s_e + \Delta_r,
+\]
+with the regular cap restricted to the small discrete set
+\[
+\bar c_r \in \{1,2,3,4,6,8,12\}.
+\]
+This keeps the learned policy close to the heuristic geometry while still allowing the targets to
+depend on state.
+
+At $l_r=3$ the reduced-state input dimension is $d=3$ and the control dimension is also $3$, so
+the tree parameter counts are tiny:
+\begin{itemize}
+    \item depth-1 axis-aligned constant tree: $10$ parameters,
+    \item depth-2 axis-aligned constant tree: $24$ parameters,
+    \item depth-3 axis-aligned constant tree: $52$ parameters,
+    \item depth-2 oblique linear tree on the same control family: $60$ parameters.
+\end{itemize}
+
+The performance differences are large. On the same repo evaluation protocol, the $60$-parameter
+oblique linear small-cap tree yields gaps of about $0.40\%$ on \texttt{dual\_l3\_ce105} and
+$1.59\%$ on \texttt{dual\_l3\_ce110} relative to the best heuristic. By contrast, the
+$24$-parameter axis-aligned constant version reduces those to about $0.026\%$ and $0.209\%$.
+Moreover, a $10$-parameter depth-1 axis-aligned constant tree already beats the best heuristic on
+\texttt{dual\_l3\_ce105} under the screening protocol.
+
+So the dual-sourcing evidence supports a stronger version of the same design lesson:
+\begin{quote}
+Small learned policies can match or outperform strong benchmark heuristics, but only when their
+action parameterization respects the problem structure. Larger, more flexible trees can perform
+materially worse when that structure is too loose.
+\end{quote}
+
 \section{Published verification anchor}
 
 Before relying on the fixed-cost simulator and heuristic stack for learned-policy comparisons, we
