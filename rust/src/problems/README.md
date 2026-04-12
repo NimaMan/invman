@@ -119,9 +119,30 @@ Algorithm-row rule:
 - `literature_verified` applies to repo exact algorithms and repo heuristic implementations
 - that label means the repo implementation has at least one public literature benchmark anchor with
   matching reported numbers for that algorithm family
+- `references.rs` should store literature rows and problem-instance definitions only
+- repo-generated exact or heuristic outputs should not be frozen inside `references.rs`; generate
+  them in Rust during verification or store them in validation artifacts instead
 - published learned-policy rows from papers, such as PPO or A3C, should be carried as published
   rows, not labeled as `literature_verified` repo algorithms
 - experiment reports should separate published paper numbers from repo reproduced absolute costs
+
+This is a cross-problem reporting principle for every benchmark family in the repo, not a
+problem-specific convention.
+
+Current literature-verified package anchors:
+
+- `lost_sales`
+  - executable heuristic reproduction for the standard benchmark heuristics currently covers
+    `myopic1`, `myopic2`, and `svbs`
+  - not every carried literature row in that family is executable or verified
+- `lost_sales_fixed_order_cost`
+  - the Rust exact solver and exact heuristic evaluators reproduce the published Bijvank et al.
+    (2015) Table 1 validation instance
+- `spare_parts_inventory`
+  - the Kranenburg Chapter 5 exact benchmark family is literature-verified
+
+Everything else should be treated as not literature-verified unless the problem README states
+otherwise explicitly.
 
 Every new problem family must have:
 
