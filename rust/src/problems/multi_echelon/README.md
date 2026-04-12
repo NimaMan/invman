@@ -1,31 +1,23 @@
 # Multi-Echelon
 
-This folder is now an umbrella for multiple multi-echelon formulations.
+This folder contains multiple multi-echelon problem formulations that should stay separate because
+they do not share the same dynamics or benchmark contract.
 
-These formulations are related, but they are not the same executable problem. They differ in network
-structure, event timing, unmet-demand handling, cost terms, and benchmark heuristics, so they should
-not share one `env.rs` and one `rollout.rs`.
-
-## Subfamilies
+## Subproblems
 
 - `divergent_special_delivery/`
-  - the current Van Roy / Gijs family
-  - one warehouse, multiple identical retailers
-  - unmet store demand can trigger same-day special deliveries with probability `P_w`
-  - current implementation lives here
+  - Van Roy / Gijs one-warehouse-multi-retailer family with same-day special delivery
 - `general_backorder_fixed_cost/`
-  - planned home for the Geevers-style family
-  - general backorder network with fixed ordering costs
-  - currently only a placeholder
+  - Geevers/CardBoard Company general-network family with backorders and unit lead times
 
-## Current Status
+## Structure Rule
 
-- the active Rust and Python bindings exposed from `problems::multi_echelon` currently point to
-  `divergent_special_delivery`
-- `divergent_special_delivery` is not literature-verified yet
-- `general_backorder_fixed_cost` has not been implemented yet
+The root `multi_echelon/` folder should only contain:
 
-## Rule
+- formulation subfolders
+- the root `mod.rs`
+- the root `bindings.rs`
+- this overview README
 
-When a multi-echelon formulation has different state semantics or cost structure, it gets its own
-subfolder under `multi_echelon/` rather than being folded into a single shared runtime path.
+Any formulation-specific literature, verification, reports, or experiments belong inside the relevant
+subproblem folder, not at the root.
