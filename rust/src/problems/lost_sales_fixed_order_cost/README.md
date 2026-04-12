@@ -1,5 +1,7 @@
 # Fixed-Cost Lost Sales
 
+Rust-first problem home for `lost_sales_fixed_order_cost`.
+
 This package is the fixed-order-cost extension of the single-item lost-sales problem.
 
 ## Formulation
@@ -84,7 +86,19 @@ What is not yet literature-verified here:
 
 ## Structure
 
-- `references.rs`: literature source and published validation row
+- `literature/references.rs`: literature source and published validation row
 - `exact_value_iteration.rs`: exact average-cost solver and exact heuristic evaluation
 - `heuristics.rs`: demand-path rollout and search helpers
-- `bindings.rs`: Python bindings for the literature summary and heuristic tools
+- `bindings.rs`: bindings for the literature summary and heuristic tools
+- `literature/`: literature-source notes and benchmark scope
+- `verification/`: verification notes and executable-check scope for this package
+- `experiments/`: paper-style benchmark plan and reports for learned policies
+- `practical/`: practical benchmark scope for larger repo-native instances
+
+Verification and benchmark anchors live in:
+
+- `literature/references.rs`
+- `tests/verification.rs`
+- `literature/`
+- `experiments/`
+- `verification/`

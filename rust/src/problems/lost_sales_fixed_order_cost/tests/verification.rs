@@ -1,8 +1,8 @@
+use crate::problems::lost_sales_fixed_order_cost::literature::{
+    BIJVANK_2015_REFERENCE, BIJVANK_2015_TABLE1_REFERENCE,
+};
 use crate::problems::lost_sales_fixed_order_cost::exact_value_iteration::{
     evaluate_policy, solve_optimal_policy, ExactPolicyKind,
-};
-use crate::problems::lost_sales_fixed_order_cost::references::{
-    BIJVANK_2015_REFERENCE, BIJVANK_2015_TABLE1_REFERENCE,
 };
 
 #[test]
