@@ -4,4 +4,4 @@ pub mod heuristics;
 pub mod literature;
 
 #[cfg(test)]
-mod tests;
+mod verification;

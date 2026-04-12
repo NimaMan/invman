@@ -1,6 +1,6 @@
 # Verification
 
-`lost_sales_fixed_order_cost` is verified by executable assertions in `tests/verification.rs`.
+`lost_sales_fixed_order_cost` is verified by executable assertions in `verification/tests.rs`.
 
 Current verifier scope:
 

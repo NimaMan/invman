@@ -98,7 +98,7 @@ What is not yet literature-verified here:
 Verification and benchmark anchors live in:
 
 - `literature/references.rs`
-- `tests/verification.rs`
+- `verification/tests.rs`
 - `literature/`
 - `experiments/`
 - `verification/`
