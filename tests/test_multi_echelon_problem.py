@@ -36,6 +36,41 @@ def test_multi_echelon_exact_summary_is_internally_consistent():
     assert summary["optimal_discounted_cost"] <= summary["min_shortage_discounted_cost"]
 
 
+def test_multi_echelon_published_relative_rows_imply_expected_costs():
+    references = {
+        reference["name"]: reference
+        for reference in invman_rust.multi_echelon_list_reference_instances()
+        if reference["published_a3c_savings_pct"] is not None
+    }
+
+    setting1 = references["gijsbrechts2022_setting1"]
+    setting2 = references["gijsbrechts2022_setting2"]
+
+    implied_setting1 = setting1["published_constant_base_stock_mean_cost"] * (
+        1.0 - setting1["published_a3c_savings_pct"] / 100.0
+    )
+    implied_setting2 = setting2["published_constant_base_stock_mean_cost"] * (
+        1.0 - setting2["published_a3c_savings_pct"] / 100.0
+    )
+
+    assert implied_setting1 == pytest.approx(1185.471)
+    assert implied_setting2 == pytest.approx(1273.8159)
+
+
+def test_multi_echelon_gijs_relative_verification_summary_binding():
+    summary = invman_rust.multi_echelon_gijs_relative_verification_summary(
+        repo_audit_replications=2,
+        seed=123,
+    )
+
+    assert "Gijsbrechts" in summary["source"]
+    assert len(summary["rows"]) == 2
+    assert summary["rows"][0]["instance_name"] == "gijsbrechts2022_setting1"
+    assert summary["rows"][0]["published_a3c_implied_mean_cost"] == pytest.approx(1185.471)
+    assert summary["all_published_constant_base_stock_rows_reproduced_within_tolerance"] is False
+    assert summary["can_mark_literature_verified"] is False
+
+
 def test_multi_echelon_raw_state_builder_uses_raw_layout():
     raw_state = invman_rust.multi_echelon_build_raw_state(
         warehouse_inventory=3,

@@ -30,6 +30,11 @@ use crate::problems::multi_echelon::rollout::{
     population_rollout as practical_population_rollout, rollout as practical_rollout,
     MultiEchelonRolloutConfig,
 };
+use crate::problems::multi_echelon::verification::{
+    gijs_relative_verification_summary, GijsRelativeVerificationRow,
+    GijsRelativeVerificationSummary, DEFAULT_GIJS_RELATIVE_VERIFICATION_REPLICATIONS,
+    DEFAULT_GIJS_RELATIVE_VERIFICATION_SEED,
+};
 
 fn benchmark_reference_to_py(py: Python<'_>, reference: &PublishedBenchmarkReference) -> PyResult<PyObject> {
     let dict = PyDict::new_bound(py);
@@ -162,6 +167,96 @@ fn exact_reference_to_py(py: Python<'_>, reference: &ExactVerificationReference)
     Ok(dict.into_any().unbind().into())
 }
 
+fn gijs_relative_verification_row_to_py(
+    py: Python<'_>,
+    row: &GijsRelativeVerificationRow,
+) -> PyResult<PyObject> {
+    let dict = PyDict::new_bound(py);
+    dict.set_item("instance_name", row.instance_name)?;
+    dict.set_item(
+        "published_constant_base_stock_levels",
+        row.published_constant_base_stock_levels.clone(),
+    )?;
+    dict.set_item(
+        "published_constant_base_stock_mean_cost",
+        row.published_constant_base_stock_mean_cost,
+    )?;
+    dict.set_item("published_a3c_savings_pct", row.published_a3c_savings_pct)?;
+    dict.set_item(
+        "published_a3c_confidence_half_width_pct",
+        row.published_a3c_confidence_half_width_pct,
+    )?;
+    dict.set_item(
+        "published_a3c_implied_mean_cost",
+        row.published_a3c_implied_mean_cost,
+    )?;
+    dict.set_item(
+        "published_van_roy_savings_pct_approx",
+        row.published_van_roy_savings_pct_approx,
+    )?;
+    dict.set_item(
+        "published_van_roy_implied_mean_cost",
+        row.published_van_roy_implied_mean_cost,
+    )?;
+    dict.set_item(
+        "repo_published_constant_base_stock_mean_cost",
+        row.repo_published_constant_base_stock_mean_cost,
+    )?;
+    dict.set_item(
+        "repo_published_constant_base_stock_cost_std",
+        row.repo_published_constant_base_stock_cost_std,
+    )?;
+    dict.set_item(
+        "repo_gap_vs_published_constant_cost",
+        row.repo_gap_vs_published_constant_cost,
+    )?;
+    dict.set_item(
+        "repo_gap_vs_published_constant_cost_pct",
+        row.repo_gap_vs_published_constant_cost_pct,
+    )?;
+    dict.set_item(
+        "published_constant_base_stock_reproduced_within_tolerance",
+        row.published_constant_base_stock_reproduced_within_tolerance,
+    )?;
+    Ok(dict.into_any().unbind().into())
+}
+
+fn gijs_relative_verification_summary_to_py(
+    py: Python<'_>,
+    summary: &GijsRelativeVerificationSummary,
+) -> PyResult<PyObject> {
+    let dict = PyDict::new_bound(py);
+    dict.set_item("source", summary.source)?;
+    dict.set_item("url", summary.url)?;
+    dict.set_item("repo_audit_replications", summary.repo_audit_replications)?;
+    dict.set_item("seed", summary.seed)?;
+    dict.set_item("mean_published_a3c_savings_pct", summary.mean_published_a3c_savings_pct)?;
+    dict.set_item(
+        "mean_repo_gap_vs_published_constant_cost",
+        summary.mean_repo_gap_vs_published_constant_cost,
+    )?;
+    dict.set_item(
+        "all_published_constant_base_stock_rows_reproduced_within_tolerance",
+        summary.all_published_constant_base_stock_rows_reproduced_within_tolerance,
+    )?;
+    dict.set_item(
+        "repo_generates_published_relative_rows",
+        summary.repo_generates_published_relative_rows,
+    )?;
+    dict.set_item(
+        "can_mark_literature_verified",
+        summary.can_mark_literature_verified,
+    )?;
+    dict.set_item("verification_note", summary.verification_note)?;
+    let rows = summary
+        .rows
+        .iter()
+        .map(|row| gijs_relative_verification_row_to_py(py, row))
+        .collect::<PyResult<Vec<_>>>()?;
+    dict.set_item("rows", rows)?;
+    Ok(dict.into_any().unbind().into())
+}
+
 #[pyfunction]
 fn multi_echelon_benchmark_reference(py: Python<'_>) -> PyResult<PyObject> {
     benchmark_reference_to_py(py, &GIJSBRECHTS_2022_REFERENCE)
@@ -256,6 +351,20 @@ fn multi_echelon_exact_dp_summary(py: Python<'_>) -> PyResult<PyObject> {
         vec![best_min_shortage.0, best_min_shortage.1],
     )?;
     Ok(dict.into_any().unbind().into())
+}
+
+#[pyfunction]
+#[pyo3(signature = (
+    repo_audit_replications=DEFAULT_GIJS_RELATIVE_VERIFICATION_REPLICATIONS,
+    seed=DEFAULT_GIJS_RELATIVE_VERIFICATION_SEED
+))]
+fn multi_echelon_gijs_relative_verification_summary(
+    py: Python<'_>,
+    repo_audit_replications: usize,
+    seed: u64,
+) -> PyResult<PyObject> {
+    let summary = gijs_relative_verification_summary(repo_audit_replications, seed)?;
+    gijs_relative_verification_summary_to_py(py, &summary)
 }
 
 #[pyfunction]
@@ -997,6 +1106,10 @@ pub fn register_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(multi_echelon_van_roy_case_study, m)?)?;
     m.add_function(wrap_pyfunction!(multi_echelon_exact_verification_instance, m)?)?;
     m.add_function(wrap_pyfunction!(multi_echelon_exact_dp_summary, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        multi_echelon_gijs_relative_verification_summary,
+        m
+    )?)?;
     m.add_function(wrap_pyfunction!(multi_echelon_exact_evaluate_soft_tree, m)?)?;
     m.add_function(wrap_pyfunction!(multi_echelon_search_stationary_policy, m)?)?;
     m.add_function(wrap_pyfunction!(multi_echelon_soft_tree_rollout, m)?)?;

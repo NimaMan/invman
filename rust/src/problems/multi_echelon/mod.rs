@@ -8,3 +8,4 @@ pub use divergent_special_delivery::finite_horizon_dp;
 pub use divergent_special_delivery::heuristics;
 pub use divergent_special_delivery::references;
 pub use divergent_special_delivery::rollout;
+pub use divergent_special_delivery::verification;

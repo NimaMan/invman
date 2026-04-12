@@ -85,6 +85,13 @@ The current Rust rollout supports both families:
 - constant base-stock over fixed heuristic levels
 - soft-tree policies over the reduced Van Roy decision grid
 
+The important benchmark distinction is:
+
+- the published Van Roy constant base-stock benchmark row uses the published heuristic levels
+  `(330, 23)` and `(460, 22)` for the two carried case studies
+- the reduced grid `{50, 60, ..., 100}` plus `{0, 5, ...}` belongs to the learned-policy action
+  space, not to the published constant base-stock benchmark row
+
 ## Literature
 
 Primary references:
@@ -141,9 +148,15 @@ For learned policies, the Rust rollout currently supports:
 The last feature preset is a 22-feature compact summary. It is not itself a
 literature-verified formulation boundary.
 
-and the Van Roy reduced action design:
+For action parameterization, the repo currently supports:
 
-- direct warehouse order plus shared store target
+- `direct_base_stock`
+  - Gijs-aligned reduced action design: state-dependent warehouse and shared retailer order-up-to
+    levels
+- `anchor_adjustment`
+  - repo-local variant that adjusts around one fixed anchor pair
+- `direct_warehouse_order_store_target`
+  - Van Roy NDP-style control parameterization: direct warehouse order plus shared retailer target
 
 ## Gijs Subfamily
 
@@ -156,6 +169,12 @@ base-stock benchmark:
 Those rows are comparison targets for later experiments. They are not the primary literature
 verification anchor for the heuristic implementation because the stronger absolute benchmark rows are
 already available from Van Roy.
+
+Use the Rust-side verification summary
+`verification::gijs_relative_verification_summary` or the Python binding
+`invman_rust.multi_echelon_gijs_relative_verification_summary(...)` to inspect the carried
+paper-relative rows directly. The existing soft-tree paper benchmark is exploratory and should not
+be treated as an executable reproduction of the published A3C learner.
 
 ## Implementation Review
 

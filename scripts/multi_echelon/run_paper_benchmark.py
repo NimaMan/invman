@@ -68,13 +68,14 @@ DEFAULT_OUTPUT_MARKDOWN = (
 
 DEFAULT_ARTIFACT_DIR = PACKAGE_ROOT / "outputs" / "multi_echelon" / "paper_benchmark"
 BASELINE_NOTE = (
-    "Repo comparator is the best constant base-stock policy searched over the carried Van Roy action grid. "
-    "The Gijs text clearly states the learned policy uses that grid, but the constant-base-stock search domain "
-    "in the paper still needs final clarification."
+    "Repo comparator is the best constant base-stock policy searched over the reduced Van Roy action grid "
+    "used for the exploratory soft-tree action space. This is not the published Van Roy constant "
+    "base-stock benchmark row carried for the Gijs paper."
 )
 ALGORITHM_VERIFICATION_NOTE = (
     "The Gijs paper reports only relative savings for the two carried settings, not absolute constant base-stock means. "
-    "Absolute heuristic and NDP verification for this family comes from the original Van Roy case-study rows."
+    "Absolute heuristic and NDP verification for this family comes from the original Van Roy case-study rows, "
+    "so this soft-tree benchmark is exploratory rather than a literature-verification path."
 )
 
 
@@ -119,7 +120,11 @@ def default_instance_names() -> list[str]:
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Run the Gijs / Van Roy multi-echelon paper benchmark with literature-matched evaluation and CMA-ES soft-tree policies."
+        description=(
+            "Run the exploratory Gijs / Van Roy multi-echelon soft-tree benchmark. "
+            "Use invman_rust.multi_echelon_gijs_relative_verification_summary(...) to inspect "
+            "the carried paper-relative rows directly."
+        )
     )
     parser.add_argument("--instance_names", nargs="+", default=default_instance_names())
     parser.add_argument("--depth", type=int, default=2)
@@ -383,8 +388,12 @@ def instance_result(parsed, reference_name: str) -> dict:
         "published_a3c_confidence_half_width_pct": float(reference["published_a3c_confidence_half_width_pct"]),
         "published_van_roy_savings_pct_approx": float(reference["published_van_roy_savings_pct_approx"]),
         "gaps": {
-            "vs_published_a3c_pct": float(learned_savings - reference["published_a3c_savings_pct"]),
-            "vs_published_van_roy_pct": float(learned_savings - reference["published_van_roy_savings_pct_approx"]),
+            "cross_protocol_vs_published_a3c_pct": float(
+                learned_savings - reference["published_a3c_savings_pct"]
+            ),
+            "cross_protocol_vs_published_van_roy_pct": float(
+                learned_savings - reference["published_van_roy_savings_pct_approx"]
+            ),
         },
         "policy_config": {
             "depth": int(parsed.depth),
@@ -430,7 +439,9 @@ def instance_table(instance_results: list[dict]) -> list[dict]:
                 "published_a3c_savings_pct": float(result["published_a3c_savings_pct"]),
                 "published_a3c_half_width_pct": float(result["published_a3c_confidence_half_width_pct"]),
                 "published_van_roy_savings_pct_approx": float(result["published_van_roy_savings_pct_approx"]),
-                "gap_vs_published_a3c_pct": float(result["gaps"]["vs_published_a3c_pct"]),
+                "cross_protocol_gap_vs_published_a3c_pct": float(
+                    result["gaps"]["cross_protocol_vs_published_a3c_pct"]
+                ),
             }
         )
     return rows
@@ -439,14 +450,16 @@ def instance_table(instance_results: list[dict]) -> list[dict]:
 def aggregate_summary(rows: list[dict]) -> dict:
     return {
         "num_instances": int(len(rows)),
-        "beats_published_a3c_count": int(
+        "cross_protocol_higher_than_published_a3c_count": int(
             sum(row["soft_tree_savings_pct"] > row["published_a3c_savings_pct"] for row in rows)
         ),
-        "beats_published_van_roy_count": int(
+        "cross_protocol_higher_than_published_van_roy_count": int(
             sum(row["soft_tree_savings_pct"] > row["published_van_roy_savings_pct_approx"] for row in rows)
         ),
         "mean_soft_tree_savings_pct": float(np.mean([row["soft_tree_savings_pct"] for row in rows])),
-        "mean_gap_vs_published_a3c_pct": float(np.mean([row["gap_vs_published_a3c_pct"] for row in rows])),
+        "mean_cross_protocol_gap_vs_published_a3c_pct": float(
+            np.mean([row["cross_protocol_gap_vs_published_a3c_pct"] for row in rows])
+        ),
     }
 
 
@@ -459,22 +472,23 @@ def report_markdown(payload: dict) -> str:
         f"- instances: `{len(payload['instance_results'])}`",
         f"- policy family: depth `{payload['policy_config']['depth']}` `{payload['policy_config']['split_type']}` soft tree with `{payload['policy_config']['leaf_type']}` leaves",
         f"- literature evaluation: `{payload['protocol']['benchmark_replications']}` sample paths of `{payload['protocol']['benchmark_periods']}` periods each",
-        f"- literature baseline: constant base-stock with `{payload['protocol']['allocation_mode']}` allocation",
-        f"- baseline note: {payload['protocol']['baseline_note']}",
+        f"- repo comparator: reduced-grid constant base-stock with `{payload['protocol']['allocation_mode']}` allocation",
+        f"- comparator note: {payload['protocol']['baseline_note']}",
         f"- training budget: `{payload['protocol']['training_episodes']}` CMA-ES episodes of length `{payload['protocol']['training_horizon']}`",
         "",
         "## Reporting Rule",
         "",
         "- `literature_verified` applies only to repo exact or heuristic algorithms.",
         "- Published A3C / PPO / NDP rows from papers are carried as published rows, not as verified repo algorithms.",
-        "- Repo reproduced absolute costs are shown separately from published literature numbers.",
+        "- This report is exploratory because it trains a repo soft-tree policy against the reduced action grid rather than the paper's A3C learner.",
+        "- Direct gaps against the published A3C percentages below are cross-protocol orientation only.",
         "",
         "## Aggregate",
         "",
-        f"- beats published A3C savings on `{payload['aggregate']['beats_published_a3c_count']}` / `{payload['aggregate']['num_instances']}` settings",
-        f"- beats published Van Roy savings on `{payload['aggregate']['beats_published_van_roy_count']}` / `{payload['aggregate']['num_instances']}` settings",
+        f"- cross-protocol higher-than-published-A3C count: `{payload['aggregate']['cross_protocol_higher_than_published_a3c_count']}` / `{payload['aggregate']['num_instances']}`",
+        f"- cross-protocol higher-than-published-Van-Roy count: `{payload['aggregate']['cross_protocol_higher_than_published_van_roy_count']}` / `{payload['aggregate']['num_instances']}`",
         f"- mean soft-tree savings vs repo constant base-stock: `{payload['aggregate']['mean_soft_tree_savings_pct']:.3f}%`",
-        f"- mean gap vs published A3C savings: `{payload['aggregate']['mean_gap_vs_published_a3c_pct']:.3f}` percentage points",
+        f"- mean cross-protocol gap vs published A3C savings: `{payload['aggregate']['mean_cross_protocol_gap_vs_published_a3c_pct']:.3f}` percentage points",
         "",
         "## Repo Algorithm Verification",
         "",
@@ -499,7 +513,7 @@ def report_markdown(payload: dict) -> str:
         "",
         "Repo reproduction benchmark:",
         "",
-        "| Instance | Base-Stock Cost | Soft Tree Cost | Soft Tree Savings | 95% Half-Width | Published A3C Savings | Published Van Roy Savings | Gap vs A3C |",
+        "| Instance | Base-Stock Cost | Soft Tree Cost | Soft Tree Savings | 95% Half-Width | Published A3C Savings | Published Van Roy Savings | Cross-Protocol Gap vs A3C |",
         "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
     ]
     for row in payload["instance_table"]:
@@ -507,7 +521,7 @@ def report_markdown(payload: dict) -> str:
             f"| `{row['instance_name']}` | `{row['base_stock_cost']:.3f}` | `{row['soft_tree_cost']:.3f}` | "
             f"`{row['soft_tree_savings_pct']:.3f}%` | `{row['soft_tree_savings_half_width_pct']:.3f}%` | "
             f"`{row['published_a3c_savings_pct']:.2f}% +/- {row['published_a3c_half_width_pct']:.2f}%` | "
-            f"`~{row['published_van_roy_savings_pct_approx']:.2f}%` | `{row['gap_vs_published_a3c_pct']:.3f}` |"
+            f"`~{row['published_van_roy_savings_pct_approx']:.2f}%` | `{row['cross_protocol_gap_vs_published_a3c_pct']:.3f}` |"
         )
     return "\n".join(lines)
 

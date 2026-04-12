@@ -16,12 +16,21 @@
 - The current validation script checks repo reproduction of the published Van Roy constant
   base-stock rows directly. Gijs is used later for relative-gain comparison, not as the primary
   absolute heuristic-verification anchor.
+- The carried Gijs relative rows are now a Rust-side verification artifact via
+  `verification::gijs_relative_verification_summary` and the binding
+  `invman_rust.multi_echelon_gijs_relative_verification_summary(...)`.
+- The main failure mode we found was benchmark framing, not just tuning:
+  - the exploratory soft-tree benchmark is a different algorithm family from the paper's A3C row
+  - its reduced-grid repo comparator is not the published Van Roy constant base-stock benchmark row
 - The protocol audit script `scripts/multi_echelon/audit_literature_protocol.py` isolates horizon
   and warm-up sensitivity while keeping the current zero-state initialization fixed.
 - Current status:
   - the literature rows are present and checked
+  - the carried Gijs relative rows are frozen and auditable inside the Rust verification module
   - the repo heuristic implementation is still `literature_verified = false`
   - current comparisons do not yet reproduce all published Van Roy rows under one stable protocol
+  - the repo still does not generate the published A3C row, so the Gijs relative row remains a
+    carried literature benchmark rather than a verified repo policy result
 
 ## Repo Exact Verification
 

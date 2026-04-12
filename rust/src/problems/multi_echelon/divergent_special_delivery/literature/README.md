@@ -63,6 +63,22 @@ Those are carried as published comparison rows. They are useful for later policy
 they are not the primary absolute heuristic-verification anchor because Van Roy already provides the
 stronger absolute constant-base-stock and NDP benchmark numbers.
 
+The paper-row reproduction path for those relative gains is now explicit:
+
+- `rust/src/problems/multi_echelon/divergent_special_delivery/verification/mod.rs`
+  - exposes `gijs_relative_verification_summary`
+  - freezes the carried `8.95%` and `12.09%` rows directly from the literature metadata
+  - computes the implied published A3C mean costs from the published Van Roy constant base-stock
+    rows
+  - audits the current Rust simulator at the published heuristic levels separately
+
+Why the earlier exploratory benchmark missed those rows:
+
+- it trained a repo soft-tree policy instead of the published A3C learner
+- it used the reduced Van Roy learned-action grid as the repo comparator
+- that reduced grid is not the published constant base-stock benchmark domain used in the Gijs
+  savings percentages
+
 ## Other Benchmark Sources
 
 Other papers that reuse the Van Roy family but do not currently supply stronger heuristic-verification
