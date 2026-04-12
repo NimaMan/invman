@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::problems::core::flownet::{validate_flownet, FlowNetValidationIssue};
 use crate::problems::lost_sales::flownet::formulation::canonical_lost_sales_flownet;
 

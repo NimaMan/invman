@@ -1,6 +1,6 @@
-mod case_studies;
-mod core;
-mod problems;
+pub mod case_studies;
+pub mod core;
+pub mod problems;
 
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;

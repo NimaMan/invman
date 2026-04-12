@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::problems::joint_replenishment::demand::DemandRange;
 
 #[derive(Clone, Copy, Debug, PartialEq)]

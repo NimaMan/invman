@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::case_studies::hormuz_strait::references::{
     current_market_anchors, HormuzMarketAnchorReference,
 };

@@ -14,6 +14,10 @@ use crate::problems::lost_sales_fixed_order_cost::literature::{
 use crate::problems::lost_sales_fixed_order_cost::exact_value_iteration::{
     evaluate_policy, solve_optimal_policy, ExactPolicyKind,
 };
+use crate::problems::lost_sales_fixed_order_cost::experiments::{
+    expand_experiment_grid, get_experiment_grid, list_experiment_grids,
+    FixedCostExperimentDemandCase, FixedCostExperimentGrid, FixedCostExperimentInstance,
+};
 
 fn heuristic_row_to_py(py: Python<'_>, row: &PublishedHeuristicRow) -> PyResult<PyObject> {
     let dict = PyDict::new_bound(py);
@@ -56,6 +60,104 @@ fn reference_to_py(
     Ok(dict.into_any().unbind().into())
 }
 
+fn demand_case_to_py(py: Python<'_>, case: &FixedCostExperimentDemandCase) -> PyResult<PyObject> {
+    let dict = PyDict::new_bound(py);
+    dict.set_item("key", case.key)?;
+    dict.set_item("display_name", case.display_name)?;
+    dict.set_item("name_token", case.name_token)?;
+    dict.set_item("demand_distribution", case.demand_distribution)?;
+    dict.set_item("demand_rate", case.demand_rate)?;
+    dict.set_item("demand_lambda_low", case.demand_lambda_low)?;
+    dict.set_item("demand_lambda_high", case.demand_lambda_high)?;
+    dict.set_item("demand_p00", case.demand_p00)?;
+    dict.set_item("demand_p11", case.demand_p11)?;
+    dict.set_item("notes", case.notes)?;
+    Ok(dict.into_any().unbind().into())
+}
+
+fn experiment_grid_to_py(py: Python<'_>, grid: &FixedCostExperimentGrid) -> PyResult<PyObject> {
+    let dict = PyDict::new_bound(py);
+    dict.set_item("name", grid.name)?;
+    dict.set_item("description", grid.description)?;
+    dict.set_item(
+        "demand_cases",
+        grid.demand_cases
+            .iter()
+            .map(|case| demand_case_to_py(py, case))
+            .collect::<PyResult<Vec<_>>>()?,
+    )?;
+    dict.set_item("shortage_costs", grid.shortage_costs.to_vec())?;
+    dict.set_item("fixed_order_costs", grid.fixed_order_costs.to_vec())?;
+    dict.set_item("lead_times", grid.lead_times.to_vec())?;
+    dict.set_item("holding_cost", grid.holding_cost)?;
+    dict.set_item("mean_demand", grid.mean_demand)?;
+    Ok(dict.into_any().unbind().into())
+}
+
+fn experiment_instance_to_py(
+    py: Python<'_>,
+    instance: &FixedCostExperimentInstance,
+) -> PyResult<PyObject> {
+    let dict = PyDict::new_bound(py);
+    dict.set_item("name", instance.name.as_str())?;
+    dict.set_item("description", instance.description.as_str())?;
+    dict.set_item("demand_case_key", instance.demand_case_key)?;
+    dict.set_item("demand_case_display_name", instance.demand_case_display_name)?;
+
+    let params = PyDict::new_bound(py);
+    params.set_item("problem", "lost_sales_fixed_order_cost")?;
+    params.set_item("demand_dist_name", instance.demand_distribution)?;
+    params.set_item("demand_rate", instance.demand_rate)?;
+    if let Some(value) = instance.demand_lambda_low {
+        params.set_item("demand_lambda_low", value)?;
+    }
+    if let Some(value) = instance.demand_lambda_high {
+        params.set_item("demand_lambda_high", value)?;
+    }
+    if let Some(value) = instance.demand_p00 {
+        params.set_item("demand_p00", value)?;
+    }
+    if let Some(value) = instance.demand_p11 {
+        params.set_item("demand_p11", value)?;
+    }
+    params.set_item("lead_time", instance.lead_time)?;
+    params.set_item("shortage_cost", instance.shortage_cost)?;
+    params.set_item("fixed_order_cost", instance.fixed_order_cost)?;
+    params.set_item("holding_cost", instance.holding_cost)?;
+    params.set_item("procurement_cost", instance.procurement_cost)?;
+    params.set_item("max_order_size", instance.max_order_size)?;
+    params.set_item("horizon", instance.horizon)?;
+    params.set_item("eval_horizon", instance.eval_horizon)?;
+    params.set_item("warm_up_periods_ratio", instance.warm_up_periods_ratio)?;
+    params.set_item("seed", instance.seed)?;
+    params.set_item("state_normalizer", instance.state_normalizer)?;
+    params.set_item("state_scale", instance.state_scale)?;
+    dict.set_item("params", params)?;
+
+    let search = PyDict::new_bound(py);
+    search.set_item("position_upper_bound", instance.position_upper_bound)?;
+    search.set_item("search_horizon", instance.search_horizon)?;
+    search.set_item("search_seed", instance.search_seed)?;
+    search.set_item("top_k_s_s_pairs", instance.top_k_s_s_pairs)?;
+    search.set_item("q_window", instance.q_window)?;
+    dict.set_item("search", search)?;
+
+    let evaluation = PyDict::new_bound(py);
+    evaluation.set_item("eval_horizon", instance.evaluation_eval_horizon)?;
+    evaluation.set_item("eval_seeds", instance.evaluation_eval_seeds)?;
+    dict.set_item("evaluation", evaluation)?;
+
+    let literature_metadata = PyDict::new_bound(py);
+    literature_metadata.set_item("benchmark_family", instance.benchmark_family)?;
+    literature_metadata.set_item("parent_problem_family", instance.parent_problem_family)?;
+    literature_metadata.set_item("demand_case", instance.demand_case_key)?;
+    literature_metadata.set_item("demand_case_display_name", instance.demand_case_display_name)?;
+    literature_metadata.set_item("notes", instance.notes.as_str())?;
+    dict.set_item("literature_metadata", literature_metadata)?;
+
+    Ok(dict.into_any().unbind().into())
+}
+
 #[pyfunction]
 fn lost_sales_fixed_order_cost_reference_catalog(py: Python<'_>) -> PyResult<PyObject> {
     let dict = PyDict::new_bound(py);
@@ -91,6 +193,37 @@ fn lost_sales_fixed_order_cost_get_reference_instance(
 #[pyfunction]
 fn lost_sales_fixed_order_cost_primary_reference_instance(py: Python<'_>) -> PyResult<PyObject> {
     reference_to_py(py, &BIJVANK_2015_TABLE1_REFERENCE)
+}
+
+#[pyfunction]
+fn lost_sales_fixed_order_cost_list_experiment_grids(py: Python<'_>) -> PyResult<Vec<PyObject>> {
+    list_experiment_grids()
+        .iter()
+        .map(|grid| experiment_grid_to_py(py, grid))
+        .collect()
+}
+
+#[pyfunction]
+fn lost_sales_fixed_order_cost_get_experiment_grid(
+    py: Python<'_>,
+    name: &str,
+) -> PyResult<PyObject> {
+    let grid = get_experiment_grid(name).ok_or_else(|| {
+        PyValueError::new_err(format!("unknown fixed-cost experiment grid '{name}'"))
+    })?;
+    experiment_grid_to_py(py, grid)
+}
+
+#[pyfunction]
+fn lost_sales_fixed_order_cost_expand_experiment_grid(
+    py: Python<'_>,
+    name: &str,
+) -> PyResult<Vec<PyObject>> {
+    expand_experiment_grid(name)
+        .map_err(PyValueError::new_err)?
+        .iter()
+        .map(|instance| experiment_instance_to_py(py, instance))
+        .collect()
 }
 
 #[pyfunction]
@@ -364,6 +497,18 @@ pub fn register_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     )?)?;
     m.add_function(wrap_pyfunction!(
         lost_sales_fixed_order_cost_primary_reference_instance,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        lost_sales_fixed_order_cost_list_experiment_grids,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        lost_sales_fixed_order_cost_get_experiment_grid,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        lost_sales_fixed_order_cost_expand_experiment_grid,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(

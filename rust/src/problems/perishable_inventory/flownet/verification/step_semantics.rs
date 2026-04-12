@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::problems::perishable_inventory::env::{
     step_state, IssuingPolicy, PerishableState, PerishableStepOutcome,
 };

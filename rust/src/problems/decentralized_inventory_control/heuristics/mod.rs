@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 mod base_stock;
 mod sterman_anchor_adjust;
 
@@ -20,10 +22,7 @@ pub struct PolicySimulationSummary {
     pub cost_std: f64,
 }
 
-fn base_stock_levels_from_params(
-    params: &[f64],
-    num_agents: usize,
-) -> PyResult<Vec<usize>> {
+fn base_stock_levels_from_params(params: &[f64], num_agents: usize) -> PyResult<Vec<usize>> {
     if params.len() != num_agents {
         return Err(PyValueError::new_err(format!(
             "base_stock expects {} parameters",
@@ -91,9 +90,7 @@ pub fn policy_rollout_from_paths(
 ) -> PyResult<f64> {
     validate_state(initial_state)?;
     if !(0.0..=1.0).contains(&discount_factor) {
-        return Err(PyValueError::new_err(
-            "discount_factor must lie in [0, 1]",
-        ));
+        return Err(PyValueError::new_err("discount_factor must lie in [0, 1]"));
     }
 
     let mut state = initial_state.clone();
@@ -139,9 +136,7 @@ pub fn simulate_policy(
         return Err(PyValueError::new_err("replications must be at least 1"));
     }
     if !(0.0..=1.0).contains(&discount_factor) {
-        return Err(PyValueError::new_err(
-            "discount_factor must lie in [0, 1]",
-        ));
+        return Err(PyValueError::new_err("discount_factor must lie in [0, 1]"));
     }
 
     let mut rng = StdRng::seed_from_u64(seed);

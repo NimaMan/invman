@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::problems::core::flownet::{validate_flownet, FlowNetValidationIssue};
 use crate::problems::perishable_inventory::flownet::formulation::canonical_perishable_inventory_flownet;
 

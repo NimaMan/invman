@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::problems::core::flownet::{FlowNetInstance, FlowNetParameter};
 use crate::problems::perishable_inventory::env::IssuingPolicy;
 use crate::problems::perishable_inventory::flownet::formulation::PERISHABLE_INVENTORY_FLOWNET_NAME;

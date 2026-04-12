@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 mod base_stock;
 mod bsp_low_ew;
 

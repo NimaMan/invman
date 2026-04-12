@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::problems::ameliorating_inventory::demand::{DemandDistributionKind, DemandModel};
 
 #[derive(Clone, Copy, Debug, PartialEq)]

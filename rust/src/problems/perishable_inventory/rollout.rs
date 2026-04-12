@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use pyo3::exceptions::PyValueError;
 use pyo3::PyResult;
 use rand::rngs::StdRng;

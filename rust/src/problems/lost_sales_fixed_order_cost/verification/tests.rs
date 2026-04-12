@@ -4,6 +4,9 @@ use crate::problems::lost_sales_fixed_order_cost::literature::{
 use crate::problems::lost_sales_fixed_order_cost::exact_value_iteration::{
     evaluate_policy, solve_optimal_policy, ExactPolicyKind,
 };
+use crate::problems::lost_sales_fixed_order_cost::experiments::{
+    expand_experiment_grid, get_experiment_grid, FULL_GRID_NAME,
+};
 
 #[test]
 fn published_reference_row_has_expected_shape() {
@@ -85,4 +88,21 @@ fn literature_row_is_matched_tightly_once_cap_is_large_enough() {
     assert!((s_s.average_cost - 11.62).abs() < 0.01);
     assert!((s_nq.average_cost - 11.56).abs() < 0.01);
     assert!((modified.average_cost - 11.50).abs() < 0.01);
+}
+
+#[test]
+fn paper_experiment_grid_has_expected_axes_and_size() {
+    let grid = get_experiment_grid(FULL_GRID_NAME).expect("paper grid exists");
+    assert_eq!(grid.demand_cases.len(), 4);
+    assert_eq!(grid.shortage_costs, &[4.0, 19.0]);
+    assert_eq!(grid.fixed_order_costs, &[5.0, 25.0]);
+    assert_eq!(grid.lead_times, &[2, 4, 6, 8, 10]);
+
+    let instances = expand_experiment_grid(FULL_GRID_NAME).expect("paper grid expands");
+    assert_eq!(instances.len(), 80);
+    assert_eq!(instances.first().expect("first instance").name, "lit_pois_mu5_l2_p4_k5");
+    assert_eq!(
+        instances.last().expect("last instance").name,
+        "lit_mmpp2_neg_mu5_l10_p19_k25"
+    );
 }

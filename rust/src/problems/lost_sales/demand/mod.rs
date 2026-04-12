@@ -111,6 +111,7 @@ impl LostSalesDemandConfig {
         }
     }
 
+    #[allow(dead_code)]
     pub fn lag_k_autocorrelation(&self, lag: usize) -> Result<f64, String> {
         if lag == 0 {
             return Ok(1.0);

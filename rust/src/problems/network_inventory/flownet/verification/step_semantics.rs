@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::problems::network_inventory::env::{
     initialize_state, step_state, NetworkInventoryGraph,
 };

@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::problems::core::control::{
     ActionShape, ActionSpec, ControlLayer, FeasibilityConstraint, IssuanceRule, ObservationMode,
     ObservationSpec, ServiceSpec, ShortageReaction,

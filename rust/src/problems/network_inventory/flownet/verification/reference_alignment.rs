@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::problems::network_inventory::flownet::instance::{
     exact_verification_instance, primary_reference_instance,
 };

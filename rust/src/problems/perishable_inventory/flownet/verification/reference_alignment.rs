@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::problems::perishable_inventory::flownet::instance::primary_reference_instance;
 
 pub fn primary_reference_instance_matches_fifo_semantics() -> bool {

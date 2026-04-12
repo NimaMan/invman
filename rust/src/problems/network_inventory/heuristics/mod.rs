@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 mod base_stock;
 
 pub use base_stock::node_base_stock_requests;
@@ -56,9 +58,7 @@ pub fn policy_rollout_from_paths(
 ) -> PyResult<f64> {
     validate_state(graph, initial_state)?;
     if !(0.0..=1.0).contains(&discount_factor) {
-        return Err(PyValueError::new_err(
-            "discount_factor must lie in [0, 1]",
-        ));
+        return Err(PyValueError::new_err("discount_factor must lie in [0, 1]"));
     }
 
     let mut state = initial_state.clone();

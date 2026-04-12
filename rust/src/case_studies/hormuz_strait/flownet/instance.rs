@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::problems::core::flownet::{FlowNetInstance, FlowNetParameter};
 use crate::case_studies::hormuz_strait::flownet::formulation::HORMUZ_STRAIT_FLOWNET_NAME;
 use crate::case_studies::hormuz_strait::references::{

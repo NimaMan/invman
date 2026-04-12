@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::f64::consts::PI;
 
 use crate::problems::nonstationary_lot_sizing::demand::DemandDistributionKind;

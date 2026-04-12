@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::problems::network_inventory::demand::{DemandDistributionKind, DemandModel};
 use crate::problems::network_inventory::env::NetworkEdge;
 

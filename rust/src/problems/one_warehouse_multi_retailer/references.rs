@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::problems::one_warehouse_multi_retailer::allocation::AllocationPolicy;
 use crate::problems::one_warehouse_multi_retailer::demand::{DemandDistributionKind, DemandModel};
 use crate::problems::one_warehouse_multi_retailer::env::CustomerBehaviorModel;

@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::collections::HashMap;
 
 use pyo3::exceptions::PyValueError;
@@ -261,7 +263,6 @@ fn solve_bounded_average_cost_policy(
     let mut next_values = vec![0.0; state_space.states.len()];
     let mut policy_actions = vec![0usize; state_space.states.len()];
     let mut final_span = f64::INFINITY;
-    let mut iterations = None;
 
     for iteration in 1..=max_iterations {
         let mut min_delta = f64::INFINITY;
@@ -305,7 +306,6 @@ fn solve_bounded_average_cost_policy(
         let previous_values = values.clone();
         values.clone_from_slice(&next_values);
         final_span = max_delta - min_delta;
-        iterations = Some(iteration);
         if final_span < epsilon {
             let initial_state = ExactStateKey {
                 on_hand_inventory: 0,
@@ -318,7 +318,7 @@ fn solve_bounded_average_cost_policy(
                 ExactPolicyEvaluation {
                     average_cost: average_cost_for_values(&previous_values, &values),
                     first_action: policy_actions[initial_idx],
-                    iterations: iterations.expect("iteration count must be set"),
+                    iterations: iteration,
                     final_span,
                     inventory_position_cap,
                     state_space_size: state_space.states.len(),
@@ -356,7 +356,6 @@ pub fn solve_optimal_policy(
     let mut next_values = vec![0.0; state_space.states.len()];
     let mut policy_actions = vec![0usize; state_space.states.len()];
     let mut final_span = f64::INFINITY;
-    let mut iterations = None;
 
     for iteration in 1..=DEFAULT_MAX_ITERATIONS {
         let mut min_delta = f64::INFINITY;
@@ -381,7 +380,6 @@ pub fn solve_optimal_policy(
         let previous_values = values.clone();
         values.clone_from_slice(&next_values);
         final_span = max_delta - min_delta;
-        iterations = Some(iteration);
         if final_span < DEFAULT_EPSILON {
             let initial_idx = *state_space
                 .index_by_state
@@ -393,7 +391,7 @@ pub fn solve_optimal_policy(
             return Ok(ExactPolicyEvaluation {
                 average_cost: average_cost_for_values(&previous_values, &values),
                 first_action: policy_actions[initial_idx],
-                iterations: iterations.expect("iteration count must be set"),
+                iterations: iteration,
                 final_span,
                 inventory_position_cap,
                 state_space_size: state_space.states.len(),
@@ -418,7 +416,6 @@ pub fn evaluate_policy(
     let mut next_values = vec![0.0; state_space.states.len()];
     let mut policy_actions = vec![0usize; state_space.states.len()];
     let mut final_span = f64::INFINITY;
-    let mut iterations = None;
 
     for iteration in 1..=DEFAULT_MAX_ITERATIONS {
         let mut min_delta = f64::INFINITY;
@@ -436,7 +433,6 @@ pub fn evaluate_policy(
         let previous_values = values.clone();
         values.clone_from_slice(&next_values);
         final_span = max_delta - min_delta;
-        iterations = Some(iteration);
         if final_span < DEFAULT_EPSILON {
             let initial_idx = *state_space
                 .index_by_state
@@ -448,7 +444,7 @@ pub fn evaluate_policy(
             return Ok(ExactPolicyEvaluation {
                 average_cost: average_cost_for_values(&previous_values, &values),
                 first_action: policy_actions[initial_idx],
-                iterations: iterations.expect("iteration count must be set"),
+                iterations: iteration,
                 final_span,
                 inventory_position_cap,
                 state_space_size: state_space.states.len(),
