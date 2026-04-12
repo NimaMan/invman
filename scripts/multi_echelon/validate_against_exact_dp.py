@@ -13,24 +13,19 @@ if str(SCRIPT_DIR) not in sys.path:
 from common import (  # noqa: E402
     dumps_json,
     ensure_parent,
-    evaluate_van_roy_case_study,
+    evaluate_stationary_policy,
     get_exact_dp_summary,
     get_exact_verification_reference,
-    get_van_roy_case_study,
-    implied_target_cost_from_savings_pct,
     list_references,
-    search_constant_base_stock,
+    savings_pct,
 )
 
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Validate the Rust multi-echelon package against the repo exact verifier, the public Gijs settings, and the open Van Roy case-study row."
+        description="Validate the Rust multi-echelon package against the repo exact verifier and the published Van Roy constant-base-stock rows."
     )
-    parser.add_argument("--gijs_replications", type=int, default=8)
-    parser.add_argument("--gijs_horizon", type=int, default=20000)
-    parser.add_argument("--van_roy_replications", type=int, default=8)
-    parser.add_argument("--van_roy_horizon", type=int, default=20000)
+    parser.add_argument("--van_roy_replications", type=int, default=32)
     parser.add_argument("--seed", type=int, default=123)
     parser.add_argument("--output_json", default=None)
     return parser.parse_args()
@@ -55,61 +50,52 @@ def _exact_validation() -> dict:
     }
 
 
-def _gijs_validation(replications: int, horizon: int, seed: int) -> list[dict]:
+def _van_roy_absolute_validation(replications: int, seed: int) -> list[dict]:
     rows = []
     for reference in list_references():
-        baseline = search_constant_base_stock(
+        published_cost = reference.get("published_constant_base_stock_mean_cost")
+        if published_cost is None:
+            continue
+        published_levels = [int(value) for value in reference["published_constant_base_stock_levels"]]
+        repo_eval = evaluate_stationary_policy(
             reference,
-            allocation_mode=reference["policy_allocation_mode"],
+            warehouse_level=published_levels[0],
+            retailer_level=published_levels[1],
+            allocation_mode=str(reference["policy_allocation_mode"]),
+            policy_kind="regular_base_stock",
             replications=replications,
-            horizon=horizon,
             seed=seed,
         )
-        best = dict(baseline["best_result"])
-        a3c_savings = reference["published_a3c_savings_pct"]
-        van_roy_savings = reference["published_van_roy_savings_pct_approx"]
         rows.append(
             {
-                "reference": reference["name"],
+                "reference": str(reference["name"]),
                 "literature_verified": bool(reference["literature_verified"]),
-                "baseline": best,
-                "published_a3c_savings_pct": a3c_savings,
-                "published_van_roy_savings_pct_approx": van_roy_savings,
-                "implied_a3c_target_cost": implied_target_cost_from_savings_pct(
-                    float(best["mean_cost"]),
-                    a3c_savings,
+                "published_constant_base_stock_levels": published_levels,
+                "published_constant_base_stock_mean_cost": float(published_cost),
+                "repo_reproduced_constant_base_stock_mean_cost": float(repo_eval["mean_cost"]),
+                "repo_reproduced_constant_base_stock_std": float(repo_eval["cost_std"]),
+                "gap_vs_published_constant_base_stock": float(
+                    repo_eval["mean_cost"] - float(published_cost)
                 ),
-                "implied_van_roy_target_cost": implied_target_cost_from_savings_pct(
-                    float(best["mean_cost"]),
-                    van_roy_savings,
+                "published_van_roy_best_ndp_mean_cost": (
+                    float(reference["published_van_roy_best_ndp_mean_cost"])
+                    if reference.get("published_van_roy_best_ndp_mean_cost") is not None
+                    else None
                 ),
-                "evaluation_protocol": {
+                "published_van_roy_best_ndp_savings_pct": (
+                    savings_pct(float(published_cost), float(reference["published_van_roy_best_ndp_mean_cost"]))
+                    if reference.get("published_van_roy_best_ndp_mean_cost") is not None
+                    else None
+                ),
+                "published_a3c_savings_pct": reference.get("published_a3c_savings_pct"),
+                "protocol": {
                     "replications": int(replications),
-                    "horizon": int(horizon),
-                    "seed": int(seed),
-                    "allocation_mode": reference["policy_allocation_mode"],
-                    "warehouse_base_stock_mode": reference["warehouse_base_stock_mode"],
+                    "periods": int(reference["benchmark_periods"]),
+                    "allocation_mode": str(reference["policy_allocation_mode"]),
                 },
             }
         )
     return rows
-
-
-def _van_roy_validation(replications: int, horizon: int, seed: int) -> dict:
-    reference = get_van_roy_case_study()
-    return {
-        "reference": reference,
-        "evaluations": {
-            mode: evaluate_van_roy_case_study(
-                reference,
-                allocation_mode=mode,
-                replications=replications,
-                horizon=horizon,
-                seed=seed,
-            )
-            for mode in ("sequential_index", "proportional", "min_shortage")
-        },
-    }
 
 
 def _markdown(payload: dict) -> str:
@@ -123,24 +109,20 @@ def _markdown(payload: dict) -> str:
         f"| `optimal_gap_vs_best_stationary` | `{exact['optimal_gap_vs_best_stationary']:.12f}` |",
         f"| `optimal_beats_best_stationary` | `{exact['optimal_beats_best_stationary']}` |",
         "",
-        "| Gijs Setting | Repo Constant Base-Stock Cost | Published A3C Savings % | Implied A3C Target Cost |",
-        "| --- | ---: | ---: | ---: |",
+        "| Van Roy Reference | Published Heuristic Levels | Repo Heuristic Cost | Published Heuristic Cost | Gap | Published Best NDP |",
+        "| --- | --- | ---: | ---: | ---: | ---: |",
     ]
-    for row in payload["gijs_validation"]:
-        target = row["implied_a3c_target_cost"]
-        lines.append(
-            f"| `{row['reference']}` | `{row['baseline']['mean_cost']:.3f}` | `{row['published_a3c_savings_pct']}` | `{target:.3f}` |"
+    for row in payload["van_roy_absolute_validation"]:
+        ndp = (
+            "na"
+            if row["published_van_roy_best_ndp_mean_cost"] is None
+            else f"{row['published_van_roy_best_ndp_mean_cost']:.3f}"
         )
-    lines.extend(
-        [
-            "",
-            "| Van Roy Allocation Mode | Repo Cost at Published (330,23) | Published Cost | Gap |",
-            "| --- | ---: | ---: | ---: |",
-        ]
-    )
-    for mode, result in payload["van_roy_validation"]["evaluations"].items():
         lines.append(
-            f"| `{mode}` | `{result['mean_cost']:.3f}` | `{result['published_constant_base_stock_mean_cost']:.3f}` | `{result['gap_vs_published_cost']:.3f}` |"
+            f"| `{row['reference']}` | `{row['published_constant_base_stock_levels']}` | "
+            f"`{row['repo_reproduced_constant_base_stock_mean_cost']:.3f}` | "
+            f"`{row['published_constant_base_stock_mean_cost']:.3f}` | "
+            f"`{row['gap_vs_published_constant_base_stock']:.3f}` | `{ndp}` |"
         )
     return "\n".join(lines)
 
@@ -149,14 +131,8 @@ def main():
     parsed = parse_args()
     payload = {
         "exact_validation": _exact_validation(),
-        "gijs_validation": _gijs_validation(
-            replications=parsed.gijs_replications,
-            horizon=parsed.gijs_horizon,
-            seed=parsed.seed,
-        ),
-        "van_roy_validation": _van_roy_validation(
+        "van_roy_absolute_validation": _van_roy_absolute_validation(
             replications=parsed.van_roy_replications,
-            horizon=parsed.van_roy_horizon,
             seed=parsed.seed,
         ),
     }

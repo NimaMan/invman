@@ -23,6 +23,7 @@ pub struct MultiEchelonReferenceInstance {
     pub warehouse_capacity: usize,
     pub warehouse_inventory_cap: usize,
     pub retailer_inventory_cap: usize,
+    pub inventory_dynamics_mode: &'static str,
     pub demand_distribution: &'static str,
     pub demand_mean: f64,
     pub demand_std: f64,
@@ -37,6 +38,7 @@ pub struct MultiEchelonReferenceInstance {
     pub benchmark_retailer_levels: &'static [usize],
     pub published_constant_base_stock_mean_cost: Option<f64>,
     pub published_constant_base_stock_levels: &'static [usize],
+    pub published_van_roy_best_ndp_mean_cost: Option<f64>,
     pub published_a3c_savings_pct: Option<f64>,
     pub published_a3c_confidence_half_width_pct: Option<f64>,
     pub published_van_roy_savings_pct_approx: Option<f64>,
@@ -63,6 +65,7 @@ pub struct ExactVerificationReference {
     pub warehouse_capacity: usize,
     pub warehouse_inventory_cap: usize,
     pub retailer_inventory_cap: usize,
+    pub inventory_dynamics_mode: &'static str,
     pub warehouse_base_stock_mode: &'static str,
     pub allocation_mode: &'static str,
     pub discount_factor: f64,
@@ -110,7 +113,7 @@ pub const GIJSBRECHTS_2022_REFERENCE: PublishedBenchmarkReference = PublishedBen
         "a3c",
     ],
     notes:
-        "Section 7.2 / Table 3 gives the two Van Roy settings and reports relative improvements only: A3C improves approximately 9% and 12% over the constant base-stock benchmark. The paper does not publish the absolute per-setting costs.",
+        "Section 7.2 / Table 3 reuses the two Van Roy case-study settings and reports A3C relative improvements over constant base-stock: 8.95% and 12.09%. The absolute constant base-stock costs for those same settings come from the original Van Roy full-length report.",
 };
 
 pub const VAN_ROY_1997_REFERENCE: PublishedBenchmarkReference = PublishedBenchmarkReference {
@@ -119,21 +122,70 @@ pub const VAN_ROY_1997_REFERENCE: PublishedBenchmarkReference = PublishedBenchma
     url: "https://www.mit.edu/~jnt/Papers/C-97-bvr-retail-CDC.pdf",
     benchmark_policies: &["constant_base_stock", "neuro_dynamic_programming"],
     notes:
-        "Section 6.2 gives one open complex case-study row with heuristic levels (330, 23) and average cost 1302. The best neuro-dynamic policy is reported as about 10% better than the heuristic, but no exact average cost is printed.",
+        "The original CDC paper and the linked full-length report give executable demand-generation, heuristic, and NDP benchmark rows for one simple problem and two complex case studies. Transportation costs in the model are associated only with special deliveries.",
 };
 
 pub const GIJS_SETTING_WAREHOUSE_LEVELS: &[usize] = &[50, 60, 70, 80, 90, 100];
 pub const GIJS_SETTING1_RETAILER_LEVELS: &[usize] = &[0, 5, 10, 15, 20, 25, 30, 35, 40];
 pub const GIJS_SETTING2_RETAILER_LEVELS: &[usize] =
     &[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
+pub const VAN_ROY_SIMPLE_ORDER_LEVELS: &[usize] = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+pub const VAN_ROY_SIMPLE_RETAILER_LEVELS: &[usize] = &[
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+    25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47,
+    48, 49, 50,
+];
+pub const VAN_ROY_SIMPLE_LEVELS: &[usize] = &[10, 16];
 pub const VAN_ROY_CASE_STUDY_LEVELS: &[usize] = &[330, 23];
+pub const VAN_ROY_CASE_STUDY2_LEVELS: &[usize] = &[460, 22];
 
 pub const LITERATURE_REFERENCE_INSTANCES: &[MultiEchelonReferenceInstance] = &[
+    MultiEchelonReferenceInstance {
+        name: "van_roy1997_simple_problem",
+        source: VAN_ROY_1997_REFERENCE.source,
+        url: "https://www.stanford.edu/~bvr/pubs/retail.pdf",
+        literature_verified: false,
+        warehouse_lead_time: 0,
+        retailer_lead_time: 1,
+        num_retailers: 1,
+        warehouse_holding_cost: 1.0,
+        retailer_holding_cost: 2.0,
+        warehouse_expedited_cost: 10.0,
+        warehouse_lost_sale_cost: 50.0,
+        expedited_service_prob: 1.0,
+        warehouse_capacity: 10,
+        warehouse_inventory_cap: 50,
+        retailer_inventory_cap: 50,
+        inventory_dynamics_mode: "van_roy_1997",
+        demand_distribution: "normal_rounded_clipped",
+        demand_mean: 5.0,
+        demand_std: 8.0,
+        benchmark_search_horizon: 100_000,
+        benchmark_periods: 100_000,
+        benchmark_replications: 1,
+        warm_up_periods_ratio: 0.0,
+        rollout_objective: "average_cost_after_warmup",
+        warehouse_base_stock_mode: "regular",
+        policy_allocation_mode: "min_shortage",
+        benchmark_warehouse_levels: VAN_ROY_SIMPLE_ORDER_LEVELS,
+        benchmark_retailer_levels: VAN_ROY_SIMPLE_RETAILER_LEVELS,
+        published_constant_base_stock_mean_cost: Some(51.7),
+        published_constant_base_stock_levels: VAN_ROY_SIMPLE_LEVELS,
+        published_van_roy_best_ndp_mean_cost: Some(52.6),
+        published_a3c_savings_pct: None,
+        published_a3c_confidence_half_width_pct: None,
+        published_van_roy_savings_pct_approx: None,
+        tuned_learning_rate: None,
+        tuned_entropy_regularization: None,
+        tuned_buffer_length: None,
+        notes:
+            "Simple one-store Van Roy problem from the full-length report. The normal demand parameters are mean 5 and stdev 8, which induce true mean and stdev 6.2 and 6.2 after rounding and clipping.",
+    },
     MultiEchelonReferenceInstance {
         name: "gijsbrechts2022_setting1",
         source: GIJSBRECHTS_2022_REFERENCE.source,
         url: GIJSBRECHTS_2022_REFERENCE.url,
-        literature_verified: true,
+        literature_verified: false,
         warehouse_lead_time: 2,
         retailer_lead_time: 2,
         num_retailers: 10,
@@ -145,6 +197,7 @@ pub const LITERATURE_REFERENCE_INSTANCES: &[MultiEchelonReferenceInstance] = &[
         warehouse_capacity: 100,
         warehouse_inventory_cap: 1000,
         retailer_inventory_cap: 100,
+        inventory_dynamics_mode: "van_roy_1997",
         demand_distribution: "normal_rounded_clipped",
         demand_mean: 5.0,
         demand_std: 14.0,
@@ -157,8 +210,9 @@ pub const LITERATURE_REFERENCE_INSTANCES: &[MultiEchelonReferenceInstance] = &[
         policy_allocation_mode: "min_shortage",
         benchmark_warehouse_levels: GIJS_SETTING_WAREHOUSE_LEVELS,
         benchmark_retailer_levels: GIJS_SETTING1_RETAILER_LEVELS,
-        published_constant_base_stock_mean_cost: None,
-        published_constant_base_stock_levels: &[],
+        published_constant_base_stock_mean_cost: Some(1302.0),
+        published_constant_base_stock_levels: VAN_ROY_CASE_STUDY_LEVELS,
+        published_van_roy_best_ndp_mean_cost: Some(1179.0),
         published_a3c_savings_pct: Some(8.95),
         published_a3c_confidence_half_width_pct: Some(0.13),
         published_van_roy_savings_pct_approx: Some(10.0),
@@ -166,13 +220,13 @@ pub const LITERATURE_REFERENCE_INSTANCES: &[MultiEchelonReferenceInstance] = &[
         tuned_entropy_regularization: Some(4.68e-5),
         tuned_buffer_length: Some(100),
         notes:
-            "Gijs setting 1 from Table 3. Public literature numbers are relative improvements only, so verification for this setting is based on reproducing the benchmark structure and comparing improvement percentages, not absolute costs.",
+            "This is the first Van Roy complex case study reused by Gijs as setting 1. The underlying normal demand parameters are mean 5 and stdev 14, which induce true mean and stdev 8.6 and 9.8 after rounding and clipping. Van Roy reports constant base-stock cost 1302 at levels (330,23) and best NDP cost 1179.",
     },
     MultiEchelonReferenceInstance {
         name: "gijsbrechts2022_setting2",
         source: GIJSBRECHTS_2022_REFERENCE.source,
         url: GIJSBRECHTS_2022_REFERENCE.url,
-        literature_verified: true,
+        literature_verified: false,
         warehouse_lead_time: 5,
         retailer_lead_time: 3,
         num_retailers: 10,
@@ -184,6 +238,7 @@ pub const LITERATURE_REFERENCE_INSTANCES: &[MultiEchelonReferenceInstance] = &[
         warehouse_capacity: 100,
         warehouse_inventory_cap: 1000,
         retailer_inventory_cap: 100,
+        inventory_dynamics_mode: "van_roy_1997",
         demand_distribution: "normal_rounded_clipped",
         demand_mean: 0.0,
         demand_std: 20.0,
@@ -196,8 +251,9 @@ pub const LITERATURE_REFERENCE_INSTANCES: &[MultiEchelonReferenceInstance] = &[
         policy_allocation_mode: "min_shortage",
         benchmark_warehouse_levels: GIJS_SETTING_WAREHOUSE_LEVELS,
         benchmark_retailer_levels: GIJS_SETTING2_RETAILER_LEVELS,
-        published_constant_base_stock_mean_cost: None,
-        published_constant_base_stock_levels: &[],
+        published_constant_base_stock_mean_cost: Some(1449.0),
+        published_constant_base_stock_levels: VAN_ROY_CASE_STUDY2_LEVELS,
+        published_van_roy_best_ndp_mean_cost: Some(1318.0),
         published_a3c_savings_pct: Some(12.09),
         published_a3c_confidence_half_width_pct: Some(0.39),
         published_van_roy_savings_pct_approx: Some(10.0),
@@ -205,52 +261,19 @@ pub const LITERATURE_REFERENCE_INSTANCES: &[MultiEchelonReferenceInstance] = &[
         tuned_entropy_regularization: Some(1.46e-8),
         tuned_buffer_length: Some(100),
         notes:
-            "Gijs setting 2 from Table 3. The paper reports that A3C improves approximately 12% over constant base-stock and slightly outperforms the earlier Van Roy approach, which reported around 10% savings.",
+            "This is the second Van Roy complex case study reused by Gijs as setting 2. The underlying normal demand parameters are mean 0 and stdev 20, which induce true mean and stdev 8.0 and 11.6 after rounding and clipping. Van Roy reports constant base-stock cost 1449 at levels (460,22) and best NDP cost 1318.",
     },
 ];
 
 pub const PRIMARY_REFERENCE_INSTANCE: &MultiEchelonReferenceInstance =
-    &LITERATURE_REFERENCE_INSTANCES[1];
+    &LITERATURE_REFERENCE_INSTANCES[2];
 
-pub const VAN_ROY_1997_CASE_STUDY: MultiEchelonReferenceInstance = MultiEchelonReferenceInstance {
-    name: "van_roy1997_case_study",
-    source: VAN_ROY_1997_REFERENCE.source,
-    url: VAN_ROY_1997_REFERENCE.url,
-    literature_verified: false,
-    warehouse_lead_time: 2,
-    retailer_lead_time: 2,
-    num_retailers: 10,
-    warehouse_holding_cost: 3.0,
-    retailer_holding_cost: 3.0,
-    warehouse_expedited_cost: 0.0,
-    warehouse_lost_sale_cost: 60.0,
-    expedited_service_prob: 0.8,
-    warehouse_capacity: 100,
-    warehouse_inventory_cap: 1000,
-    retailer_inventory_cap: 100,
-    demand_distribution: "normal_rounded_clipped",
-    demand_mean: 8.6,
-    demand_std: 9.8,
-    benchmark_search_horizon: 100_000,
-    benchmark_periods: 100_000,
-    benchmark_replications: 1,
-    warm_up_periods_ratio: 0.0,
-    rollout_objective: "average_cost_after_warmup",
-    warehouse_base_stock_mode: "regular",
-    policy_allocation_mode: "min_shortage",
-    benchmark_warehouse_levels: &[],
-    benchmark_retailer_levels: &[],
-    published_constant_base_stock_mean_cost: Some(1302.0),
-    published_constant_base_stock_levels: VAN_ROY_CASE_STUDY_LEVELS,
-    published_a3c_savings_pct: None,
-    published_a3c_confidence_half_width_pct: None,
-    published_van_roy_savings_pct_approx: Some(10.0),
-    tuned_learning_rate: None,
-    tuned_entropy_regularization: None,
-    tuned_buffer_length: None,
-    notes:
-        "Open complex case-study row from Van Roy et al. Section 6.2. The published heuristic optimum is warehouse level 330 and store level 23 with average cost 1302, and the best NDP policy is reported as about 10% better. The current repo transcription carries this row for reference, but it is not yet literature-verified because the executable reproduction does not match the published cost.",
-};
+pub const VAN_ROY_1997_CASE_STUDY1: MultiEchelonReferenceInstance =
+    LITERATURE_REFERENCE_INSTANCES[1];
+pub const VAN_ROY_1997_CASE_STUDY2: MultiEchelonReferenceInstance =
+    LITERATURE_REFERENCE_INSTANCES[2];
+pub const VAN_ROY_1997_CASE_STUDY: MultiEchelonReferenceInstance =
+    VAN_ROY_1997_CASE_STUDY1;
 
 pub const EXACT_WAREHOUSE_LEVELS: &[usize] = &[0, 1, 2, 3, 4, 5, 6, 7, 8];
 pub const EXACT_RETAILER_LEVELS: &[usize] = &[0, 1, 2, 3, 4];
@@ -287,6 +310,7 @@ pub const VERIFICATION_PROBLEM_INSTANCE: ExactVerificationReference = ExactVerif
     warehouse_capacity: 6,
     warehouse_inventory_cap: 8,
     retailer_inventory_cap: 4,
+    inventory_dynamics_mode: "gijs_2022",
     warehouse_base_stock_mode: "regular",
     allocation_mode: "min_shortage",
     discount_factor: 0.95,

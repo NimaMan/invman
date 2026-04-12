@@ -26,14 +26,15 @@
 
 | Repo Algorithm | literature_verified | Verification Anchor | Note |
 | --- | --- | --- | --- |
-| `constant_base_stock` | `False` | `none` | The paper reports only relative savings for the two Gijs settings, not absolute constant base-stock means. The open Van Roy case-study heuristic row is carried separately, but the current executable transcription does not yet reproduce that published cost. |
+| `constant_base_stock` | `False` | `van_roy1997_simple_problem`, `gijsbrechts2022_setting1`, `gijsbrechts2022_setting2` | Published Van Roy rows are carried, but the current repo implementation does not yet reproduce them under one stable protocol. |
 
 ## Published Numbers Confirmed
 
-| Instance | Published Constant Base-Stock Cost | Published A3C Savings | Published Van Roy Savings |
-| --- | ---: | ---: | ---: |
-| `gijsbrechts2022_setting1` | `not reported` | `8.95% +/- 0.13%` | `~10.00%` |
-| `gijsbrechts2022_setting2` | `not reported` | `12.09% +/- 0.39%` | `~10.00%` |
+| Instance | Published Constant Base-Stock Cost | Published Best NDP | Published A3C Savings | Published Van Roy Savings |
+| --- | ---: | ---: | ---: | ---: |
+| `van_roy1997_simple_problem` | `51.7` | `52.6` | `na` | `na` |
+| `gijsbrechts2022_setting1` | `1302.0` | `1179.0` | `8.95% +/- 0.13%` | `~10.00%` |
+| `gijsbrechts2022_setting2` | `1449.0` | `1318.0` | `12.09% +/- 0.39%` | `~10.00%` |
 
 ## Per Instance
 

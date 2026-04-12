@@ -48,6 +48,7 @@ DEFAULT_OUTPUT_JSON = (
     / "src"
     / "problems"
     / "multi_echelon"
+    / "divergent_special_delivery"
     / "experiments"
     / "reports"
     / "latest_report.json"
@@ -59,6 +60,7 @@ DEFAULT_OUTPUT_MARKDOWN = (
     / "src"
     / "problems"
     / "multi_echelon"
+    / "divergent_special_delivery"
     / "experiments"
     / "reports"
     / "README.md"
@@ -71,9 +73,8 @@ BASELINE_NOTE = (
     "in the paper still needs final clarification."
 )
 ALGORITHM_VERIFICATION_NOTE = (
-    "The paper reports only relative savings for the two Gijs settings, not absolute constant base-stock means. "
-    "The open Van Roy case-study heuristic row is carried separately, but the current executable transcription "
-    "does not yet reproduce that published cost."
+    "The Gijs paper reports only relative savings for the two carried settings, not absolute constant base-stock means. "
+    "Absolute heuristic and NDP verification for this family comes from the original Van Roy case-study rows."
 )
 
 
@@ -127,7 +128,11 @@ def parse_args():
     parser.add_argument("--leaf_type", choices=["constant", "linear", "sigmoid_linear"], default="linear")
     parser.add_argument(
         "--policy_feature_mode",
-        choices=["full_decision_state", "symmetric_summary", "van_roy_22"],
+        choices=[
+            "full_decision_state",
+            "symmetric_summary",
+            "compact_summary",
+        ],
         default="full_decision_state",
     )
     parser.add_argument(

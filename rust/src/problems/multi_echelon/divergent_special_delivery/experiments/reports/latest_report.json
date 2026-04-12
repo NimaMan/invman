@@ -21,7 +21,7 @@
         "name": "gijsbrechts2022_setting1",
         "source": "Gijsbrechts et al. (2022), Manufacturing & Service Operations Management 24(3):1349-1368",
         "url": "https://doi.org/10.1287/msom.2021.1064",
-        "literature_verified": true,
+        "literature_verified": false,
         "warehouse_lead_time": 2,
         "retailer_lead_time": 2,
         "num_retailers": 10,
@@ -1515,7 +1515,7 @@
           "row_source": "repo_algorithm_result",
           "literature_verified": false,
           "verification_anchor": null,
-          "note": "The paper reports only relative savings for the two Gijs settings, not absolute constant base-stock means. The open Van Roy case-study heuristic row is carried separately, but the current executable transcription does not yet reproduce that published cost."
+          "note": "The paper reports only relative savings for the two Gijs settings, not absolute constant base-stock means. The open Van Roy case-study heuristic row is carried separately, but that original case study discusses transportation costs in the objective while the current Gijs-style Rust formulation does not. So the Van Roy absolute row is not an executable verifier for this package."
         }
       ],
       "published_policy_rows": [
@@ -1540,7 +1540,7 @@
         "name": "gijsbrechts2022_setting2",
         "source": "Gijsbrechts et al. (2022), Manufacturing & Service Operations Management 24(3):1349-1368",
         "url": "https://doi.org/10.1287/msom.2021.1064",
-        "literature_verified": true,
+        "literature_verified": false,
         "warehouse_lead_time": 5,
         "retailer_lead_time": 3,
         "num_retailers": 10,
@@ -3038,7 +3038,7 @@
           "row_source": "repo_algorithm_result",
           "literature_verified": false,
           "verification_anchor": null,
-          "note": "The paper reports only relative savings for the two Gijs settings, not absolute constant base-stock means. The open Van Roy case-study heuristic row is carried separately, but the current executable transcription does not yet reproduce that published cost."
+          "note": "The paper reports only relative savings for the two Gijs settings, not absolute constant base-stock means. The open Van Roy case-study heuristic row is carried separately, but that original case study discusses transportation costs in the objective while the current Gijs-style Rust formulation does not. So the Van Roy absolute row is not an executable verifier for this package."
         }
       ],
       "published_policy_rows": [
@@ -3076,7 +3076,7 @@
           "row_source": "repo_algorithm_result",
           "literature_verified": false,
           "verification_anchor": null,
-          "note": "The paper reports only relative savings for the two Gijs settings, not absolute constant base-stock means. The open Van Roy case-study heuristic row is carried separately, but the current executable transcription does not yet reproduce that published cost."
+          "note": "The paper reports only relative savings for the two Gijs settings, not absolute constant base-stock means. The open Van Roy case-study heuristic row is carried separately, but that original case study discusses transportation costs in the objective while the current Gijs-style Rust formulation does not. So the Van Roy absolute row is not an executable verifier for this package."
         }
       ],
       "published_policy_rows": [
@@ -3112,7 +3112,7 @@
           "row_source": "repo_algorithm_result",
           "literature_verified": false,
           "verification_anchor": null,
-          "note": "The paper reports only relative savings for the two Gijs settings, not absolute constant base-stock means. The open Van Roy case-study heuristic row is carried separately, but the current executable transcription does not yet reproduce that published cost."
+          "note": "The paper reports only relative savings for the two Gijs settings, not absolute constant base-stock means. The open Van Roy case-study heuristic row is carried separately, but that original case study discusses transportation costs in the objective while the current Gijs-style Rust formulation does not. So the Van Roy absolute row is not an executable verifier for this package."
         }
       ],
       "published_policy_rows": [

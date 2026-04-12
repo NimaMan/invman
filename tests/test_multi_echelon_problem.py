@@ -1,64 +1,46 @@
 import pytest
 
-from invman.problems.multi_echelon import (
-    build_reference_args,
-    get_benchmark_reference,
-    get_reference_instance,
-    search_best_constant_base_stock_policy,
-)
-from invman.problems.multi_echelon.env import MultiEchelonEnv
-
 invman_rust = pytest.importorskip("invman_rust")
 
 
-def test_multi_echelon_env_step_respects_action_grid():
-    env = MultiEchelonEnv(
-        warehouse_lead_time=2,
-        retailer_lead_time=2,
-        num_retailers=2,
-        warehouse_base_stock_levels=[50, 60],
-        retailer_base_stock_levels=[0, 5, 10],
-        horizon=1,
-        track_demand=True,
-        warm_up_periods_ratio=0.0,
+def test_multi_echelon_reference_instances_match_gijs_metadata():
+    benchmark = invman_rust.multi_echelon_benchmark_reference()
+    instances = invman_rust.multi_echelon_list_reference_instances()
+    primary = invman_rust.multi_echelon_primary_reference_instance()
+    van_roy = invman_rust.multi_echelon_van_roy_case_study()
+
+    assert "constant_base_stock" in benchmark["benchmark_policies"]
+    assert len(instances) == 3
+    assert instances[0]["name"] == "van_roy1997_simple_problem"
+    assert instances[0]["published_constant_base_stock_mean_cost"] == pytest.approx(51.7)
+    assert primary["name"] == "gijsbrechts2022_setting2"
+    assert instances[1]["published_a3c_savings_pct"] == pytest.approx(8.95)
+    assert instances[2]["published_a3c_savings_pct"] == pytest.approx(12.09)
+    assert instances[2]["benchmark_warehouse_levels"] == [50, 60, 70, 80, 90, 100]
+    assert instances[2]["benchmark_retailer_levels"] == [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
+    assert van_roy["published_constant_base_stock_mean_cost"] == pytest.approx(1302.0)
+    assert van_roy["published_constant_base_stock_levels"] == [330, 23]
+
+
+def test_multi_echelon_exact_summary_is_internally_consistent():
+    summary = invman_rust.multi_echelon_exact_dp_summary()
+    reference = summary["verification_reference"]
+
+    assert reference["literature_verified"] is False
+    assert len(summary["optimal_first_action"]) == 2
+    assert len(summary["sequential_first_action"]) == 2
+    assert len(summary["proportional_first_action"]) == 2
+    assert len(summary["min_shortage_first_action"]) == 2
+    assert summary["optimal_discounted_cost"] <= summary["sequential_discounted_cost"]
+    assert summary["optimal_discounted_cost"] <= summary["proportional_discounted_cost"]
+    assert summary["optimal_discounted_cost"] <= summary["min_shortage_discounted_cost"]
+
+
+def test_multi_echelon_raw_state_builder_uses_raw_layout():
+    raw_state = invman_rust.multi_echelon_build_raw_state(
+        warehouse_inventory=3,
+        warehouse_pipeline=[2, 2],
+        retailer_inventory=[1, 0],
+        retailer_pipeline=[[1], [0]],
     )
-    env.warehouse_inventory = 20
-    env.warehouse_pipeline = [5, 7]
-    env.retailer_inventory[:] = [2, 3]
-    env.retailer_pipeline[:] = [[1, 0], [0, 2]]
-    env.horizon_demands = [[4, 6]]
-    env.horizon_expedite_uniforms = [[[0.1] * 20, [0.9] * 20]]
-
-    _, epoch_cost, done = env.step((60, 10))
-
-    assert env.warehouse_pipeline[-1] <= env.warehouse_capacity
-    assert env.retailer_pipeline.shape == (2, 2)
-    assert epoch_cost >= 0.0
-    assert done is True
-
-
-def test_multi_echelon_constant_base_stock_search_backends_match():
-    args = build_reference_args("multi_echelon_setting1")
-    args.horizon = 200
-    args.warm_up_periods_ratio = 0.0
-    args.num_retailers = 3
-    args.warehouse_base_stock_levels = [50, 60]
-    args.retailer_base_stock_levels = [0, 5, 10]
-
-    python_result = search_best_constant_base_stock_policy(args, seed=222, horizon=200, backend="python")
-    rust_result = search_best_constant_base_stock_policy(args, seed=222, horizon=200, backend="rust")
-    assert rust_result["best_result"]["params"] == python_result["best_result"]["params"]
-    assert rust_result["best_result"]["mean_cost"] == pytest.approx(python_result["best_result"]["mean_cost"])
-
-
-def test_multi_echelon_reference_instances_include_literature_benchmark_metadata():
-    benchmark = get_benchmark_reference()
-    instance1 = get_reference_instance("multi_echelon_setting1")
-    instance2 = get_reference_instance("multi_echelon_setting2")
-
-    assert "constant_base_stock" in benchmark.benchmark_policies
-    assert benchmark.published_values["setting1_a3c_improvement_vs_constant_base_stock_pct"] == 9.0
-    assert benchmark.published_values["setting2_a3c_improvement_vs_constant_base_stock_pct"] == 12.0
-    assert instance1.literature_values["a3c_improvement_vs_constant_base_stock_pct"] == 9.0
-    assert instance2.literature_values["a3c_improvement_vs_constant_base_stock_pct"] == 12.0
-    assert instance2.literature_values["has_exact_published_cost"] is False
+    assert raw_state == pytest.approx([3.0, 2.0, 2.0, 1.0, 0.0, 1.0, 0.0, 0.0])

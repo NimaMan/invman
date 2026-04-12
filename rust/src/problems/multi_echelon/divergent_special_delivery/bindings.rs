@@ -4,8 +4,8 @@ use pyo3::wrap_pyfunction;
 
 use crate::core::policies::soft_tree::{build_action_spec, parse_leaf_type, parse_split_type};
 use crate::problems::multi_echelon::env::{
-    build_raw_state, initialize_state, parse_allocation_mode, parse_warehouse_base_stock_mode,
-    AllocationMode,
+    build_raw_state, initialize_state, parse_allocation_mode, parse_inventory_dynamics_mode,
+    parse_warehouse_base_stock_mode, AllocationMode,
 };
 use crate::problems::multi_echelon::exact_rollout::{
     population_rollout as exact_population_rollout, rollout as exact_rollout,
@@ -57,6 +57,7 @@ fn literature_reference_to_py(py: Python<'_>, reference: &MultiEchelonReferenceI
     dict.set_item("warehouse_capacity", reference.warehouse_capacity)?;
     dict.set_item("warehouse_inventory_cap", reference.warehouse_inventory_cap)?;
     dict.set_item("retailer_inventory_cap", reference.retailer_inventory_cap)?;
+    dict.set_item("inventory_dynamics_mode", reference.inventory_dynamics_mode)?;
     dict.set_item("demand_distribution", reference.demand_distribution)?;
     dict.set_item("demand_mean", reference.demand_mean)?;
     dict.set_item("demand_std", reference.demand_std)?;
@@ -76,6 +77,10 @@ fn literature_reference_to_py(py: Python<'_>, reference: &MultiEchelonReferenceI
     dict.set_item(
         "published_constant_base_stock_levels",
         reference.published_constant_base_stock_levels.to_vec(),
+    )?;
+    dict.set_item(
+        "published_van_roy_best_ndp_mean_cost",
+        reference.published_van_roy_best_ndp_mean_cost,
     )?;
     dict.set_item("published_a3c_savings_pct", reference.published_a3c_savings_pct)?;
     dict.set_item(
@@ -113,6 +118,7 @@ fn exact_reference_to_py(py: Python<'_>, reference: &ExactVerificationReference)
     dict.set_item("warehouse_capacity", reference.warehouse_capacity)?;
     dict.set_item("warehouse_inventory_cap", reference.warehouse_inventory_cap)?;
     dict.set_item("retailer_inventory_cap", reference.retailer_inventory_cap)?;
+    dict.set_item("inventory_dynamics_mode", reference.inventory_dynamics_mode)?;
     dict.set_item("discount_factor", reference.discount_factor)?;
     dict.set_item("initial_warehouse_inventory", reference.initial_warehouse_inventory)?;
     dict.set_item(
@@ -324,6 +330,7 @@ fn multi_echelon_exact_evaluate_soft_tree(
     warehouse_capacity,
     warehouse_inventory_cap,
     retailer_inventory_cap,
+    inventory_dynamics_mode,
     demand_distribution,
     demand_mean,
     demand_std,
@@ -351,6 +358,7 @@ fn multi_echelon_search_stationary_policy(
     warehouse_capacity: usize,
     warehouse_inventory_cap: usize,
     retailer_inventory_cap: usize,
+    inventory_dynamics_mode: &str,
     demand_distribution: &str,
     demand_mean: f64,
     demand_std: f64,
@@ -380,6 +388,7 @@ fn multi_echelon_search_stationary_policy(
         warehouse_capacity,
         warehouse_inventory_cap,
         retailer_inventory_cap,
+        parse_inventory_dynamics_mode(inventory_dynamics_mode)?,
         demand_distribution,
         demand_mean,
         demand_std,
@@ -434,6 +443,7 @@ fn multi_echelon_search_stationary_policy(
     warehouse_capacity,
     warehouse_inventory_cap,
     retailer_inventory_cap,
+    inventory_dynamics_mode,
     demand_distribution,
     demand_mean,
     demand_std,
@@ -474,6 +484,7 @@ fn multi_echelon_soft_tree_rollout(
     warehouse_capacity: usize,
     warehouse_inventory_cap: usize,
     retailer_inventory_cap: usize,
+    inventory_dynamics_mode: &str,
     demand_distribution: &str,
     demand_mean: f64,
     demand_std: f64,
@@ -531,6 +542,7 @@ fn multi_echelon_soft_tree_rollout(
         warehouse_capacity,
         warehouse_inventory_cap,
         retailer_inventory_cap,
+        inventory_dynamics_mode: parse_inventory_dynamics_mode(inventory_dynamics_mode)?,
         demand_distribution: parse_demand_distribution(demand_distribution)?,
         demand_mean,
         demand_std,
@@ -573,6 +585,7 @@ fn multi_echelon_soft_tree_rollout(
     warehouse_capacity,
     warehouse_inventory_cap,
     retailer_inventory_cap,
+    inventory_dynamics_mode,
     demand_distribution,
     demand_mean,
     demand_std,
@@ -613,6 +626,7 @@ fn multi_echelon_soft_tree_population_rollout(
     warehouse_capacity: usize,
     warehouse_inventory_cap: usize,
     retailer_inventory_cap: usize,
+    inventory_dynamics_mode: &str,
     demand_distribution: &str,
     demand_mean: f64,
     demand_std: f64,
@@ -670,6 +684,7 @@ fn multi_echelon_soft_tree_population_rollout(
         warehouse_capacity,
         warehouse_inventory_cap,
         retailer_inventory_cap,
+        inventory_dynamics_mode: parse_inventory_dynamics_mode(inventory_dynamics_mode)?,
         demand_distribution: parse_demand_distribution(demand_distribution)?,
         demand_mean,
         demand_std,

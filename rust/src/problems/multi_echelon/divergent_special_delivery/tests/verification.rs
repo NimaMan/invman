@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
 use crate::problems::multi_echelon::env::{
-    build_decision_state, build_raw_state, initialize_state, parse_allocation_mode,
-    parse_warehouse_base_stock_mode, step_state, AllocationMode, MultiEchelonState,
-    WarehouseBaseStockMode,
+    build_decision_state, build_order_plan_with_mode, build_raw_state, initialize_state, parse_allocation_mode,
+    parse_warehouse_base_stock_mode, step_state, AllocationMode, InventoryDynamicsMode,
+    MultiEchelonState, WarehouseBaseStockMode,
 };
 use crate::problems::multi_echelon::finite_horizon_dp::{
     evaluate_stationary_policy, search_best_stationary_policy, solve_optimal_policy,
@@ -250,8 +250,13 @@ fn brute_force_best_stationary_policy(
 #[test]
 fn reference_catalog_matches_gijs_and_van_roy() {
     assert_eq!(GIJSBRECHTS_2022_REFERENCE.benchmark_policies.len(), 3);
-    assert_eq!(LITERATURE_REFERENCE_INSTANCES.len(), 2);
+    assert_eq!(LITERATURE_REFERENCE_INSTANCES.len(), 3);
     assert_eq!(PRIMARY_REFERENCE_INSTANCE.name, "gijsbrechts2022_setting2");
+    assert_eq!(LITERATURE_REFERENCE_INSTANCES[0].name, "van_roy1997_simple_problem");
+    assert_eq!(
+        LITERATURE_REFERENCE_INSTANCES[0].published_constant_base_stock_mean_cost,
+        Some(51.7)
+    );
     assert_eq!(
         PRIMARY_REFERENCE_INSTANCE.benchmark_warehouse_levels,
         &[50, 60, 70, 80, 90, 100]
@@ -265,11 +270,11 @@ fn reference_catalog_matches_gijs_and_van_roy() {
         Some(0.39)
     );
     assert_eq!(
-        LITERATURE_REFERENCE_INSTANCES[0].published_a3c_savings_pct,
+        LITERATURE_REFERENCE_INSTANCES[1].published_a3c_savings_pct,
         Some(8.95)
     );
     assert_eq!(
-        LITERATURE_REFERENCE_INSTANCES[0].published_a3c_confidence_half_width_pct,
+        LITERATURE_REFERENCE_INSTANCES[1].published_a3c_confidence_half_width_pct,
         Some(0.13)
     );
     assert_eq!(PRIMARY_REFERENCE_INSTANCE.tuned_buffer_length, Some(100));
@@ -281,6 +286,28 @@ fn reference_catalog_matches_gijs_and_van_roy() {
         VAN_ROY_1997_CASE_STUDY.published_constant_base_stock_levels,
         &[330, 23]
     );
+}
+
+#[test]
+fn proportional_allocation_exhausts_available_inventory() {
+    let state = initialize_state(5, &[], &[0, 0, 4], &[vec![], vec![], vec![]])
+        .expect("state must build");
+    let plan = build_order_plan_with_mode(
+        &state,
+        0,
+        5,
+        100,
+        100,
+        100,
+        WarehouseBaseStockMode::Regular,
+        AllocationMode::Proportional,
+        InventoryDynamicsMode::VanRoy1997,
+    )
+    .expect("order plan must build");
+
+    assert_eq!(plan.desired_retail_orders, vec![5, 5, 1]);
+    assert_eq!(plan.shipped_retail_orders.iter().sum::<usize>(), 5);
+    assert_eq!(plan.remaining_warehouse_inventory_after_regular, 0);
 }
 
 #[test]
@@ -301,7 +328,8 @@ fn van_roy_feature_layout_matches_expected_shape() {
         VERIFICATION_PROBLEM_INSTANCE.retailer_inventory_cap,
         false,
         VERIFICATION_PROBLEM_INSTANCE.periods,
-        PolicyFeatureMode::VanRoy22,
+        PolicyFeatureMode::CompactSummary,
+        InventoryDynamicsMode::Gijs2022,
     )
     .expect("features must build");
 
