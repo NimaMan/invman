@@ -53,7 +53,11 @@ pub fn validate_state(state: &DecentralizedInventoryControlState) -> PyResult<()
             "retailer order pipeline must be empty; customer demand is exogenous",
         ));
     }
-    if state.shipment_pipelines.iter().any(|pipeline| pipeline.is_empty()) {
+    if state
+        .shipment_pipelines
+        .iter()
+        .any(|pipeline| pipeline.is_empty())
+    {
         return Err(PyValueError::new_err(
             "all shipment pipelines must have strictly positive lead time",
         ));
@@ -106,12 +110,56 @@ pub fn initialize_state(
     Ok(state)
 }
 
-pub fn on_order_items(state: &DecentralizedInventoryControlState) -> PyResult<Vec<usize>> {
+pub fn shipment_pipeline_items(state: &DecentralizedInventoryControlState) -> PyResult<Vec<usize>> {
     validate_state(state)?;
     Ok(state
         .shipment_pipelines
         .iter()
         .map(|pipeline| pipeline.iter().sum::<usize>())
+        .collect())
+}
+
+pub fn current_received_shipments(
+    state: &DecentralizedInventoryControlState,
+) -> PyResult<Vec<usize>> {
+    validate_state(state)?;
+    Ok(state
+        .shipment_pipelines
+        .iter()
+        .map(|pipeline| pipeline[0])
+        .collect())
+}
+
+pub fn current_received_orders(
+    state: &DecentralizedInventoryControlState,
+    realized_customer_demand: usize,
+) -> PyResult<Vec<usize>> {
+    validate_state(state)?;
+    let num_agents = state.on_hand_inventory.len();
+    Ok((0..num_agents)
+        .map(|agent_idx| {
+            if agent_idx == 0 {
+                realized_customer_demand
+            } else {
+                state.order_pipelines[agent_idx][0]
+            }
+        })
+        .collect())
+}
+
+pub fn on_order_items(state: &DecentralizedInventoryControlState) -> PyResult<Vec<usize>> {
+    validate_state(state)?;
+    let num_agents = state.on_hand_inventory.len();
+    Ok((0..num_agents)
+        .map(|agent_idx| {
+            let inbound_shipments = state.shipment_pipelines[agent_idx].iter().sum::<usize>();
+            let inbound_orders = if agent_idx + 1 < num_agents {
+                state.order_pipelines[agent_idx + 1].iter().sum::<usize>()
+            } else {
+                0
+            };
+            inbound_shipments + inbound_orders
+        })
         .collect())
 }
 
@@ -132,6 +180,7 @@ pub fn build_local_policy_state(
     total_periods: usize,
     holding_costs: &[f64],
     backlog_costs: &[f64],
+    realized_customer_demand: usize,
 ) -> PyResult<Vec<f32>> {
     validate_state(state)?;
     let num_agents = state.on_hand_inventory.len();
@@ -146,12 +195,14 @@ pub fn build_local_policy_state(
         ));
     }
 
+    let received_shipments = current_received_shipments(state)?;
+    let received_orders = current_received_orders(state, realized_customer_demand)?;
     let on_order = on_order_items(state)?[agent_idx] as f64;
     let on_hand = state.on_hand_inventory[agent_idx] as f64;
     let backlog = state.backlog[agent_idx] as f64;
     let net_inventory = on_hand - backlog;
-    let received_shipment = state.last_received_shipments[agent_idx] as f64;
-    let received_order = state.last_received_orders[agent_idx] as f64;
+    let received_shipment = received_shipments[agent_idx] as f64;
+    let received_order = received_orders[agent_idx] as f64;
     let forecast = state.forecast_orders[agent_idx];
     let last_action = state.last_actions[agent_idx] as f64;
     let inventory_scale = on_hand
@@ -222,19 +273,15 @@ pub fn step_state(
         ));
     }
 
-    let mut received_shipments = vec![0usize; num_agents];
+    let received_shipments = current_received_shipments(state)?;
     let mut next_shipment_pipelines = vec![Vec::new(); num_agents];
     for agent_idx in 0..num_agents {
-        received_shipments[agent_idx] = state.shipment_pipelines[agent_idx][0];
-        next_shipment_pipelines[agent_idx] =
-            state.shipment_pipelines[agent_idx][1..].to_vec();
+        next_shipment_pipelines[agent_idx] = state.shipment_pipelines[agent_idx][1..].to_vec();
     }
 
-    let mut received_orders = vec![0usize; num_agents];
+    let received_orders = current_received_orders(state, realized_customer_demand)?;
     let mut next_order_pipelines = vec![Vec::new(); num_agents];
-    received_orders[0] = realized_customer_demand;
     for agent_idx in 1..num_agents {
-        received_orders[agent_idx] = state.order_pipelines[agent_idx][0];
         next_order_pipelines[agent_idx] = state.order_pipelines[agent_idx][1..].to_vec();
     }
 

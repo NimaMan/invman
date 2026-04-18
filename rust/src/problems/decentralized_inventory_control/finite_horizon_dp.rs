@@ -4,12 +4,12 @@ use pyo3::exceptions::PyValueError;
 use pyo3::PyResult;
 
 use crate::problems::decentralized_inventory_control::env::{
-    initialize_state, step_state, DecentralizedInventoryControlState,
+    current_received_orders, initialize_state, step_state, DecentralizedInventoryControlState,
 };
 use crate::problems::decentralized_inventory_control::heuristics::{
     base_stock_orders, sterman_anchor_adjust_orders,
 };
-use crate::problems::decentralized_inventory_control::references::ExactVerificationReference;
+use crate::problems::decentralized_inventory_control::literature::references::ExactVerificationReference;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 struct ExactStateKey {
@@ -27,7 +27,7 @@ struct ExactStateKey {
 #[derive(Clone, Debug, PartialEq)]
 pub struct ExactPolicyEvaluation {
     pub discounted_cost: f64,
-    pub first_action: Vec<usize>,
+    pub first_actions_by_customer_demand: Vec<(u32, Vec<usize>)>,
 }
 
 fn validate_exact_reference(reference: &ExactVerificationReference) -> PyResult<()> {
@@ -62,11 +62,7 @@ fn validate_exact_reference(reference: &ExactVerificationReference) -> PyResult<
             "retailer order pipeline must be empty in the exact reference",
         ));
     }
-    if reference
-        .customer_demand_support
-        .len()
-        != reference.customer_demand_probabilities.len()
-    {
+    if reference.customer_demand_support.len() != reference.customer_demand_probabilities.len() {
         return Err(PyValueError::new_err(
             "customer_demand_support and probabilities must have the same length",
         ));
@@ -149,7 +145,7 @@ fn solve_optimal_from_state(
     if state.period == reference.periods {
         return Ok(ExactPolicyEvaluation {
             discounted_cost: 0.0,
-            first_action: vec![0; reference.initial_on_hand_inventory.len()],
+            first_actions_by_customer_demand: Vec::new(),
         });
     }
     let key = as_state_key(&state);
@@ -157,16 +153,18 @@ fn solve_optimal_from_state(
         return Ok(cached.clone());
     }
 
-    let mut best_cost = f64::INFINITY;
-    let mut best_action = vec![0; reference.initial_on_hand_inventory.len()];
+    let mut expected_cost = 0.0;
+    let mut first_actions_by_customer_demand =
+        Vec::with_capacity(reference.customer_demand_support.len());
 
-    for action in action_grid.iter() {
-        let mut expected_cost = 0.0;
-        for (demand, probability) in reference
-            .customer_demand_support
-            .iter()
-            .zip(reference.customer_demand_probabilities.iter())
-        {
+    for (demand, probability) in reference
+        .customer_demand_support
+        .iter()
+        .zip(reference.customer_demand_probabilities.iter())
+    {
+        let mut branch_best_cost = f64::INFINITY;
+        let mut branch_best_action = vec![0; reference.initial_on_hand_inventory.len()];
+        for action in action_grid.iter() {
             let outcome = step_state(
                 &state,
                 action,
@@ -177,18 +175,20 @@ fn solve_optimal_from_state(
             )?;
             let continuation =
                 solve_optimal_from_state(outcome.next_state, reference, action_grid, cache)?;
-            expected_cost += probability
-                * (outcome.period_cost + reference.discount_factor * continuation.discounted_cost);
+            let total_cost =
+                outcome.period_cost + reference.discount_factor * continuation.discounted_cost;
+            if total_cost < branch_best_cost {
+                branch_best_cost = total_cost;
+                branch_best_action = action.clone();
+            }
         }
-        if expected_cost < best_cost {
-            best_cost = expected_cost;
-            best_action = action.clone();
-        }
+        expected_cost += probability * branch_best_cost;
+        first_actions_by_customer_demand.push((*demand, branch_best_action));
     }
 
     let result = ExactPolicyEvaluation {
-        discounted_cost: best_cost,
-        first_action: best_action,
+        discounted_cost: expected_cost,
+        first_actions_by_customer_demand,
     };
     cache.insert(key, result.clone());
     Ok(result)
@@ -198,11 +198,14 @@ fn heuristic_actions(
     state: &DecentralizedInventoryControlState,
     reference: &ExactVerificationReference,
     policy_name: &str,
+    realized_customer_demand: usize,
 ) -> PyResult<Vec<usize>> {
+    let observed_orders = current_received_orders(state, realized_customer_demand)?;
     match policy_name {
-        "base_stock" => base_stock_orders(state, reference.base_stock_levels),
+        "base_stock" => base_stock_orders(state, &observed_orders, reference.base_stock_levels),
         "sterman_anchor_adjust" => sterman_anchor_adjust_orders(
             state,
+            &observed_orders,
             reference.sterman_target_positions,
             reference.sterman_adjustment_times,
             reference.sterman_supply_line_weights,
@@ -222,7 +225,7 @@ fn evaluate_heuristic_from_state(
     if state.period == reference.periods {
         return Ok(ExactPolicyEvaluation {
             discounted_cost: 0.0,
-            first_action: vec![0; reference.initial_on_hand_inventory.len()],
+            first_actions_by_customer_demand: Vec::new(),
         });
     }
     let key = as_state_key(&state);
@@ -230,13 +233,15 @@ fn evaluate_heuristic_from_state(
         return Ok(cached.clone());
     }
 
-    let action = heuristic_actions(&state, reference, policy_name)?;
     let mut expected_cost = 0.0;
+    let mut first_actions_by_customer_demand =
+        Vec::with_capacity(reference.customer_demand_support.len());
     for (demand, probability) in reference
         .customer_demand_support
         .iter()
         .zip(reference.customer_demand_probabilities.iter())
     {
+        let action = heuristic_actions(&state, reference, policy_name, *demand as usize)?;
         let outcome = step_state(
             &state,
             &action,
@@ -247,13 +252,14 @@ fn evaluate_heuristic_from_state(
         )?;
         let continuation =
             evaluate_heuristic_from_state(outcome.next_state, reference, policy_name, cache)?;
-        expected_cost +=
-            probability * (outcome.period_cost + reference.discount_factor * continuation.discounted_cost);
+        expected_cost += probability
+            * (outcome.period_cost + reference.discount_factor * continuation.discounted_cost);
+        first_actions_by_customer_demand.push((*demand, action));
     }
 
     let result = ExactPolicyEvaluation {
         discounted_cost: expected_cost,
-        first_action: action,
+        first_actions_by_customer_demand,
     };
     cache.insert(key, result.clone());
     Ok(result)

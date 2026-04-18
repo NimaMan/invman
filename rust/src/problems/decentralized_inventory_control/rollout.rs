@@ -80,9 +80,7 @@ fn validate_config(
         ));
     }
     if !(0.0..=1.0).contains(&config.discount_factor) {
-        return Err(PyValueError::new_err(
-            "discount_factor must lie in [0, 1]",
-        ));
+        return Err(PyValueError::new_err("discount_factor must lie in [0, 1]"));
     }
     Ok(())
 }
@@ -90,6 +88,7 @@ fn validate_config(
 fn action_vector(
     flat_params: &[f32],
     state: &DecentralizedInventoryControlState,
+    realized_customer_demand: usize,
     config: &DecentralizedInventoryControlRolloutConfig,
 ) -> PyResult<Vec<usize>> {
     (0..state.on_hand_inventory.len())
@@ -100,6 +99,7 @@ fn action_vector(
                 config.periods,
                 &config.holding_costs,
                 &config.backlog_costs,
+                realized_customer_demand,
             )?;
             let action = action_vector_from_flat_params(
                 &local_state,
@@ -130,7 +130,7 @@ pub fn rollout(
 
     for _ in 0..config.periods {
         let customer_demand = sample_demand(&mut rng, &config.customer_demand_model)?;
-        let actions = action_vector(flat_params, &state, config)?;
+        let actions = action_vector(flat_params, &state, customer_demand, config)?;
         let outcome = step_state(
             &state,
             &actions,
@@ -165,7 +165,7 @@ pub fn rollout_from_paths(
     let mut discount = 1.0;
 
     for demand in customer_demands.iter().copied() {
-        let actions = action_vector(flat_params, &state, config)?;
+        let actions = action_vector(flat_params, &state, demand, config)?;
         let outcome = step_state(
             &state,
             &actions,

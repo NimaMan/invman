@@ -1,4 +1,5 @@
 use pyo3::prelude::*;
+use pyo3::types::PyDict;
 use pyo3::wrap_pyfunction;
 
 use crate::core::policies::soft_tree::{build_action_spec, parse_leaf_type, parse_split_type};
@@ -12,8 +13,12 @@ use crate::problems::decentralized_inventory_control::rollout::{
     build_initial_state, population_rollout, rollout, rollout_from_paths,
     DecentralizedInventoryControlRolloutConfig,
 };
+use crate::problems::decentralized_inventory_control::verification::classic_board_game::simulate_classic_sterman_benchmark;
 
-fn build_customer_demand_model(demand_distribution: &str, demand_mean: f64) -> PyResult<DemandModel> {
+fn build_customer_demand_model(
+    demand_distribution: &str,
+    demand_mean: f64,
+) -> PyResult<DemandModel> {
     Ok(DemandModel {
         kind: parse_demand_distribution_kind(demand_distribution)?,
         param1: demand_mean,
@@ -378,6 +383,7 @@ fn decentralized_inventory_control_base_stock_orders(
     last_received_orders: Vec<usize>,
     forecast_orders: Vec<f64>,
     last_actions: Vec<usize>,
+    realized_customer_demand: usize,
     base_stock_levels: Vec<usize>,
 ) -> PyResult<Vec<usize>> {
     let state = build_initial_state(
@@ -390,7 +396,12 @@ fn decentralized_inventory_control_base_stock_orders(
         &forecast_orders,
         &last_actions,
     )?;
-    base_stock_orders(&state, &base_stock_levels)
+    let observed_orders =
+        crate::problems::decentralized_inventory_control::env::current_received_orders(
+            &state,
+            realized_customer_demand,
+        )?;
+    base_stock_orders(&state, &observed_orders, &base_stock_levels)
 }
 
 #[pyfunction]
@@ -403,6 +414,7 @@ fn decentralized_inventory_control_sterman_anchor_adjust_orders(
     last_received_orders: Vec<usize>,
     forecast_orders: Vec<f64>,
     last_actions: Vec<usize>,
+    realized_customer_demand: usize,
     target_positions: Vec<f64>,
     adjustment_times: Vec<f64>,
     supply_line_weights: Vec<f64>,
@@ -417,12 +429,29 @@ fn decentralized_inventory_control_sterman_anchor_adjust_orders(
         &forecast_orders,
         &last_actions,
     )?;
+    let observed_orders =
+        crate::problems::decentralized_inventory_control::env::current_received_orders(
+            &state,
+            realized_customer_demand,
+        )?;
     sterman_anchor_adjust_orders(
         &state,
+        &observed_orders,
         &target_positions,
         &adjustment_times,
         &supply_line_weights,
     )
+}
+
+#[pyfunction]
+fn decentralized_inventory_control_classic_sterman_literature_summary(
+    py: Python<'_>,
+) -> PyResult<PyObject> {
+    let summary = simulate_classic_sterman_benchmark();
+    let dict = PyDict::new_bound(py);
+    dict.set_item("per_agent_costs", summary.per_agent_costs.to_vec())?;
+    dict.set_item("total_cost", summary.total_cost)?;
+    Ok(dict.into())
 }
 
 pub fn register_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -448,6 +477,10 @@ pub fn register_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     )?)?;
     m.add_function(wrap_pyfunction!(
         decentralized_inventory_control_sterman_anchor_adjust_orders,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        decentralized_inventory_control_classic_sterman_literature_summary,
         m
     )?)?;
     Ok(())

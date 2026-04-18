@@ -24,6 +24,7 @@ pub struct DecentralizedInventoryReferenceInstance {
     pub source: &'static str,
     pub url: &'static str,
     pub num_agents: usize,
+    pub benchmark_customer_demands: Option<&'static [usize]>,
     pub shipment_lead_times: &'static [usize],
     pub order_lead_times: &'static [usize],
     pub initial_on_hand_inventory: &'static [usize],
@@ -98,6 +99,18 @@ pub struct ExactVerificationReference {
     pub notes: &'static str,
 }
 
+pub const CLASSIC_BEER_GAME_CUSTOMER_DEMANDS: &[usize] = &[
+    4, 4, 4, 4, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+    8, 8, 8, 8, 8, 8,
+];
+
+pub const STERMAN_1989_REFERENCE: PublishedBenchmarkReference = PublishedBenchmarkReference {
+    source: "Sterman (1989), Management Science 35(3)",
+    url: "https://doi.org/10.1287/mnsc.35.3.321",
+    benchmark_policies: &["sterman_anchor_adjust"],
+    notes: "Classic four-stage Beer Game benchmark. The paper reports the benchmark costs for the optimized anchor-and-adjust policy; the exact board-game equations are carried and replicated by Caner et al. (2014).",
+};
+
 pub const OROOJLOYJADID_2021_REFERENCE: PublishedBenchmarkReference = PublishedBenchmarkReference {
     source: "Oroojlooyjadid et al. (2021), Manufacturing & Service Operations Management 24(1)",
     url: "https://doi.org/10.1287/msom.2020.0939",
@@ -109,7 +122,7 @@ pub const CANER_2014_REFERENCE: PublishedBenchmarkReference = PublishedBenchmark
     source: "Caner et al. (2014), A Mathematical Model of the Beer Game",
     url: "https://www.jasss.org/17/4/2.html",
     benchmark_policies: &["sterman_anchor_adjust"],
-    notes: "This paper reconstructs the board-game Beer Game exactly and reports the optimal Sterman benchmark parameters used to verify the simulation.",
+    notes: "This paper reconstructs the board-game Beer Game exactly and provides public R code for the verification benchmark. It reports that the modified code reproduces the benchmark costs from Sterman (1989) exactly.",
 };
 
 pub const MOUSA_2024_REFERENCE: PublishedBenchmarkReference = PublishedBenchmarkReference {
@@ -117,6 +130,15 @@ pub const MOUSA_2024_REFERENCE: PublishedBenchmarkReference = PublishedBenchmark
     url: "https://doi.org/10.1016/j.compchemeng.2024.108783",
     benchmark_policies: &["marl", "decentralized local-information baselines"],
     notes: "This paper broadens decentralized inventory control beyond the four-stage Beer Game and motivates local-information policy interfaces for serial and networked supply chains.",
+};
+
+pub const STERMAN_1989_CLASSIC_BENCHMARK: PublishedPolicyBenchmark = PublishedPolicyBenchmark {
+    source: STERMAN_1989_REFERENCE.source,
+    url: STERMAN_1989_REFERENCE.url,
+    policy_name: "sterman_anchor_adjust",
+    per_agent_mean_costs: &[46.0, 50.0, 54.0, 54.0],
+    total_mean_cost: 204.0,
+    notes: "Classic 36-week Beer Game benchmark costs for the optimized anchor-and-adjust policy. Caner et al. (2014) state that their exact board-game reconstruction reproduces these Sterman (1989) benchmark values exactly.",
 };
 
 pub const OROOJLOYJADID_2021_ALL_STERMAN_BENCHMARK: PublishedPolicyBenchmark =
@@ -132,9 +154,10 @@ pub const OROOJLOYJADID_2021_ALL_STERMAN_BENCHMARK: PublishedPolicyBenchmark =
 pub const PRIMARY_REFERENCE_INSTANCE: DecentralizedInventoryReferenceInstance =
     DecentralizedInventoryReferenceInstance {
         name: "beer_game_classic_four_stage",
-        source: OROOJLOYJADID_2021_REFERENCE.source,
-        url: OROOJLOYJADID_2021_REFERENCE.url,
+        source: CANER_2014_REFERENCE.source,
+        url: CANER_2014_REFERENCE.url,
         num_agents: 4,
+        benchmark_customer_demands: Some(CLASSIC_BEER_GAME_CUSTOMER_DEMANDS),
         shipment_lead_times: &[2, 2, 2, 2],
         order_lead_times: &[0, 1, 1, 1],
         initial_on_hand_inventory: &[12, 12, 12, 12],
@@ -151,8 +174,8 @@ pub const PRIMARY_REFERENCE_INSTANCE: DecentralizedInventoryReferenceInstance =
         sterman_target_positions: &[28.0, 28.0, 28.0, 20.0],
         sterman_adjustment_times: &[1.0, 1.0, 1.0, 1.0],
         sterman_supply_line_weights: &[1.0, 1.0, 1.0, 1.0],
-        published_sterman_benchmark: Some(OROOJLOYJADID_2021_ALL_STERMAN_BENCHMARK),
-        notes: "Classic four-stage Beer Game state, using the canonical initial inventories and four-unit pipelines. The Sterman parameter values follow the exact-model reconstruction reported by Caner et al. (2014), while the published aggregate Sterman costs come from Oroojlooyjadid et al. (2021).",
+        published_sterman_benchmark: Some(STERMAN_1989_CLASSIC_BENCHMARK),
+        notes: "Classic four-stage Beer Game state with the canonical 36-week demand path 4,4,4,4,8,...,8. The state and Sterman parameter values follow the exact board-game reconstruction reported by Caner et al. (2014), which in turn reproduces the benchmark costs from Sterman (1989).",
     };
 
 pub const WORKED_TRANSITION_REFERENCE: WorkedTransitionReference = WorkedTransitionReference {
@@ -185,8 +208,8 @@ pub const VERIFICATION_CUSTOMER_DEMAND_SUPPORT: &[u32] = &[0, 1];
 pub const VERIFICATION_CUSTOMER_DEMAND_PROBABILITIES: &[f64] = &[0.5, 0.5];
 
 pub const VERIFICATION_PROBLEM_INSTANCE: ExactVerificationReference = ExactVerificationReference {
-    source: OROOJLOYJADID_2021_REFERENCE.source,
-    url: OROOJLOYJADID_2021_REFERENCE.url,
+    source: "Repo exact verification instance for decentralized inventory control",
+    url: "",
     periods: 3,
     discount_factor: 0.99,
     initial_on_hand_inventory: &[2, 1],

@@ -13,7 +13,7 @@ use rand::SeedableRng;
 
 use crate::problems::decentralized_inventory_control::demand::{sample_demand, DemandModel};
 use crate::problems::decentralized_inventory_control::env::{
-    step_state, validate_state, DecentralizedInventoryControlState,
+    current_received_orders, step_state, validate_state, DecentralizedInventoryControlState,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -56,10 +56,13 @@ fn policy_actions(
     policy_name: &str,
     params: &[f64],
     state: &DecentralizedInventoryControlState,
+    realized_customer_demand: usize,
 ) -> PyResult<Vec<usize>> {
+    let observed_orders = current_received_orders(state, realized_customer_demand)?;
     match policy_name {
         "base_stock" => base_stock_orders(
             state,
+            &observed_orders,
             &base_stock_levels_from_params(params, state.on_hand_inventory.len())?,
         ),
         "sterman_anchor_adjust" => {
@@ -67,6 +70,7 @@ fn policy_actions(
                 sterman_params_from_flat(params, state.on_hand_inventory.len())?;
             sterman_anchor_adjust_orders(
                 state,
+                &observed_orders,
                 &target_positions,
                 &adjustment_times,
                 &supply_line_weights,
@@ -98,7 +102,7 @@ pub fn policy_rollout_from_paths(
     let mut discount = 1.0;
 
     for demand in customer_demands.iter().copied() {
-        let actions = policy_actions(policy_name, params, &state)?;
+        let actions = policy_actions(policy_name, params, &state, demand)?;
         let outcome = step_state(
             &state,
             &actions,
@@ -149,7 +153,7 @@ pub fn simulate_policy(
 
         for _ in 0..periods {
             let customer_demand = sample_demand(&mut rng, customer_demand_model)?;
-            let actions = policy_actions(policy_name, params, &state)?;
+            let actions = policy_actions(policy_name, params, &state, customer_demand)?;
             let outcome = step_state(
                 &state,
                 &actions,

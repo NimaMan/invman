@@ -15,17 +15,19 @@ fn round_half_away_from_zero(value: f64) -> f64 {
 
 pub fn sterman_anchor_adjust_orders(
     state: &DecentralizedInventoryControlState,
+    current_received_orders: &[usize],
     target_positions: &[f64],
     adjustment_times: &[f64],
     supply_line_weights: &[f64],
 ) -> PyResult<Vec<usize>> {
     let num_agents = state.on_hand_inventory.len();
-    if target_positions.len() != num_agents
+    if current_received_orders.len() != num_agents
+        || target_positions.len() != num_agents
         || adjustment_times.len() != num_agents
         || supply_line_weights.len() != num_agents
     {
         return Err(PyValueError::new_err(
-            "all Sterman parameter vectors must match the number of agents",
+            "current_received_orders and all Sterman parameter vectors must match the number of agents",
         ));
     }
     if adjustment_times
@@ -42,7 +44,7 @@ pub fn sterman_anchor_adjust_orders(
         .map(|agent_idx| {
             let effective_inventory =
                 state.on_hand_inventory[agent_idx] as f64 - state.backlog[agent_idx] as f64;
-            let raw_order = state.forecast_orders[agent_idx]
+            let raw_order = current_received_orders[agent_idx] as f64
                 + (target_positions[agent_idx]
                     - effective_inventory
                     - supply_line_weights[agent_idx] * on_order[agent_idx] as f64)

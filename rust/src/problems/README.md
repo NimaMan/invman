@@ -143,6 +143,9 @@ Current literature-verified package anchors:
     (2015) Table 1 validation instance
 - `spare_parts_inventory`
   - the Kranenburg Chapter 5 exact benchmark family is literature-verified
+- `decentralized_inventory_control`
+  - the classic Sterman / Caner Beer-Game benchmark is literature-verified through the exact public verification code path
+  - the later Oroojlooyjadid et al. (2021) Sterman row is still only a carried published comparison row
 
 Everything else should be treated as not literature-verified unless the problem README states
 otherwise explicitly.

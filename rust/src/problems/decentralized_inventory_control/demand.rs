@@ -43,10 +43,7 @@ pub fn sample_demand(rng: &mut StdRng, model: &DemandModel) -> PyResult<usize> {
                 return Ok(0);
             }
             let distribution = Poisson::new(model.param1).map_err(|err| {
-                PyValueError::new_err(format!(
-                    "invalid Poisson mean {}: {err}",
-                    model.param1
-                ))
+                PyValueError::new_err(format!("invalid Poisson mean {}: {err}", model.param1))
             })?;
             Ok(distribution.sample(rng) as usize)
         }
