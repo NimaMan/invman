@@ -9,9 +9,9 @@ use crate::problems::decentralized_inventory_control::heuristics::{
 };
 use crate::problems::decentralized_inventory_control::literature::references::{
     CANER_2014_REFERENCE, CLASSIC_BEER_GAME_CUSTOMER_DEMANDS, MOUSA_2024_REFERENCE,
-    OROOJLOYJADID_2021_ALL_STERMAN_BENCHMARK, OROOJLOYJADID_2021_REFERENCE,
-    PRIMARY_REFERENCE_INSTANCE, STERMAN_1989_CLASSIC_BENCHMARK, STERMAN_1989_REFERENCE,
-    VERIFICATION_PROBLEM_INSTANCE, WORKED_TRANSITION_REFERENCE,
+    OROOJLOYJADID_2021_REFERENCE, PRIMARY_REFERENCE_INSTANCE,
+    STERMAN_1989_CLASSIC_BENCHMARK, STERMAN_1989_REFERENCE, VERIFICATION_PROBLEM_INSTANCE,
+    WORKED_TRANSITION_REFERENCE,
 };
 use crate::problems::decentralized_inventory_control::verification::classic_board_game::simulate_classic_sterman_benchmark;
 
@@ -28,10 +28,6 @@ fn reference_set_has_expected_shape() {
         &["sterman_anchor_adjust"]
     );
     assert_eq!(STERMAN_1989_CLASSIC_BENCHMARK.total_mean_cost, 204.0);
-    assert_eq!(
-        OROOJLOYJADID_2021_ALL_STERMAN_BENCHMARK.total_mean_cost,
-        45.13
-    );
     assert_eq!(PRIMARY_REFERENCE_INSTANCE.num_agents, 4);
     assert_eq!(
         PRIMARY_REFERENCE_INSTANCE.benchmark_customer_demands,

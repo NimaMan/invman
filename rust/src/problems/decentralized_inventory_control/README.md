@@ -12,12 +12,12 @@ Formulation carried here:
 This package currently carries two literature slices:
 
 - classic board-game benchmark from Sterman (1989), reconstructed exactly by Caner et al. (2014)
-- later RL benchmark row from Oroojlooyjadid et al. (2021)
+- later RL background paper from Oroojlooyjadid et al. (2021)
 
 Current status:
 
 - literature-verified: yes for the classic Sterman/Caner benchmark
-- not literature-verified: Oroojlooyjadid 2021 `45.13` Sterman row is still carried only as a published comparison row
+- not carried as a benchmark row: the Oroojlooyjadid 2021 `45.13` Sterman number could not be reproduced tightly enough from the public paper plus released code
 - repo-exact verified: yes on the reduced finite-horizon verifier
 
 Folder roles:

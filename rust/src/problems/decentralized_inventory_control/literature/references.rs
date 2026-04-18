@@ -115,7 +115,7 @@ pub const OROOJLOYJADID_2021_REFERENCE: PublishedBenchmarkReference = PublishedB
     source: "Oroojlooyjadid et al. (2021), Manufacturing & Service Operations Management 24(1)",
     url: "https://doi.org/10.1287/msom.2020.0939",
     benchmark_policies: &["base_stock", "sterman_anchor_adjust", "dqn"],
-    notes: "The paper studies the Beer Game as a decentralized cooperative supply chain with local observations only. It compares a DQN agent against rational base-stock play and the Sterman behavioral ordering rule.",
+    notes: "Background RL paper on decentralized Beer-Game control with local observations only. The paper reports a 100-period uniform-demand benchmark and a Sterman row, but the public paper formula, timing description, and released code do not line up tightly enough for the repo to carry that row as an executable verification anchor.",
 };
 
 pub const CANER_2014_REFERENCE: PublishedBenchmarkReference = PublishedBenchmarkReference {
@@ -140,16 +140,6 @@ pub const STERMAN_1989_CLASSIC_BENCHMARK: PublishedPolicyBenchmark = PublishedPo
     total_mean_cost: 204.0,
     notes: "Classic 36-week Beer Game benchmark costs for the optimized anchor-and-adjust policy. Caner et al. (2014) state that their exact board-game reconstruction reproduces these Sterman (1989) benchmark values exactly.",
 };
-
-pub const OROOJLOYJADID_2021_ALL_STERMAN_BENCHMARK: PublishedPolicyBenchmark =
-    PublishedPolicyBenchmark {
-        source: OROOJLOYJADID_2021_REFERENCE.source,
-        url: OROOJLOYJADID_2021_REFERENCE.url,
-        policy_name: "sterman_anchor_adjust",
-        per_agent_mean_costs: &[10.81, 10.76, 10.96, 12.60],
-        total_mean_cost: 45.13,
-        notes: "Reported in Section 4.2 of Oroojlooyjadid et al. (2021) for the case where all four agents follow the Sterman formula.",
-    };
 
 pub const PRIMARY_REFERENCE_INSTANCE: DecentralizedInventoryReferenceInstance =
     DecentralizedInventoryReferenceInstance {
