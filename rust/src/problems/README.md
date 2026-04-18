@@ -147,6 +147,13 @@ Current literature-verified package anchors:
 Everything else should be treated as not literature-verified unless the problem README states
 otherwise explicitly.
 
+Notable current example:
+
+- `joint_pricing_inventory`
+  - repo-exact verified on its reduced verifier
+  - not literature-verified, because the carried Zhou/Qin anchors do not currently expose a clean
+    public executable benchmark row for this repo package
+
 Every new problem family must have:
 
 - a canonical literature interpretation

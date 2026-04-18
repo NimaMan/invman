@@ -7,7 +7,7 @@ use crate::problems::random_yield_inventory::env::initialize_state;
 use crate::problems::random_yield_inventory::heuristics::{
     weighted_newsvendor_order_quantity, yield_inflated_base_stock_order_quantity,
 };
-use crate::problems::random_yield_inventory::references::ExactVerificationReference;
+use crate::problems::random_yield_inventory::literature::ExactVerificationReference;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 struct ExactStateKey {

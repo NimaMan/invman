@@ -8,7 +8,7 @@ use crate::problems::random_yield_inventory::heuristics::{
     weighted_newsvendor_order_quantity, yield_inflated_base_stock_order_quantity,
     yield_inflated_base_stock_parameters,
 };
-use crate::problems::random_yield_inventory::references::{
+use crate::problems::random_yield_inventory::literature::{
     CHEN_2018_REFERENCE, INDERFURTH_2015_POSITIVE_LEAD_TIMES,
     INDERFURTH_2015_PROPORTIONAL_YIELD_PAIRS, INDERFURTH_2015_REFERENCE,
     LITERATURE_BENCHMARK_FAMILIES, PRIMARY_REFERENCE_INSTANCE, VERIFICATION_PROBLEM_INSTANCE,

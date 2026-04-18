@@ -87,12 +87,21 @@ fn policy_state(
     let period = raw_state.last().copied().unwrap_or(0.0) as usize;
     let inventory_level = raw_state.first().copied().unwrap_or(0.0) as f64;
     let pipeline_orders = &raw_state[1..raw_state.len().saturating_sub(1)];
-    let expected_position =
-        inventory_level + success_probability * pipeline_orders.iter().map(|value| *value as f64).sum::<f64>();
+    let expected_position = inventory_level
+        + success_probability
+            * pipeline_orders
+                .iter()
+                .map(|value| *value as f64)
+                .sum::<f64>();
     let scale = inventory_level
         .abs()
         .max(expected_position.abs())
-        .max(pipeline_orders.iter().map(|value| *value as f64).sum::<f64>())
+        .max(
+            pipeline_orders
+                .iter()
+                .map(|value| *value as f64)
+                .sum::<f64>(),
+        )
         .max(1.0) as f32;
     let mut features = Vec::with_capacity(pipeline_orders.len() + 3);
     features.push(inventory_level as f32 / scale);

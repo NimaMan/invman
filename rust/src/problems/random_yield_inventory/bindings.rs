@@ -12,7 +12,7 @@ use crate::problems::random_yield_inventory::heuristics::{
     weighted_newsvendor_order_quantity, yield_inflated_base_stock_order_quantity,
     yield_inflated_base_stock_parameters, DiscountedCostSummary,
 };
-use crate::problems::random_yield_inventory::references::{
+use crate::problems::random_yield_inventory::literature::{
     ExactVerificationReference, LiteratureBenchmarkFamily, RandomYieldReferenceInstance,
     LITERATURE_BENCHMARK_FAMILIES, PRIMARY_REFERENCE_INSTANCE, VERIFICATION_PROBLEM_INSTANCE,
 };
