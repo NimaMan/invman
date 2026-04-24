@@ -87,7 +87,7 @@ pub const PAHR_GRUNOW_2025_REFERENCE: PublishedBenchmarkReference = PublishedBen
         "rolling_lp",
         "drl",
     ],
-    notes: "The paper introduces an MDP for ameliorating food inventory with age-differentiated products, average-age or minimum-age blending, and benchmark heuristics based on newsvendor purchasing, a two-dimensional order-up-to policy, and a rolling LP.",
+    notes: "The paper studies an ameliorating inventory MDP with age-differentiated products, stochastic sales prices, stochastic decay, and blending-based issuance. The current Rust package is a reduced approximation of that family rather than a faithful executable port.",
 };
 
 pub const PAHR_GRUNOW_2025_REPOSITORY_REFERENCE: PublishedBenchmarkReference =
@@ -99,7 +99,7 @@ pub const PAHR_GRUNOW_2025_REPOSITORY_REFERENCE: PublishedBenchmarkReference =
             "two_dimensional_order_up_to",
             "rolling_lp",
         ],
-        notes: "The public companion repository exposes the environment defaults used by the paper, including five age classes, two products, and target ages [1, 3].",
+        notes: "The public companion repository defaults to ten age classes, three products, stochastic sales prices, stochastic beta decay processes, and LP-based issuance machinery. Those settings are not the executable model used by the current Rust package.",
     };
 
 pub const PRIMARY_DEMAND_MODELS: &[DemandModel] = &[
@@ -130,7 +130,7 @@ pub const PRIMARY_REFERENCE_INSTANCE: AmelioratingInventoryReferenceInstance =
         benchmark_two_dimensional_total_target: 24,
         benchmark_two_dimensional_young_target: 8,
         benchmark_young_age_cutoff: 1,
-        notes: "Repo-native discrete reduction of the paper's default five-age, two-product spirits setting with average-age blending. The fixed prices replace the paper's stochastic commodity and sales-price processes for tractability in the Rust verifier.",
+        notes: "Repo-native five-age, two-product discrete reduction inspired by the paper's default spirits setting. This instance is benchmark-shaped but not literature-verified.",
     };
 
 pub const WORKED_TRANSITION_REFERENCE: WorkedTransitionReference = WorkedTransitionReference {
@@ -180,5 +180,5 @@ pub const VERIFICATION_PROBLEM_INSTANCE: ExactVerificationReference = ExactVerif
     two_dimensional_total_target: 4,
     two_dimensional_young_target: 2,
     young_age_cutoff: 0,
-    notes: "Repo-native exact verifier on a reduced average-age blending instance with three age classes and two products. The instance keeps the core amelioration trade-off but is small enough for finite-horizon DP.",
+    notes: "Repo-native exact verifier on a reduced average-age blending instance with three age classes and two products. This is an internal implementation check, not a published benchmark row.",
 };

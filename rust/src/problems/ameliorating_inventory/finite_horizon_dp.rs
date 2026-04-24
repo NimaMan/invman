@@ -9,7 +9,7 @@ use crate::problems::ameliorating_inventory::env::{
 use crate::problems::ameliorating_inventory::heuristics::{
     newsvendor_purchase_order_quantity, two_dimensional_order_up_to_order_quantity,
 };
-use crate::problems::ameliorating_inventory::references::ExactVerificationReference;
+use crate::problems::ameliorating_inventory::literature::ExactVerificationReference;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 struct ExactStateKey {
@@ -103,7 +103,10 @@ fn solve_optimal_from_state(
             let outcome = step_state(
                 &concrete_state,
                 action,
-                &scenario.iter().map(|value| *value as usize).collect::<Vec<_>>(),
+                &scenario
+                    .iter()
+                    .map(|value| *value as usize)
+                    .collect::<Vec<_>>(),
                 reference.target_ages,
                 reference.product_prices,
                 reference.age_retention,
@@ -111,8 +114,11 @@ fn solve_optimal_from_state(
                 reference.holding_cost_per_unit,
                 reference.decay_salvage_values,
             )?;
-            let continuation =
-                solve_optimal_from_state(state_key_from_state(&outcome.next_state), reference, cache)?;
+            let continuation = solve_optimal_from_state(
+                state_key_from_state(&outcome.next_state),
+                reference,
+                cache,
+            )?;
             expected_cost += probability
                 * (outcome.period_cost + reference.discount_factor * continuation.discounted_cost);
         }
@@ -168,10 +174,9 @@ fn evaluate_heuristic_from_state(
 
     let concrete_state = state_from_key(&state)?;
     let action = match normalized_name {
-        "newsvendor_purchase" => newsvendor_purchase_order_quantity(
-            &concrete_state,
-            reference.newsvendor_total_target,
-        )?,
+        "newsvendor_purchase" => {
+            newsvendor_purchase_order_quantity(&concrete_state, reference.newsvendor_total_target)?
+        }
         "two_dimensional_order_up_to" => two_dimensional_order_up_to_order_quantity(
             &concrete_state,
             reference.two_dimensional_total_target,
@@ -191,7 +196,10 @@ fn evaluate_heuristic_from_state(
         let outcome = step_state(
             &concrete_state,
             action,
-            &scenario.iter().map(|value| *value as usize).collect::<Vec<_>>(),
+            &scenario
+                .iter()
+                .map(|value| *value as usize)
+                .collect::<Vec<_>>(),
             reference.target_ages,
             reference.product_prices,
             reference.age_retention,
@@ -205,8 +213,8 @@ fn evaluate_heuristic_from_state(
             normalized_name,
             cache,
         )?;
-        expected_cost +=
-            probability * (outcome.period_cost + reference.discount_factor * continuation.discounted_cost);
+        expected_cost += probability
+            * (outcome.period_cost + reference.discount_factor * continuation.discounted_cost);
     }
 
     let result = ExactPolicyEvaluation {

@@ -7,7 +7,7 @@ use crate::problems::ameliorating_inventory::finite_horizon_dp::{
 use crate::problems::ameliorating_inventory::heuristics::{
     newsvendor_purchase_order_quantity, two_dimensional_order_up_to_order_quantity,
 };
-use crate::problems::ameliorating_inventory::references::{
+use crate::problems::ameliorating_inventory::literature::{
     PAHR_GRUNOW_2025_REFERENCE, PAHR_GRUNOW_2025_REPOSITORY_REFERENCE, PRIMARY_REFERENCE_INSTANCE,
     VERIFICATION_PROBLEM_INSTANCE, WORKED_TRANSITION_REFERENCE,
 };

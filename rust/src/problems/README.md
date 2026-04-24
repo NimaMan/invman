@@ -53,19 +53,27 @@ Standard layout:
 rust/src/problems/<problem>/
   README.md
   literature/
+    README.md
+    mod.rs
+    references.rs
   practical/
+    README.md
+    mod.rs
     datasets/
     reports/
   experiments/
+    README.md
+    mod.rs
     reports/
   verification/
+    README.md
+    mod.rs
+    tests.rs
   mod.rs
   env.rs
   heuristics/
   rollout.rs
-  references.rs
   bindings.rs
-  tests/
 ```
 
 ## Direction
@@ -159,7 +167,8 @@ Notable current example:
 Every new problem family must have:
 
 - a canonical literature interpretation
-- a references file that is the source of truth for problem instances and benchmark numbers
+- a literature references file that is the source of truth for problem instances and benchmark
+  numbers
 - at least one heuristic baseline
 - rollout code for learned-policy training and evaluation
 - one verification instance with passing assertions before any training work starts
@@ -180,7 +189,7 @@ Required artifacts for every new Rust-first problem family:
   - short literature note
   - benchmark scope
   - canonical repo interpretation of the family
-- `references.rs`
+- `literature/references.rs`
   - authoritative list of literature instances carried by the repo
   - one `PRIMARY_REFERENCE_INSTANCE`
   - one `VERIFICATION_PROBLEM_INSTANCE`
@@ -195,7 +204,7 @@ Required artifacts for every new Rust-first problem family:
 - `rollout.rs`
   - learned-policy evaluation path
   - deterministic rollout helpers from fixed paths when needed
-- `tests/verification.rs`
+- `verification/tests.rs`
   - assertions tied to the verification instance
 
 If verification needs an exact finite-state solver or analytical evaluator, keep it outside
