@@ -67,6 +67,13 @@ fn single_node_rows_match_analytical_newsvendor_values() {
 }
 
 #[test]
+fn serial_rows_are_cataloged_but_not_verified() {
+    assert_eq!(SERIAL_BENCHMARK_ROWS.len(), 10);
+    assert_eq!(SERIAL_BENCHMARK_ROWS[0].published_average_cost, 22.21);
+    assert_eq!(SERIAL_BENCHMARK_ROWS[2].published_average_cost, 47.65);
+}
+
+#[test]
 fn policy_state_layout_matches_expected_shape() {
     let graph = build_graph(
         VERIFICATION_PROBLEM_INSTANCE.num_nodes,

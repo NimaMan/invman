@@ -26,15 +26,15 @@ Current status:
 - not literature-verified
 - repo-exact verified on the small serial verifier
 - single-node paper rows are analytically reproducible
-- serial paper rows are carried and audited, but not yet reproduced tightly enough
+- serial paper rows are carried as literature catalog entries only
 
 Reason:
 
 - the package now follows the paper’s state and event structure much more closely
 - the single-node newsvendor rows are closed-form and can be reproduced exactly
 - the serial paper tables depend on a simulation protocol whose published recurrence is not fully
-  self-consistent, so the current audit remains a best-effort paper-facing reproduction rather
-  than a verified executable match
+  self-consistent, and the available public sources were not enough to close the gap
+- so the serial rows are not used as verification anchors
 
 Package layout:
 

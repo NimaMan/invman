@@ -614,27 +614,10 @@ fn network_inventory_literature_benchmark_summary(
         })
         .collect::<PyResult<Vec<PyObject>>>()?;
     dict.set_item("single_node_results", single_node_results)?;
-
-    let serial_results = summary
-        .serial_results
-        .iter()
-        .map(|row| {
-            let row_dict = PyDict::new_bound(py);
-            row_dict.set_item("case_idx", row.case_idx)?;
-            row_dict.set_item(
-                "published_analytical_ouls",
-                row.published_analytical_ouls.clone(),
-            )?;
-            row_dict.set_item("published_average_cost", row.published_average_cost)?;
-            row_dict.set_item("reproduced_average_cost", row.reproduced_average_cost)?;
-            row_dict.set_item(
-                "cost_abs_gap",
-                (row.reproduced_average_cost - row.published_average_cost).abs(),
-            )?;
-            Ok(row_dict.into_any().unbind().into())
-        })
-        .collect::<PyResult<Vec<PyObject>>>()?;
-    dict.set_item("serial_results", serial_results)?;
+    dict.set_item(
+        "notes",
+        "Only the paper's single-node analytical rows are currently reproduced tightly enough for verification. The serial rows remain literature catalog entries only and are not part of the verification summary.",
+    )?;
 
     Ok(dict.into())
 }

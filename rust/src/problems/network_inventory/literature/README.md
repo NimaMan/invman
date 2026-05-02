@@ -12,10 +12,9 @@ Why:
 
 - the Rust package now carries a paper-shaped discrete formulation
 - `SINGLE_NODE_BENCHMARK_ROWS` reproduces the paper's analytical newsvendor rows exactly
-- `SERIAL_BENCHMARK_ROWS` carries the paper's serial tables and is audited through a continuous
-  paper-facing simulator
-- the serial audit still does not reproduce the published rows tightly enough for the repo
-  implementation to be marked `literature_verified`
+- `SERIAL_BENCHMARK_ROWS` carries the paper's serial tables as literature catalog rows only
+- the serial benchmark protocol could not be recovered tightly enough from public sources, so
+  those rows are not part of the verification layer
 
 Use `literature/references.rs` as the source of truth for:
 
