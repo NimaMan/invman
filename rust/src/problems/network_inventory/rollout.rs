@@ -11,8 +11,8 @@ use crate::problems::network_inventory::demand::{
     sample_demand, validate_demand_model, DemandModel,
 };
 use crate::problems::network_inventory::env::{
-    build_policy_state, initialize_state, step_state, validate_state, NetworkInventoryGraph,
-    NetworkInventoryState,
+    build_policy_state, initialize_state, step_state, supply_relation_count, validate_state,
+    NetworkInventoryGraph, NetworkInventoryState,
 };
 
 #[derive(Clone)]
@@ -33,11 +33,20 @@ pub struct NetworkInventoryRolloutConfig {
 
 pub fn build_initial_state(
     graph: &NetworkInventoryGraph,
-    on_hand_inventory: &[usize],
-    backlog: &[usize],
-    edge_pipelines: &[Vec<usize>],
+    finished_inventory: &[usize],
+    raw_inventory_by_relation: &[usize],
+    internal_backlog_by_edge: &[usize],
+    external_backlog: &[usize],
+    supply_pipelines: &[Vec<usize>],
 ) -> PyResult<NetworkInventoryState> {
-    initialize_state(graph, on_hand_inventory, backlog, edge_pipelines)
+    initialize_state(
+        graph,
+        finished_inventory,
+        raw_inventory_by_relation,
+        internal_backlog_by_edge,
+        external_backlog,
+        supply_pipelines,
+    )
 }
 
 fn validate_config(
@@ -56,24 +65,35 @@ fn validate_config(
     for model in config.demand_models.iter() {
         validate_demand_model(model)?;
     }
-    let expected_input_dim = 4 * config.graph.num_nodes + config.graph.edges.len() + 1;
+    let zero_demands = vec![0usize; config.graph.num_nodes];
+    let demand_means = config
+        .demand_models
+        .iter()
+        .map(|model| model.param1)
+        .collect::<Vec<_>>();
+    let expected_input_dim = build_policy_state(
+        &config.graph,
+        initial_state,
+        &demand_means,
+        &zero_demands,
+        config.periods,
+    )?
+    .len();
     if config.input_dim != expected_input_dim {
         return Err(PyValueError::new_err(format!(
             "input_dim {} does not match expected {}",
             config.input_dim, expected_input_dim
         )));
     }
-    if config.action_spec.action_dim != config.graph.edges.len() {
+    if config.action_spec.action_dim != supply_relation_count(&config.graph) {
         return Err(PyValueError::new_err(format!(
-            "action_spec.action_dim {} does not match the number of edges {}",
+            "action_spec.action_dim {} does not match the number of supply relations {}",
             config.action_spec.action_dim,
-            config.graph.edges.len()
+            supply_relation_count(&config.graph)
         )));
     }
     if !(0.0..=1.0).contains(&config.discount_factor) {
-        return Err(PyValueError::new_err(
-            "discount_factor must lie in [0, 1]",
-        ));
+        return Err(PyValueError::new_err("discount_factor must lie in [0, 1]"));
     }
     Ok(())
 }
@@ -81,6 +101,7 @@ fn validate_config(
 fn edge_requests(
     flat_params: &[f32],
     state: &NetworkInventoryState,
+    realized_external_demands: &[usize],
     config: &NetworkInventoryRolloutConfig,
 ) -> PyResult<Vec<usize>> {
     let demand_means = config
@@ -88,7 +109,13 @@ fn edge_requests(
         .iter()
         .map(|model| model.param1)
         .collect::<Vec<_>>();
-    let policy_state = build_policy_state(&config.graph, state, &demand_means, config.periods)?;
+    let policy_state = build_policy_state(
+        &config.graph,
+        state,
+        &demand_means,
+        realized_external_demands,
+        config.periods,
+    )?;
     action_vector_from_flat_params(
         &policy_state,
         flat_params,
@@ -119,7 +146,7 @@ pub fn rollout(
             .iter()
             .map(|model| sample_demand(&mut rng, model))
             .collect::<PyResult<Vec<_>>>()?;
-        let requests = edge_requests(flat_params, &state, config)?;
+        let requests = edge_requests(flat_params, &state, &realized_demands, config)?;
         let outcome = step_state(
             &config.graph,
             &state,
@@ -158,7 +185,7 @@ pub fn rollout_from_paths(
                 "each realized demand vector must match num_nodes",
             ));
         }
-        let requests = edge_requests(flat_params, &state, config)?;
+        let requests = edge_requests(flat_params, &state, demand, config)?;
         let outcome = step_state(
             &config.graph,
             &state,

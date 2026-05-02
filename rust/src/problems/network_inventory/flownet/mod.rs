@@ -12,7 +12,7 @@ pub use instance::{
 #[allow(unused_imports)]
 pub use verification::{
     exact_verification_instance_matches_problem_parameters,
-    primary_reference_instance_matches_diamond_network,
+    primary_reference_instance_matches_serial_case,
     validate_network_inventory_flownet_structure, verify_exact_reference_policy_performance,
-    verify_node_base_stock_reference_action, verify_worked_transition_reference,
+    verify_pairwise_base_stock_reference_action, verify_worked_transition_reference,
 };

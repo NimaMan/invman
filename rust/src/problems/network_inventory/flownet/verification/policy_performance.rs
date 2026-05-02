@@ -5,18 +5,18 @@ use crate::problems::core::flownet::{
 use crate::problems::network_inventory::finite_horizon_dp::{
     evaluate_named_heuristic, solve_optimal_policy,
 };
-use crate::problems::network_inventory::references::VERIFICATION_PROBLEM_INSTANCE;
+use crate::problems::network_inventory::literature::VERIFICATION_PROBLEM_INSTANCE;
 
 pub const EXACT_VERIFICATION_OPTIMAL_POLICY_NAME: &str = "optimal_reference";
-pub const EXACT_VERIFICATION_NODE_BASE_STOCK_POLICY_NAME: &str = "node_base_stock";
+pub const EXACT_VERIFICATION_PAIRWISE_BASE_STOCK_POLICY_NAME: &str = "pairwise_base_stock";
 
 pub fn verify_exact_reference_policy_performance(
 ) -> Result<PolicyPerformanceVerificationSummary, String> {
     let optimal =
         solve_optimal_policy(&VERIFICATION_PROBLEM_INSTANCE).map_err(|err| err.to_string())?;
-    let node_base_stock = evaluate_named_heuristic(
+    let pairwise_base_stock = evaluate_named_heuristic(
         &VERIFICATION_PROBLEM_INSTANCE,
-        EXACT_VERIFICATION_NODE_BASE_STOCK_POLICY_NAME,
+        EXACT_VERIFICATION_PAIRWISE_BASE_STOCK_POLICY_NAME,
     )
     .map_err(|err| err.to_string())?;
 
@@ -32,9 +32,9 @@ pub fn verify_exact_reference_policy_performance(
                 tolerance: 1e-9,
             },
             PolicyPerformanceTarget {
-                policy_name: String::from(EXACT_VERIFICATION_NODE_BASE_STOCK_POLICY_NAME),
+                policy_name: String::from(EXACT_VERIFICATION_PAIRWISE_BASE_STOCK_POLICY_NAME),
                 role: PolicyVerificationRole::Heuristic,
-                expected_score: node_base_stock.discounted_cost,
+                expected_score: pairwise_base_stock.discounted_cost,
                 tolerance: 1e-9,
             },
         ],
@@ -44,8 +44,8 @@ pub fn verify_exact_reference_policy_performance(
                 observed_score: optimal.discounted_cost,
             },
             PolicyPerformanceMeasurement {
-                policy_name: String::from(EXACT_VERIFICATION_NODE_BASE_STOCK_POLICY_NAME),
-                observed_score: node_base_stock.discounted_cost,
+                policy_name: String::from(EXACT_VERIFICATION_PAIRWISE_BASE_STOCK_POLICY_NAME),
+                observed_score: pairwise_base_stock.discounted_cost,
             },
         ],
         vec![],

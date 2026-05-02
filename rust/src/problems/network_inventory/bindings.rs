@@ -7,19 +7,24 @@ use crate::problems::core::flownet::{
     PolicyPerformanceVerificationSummary, PolicyScoreOrdering, PolicyVerificationRole,
 };
 use crate::problems::network_inventory::demand::{parse_demand_distribution_kind, DemandModel};
-use crate::problems::network_inventory::env::{NetworkEdge, NetworkInventoryGraph};
+use crate::problems::network_inventory::env::{
+    NetworkEdge, NetworkInventoryGraph, NetworkNodeMode,
+};
 use crate::problems::network_inventory::flownet::verification::verify_exact_reference_policy_performance;
 use crate::problems::network_inventory::heuristics::{
-    node_base_stock_requests, policy_rollout_from_paths,
+    pairwise_base_stock_requests, policy_rollout_from_paths,
 };
 use crate::problems::network_inventory::rollout::{
     build_initial_state, population_rollout, rollout, rollout_from_paths,
     NetworkInventoryRolloutConfig,
 };
+use crate::problems::network_inventory::verification::literature_benchmarks::literature_benchmark_summary;
 
 fn build_graph(
     num_nodes: usize,
     source_nodes: Vec<bool>,
+    node_modes: Vec<String>,
+    external_supplier_lead_times: Vec<usize>,
     edge_from: Vec<usize>,
     edge_to: Vec<usize>,
     edge_lead_times: Vec<usize>,
@@ -29,9 +34,26 @@ fn build_graph(
             "edge_from, edge_to, and edge_lead_times must have the same length",
         ));
     }
+    if node_modes.len() != num_nodes || external_supplier_lead_times.len() != num_nodes {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "node_modes and external_supplier_lead_times must match num_nodes",
+        ));
+    }
     Ok(NetworkInventoryGraph {
         num_nodes,
         source_nodes,
+        node_modes: node_modes
+            .iter()
+            .map(|mode| match mode.as_str() {
+                "single" => Ok(NetworkNodeMode::Single),
+                "assembly_and" => Ok(NetworkNodeMode::AssemblyAnd),
+                "assembly_or" => Ok(NetworkNodeMode::AssemblyOr),
+                _ => Err(pyo3::exceptions::PyValueError::new_err(format!(
+                    "unsupported node mode '{mode}'"
+                ))),
+            })
+            .collect::<PyResult<Vec<_>>>()?,
+        external_supplier_lead_times,
         edges: edge_from
             .iter()
             .zip(edge_to.iter())
@@ -47,20 +69,29 @@ fn build_graph(
 
 fn build_demand_models(
     demand_kinds: Vec<String>,
-    demand_means: Vec<f64>,
+    demand_param1s: Vec<f64>,
+    demand_param2s: Option<Vec<f64>>,
 ) -> PyResult<Vec<DemandModel>> {
-    if demand_kinds.len() != demand_means.len() {
+    if demand_kinds.len() != demand_param1s.len() {
         return Err(pyo3::exceptions::PyValueError::new_err(
-            "demand_kinds and demand_means must have the same length",
+            "demand_kinds and demand_param1s must have the same length",
+        ));
+    }
+    let param2s = demand_param2s.unwrap_or_else(|| vec![0.0; demand_kinds.len()]);
+    if param2s.len() != demand_kinds.len() {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "demand_param2s must match demand_kinds when provided",
         ));
     }
     demand_kinds
         .iter()
-        .zip(demand_means.iter())
-        .map(|(kind, mean)| {
+        .zip(demand_param1s.iter())
+        .zip(param2s.iter())
+        .map(|((kind, param1), param2)| {
             Ok(DemandModel {
                 kind: parse_demand_distribution_kind(kind)?,
-                param1: *mean,
+                param1: *param1,
+                param2: *param2,
             })
         })
         .collect()
@@ -143,17 +174,22 @@ fn policy_performance_summary_to_py(
     action_mode,
     num_nodes,
     source_nodes,
+    node_modes,
+    external_supplier_lead_times,
     edge_from,
     edge_to,
     edge_lead_times,
-    on_hand_inventory,
-    backlog,
-    edge_pipelines,
+    finished_inventory,
+    raw_inventory_by_relation,
+    internal_backlog_by_edge,
+    external_backlog,
+    supply_pipelines,
     periods,
     demand_kinds,
-    demand_means,
+    demand_param1s,
     holding_costs,
     backlog_costs,
+    demand_param2s=None,
     seed=1234,
     discount_factor=0.99,
     temperature=0.25,
@@ -170,17 +206,22 @@ fn network_inventory_soft_tree_rollout(
     action_mode: &str,
     num_nodes: usize,
     source_nodes: Vec<bool>,
+    node_modes: Vec<String>,
+    external_supplier_lead_times: Vec<usize>,
     edge_from: Vec<usize>,
     edge_to: Vec<usize>,
     edge_lead_times: Vec<usize>,
-    on_hand_inventory: Vec<usize>,
-    backlog: Vec<usize>,
-    edge_pipelines: Vec<Vec<usize>>,
+    finished_inventory: Vec<usize>,
+    raw_inventory_by_relation: Vec<usize>,
+    internal_backlog_by_edge: Vec<usize>,
+    external_backlog: Vec<usize>,
+    supply_pipelines: Vec<Vec<usize>>,
     periods: usize,
     demand_kinds: Vec<String>,
-    demand_means: Vec<f64>,
+    demand_param1s: Vec<f64>,
     holding_costs: Vec<f64>,
     backlog_costs: Vec<f64>,
+    demand_param2s: Option<Vec<f64>>,
     seed: u64,
     discount_factor: f64,
     temperature: f32,
@@ -188,15 +229,30 @@ fn network_inventory_soft_tree_rollout(
     leaf_type: &str,
     allowed_values: Option<Vec<Vec<usize>>>,
 ) -> PyResult<f64> {
-    let graph = build_graph(num_nodes, source_nodes, edge_from, edge_to, edge_lead_times)?;
-    let initial_state = build_initial_state(&graph, &on_hand_inventory, &backlog, &edge_pipelines)?;
+    let graph = build_graph(
+        num_nodes,
+        source_nodes,
+        node_modes,
+        external_supplier_lead_times,
+        edge_from,
+        edge_to,
+        edge_lead_times,
+    )?;
+    let initial_state = build_initial_state(
+        &graph,
+        &finished_inventory,
+        &raw_inventory_by_relation,
+        &internal_backlog_by_edge,
+        &external_backlog,
+        &supply_pipelines,
+    )?;
     let config = NetworkInventoryRolloutConfig {
         input_dim,
         depth,
         action_spec: build_action_spec(action_mode, min_values, max_values, allowed_values)?,
         periods,
         graph,
-        demand_models: build_demand_models(demand_kinds, demand_means)?,
+        demand_models: build_demand_models(demand_kinds, demand_param1s, demand_param2s)?,
         holding_costs,
         backlog_costs,
         discount_factor,
@@ -217,18 +273,23 @@ fn network_inventory_soft_tree_rollout(
     action_mode,
     num_nodes,
     source_nodes,
+    node_modes,
+    external_supplier_lead_times,
     edge_from,
     edge_to,
     edge_lead_times,
-    on_hand_inventory,
-    backlog,
-    edge_pipelines,
+    finished_inventory,
+    raw_inventory_by_relation,
+    internal_backlog_by_edge,
+    external_backlog,
+    supply_pipelines,
     periods,
     demand_kinds,
-    demand_means,
+    demand_param1s,
     holding_costs,
     backlog_costs,
     seeds,
+    demand_param2s=None,
     discount_factor=0.99,
     temperature=0.25,
     split_type="oblique",
@@ -244,33 +305,53 @@ fn network_inventory_soft_tree_population_rollout(
     action_mode: &str,
     num_nodes: usize,
     source_nodes: Vec<bool>,
+    node_modes: Vec<String>,
+    external_supplier_lead_times: Vec<usize>,
     edge_from: Vec<usize>,
     edge_to: Vec<usize>,
     edge_lead_times: Vec<usize>,
-    on_hand_inventory: Vec<usize>,
-    backlog: Vec<usize>,
-    edge_pipelines: Vec<Vec<usize>>,
+    finished_inventory: Vec<usize>,
+    raw_inventory_by_relation: Vec<usize>,
+    internal_backlog_by_edge: Vec<usize>,
+    external_backlog: Vec<usize>,
+    supply_pipelines: Vec<Vec<usize>>,
     periods: usize,
     demand_kinds: Vec<String>,
-    demand_means: Vec<f64>,
+    demand_param1s: Vec<f64>,
     holding_costs: Vec<f64>,
     backlog_costs: Vec<f64>,
     seeds: Vec<u64>,
+    demand_param2s: Option<Vec<f64>>,
     discount_factor: f64,
     temperature: f32,
     split_type: &str,
     leaf_type: &str,
     allowed_values: Option<Vec<Vec<usize>>>,
 ) -> PyResult<Vec<f64>> {
-    let graph = build_graph(num_nodes, source_nodes, edge_from, edge_to, edge_lead_times)?;
-    let initial_state = build_initial_state(&graph, &on_hand_inventory, &backlog, &edge_pipelines)?;
+    let graph = build_graph(
+        num_nodes,
+        source_nodes,
+        node_modes,
+        external_supplier_lead_times,
+        edge_from,
+        edge_to,
+        edge_lead_times,
+    )?;
+    let initial_state = build_initial_state(
+        &graph,
+        &finished_inventory,
+        &raw_inventory_by_relation,
+        &internal_backlog_by_edge,
+        &external_backlog,
+        &supply_pipelines,
+    )?;
     let config = NetworkInventoryRolloutConfig {
         input_dim,
         depth,
         action_spec: build_action_spec(action_mode, min_values, max_values, allowed_values)?,
         periods,
         graph,
-        demand_models: build_demand_models(demand_kinds, demand_means)?,
+        demand_models: build_demand_models(demand_kinds, demand_param1s, demand_param2s)?,
         holding_costs,
         backlog_costs,
         discount_factor,
@@ -291,17 +372,22 @@ fn network_inventory_soft_tree_population_rollout(
     action_mode,
     num_nodes,
     source_nodes,
+    node_modes,
+    external_supplier_lead_times,
     edge_from,
     edge_to,
     edge_lead_times,
-    on_hand_inventory,
-    backlog,
-    edge_pipelines,
+    finished_inventory,
+    raw_inventory_by_relation,
+    internal_backlog_by_edge,
+    external_backlog,
+    supply_pipelines,
     realized_demands,
     demand_kinds,
-    demand_means,
+    demand_param1s,
     holding_costs,
     backlog_costs,
+    demand_param2s=None,
     discount_factor=0.99,
     temperature=0.25,
     split_type="oblique",
@@ -317,32 +403,52 @@ fn network_inventory_soft_tree_rollout_from_paths(
     action_mode: &str,
     num_nodes: usize,
     source_nodes: Vec<bool>,
+    node_modes: Vec<String>,
+    external_supplier_lead_times: Vec<usize>,
     edge_from: Vec<usize>,
     edge_to: Vec<usize>,
     edge_lead_times: Vec<usize>,
-    on_hand_inventory: Vec<usize>,
-    backlog: Vec<usize>,
-    edge_pipelines: Vec<Vec<usize>>,
+    finished_inventory: Vec<usize>,
+    raw_inventory_by_relation: Vec<usize>,
+    internal_backlog_by_edge: Vec<usize>,
+    external_backlog: Vec<usize>,
+    supply_pipelines: Vec<Vec<usize>>,
     realized_demands: Vec<Vec<usize>>,
     demand_kinds: Vec<String>,
-    demand_means: Vec<f64>,
+    demand_param1s: Vec<f64>,
     holding_costs: Vec<f64>,
     backlog_costs: Vec<f64>,
+    demand_param2s: Option<Vec<f64>>,
     discount_factor: f64,
     temperature: f32,
     split_type: &str,
     leaf_type: &str,
     allowed_values: Option<Vec<Vec<usize>>>,
 ) -> PyResult<f64> {
-    let graph = build_graph(num_nodes, source_nodes, edge_from, edge_to, edge_lead_times)?;
-    let initial_state = build_initial_state(&graph, &on_hand_inventory, &backlog, &edge_pipelines)?;
+    let graph = build_graph(
+        num_nodes,
+        source_nodes,
+        node_modes,
+        external_supplier_lead_times,
+        edge_from,
+        edge_to,
+        edge_lead_times,
+    )?;
+    let initial_state = build_initial_state(
+        &graph,
+        &finished_inventory,
+        &raw_inventory_by_relation,
+        &internal_backlog_by_edge,
+        &external_backlog,
+        &supply_pipelines,
+    )?;
     let config = NetworkInventoryRolloutConfig {
         input_dim,
         depth,
         action_spec: build_action_spec(action_mode, min_values, max_values, allowed_values)?,
         periods: realized_demands.len(),
         graph,
-        demand_models: build_demand_models(demand_kinds, demand_means)?,
+        demand_models: build_demand_models(demand_kinds, demand_param1s, demand_param2s)?,
         holding_costs,
         backlog_costs,
         discount_factor,
@@ -359,12 +465,16 @@ fn network_inventory_soft_tree_rollout_from_paths(
     params,
     num_nodes,
     source_nodes,
+    node_modes,
+    external_supplier_lead_times,
     edge_from,
     edge_to,
     edge_lead_times,
-    on_hand_inventory,
-    backlog,
-    edge_pipelines,
+    finished_inventory,
+    raw_inventory_by_relation,
+    internal_backlog_by_edge,
+    external_backlog,
+    supply_pipelines,
     realized_demands,
     holding_costs,
     backlog_costs,
@@ -375,19 +485,38 @@ fn network_inventory_policy_rollout_from_paths(
     params: Vec<f64>,
     num_nodes: usize,
     source_nodes: Vec<bool>,
+    node_modes: Vec<String>,
+    external_supplier_lead_times: Vec<usize>,
     edge_from: Vec<usize>,
     edge_to: Vec<usize>,
     edge_lead_times: Vec<usize>,
-    on_hand_inventory: Vec<usize>,
-    backlog: Vec<usize>,
-    edge_pipelines: Vec<Vec<usize>>,
+    finished_inventory: Vec<usize>,
+    raw_inventory_by_relation: Vec<usize>,
+    internal_backlog_by_edge: Vec<usize>,
+    external_backlog: Vec<usize>,
+    supply_pipelines: Vec<Vec<usize>>,
     realized_demands: Vec<Vec<usize>>,
     holding_costs: Vec<f64>,
     backlog_costs: Vec<f64>,
     discount_factor: f64,
 ) -> PyResult<f64> {
-    let graph = build_graph(num_nodes, source_nodes, edge_from, edge_to, edge_lead_times)?;
-    let initial_state = build_initial_state(&graph, &on_hand_inventory, &backlog, &edge_pipelines)?;
+    let graph = build_graph(
+        num_nodes,
+        source_nodes,
+        node_modes,
+        external_supplier_lead_times,
+        edge_from,
+        edge_to,
+        edge_lead_times,
+    )?;
+    let initial_state = build_initial_state(
+        &graph,
+        &finished_inventory,
+        &raw_inventory_by_relation,
+        &internal_backlog_by_edge,
+        &external_backlog,
+        &supply_pipelines,
+    )?;
     policy_rollout_from_paths(
         policy_name,
         &params,
@@ -401,20 +530,40 @@ fn network_inventory_policy_rollout_from_paths(
 }
 
 #[pyfunction]
-fn network_inventory_node_base_stock_requests(
+fn network_inventory_pairwise_base_stock_requests(
     num_nodes: usize,
     source_nodes: Vec<bool>,
+    node_modes: Vec<String>,
+    external_supplier_lead_times: Vec<usize>,
     edge_from: Vec<usize>,
     edge_to: Vec<usize>,
     edge_lead_times: Vec<usize>,
-    on_hand_inventory: Vec<usize>,
-    backlog: Vec<usize>,
-    edge_pipelines: Vec<Vec<usize>>,
+    finished_inventory: Vec<usize>,
+    raw_inventory_by_relation: Vec<usize>,
+    internal_backlog_by_edge: Vec<usize>,
+    external_backlog: Vec<usize>,
+    supply_pipelines: Vec<Vec<usize>>,
+    realized_external_demands: Vec<usize>,
     base_stock_levels: Vec<usize>,
 ) -> PyResult<Vec<usize>> {
-    let graph = build_graph(num_nodes, source_nodes, edge_from, edge_to, edge_lead_times)?;
-    let state = build_initial_state(&graph, &on_hand_inventory, &backlog, &edge_pipelines)?;
-    node_base_stock_requests(&graph, &state, &base_stock_levels)
+    let graph = build_graph(
+        num_nodes,
+        source_nodes,
+        node_modes,
+        external_supplier_lead_times,
+        edge_from,
+        edge_to,
+        edge_lead_times,
+    )?;
+    let state = build_initial_state(
+        &graph,
+        &finished_inventory,
+        &raw_inventory_by_relation,
+        &internal_backlog_by_edge,
+        &external_backlog,
+        &supply_pipelines,
+    )?;
+    pairwise_base_stock_requests(&graph, &state, &base_stock_levels, &realized_external_demands)
 }
 
 #[pyfunction]
@@ -422,6 +571,72 @@ fn network_inventory_flownet_policy_verification_summary(py: Python<'_>) -> PyRe
     let summary = verify_exact_reference_policy_performance()
         .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
     policy_performance_summary_to_py(py, &summary)
+}
+
+#[pyfunction]
+#[pyo3(signature = (serial_replications=10000, seed=1234))]
+fn network_inventory_literature_benchmark_summary(
+    py: Python<'_>,
+    serial_replications: usize,
+    seed: u64,
+) -> PyResult<PyObject> {
+    let summary = literature_benchmark_summary(serial_replications, seed);
+    let dict = PyDict::new_bound(py);
+    dict.set_item("source", summary.source)?;
+    dict.set_item("url", summary.url)?;
+
+    let single_node_results = summary
+        .single_node_results
+        .iter()
+        .map(|row| {
+            let row_dict = PyDict::new_bound(py);
+            row_dict.set_item("case_idx", row.case_idx)?;
+            row_dict.set_item("published_analytical_oul", row.published_analytical_oul)?;
+            row_dict.set_item("reproduced_analytical_oul", row.reproduced_analytical_oul)?;
+            row_dict.set_item(
+                "published_analytical_average_cost",
+                row.published_analytical_average_cost,
+            )?;
+            row_dict.set_item(
+                "reproduced_analytical_average_cost",
+                row.reproduced_analytical_average_cost,
+            )?;
+            row_dict.set_item(
+                "oul_abs_gap",
+                (row.reproduced_analytical_oul - row.published_analytical_oul).abs(),
+            )?;
+            row_dict.set_item(
+                "cost_abs_gap",
+                (row.reproduced_analytical_average_cost - row.published_analytical_average_cost)
+                    .abs(),
+            )?;
+            Ok(row_dict.into_any().unbind().into())
+        })
+        .collect::<PyResult<Vec<PyObject>>>()?;
+    dict.set_item("single_node_results", single_node_results)?;
+
+    let serial_results = summary
+        .serial_results
+        .iter()
+        .map(|row| {
+            let row_dict = PyDict::new_bound(py);
+            row_dict.set_item("case_idx", row.case_idx)?;
+            row_dict.set_item(
+                "published_analytical_ouls",
+                row.published_analytical_ouls.clone(),
+            )?;
+            row_dict.set_item("published_average_cost", row.published_average_cost)?;
+            row_dict.set_item("reproduced_average_cost", row.reproduced_average_cost)?;
+            row_dict.set_item(
+                "cost_abs_gap",
+                (row.reproduced_average_cost - row.published_average_cost).abs(),
+            )?;
+            Ok(row_dict.into_any().unbind().into())
+        })
+        .collect::<PyResult<Vec<PyObject>>>()?;
+    dict.set_item("serial_results", serial_results)?;
+
+    Ok(dict.into())
 }
 
 pub fn register_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -439,11 +654,15 @@ pub fn register_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
-        network_inventory_node_base_stock_requests,
+        network_inventory_pairwise_base_stock_requests,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(
         network_inventory_flownet_policy_verification_summary,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        network_inventory_literature_benchmark_summary,
         m
     )?)?;
     Ok(())

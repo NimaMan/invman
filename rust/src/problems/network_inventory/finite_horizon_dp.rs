@@ -4,17 +4,20 @@ use pyo3::exceptions::PyValueError;
 use pyo3::PyResult;
 
 use crate::problems::network_inventory::env::{
-    initialize_state, step_state, NetworkInventoryGraph, NetworkInventoryState,
+    initialize_state, step_state, supply_relation_count, validate_graph, NetworkInventoryGraph,
+    NetworkInventoryState,
 };
-use crate::problems::network_inventory::heuristics::node_base_stock_requests;
-use crate::problems::network_inventory::references::ExactVerificationReference;
+use crate::problems::network_inventory::heuristics::pairwise_base_stock_requests;
+use crate::problems::network_inventory::literature::ExactVerificationReference;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 struct ExactStateKey {
     period: usize,
-    on_hand_inventory: Vec<usize>,
-    backlog: Vec<usize>,
-    edge_pipelines: Vec<Vec<usize>>,
+    finished_inventory: Vec<usize>,
+    raw_inventory_by_relation: Vec<usize>,
+    internal_backlog_by_edge: Vec<usize>,
+    external_backlog: Vec<usize>,
+    supply_pipelines: Vec<Vec<usize>>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -27,6 +30,8 @@ fn build_graph(reference: &ExactVerificationReference) -> NetworkInventoryGraph 
     NetworkInventoryGraph {
         num_nodes: reference.num_nodes,
         source_nodes: reference.source_nodes.to_vec(),
+        node_modes: reference.node_modes.to_vec(),
+        external_supplier_lead_times: reference.external_supplier_lead_times.to_vec(),
         edges: reference.edges.to_vec(),
     }
 }
@@ -36,24 +41,35 @@ fn nested_vec(rows: &[&[usize]]) -> Vec<Vec<usize>> {
 }
 
 fn validate_exact_reference(reference: &ExactVerificationReference) -> PyResult<()> {
+    let graph = build_graph(reference);
+    validate_graph(&graph)?;
+    let relation_count = supply_relation_count(&graph);
     if reference.source_nodes.len() != reference.num_nodes
-        || reference.initial_on_hand_inventory.len() != reference.num_nodes
-        || reference.initial_backlog.len() != reference.num_nodes
+        || reference.node_modes.len() != reference.num_nodes
+        || reference.external_supplier_lead_times.len() != reference.num_nodes
+        || reference.initial_finished_inventory.len() != reference.num_nodes
+        || reference.initial_external_backlog.len() != reference.num_nodes
         || reference.holding_costs.len() != reference.num_nodes
         || reference.backlog_costs.len() != reference.num_nodes
         || reference.demand_supports.len() != reference.num_nodes
         || reference.demand_probabilities.len() != reference.num_nodes
-        || reference.base_stock_levels.len() != reference.num_nodes
     {
         return Err(PyValueError::new_err(
             "all node-wise verification arrays must match num_nodes",
         ));
     }
-    if reference.initial_edge_pipelines.len() != reference.edges.len()
-        || reference.max_edge_requests.len() != reference.edges.len()
+    if reference.initial_raw_inventory_by_relation.len() != relation_count
+        || reference.initial_supply_pipelines.len() != relation_count
+        || reference.max_supply_requests.len() != relation_count
+        || reference.base_stock_levels.len() != relation_count
     {
         return Err(PyValueError::new_err(
-            "all edge-wise verification arrays must match the number of edges",
+            "all supply-relation arrays must match the number of supply relations",
+        ));
+    }
+    if reference.initial_internal_backlog_by_edge.len() != graph.edges.len() {
+        return Err(PyValueError::new_err(
+            "initial_internal_backlog_by_edge must match the number of internal edges",
         ));
     }
     for node_idx in 0..reference.num_nodes {
@@ -73,47 +89,49 @@ fn validate_exact_reference(reference: &ExactVerificationReference) -> PyResult<
     Ok(())
 }
 
-fn build_initial_state(
-    reference: &ExactVerificationReference,
-) -> PyResult<NetworkInventoryState> {
+fn build_initial_state(reference: &ExactVerificationReference) -> PyResult<NetworkInventoryState> {
     let graph = build_graph(reference);
     initialize_state(
         &graph,
-        reference.initial_on_hand_inventory,
-        reference.initial_backlog,
-        &nested_vec(reference.initial_edge_pipelines),
+        reference.initial_finished_inventory,
+        reference.initial_raw_inventory_by_relation,
+        reference.initial_internal_backlog_by_edge,
+        reference.initial_external_backlog,
+        &nested_vec(reference.initial_supply_pipelines),
     )
 }
 
 fn as_state_key(state: &NetworkInventoryState) -> ExactStateKey {
     ExactStateKey {
         period: state.period,
-        on_hand_inventory: state.on_hand_inventory.clone(),
-        backlog: state.backlog.clone(),
-        edge_pipelines: state.edge_pipelines.clone(),
+        finished_inventory: state.finished_inventory.clone(),
+        raw_inventory_by_relation: state.raw_inventory_by_relation.clone(),
+        internal_backlog_by_edge: state.internal_backlog_by_edge.clone(),
+        external_backlog: state.external_backlog.clone(),
+        supply_pipelines: state.supply_pipelines.clone(),
     }
 }
 
-fn enumerate_edge_actions(max_edge_requests: &[usize]) -> Vec<Vec<usize>> {
+fn enumerate_supply_actions(max_supply_requests: &[usize]) -> Vec<Vec<usize>> {
     fn recurse(
-        edge_idx: usize,
-        max_edge_requests: &[usize],
+        relation_idx: usize,
+        max_supply_requests: &[usize],
         partial: &mut Vec<usize>,
         output: &mut Vec<Vec<usize>>,
     ) {
-        if edge_idx == max_edge_requests.len() {
+        if relation_idx == max_supply_requests.len() {
             output.push(partial.clone());
             return;
         }
-        for request in 0..=max_edge_requests[edge_idx] {
+        for request in 0..=max_supply_requests[relation_idx] {
             partial.push(request);
-            recurse(edge_idx + 1, max_edge_requests, partial, output);
+            recurse(relation_idx + 1, max_supply_requests, partial, output);
             partial.pop();
         }
     }
 
     let mut output = Vec::new();
-    recurse(0, max_edge_requests, &mut Vec::new(), &mut output);
+    recurse(0, max_supply_requests, &mut Vec::new(), &mut output);
     output
 }
 
@@ -161,7 +179,7 @@ fn solve_optimal_from_state(
     if state.period == reference.periods {
         return Ok(ExactPolicyEvaluation {
             discounted_cost: 0.0,
-            first_action: vec![0; graph.edges.len()],
+            first_action: vec![0; supply_relation_count(graph)],
         });
     }
     let key = as_state_key(&state);
@@ -169,12 +187,15 @@ fn solve_optimal_from_state(
         return Ok(cached.clone());
     }
 
-    let mut best_cost = f64::INFINITY;
-    let mut best_action = vec![0; graph.edges.len()];
+    let mut expected_cost = 0.0;
+    let mut representative_action = vec![0; supply_relation_count(graph)];
+    let mut representative_probability = -1.0f64;
 
-    for action in action_grid.iter() {
-        let mut expected_cost = 0.0;
-        for (demands, probability) in demand_scenarios.iter() {
+    for (demands, probability) in demand_scenarios.iter() {
+        let mut best_scenario_cost = f64::INFINITY;
+        let mut best_scenario_action = vec![0; supply_relation_count(graph)];
+
+        for action in action_grid.iter() {
             let outcome = step_state(
                 graph,
                 &state,
@@ -191,18 +212,24 @@ fn solve_optimal_from_state(
                 demand_scenarios,
                 cache,
             )?;
-            expected_cost += probability
-                * (outcome.period_cost + reference.discount_factor * continuation.discounted_cost);
+            let scenario_cost =
+                outcome.period_cost + reference.discount_factor * continuation.discounted_cost;
+            if scenario_cost < best_scenario_cost {
+                best_scenario_cost = scenario_cost;
+                best_scenario_action = action.clone();
+            }
         }
-        if expected_cost < best_cost {
-            best_cost = expected_cost;
-            best_action = action.clone();
+
+        if *probability > representative_probability {
+            representative_probability = *probability;
+            representative_action = best_scenario_action;
         }
+        expected_cost += probability * best_scenario_cost;
     }
 
     let result = ExactPolicyEvaluation {
-        discounted_cost: best_cost,
-        first_action: best_action,
+        discounted_cost: expected_cost,
+        first_action: representative_action,
     };
     cache.insert(key, result.clone());
     Ok(result)
@@ -218,7 +245,7 @@ fn evaluate_base_stock_from_state(
     if state.period == reference.periods {
         return Ok(ExactPolicyEvaluation {
             discounted_cost: 0.0,
-            first_action: vec![0; graph.edges.len()],
+            first_action: vec![0; supply_relation_count(graph)],
         });
     }
     let key = as_state_key(&state);
@@ -226,9 +253,13 @@ fn evaluate_base_stock_from_state(
         return Ok(cached.clone());
     }
 
-    let action = node_base_stock_requests(graph, &state, reference.base_stock_levels)?;
     let mut expected_cost = 0.0;
+    let mut representative_action = vec![0; supply_relation_count(graph)];
+    let mut representative_probability = -1.0f64;
+
     for (demands, probability) in demand_scenarios.iter() {
+        let action =
+            pairwise_base_stock_requests(graph, &state, reference.base_stock_levels, demands)?;
         let outcome = step_state(
             graph,
             &state,
@@ -237,15 +268,25 @@ fn evaluate_base_stock_from_state(
             reference.holding_costs,
             reference.backlog_costs,
         )?;
-        let continuation =
-            evaluate_base_stock_from_state(graph, outcome.next_state, reference, demand_scenarios, cache)?;
-        expected_cost +=
-            probability * (outcome.period_cost + reference.discount_factor * continuation.discounted_cost);
+        let continuation = evaluate_base_stock_from_state(
+            graph,
+            outcome.next_state,
+            reference,
+            demand_scenarios,
+            cache,
+        )?;
+        let scenario_cost =
+            outcome.period_cost + reference.discount_factor * continuation.discounted_cost;
+        if *probability > representative_probability {
+            representative_probability = *probability;
+            representative_action = action;
+        }
+        expected_cost += probability * scenario_cost;
     }
 
     let result = ExactPolicyEvaluation {
         discounted_cost: expected_cost,
-        first_action: action,
+        first_action: representative_action,
     };
     cache.insert(key, result.clone());
     Ok(result)
@@ -257,10 +298,17 @@ pub fn solve_optimal_policy(
     validate_exact_reference(reference)?;
     let graph = build_graph(reference);
     let initial_state = build_initial_state(reference)?;
-    let action_grid = enumerate_edge_actions(reference.max_edge_requests);
+    let action_grid = enumerate_supply_actions(reference.max_supply_requests);
     let scenarios = demand_scenarios(reference);
     let mut cache = HashMap::new();
-    solve_optimal_from_state(&graph, initial_state, reference, &action_grid, &scenarios, &mut cache)
+    solve_optimal_from_state(
+        &graph,
+        initial_state,
+        reference,
+        &action_grid,
+        &scenarios,
+        &mut cache,
+    )
 }
 
 pub fn evaluate_named_heuristic(
@@ -273,7 +321,7 @@ pub fn evaluate_named_heuristic(
     let scenarios = demand_scenarios(reference);
     let mut cache = HashMap::new();
     match policy_name {
-        "node_base_stock" => {
+        "pairwise_base_stock" | "node_base_stock" => {
             evaluate_base_stock_from_state(&graph, initial_state, reference, &scenarios, &mut cache)
         }
         _ => Err(PyValueError::new_err(format!(

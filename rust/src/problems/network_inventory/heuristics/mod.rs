@@ -2,7 +2,7 @@
 
 mod base_stock;
 
-pub use base_stock::node_base_stock_requests;
+pub use base_stock::pairwise_base_stock_requests;
 
 use pyo3::exceptions::PyValueError;
 use pyo3::PyResult;
@@ -25,20 +25,22 @@ fn policy_requests(
     params: &[f64],
     graph: &NetworkInventoryGraph,
     state: &NetworkInventoryState,
+    realized_external_demands: &[usize],
 ) -> PyResult<Vec<usize>> {
     match policy_name {
-        "node_base_stock" => {
-            if params.len() != graph.num_nodes {
+        "pairwise_base_stock" | "node_base_stock" => {
+            if params.len() != crate::problems::network_inventory::env::supply_relation_count(graph)
+            {
                 return Err(PyValueError::new_err(format!(
-                    "node_base_stock expects {} parameters",
-                    graph.num_nodes
+                    "{policy_name} expects {} parameters",
+                    crate::problems::network_inventory::env::supply_relation_count(graph)
                 )));
             }
             let levels = params
                 .iter()
                 .map(|value| value.round().max(0.0) as usize)
                 .collect::<Vec<_>>();
-            node_base_stock_requests(graph, state, &levels)
+            pairwise_base_stock_requests(graph, state, &levels, realized_external_demands)
         }
         _ => Err(PyValueError::new_err(format!(
             "unsupported policy '{policy_name}'"
@@ -71,7 +73,7 @@ pub fn policy_rollout_from_paths(
                 "each realized demand vector must match num_nodes",
             ));
         }
-        let edge_requests = policy_requests(policy_name, params, graph, &state)?;
+        let edge_requests = policy_requests(policy_name, params, graph, &state, demand)?;
         let outcome = step_state(
             graph,
             &state,
@@ -126,7 +128,8 @@ pub fn simulate_policy(
                 .iter()
                 .map(|model| sample_demand(&mut rng, model))
                 .collect::<PyResult<Vec<_>>>()?;
-            let edge_requests = policy_requests(policy_name, params, graph, &state)?;
+            let edge_requests =
+                policy_requests(policy_name, params, graph, &state, &realized_demands)?;
             let outcome = step_state(
                 graph,
                 &state,

@@ -2,9 +2,9 @@
 
 use crate::problems::core::flownet::{FlowNetInstance, FlowNetParameter};
 use crate::problems::network_inventory::demand::{DemandDistributionKind, DemandModel};
-use crate::problems::network_inventory::env::NetworkEdge;
+use crate::problems::network_inventory::env::{NetworkEdge, NetworkNodeMode};
 use crate::problems::network_inventory::flownet::formulation::NETWORK_INVENTORY_FLOWNET_NAME;
-use crate::problems::network_inventory::references::{
+use crate::problems::network_inventory::literature::{
     ExactVerificationReference, NetworkInventoryReferenceInstance, PRIMARY_REFERENCE_INSTANCE,
     VERIFICATION_PROBLEM_INSTANCE,
 };
@@ -15,6 +15,9 @@ fn demand_model_description(model: &DemandModel) -> String {
             format!("deterministic({:.3})", model.param1)
         }
         DemandDistributionKind::Poisson => format!("poisson({:.3})", model.param1),
+        DemandDistributionKind::Normal => {
+            format!("normal({:.3}, {:.3})", model.param1, model.param2)
+        }
     }
 }
 
@@ -22,7 +25,15 @@ fn edge_description(edge: &NetworkEdge) -> String {
     format!("{}->{}@{}", edge.from, edge.to, edge.lead_time)
 }
 
-fn nested_edge_pipelines(rows: &[&[usize]]) -> String {
+fn node_mode_description(mode: &NetworkNodeMode) -> &'static str {
+    match mode {
+        NetworkNodeMode::Single => "single",
+        NetworkNodeMode::AssemblyAnd => "assembly_and",
+        NetworkNodeMode::AssemblyOr => "assembly_or",
+    }
+}
+
+fn nested_supply_pipelines(rows: &[&[usize]]) -> String {
     let formatted = rows
         .iter()
         .map(|row| format!("{row:?}"))
@@ -42,6 +53,22 @@ pub fn instance_from_reference(reference: &NetworkInventoryReferenceInstance) ->
             FlowNetParameter {
                 name: String::from("source_nodes"),
                 value: format!("{:?}", reference.source_nodes),
+            },
+            FlowNetParameter {
+                name: String::from("node_modes"),
+                value: format!(
+                    "[{}]",
+                    reference
+                        .node_modes
+                        .iter()
+                        .map(node_mode_description)
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ),
+            },
+            FlowNetParameter {
+                name: String::from("external_supplier_lead_times"),
+                value: format!("{:?}", reference.external_supplier_lead_times),
             },
             FlowNetParameter {
                 name: String::from("edges"),
@@ -76,23 +103,31 @@ pub fn instance_from_reference(reference: &NetworkInventoryReferenceInstance) ->
                 value: format!("{:?}", reference.backlog_costs),
             },
             FlowNetParameter {
-                name: String::from("base_stock_levels"),
-                value: format!("{:?}", reference.base_stock_levels),
+                name: String::from("pairwise_oul_levels"),
+                value: format!("{:?}", reference.pairwise_oul_levels),
             },
             FlowNetParameter {
-                name: String::from("initial_on_hand_inventory"),
-                value: format!("{:?}", reference.initial_on_hand_inventory),
+                name: String::from("initial_finished_inventory"),
+                value: format!("{:?}", reference.initial_finished_inventory),
             },
             FlowNetParameter {
-                name: String::from("initial_backlog"),
-                value: format!("{:?}", reference.initial_backlog),
+                name: String::from("initial_raw_inventory_by_relation"),
+                value: format!("{:?}", reference.initial_raw_inventory_by_relation),
             },
             FlowNetParameter {
-                name: String::from("initial_edge_pipelines"),
-                value: nested_edge_pipelines(reference.initial_edge_pipelines),
+                name: String::from("initial_internal_backlog_by_edge"),
+                value: format!("{:?}", reference.initial_internal_backlog_by_edge),
+            },
+            FlowNetParameter {
+                name: String::from("initial_external_backlog"),
+                value: format!("{:?}", reference.initial_external_backlog),
+            },
+            FlowNetParameter {
+                name: String::from("initial_supply_pipelines"),
+                value: nested_supply_pipelines(reference.initial_supply_pipelines),
             },
         ],
-        horizon_periods: None,
+        horizon_periods: Some(reference.periods),
         notes: vec![String::from(reference.notes)],
     }
 }
@@ -117,6 +152,22 @@ pub fn verification_instance_from_reference(
                 value: format!("{:?}", reference.source_nodes),
             },
             FlowNetParameter {
+                name: String::from("node_modes"),
+                value: format!(
+                    "[{}]",
+                    reference
+                        .node_modes
+                        .iter()
+                        .map(node_mode_description)
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ),
+            },
+            FlowNetParameter {
+                name: String::from("external_supplier_lead_times"),
+                value: format!("{:?}", reference.external_supplier_lead_times),
+            },
+            FlowNetParameter {
                 name: String::from("edges"),
                 value: format!(
                     "[{}]",
@@ -137,8 +188,8 @@ pub fn verification_instance_from_reference(
                 value: format!("{:.2}", reference.discount_factor),
             },
             FlowNetParameter {
-                name: String::from("max_edge_requests"),
-                value: format!("{:?}", reference.max_edge_requests),
+                name: String::from("max_supply_requests"),
+                value: format!("{:?}", reference.max_supply_requests),
             },
             FlowNetParameter {
                 name: String::from("base_stock_levels"),

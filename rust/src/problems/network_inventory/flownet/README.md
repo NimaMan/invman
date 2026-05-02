@@ -10,55 +10,54 @@ existing Rust implementation.
 
 1. What inventory states exist?
 
-- graph-indexed on-hand inventory at stocking nodes
-- graph-indexed backlog carried at demand nodes
-- directed edge pipelines for in-transit shipments
-- source-supply nodes that can inject flow into the network without on-hand depletion
-- a demand sink used to describe service and backorder semantics
+- finished-goods inventory by node
+- raw-material inventory by supply relation
+- internal backorders by internal edge
+- external backorders by node
+- supply-relation pipelines for in-transit shipments, including external-supplier relations
 
 2. How can material move or transform?
 
-- shipments are requested on directed edges
-- the oldest shipment on each edge pipeline is received first
-- source nodes dispatch requested shipments without depleting local on-hand stock
-- non-source nodes dispatch from local on-hand stock and allocate proportionally if outgoing
-  requests exceed available inventory
-- on-hand inventory serves both old backlog and newly realized demand
-- unmet demand is retained as backlog
+- each supply relation can receive a nonnegative request
+- received items first enter relation-indexed raw-material inventory
+- nodes immediately process raw material into finished goods
+- `assembly_and` nodes consume one unit from each predecessor relation per finished unit
+- `assembly_or` and `single` nodes consume all currently available raw material
+- scarce finished goods are allocated proportionally across internal and external demand
 
 3. What random events occur?
 
-- each node has its own demand process
-- the current Rust implementation supports deterministic and Poisson demand at each node
+- each node has its own external demand process
+- the current Rust implementation supports deterministic, Poisson, and Normal demand models
 
 4. What can the controller choose?
 
-- one nonnegative shipment-request vector over all directed edges
+- one nonnegative supply-request vector over all supply relations
 
 5. What can the controller observe, and when?
 
-- graph-indexed on-hand inventory
-- graph-indexed backlog
-- inbound pipeline totals by node
-- in-transit totals by directed edge
+- finished inventory by node
+- raw inventory totals by node
+- relation-indexed raw inventory and in-transit totals
+- internal and external backlog
 - node demand means
+- current-period realized external demands
 - remaining-horizon fraction
-- in the current implementation the controller observes this pre-receipt state, then the period
-  transition receives in-transit shipments before dispatching new ones
+- the current implementation observes current-period external demand before choosing requests,
+  matching the paper’s demand-then-order sequence
 
 6. How is performance scored?
 
-- holding cost on ending on-hand inventory by node
-- backlog cost on ending backlog by node
+- linear holding cost on ending paper-style inventory totals
+- linear backlog cost on ending internal and external backorders
 
 7. What timing rules and constraints shape the system?
 
-- the controller chooses edge shipment requests from the start-of-period state
-- existing edge receipts arrive first
-- new shipments are dispatched onto directed edge pipelines
-- source nodes fulfill their full requests; non-source nodes are inventory-limited
-- backlog and new demand are served from post-dispatch on-hand inventory
-- unmet demand is carried forward as backlog
+- external demand is realized first
+- downstream nodes request supply before upstream ones
+- receipts are processed into raw material, then into finished goods
+- upstream nodes ship after requests are known
+- internal and external shortages become backorders
 - holding and backlog costs are charged on the ending state
 
 Those answers are encoded in `formulation.rs`, `instance.rs`, and `verification/`.
@@ -68,6 +67,6 @@ Those answers are encoded in `formulation.rs`, `instance.rs`, and `verification/
 The `verification/` folder checks four things:
 
 - the FlowNet formulation is structurally valid
-- the primary diamond-network reference instance maps cleanly into a FlowNet instance
+- the primary serial reference instance maps cleanly into a FlowNet instance
 - the worked transition reference matches the current Rust `step_state` accounting
-- the exact-verification freeze keeps the expected optimal and node-base-stock discounted costs
+- the exact-verification freeze keeps the expected optimal and pairwise-base-stock discounted costs
