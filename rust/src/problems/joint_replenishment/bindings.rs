@@ -12,7 +12,7 @@ use crate::problems::joint_replenishment::heuristics::{
     dynamic_order_up_to_order_quantities, minimum_order_quantity_order_quantities,
     policy_rollout_from_paths, simulate_policy,
 };
-use crate::problems::joint_replenishment::references::{
+use crate::problems::joint_replenishment::literature::references::{
     ExactVerificationReference, JointReplenishmentReferenceInstance, PRIMARY_REFERENCE_INSTANCE,
     SMALL_SCALE_SETTINGS, VERIFICATION_PROBLEM_INSTANCE,
 };

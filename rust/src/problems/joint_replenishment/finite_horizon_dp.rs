@@ -8,7 +8,7 @@ use crate::problems::joint_replenishment::env::{step_state, JointReplenishmentSt
 use crate::problems::joint_replenishment::heuristics::{
     dynamic_order_up_to_order_quantities, minimum_order_quantity_order_quantities,
 };
-use crate::problems::joint_replenishment::references::ExactVerificationReference;
+use crate::problems::joint_replenishment::literature::references::ExactVerificationReference;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 struct ExactStateKey {
@@ -41,9 +41,7 @@ fn validate_exact_reference(reference: &ExactVerificationReference) -> PyResult<
         return Err(PyValueError::new_err("periods must be positive"));
     }
     if !(0.0..=1.0).contains(&reference.discount_factor) {
-        return Err(PyValueError::new_err(
-            "discount_factor must lie in [0, 1]",
-        ));
+        return Err(PyValueError::new_err("discount_factor must lie in [0, 1]"));
     }
     Ok(())
 }
@@ -72,7 +70,10 @@ fn demand_scenarios(demand_ranges: &[DemandRange]) -> PyResult<Vec<([usize; 2], 
     let mut scenarios = Vec::new();
     for (left_demand, left_probability) in left_support.iter() {
         for (right_demand, right_probability) in right_support.iter() {
-            scenarios.push(([*left_demand, *right_demand], left_probability * right_probability));
+            scenarios.push((
+                [*left_demand, *right_demand],
+                left_probability * right_probability,
+            ));
         }
     }
     Ok(scenarios)
@@ -113,10 +114,8 @@ fn solve_optimal_from_state(
                     reference.holding_costs,
                     reference.shortage_costs,
                 )?;
-                let next_state = as_state_key(
-                    state.period + 1,
-                    &outcome.next_state.inventory_levels,
-                );
+                let next_state =
+                    as_state_key(state.period + 1, &outcome.next_state.inventory_levels);
                 let continuation =
                     solve_optimal_from_state(next_state, reference, scenarios, cache)?;
                 expected_cost += probability

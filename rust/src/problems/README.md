@@ -164,6 +164,11 @@ otherwise explicitly.
 
 Notable current example:
 
+- `joint_replenishment`
+  - repo-exact verified on its reduced two-item finite-horizon verifier
+  - not literature-verified, because the carried Vanvuchelen et al. settings expose public
+    instance definitions and relative figures but not exact per-setting benchmark rows suitable for
+    repo assertions
 - `joint_pricing_inventory`
   - repo-exact verified on its reduced verifier
   - not literature-verified, because the carried Zhou/Qin anchors do not currently expose a clean

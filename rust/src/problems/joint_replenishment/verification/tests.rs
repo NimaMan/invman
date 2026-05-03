@@ -7,9 +7,44 @@ use crate::problems::joint_replenishment::finite_horizon_dp::{
 use crate::problems::joint_replenishment::heuristics::{
     dynamic_order_up_to_order_quantities, minimum_order_quantity_order_quantities,
 };
-use crate::problems::joint_replenishment::references::{
+use crate::problems::joint_replenishment::literature::references::{
     PRIMARY_REFERENCE_INSTANCE, SMALL_SCALE_SETTINGS, VANVUCHELEN_2020_REFERENCE,
-    VERIFICATION_PROBLEM_INSTANCE, WORKED_TRANSITION_REFERENCE,
+    VERIFICATION_PROBLEM_INSTANCE,
+};
+
+#[derive(Clone, Copy)]
+struct WorkedTransitionCase {
+    initial_inventory_levels: &'static [i32],
+    action: &'static [usize],
+    realized_demands: &'static [usize],
+    truck_capacity: usize,
+    major_order_cost: f64,
+    minor_order_costs: &'static [f64],
+    holding_costs: &'static [f64],
+    shortage_costs: &'static [f64],
+    expected_next_inventory_levels: &'static [i32],
+    expected_trucks_used: usize,
+    expected_order_cost: f64,
+    expected_holding_cost: f64,
+    expected_shortage_cost: f64,
+    expected_period_cost: f64,
+}
+
+const WORKED_TRANSITION_CASE: WorkedTransitionCase = WorkedTransitionCase {
+    initial_inventory_levels: &[1, -2],
+    action: &[4, 1],
+    realized_demands: &[3, 0],
+    truck_capacity: 6,
+    major_order_cost: 75.0,
+    minor_order_costs: &[10.0, 10.0],
+    holding_costs: &[1.0, 1.0],
+    shortage_costs: &[19.0, 19.0],
+    expected_next_inventory_levels: &[2, -1],
+    expected_trucks_used: 1,
+    expected_order_cost: 95.0,
+    expected_holding_cost: 2.0,
+    expected_shortage_cost: 19.0,
+    expected_period_cost: 116.0,
 };
 
 #[test]
@@ -43,7 +78,7 @@ fn raw_state_layout_matches_expected_shape() {
 
 #[test]
 fn worked_transition_matches_expected_accounting() {
-    let worked = WORKED_TRANSITION_REFERENCE;
+    let worked = WORKED_TRANSITION_CASE;
     let state = initialize_state(worked.initial_inventory_levels).expect("state must build");
     let outcome = step_state(
         &state,

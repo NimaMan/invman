@@ -12,12 +12,17 @@ Code lives under `rust/src/problems/joint_replenishment/`.
 
 Verification and benchmark anchors live in:
 
-- `references.rs`
-- `tests/verification.rs`
-- `literature/`
+- `literature/references.rs`
+- `verification/tests.rs`
 - `practical/`
 - `experiments/`
-- `verification/`
+
+Current status:
+
+- literature-verified: no
+- repo-exact verified: yes on the reduced two-item finite-horizon verifier
+- the 16 Vanvuchelen small-scale settings are carried as public problem definitions, but the paper
+  does not provide exact per-setting benchmark rows suitable for repo assertions
 
 State interface:
 

@@ -28,26 +28,6 @@ pub struct JointReplenishmentReferenceInstance {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct WorkedTransitionReference {
-    pub source: &'static str,
-    pub url: &'static str,
-    pub initial_inventory_levels: &'static [i32],
-    pub action: &'static [usize],
-    pub realized_demands: &'static [usize],
-    pub truck_capacity: usize,
-    pub major_order_cost: f64,
-    pub minor_order_costs: &'static [f64],
-    pub holding_costs: &'static [f64],
-    pub shortage_costs: &'static [f64],
-    pub expected_next_inventory_levels: &'static [i32],
-    pub expected_trucks_used: usize,
-    pub expected_order_cost: f64,
-    pub expected_holding_cost: f64,
-    pub expected_shortage_cost: f64,
-    pub expected_period_cost: f64,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ExactVerificationReference {
     pub source: &'static str,
     pub url: &'static str,
@@ -304,25 +284,6 @@ pub const SMALL_SCALE_SETTINGS: [JointReplenishmentReferenceInstance; 16] = [
 ];
 
 pub const PRIMARY_REFERENCE_INSTANCE: JointReplenishmentReferenceInstance = SMALL_SCALE_SETTINGS[4];
-
-pub const WORKED_TRANSITION_REFERENCE: WorkedTransitionReference = WorkedTransitionReference {
-    source: VANVUCHELEN_2020_REFERENCE.source,
-    url: VANVUCHELEN_2020_REFERENCE.url,
-    initial_inventory_levels: &[1, -2],
-    action: &[4, 1],
-    realized_demands: &[3, 0],
-    truck_capacity: 6,
-    major_order_cost: 75.0,
-    minor_order_costs: SMALL_SCALE_MINOR_COSTS_A,
-    holding_costs: &[1.0, 1.0],
-    shortage_costs: &[19.0, 19.0],
-    expected_next_inventory_levels: &[2, -1],
-    expected_trucks_used: 1,
-    expected_order_cost: 95.0,
-    expected_holding_cost: 2.0,
-    expected_shortage_cost: 19.0,
-    expected_period_cost: 116.0,
-};
 
 pub const VERIFICATION_PROBLEM_INSTANCE: ExactVerificationReference = ExactVerificationReference {
     source: VANVUCHELEN_2020_REFERENCE.source,
