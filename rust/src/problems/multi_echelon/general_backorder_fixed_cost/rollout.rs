@@ -9,9 +9,10 @@ use crate::core::policies::soft_tree::{
     action_vector_from_flat_params, SoftTreeActionSpec, SoftTreeLeafType, SoftTreeSplitType,
 };
 use crate::problems::multi_echelon::general_backorder_fixed_cost::env::{
-    advance_to_decision_state, apply_next_orders, build_raw_state, retailer_total_inventory_positions,
-    validate_network, validate_state, warehouse_inventory_positions,
-    GeneralBackorderFixedCostNetwork, GeneralBackorderFixedCostState,
+    advance_to_decision_state, apply_next_orders, build_raw_state,
+    retailer_total_inventory_positions, validate_network, validate_state,
+    warehouse_inventory_positions, GeneralBackorderFixedCostNetwork,
+    GeneralBackorderFixedCostState,
 };
 use crate::problems::multi_echelon::general_backorder_fixed_cost::heuristics::{
     node_base_stock_orders, BenchmarkOrderRoutingMode,
@@ -158,7 +159,11 @@ pub fn build_policy_features(
             let mut summary = Vec::with_capacity(
                 config.network.num_warehouses + config.network.num_retailers + 4,
             );
-            summary.extend(warehouse_positions.iter().map(|value| *value as f32 / scale));
+            summary.extend(
+                warehouse_positions
+                    .iter()
+                    .map(|value| *value as f32 / scale),
+            );
             summary.extend(retailer_positions.iter().map(|value| *value as f32 / scale));
             summary.push(total_inventory / scale);
             summary.push(total_backorders / scale);
@@ -194,15 +199,13 @@ fn decode_policy_action(
         &config.action_spec,
     )?;
     match config.policy_action_mode {
-        PolicyActionMode::NodeBaseStockTargets => {
-            node_base_stock_orders(
-                &config.network,
-                state,
-                &action,
-                config.benchmark_order_routing_mode,
-                rng,
-            )
-        }
+        PolicyActionMode::NodeBaseStockTargets => node_base_stock_orders(
+            &config.network,
+            state,
+            &action,
+            config.benchmark_order_routing_mode,
+            rng,
+        ),
     }
 }
 

@@ -74,22 +74,45 @@ Published benchmark rows from Table 7:
   - PPO best `3,935`
   - PPO average `4,481`
 
+Additional published benchmark information from the open TU/e dissertation PDF:
+
+- Figure 3.6 reports benchmark stock-point fill rates of about `98-99%` at all four warehouses and all
+  five retailers for the general-network benchmark.
+
 ## Current Verification Status
 
 This subproblem is **not literature-verified** yet.
 
 Current Rust-side audit status:
 
-- set 1 is close under the rewritten benchmark-faithful simulator
+- set 1 is near-reproduced under the current Rust simulator
   - repo reproduced mean cost: about `10381.47`
   - published benchmark cost: `10467`
-- set 2 and set 3 are still materially off the published benchmark cost under the most literal
-  weighted-split interpretation
-  - repo reproduced mean cost: about `15271.29`
-  - published benchmark cost: `4797`
+  - average warehouse-to-retailer fill is about `98.81%`
+  - average retailer-customer fill is about `98.28%`
+- set 2 and set 3 are still unresolved
+  - literal weighted split across all incoming edges gives about `15271.29`
+  - even split across all incoming edges gives about `11899.01`
+  - duplicating the retailer target on every incoming edge gives about `8786.83`
+  - published benchmark cost is `4797`
+
+The important audit outcome is that the set 2/3 mismatch is not just one bad cost number:
+
+- the literal weighted split interpretation misses both warehouse and retailer service badly
+  - warehouse fill ranges from about `84.5%` to `100%`
+  - retailer fill ranges from about `87.9%` to `91.2%`
+- the even split interpretation gets the warehouse stock points into the published `98-99%` band, but
+  still leaves retailer fill at only about `92.5%`
+- the duplicated-target interpretation gets retailer fill to about `99%`, but warehouse fill drops to
+  about `81.6%` to `86.9%`
+
+So none of the plausible stock-point-to-edge benchmark conversions currently matches both:
+
+- the published cost row from Table 7
+- the published `98-99%` benchmark stock-point fill rates from Figure 3.6
 
 The likely source of the remaining gap is the open-paper ambiguity around how the set 2/3 benchmark
-translates a 9-parameter base-stock policy into the paper's order-per-edge action setting. The public
+translates a 9-parameter base-stock policy into the paper's order-per-edge action setting. The CEJOR
 paper says only that orders are "split across all upstream connections"; it does not specify the exact
 benchmark conversion rule beyond that sentence.
 

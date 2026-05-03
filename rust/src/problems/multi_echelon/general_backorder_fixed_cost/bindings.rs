@@ -7,7 +7,8 @@ use crate::problems::multi_echelon::general_backorder_fixed_cost::env::{
     build_raw_state, initialize_zero_state, GeneralBackorderFixedCostNetwork, RetailConnectionEdge,
 };
 use crate::problems::multi_echelon::general_backorder_fixed_cost::heuristics::{
-    parse_benchmark_order_routing_mode, simulate_node_base_stock_policy_with_mode,
+    parse_benchmark_order_routing_mode, simulate_node_base_stock_policy_audit_with_mode,
+    simulate_node_base_stock_policy_with_mode,
 };
 use crate::problems::multi_echelon::general_backorder_fixed_cost::references::{
     reference_instance_by_name, GeneralBackorderFixedCostReferenceInstance, GEEVERS_2023_REFERENCE,
@@ -30,8 +31,12 @@ fn build_network(
     }
 }
 
-fn retail_edge_rows_to_py(py: Python<'_>, edges: &[RetailConnectionEdge]) -> PyResult<Vec<PyObject>> {
-    edges.iter()
+fn retail_edge_rows_to_py(
+    py: Python<'_>,
+    edges: &[RetailConnectionEdge],
+) -> PyResult<Vec<PyObject>> {
+    edges
+        .iter()
         .map(|edge| {
             let dict = PyDict::new_bound(py);
             dict.set_item("warehouse_idx", edge.warehouse_idx)?;
@@ -55,8 +60,14 @@ fn reference_to_py(
     dict.set_item("num_suppliers", reference.num_suppliers)?;
     dict.set_item("num_warehouses", reference.num_warehouses)?;
     dict.set_item("num_retailers", reference.num_retailers)?;
-    dict.set_item("supplier_lead_times", reference.supplier_lead_times.to_vec())?;
-    dict.set_item("retail_edges", retail_edge_rows_to_py(py, reference.retail_edges)?)?;
+    dict.set_item(
+        "supplier_lead_times",
+        reference.supplier_lead_times.to_vec(),
+    )?;
+    dict.set_item(
+        "retail_edges",
+        retail_edge_rows_to_py(py, reference.retail_edges)?,
+    )?;
     dict.set_item("retailer_demand_mean", reference.retailer_demand_mean)?;
     dict.set_item(
         "warehouse_holding_costs",
@@ -79,14 +90,20 @@ fn reference_to_py(
         reference.benchmark_base_stock_levels.to_vec(),
     )?;
     dict.set_item("benchmark_periods", reference.benchmark_periods)?;
-    dict.set_item("benchmark_warm_up_periods", reference.benchmark_warm_up_periods)?;
+    dict.set_item(
+        "benchmark_warm_up_periods",
+        reference.benchmark_warm_up_periods,
+    )?;
     dict.set_item("benchmark_replications", reference.benchmark_replications)?;
     dict.set_item(
         "benchmark_order_routing_mode",
         reference.benchmark_order_routing_mode,
     )?;
     dict.set_item("paper_action_space", reference.paper_action_space)?;
-    dict.set_item("published_benchmark_cost", reference.published_benchmark_cost)?;
+    dict.set_item(
+        "published_benchmark_cost",
+        reference.published_benchmark_cost,
+    )?;
     dict.set_item("published_ppo_best_cost", reference.published_ppo_best_cost)?;
     dict.set_item(
         "published_ppo_average_cost",
@@ -131,7 +148,9 @@ fn rollout_config(
 }
 
 #[pyfunction]
-fn multi_echelon_general_backorder_fixed_cost_benchmark_reference(py: Python<'_>) -> PyResult<PyObject> {
+fn multi_echelon_general_backorder_fixed_cost_benchmark_reference(
+    py: Python<'_>,
+) -> PyResult<PyObject> {
     let dict = PyDict::new_bound(py);
     dict.set_item("source", GEEVERS_2023_REFERENCE.source)?;
     dict.set_item("url", GEEVERS_2023_REFERENCE.url)?;
@@ -144,7 +163,9 @@ fn multi_echelon_general_backorder_fixed_cost_benchmark_reference(py: Python<'_>
 }
 
 #[pyfunction]
-fn multi_echelon_general_backorder_fixed_cost_list_reference_instances(py: Python<'_>) -> PyResult<Vec<PyObject>> {
+fn multi_echelon_general_backorder_fixed_cost_list_reference_instances(
+    py: Python<'_>,
+) -> PyResult<Vec<PyObject>> {
     LITERATURE_REFERENCE_INSTANCES
         .iter()
         .map(|reference| reference_to_py(py, reference))
@@ -165,7 +186,9 @@ fn multi_echelon_general_backorder_fixed_cost_get_reference_instance(
 }
 
 #[pyfunction]
-fn multi_echelon_general_backorder_fixed_cost_primary_reference_instance(py: Python<'_>) -> PyResult<PyObject> {
+fn multi_echelon_general_backorder_fixed_cost_primary_reference_instance(
+    py: Python<'_>,
+) -> PyResult<PyObject> {
     reference_to_py(py, PRIMARY_REFERENCE_INSTANCE)
 }
 
@@ -184,7 +207,8 @@ fn multi_echelon_general_backorder_fixed_cost_simulate_base_stock(
             "unknown general_backorder_fixed_cost reference '{reference_name}'"
         ))
     })?;
-    let levels = base_stock_levels.unwrap_or_else(|| reference.benchmark_base_stock_levels.to_vec());
+    let levels =
+        base_stock_levels.unwrap_or_else(|| reference.benchmark_base_stock_levels.to_vec());
     let replications = replications.unwrap_or(reference.benchmark_replications);
     let routing_mode = parse_benchmark_order_routing_mode(
         routing_mode.unwrap_or(reference.benchmark_order_routing_mode),
@@ -200,7 +224,8 @@ fn multi_echelon_general_backorder_fixed_cost_simulate_base_stock(
     let variance = if costs.len() <= 1 {
         0.0
     } else {
-        costs.iter()
+        costs
+            .iter()
             .map(|cost| {
                 let delta = *cost - mean_cost;
                 delta * delta
@@ -214,16 +239,19 @@ fn multi_echelon_general_backorder_fixed_cost_simulate_base_stock(
     dict.set_item("replications", replications)?;
     dict.set_item("mean_cost", mean_cost)?;
     dict.set_item("std_cost", variance.sqrt())?;
-    dict.set_item("min_cost", costs.iter().cloned().fold(f64::INFINITY, f64::min))?;
+    dict.set_item(
+        "min_cost",
+        costs.iter().cloned().fold(f64::INFINITY, f64::min),
+    )?;
     dict.set_item(
         "max_cost",
         costs.iter().cloned().fold(f64::NEG_INFINITY, f64::max),
     )?;
-    dict.set_item("published_benchmark_cost", reference.published_benchmark_cost)?;
     dict.set_item(
-        "published_ppo_best_cost",
-        reference.published_ppo_best_cost,
+        "published_benchmark_cost",
+        reference.published_benchmark_cost,
     )?;
+    dict.set_item("published_ppo_best_cost", reference.published_ppo_best_cost)?;
     dict.set_item(
         "published_ppo_average_cost",
         reference.published_ppo_average_cost,
@@ -232,7 +260,113 @@ fn multi_echelon_general_backorder_fixed_cost_simulate_base_stock(
 }
 
 #[pyfunction]
-fn multi_echelon_general_backorder_fixed_cost_build_raw_state(py: Python<'_>, reference_name: &str) -> PyResult<PyObject> {
+#[pyo3(signature = (reference_name, base_stock_levels=None, replications=None, seed=1234, routing_mode=None))]
+fn multi_echelon_general_backorder_fixed_cost_audit_base_stock(
+    py: Python<'_>,
+    reference_name: &str,
+    base_stock_levels: Option<Vec<usize>>,
+    replications: Option<usize>,
+    seed: u64,
+    routing_mode: Option<&str>,
+) -> PyResult<PyObject> {
+    let reference = reference_instance_by_name(reference_name).ok_or_else(|| {
+        pyo3::exceptions::PyValueError::new_err(format!(
+            "unknown general_backorder_fixed_cost reference '{reference_name}'"
+        ))
+    })?;
+    let levels =
+        base_stock_levels.unwrap_or_else(|| reference.benchmark_base_stock_levels.to_vec());
+    let replications = replications.unwrap_or(reference.benchmark_replications);
+    let routing_mode = parse_benchmark_order_routing_mode(
+        routing_mode.unwrap_or(reference.benchmark_order_routing_mode),
+    )?;
+    let audit = simulate_node_base_stock_policy_audit_with_mode(
+        reference,
+        &levels,
+        replications,
+        seed,
+        routing_mode,
+    )?;
+    let mean = |values: &[f64]| -> f64 {
+        if values.is_empty() {
+            0.0
+        } else {
+            values.iter().sum::<f64>() / values.len() as f64
+        }
+    };
+    let std = |values: &[f64], mean_value: f64| -> f64 {
+        if values.len() <= 1 {
+            0.0
+        } else {
+            (values
+                .iter()
+                .map(|value| {
+                    let delta = *value - mean_value;
+                    delta * delta
+                })
+                .sum::<f64>()
+                / values.len() as f64)
+                .sqrt()
+        }
+    };
+    let mean_cost = mean(&audit.total_costs);
+    let mean_holding_cost = mean(&audit.holding_costs);
+    let mean_warehouse_backorder_cost = mean(&audit.warehouse_backorder_costs);
+    let mean_customer_backorder_cost = mean(&audit.customer_backorder_costs);
+    let edge_fill_rates = audit
+        .edge_demand_totals
+        .iter()
+        .zip(audit.edge_fulfilled_totals.iter())
+        .map(|(demand, fulfilled)| {
+            if *demand == 0 {
+                1.0
+            } else {
+                *fulfilled as f64 / *demand as f64
+            }
+        })
+        .collect::<Vec<_>>();
+    let customer_fill_rates = audit
+        .customer_demand_totals
+        .iter()
+        .zip(audit.customer_fulfilled_totals.iter())
+        .map(|(demand, fulfilled)| {
+            if *demand == 0 {
+                1.0
+            } else {
+                *fulfilled as f64 / *demand as f64
+            }
+        })
+        .collect::<Vec<_>>();
+    let dict = PyDict::new_bound(py);
+    dict.set_item("reference_name", reference.name)?;
+    dict.set_item("base_stock_levels", levels)?;
+    dict.set_item("replications", replications)?;
+    dict.set_item("mean_cost", mean_cost)?;
+    dict.set_item("std_cost", std(&audit.total_costs, mean_cost))?;
+    dict.set_item("mean_holding_cost", mean_holding_cost)?;
+    dict.set_item(
+        "mean_warehouse_backorder_cost",
+        mean_warehouse_backorder_cost,
+    )?;
+    dict.set_item("mean_customer_backorder_cost", mean_customer_backorder_cost)?;
+    dict.set_item("edge_demand_totals", audit.edge_demand_totals)?;
+    dict.set_item("edge_fulfilled_totals", audit.edge_fulfilled_totals)?;
+    dict.set_item("edge_fill_rates", edge_fill_rates)?;
+    dict.set_item("customer_demand_totals", audit.customer_demand_totals)?;
+    dict.set_item("customer_fulfilled_totals", audit.customer_fulfilled_totals)?;
+    dict.set_item("customer_fill_rates", customer_fill_rates)?;
+    dict.set_item(
+        "published_benchmark_cost",
+        reference.published_benchmark_cost,
+    )?;
+    Ok(dict.into_any().unbind().into())
+}
+
+#[pyfunction]
+fn multi_echelon_general_backorder_fixed_cost_build_raw_state(
+    py: Python<'_>,
+    reference_name: &str,
+) -> PyResult<PyObject> {
     let reference = reference_instance_by_name(reference_name).ok_or_else(|| {
         pyo3::exceptions::PyValueError::new_err(format!(
             "unknown general_backorder_fixed_cost reference '{reference_name}'"
@@ -426,6 +560,10 @@ pub fn register_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     )?)?;
     m.add_function(wrap_pyfunction!(
         multi_echelon_general_backorder_fixed_cost_simulate_base_stock,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        multi_echelon_general_backorder_fixed_cost_audit_base_stock,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(

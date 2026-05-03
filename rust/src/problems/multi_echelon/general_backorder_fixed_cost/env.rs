@@ -39,6 +39,8 @@ pub struct DecisionStateOutcome {
     pub realized_demands: Vec<usize>,
     pub received_supplier_deliveries: Vec<usize>,
     pub received_retail_deliveries: Vec<usize>,
+    pub fulfilled_current_retail_orders: Vec<usize>,
+    pub fulfilled_customer_demands: Vec<usize>,
     pub period_cost: f64,
     pub holding_cost: f64,
     pub warehouse_backorder_cost: f64,
@@ -82,7 +84,8 @@ pub fn validate_network(network: &GeneralBackorderFixedCostNetwork) -> PyResult<
         ));
     }
     for (edge_idx, edge) in network.retail_edges.iter().enumerate() {
-        if edge.warehouse_idx >= network.num_warehouses || edge.retailer_idx >= network.num_retailers
+        if edge.warehouse_idx >= network.num_warehouses
+            || edge.retailer_idx >= network.num_retailers
         {
             return Err(PyValueError::new_err(format!(
                 "retail edge {edge_idx} is out of bounds for {} warehouses and {} retailers",
@@ -192,9 +195,7 @@ pub fn build_raw_state(
 ) -> PyResult<Vec<f32>> {
     validate_state(network, state)?;
     let mut raw = Vec::with_capacity(
-        network.num_warehouses * 4
-            + network.num_retailers * 3
-            + network.retail_edges.len() * 4,
+        network.num_warehouses * 4 + network.num_retailers * 3 + network.retail_edges.len() * 4,
     );
     raw.extend(state.warehouse_inventory.iter().map(|value| *value as f32));
     raw.extend(state.retailer_inventory.iter().map(|value| *value as f32));
@@ -302,6 +303,7 @@ fn fulfill_current_retail_orders_for_warehouse(
     state: &mut GeneralBackorderFixedCostState,
     network: &GeneralBackorderFixedCostNetwork,
     warehouse_idx: usize,
+    fulfilled_current_retail_orders: &mut [usize],
 ) {
     let mut open_edges = outgoing_retail_edge_indices(network, warehouse_idx)
         .into_iter()
@@ -318,13 +320,11 @@ fn fulfill_current_retail_orders_for_warehouse(
         open_edges.sort_by(|lhs, rhs| {
             let lhs_retailer = network.retail_edges[*lhs].retailer_idx;
             let rhs_retailer = network.retail_edges[*rhs].retailer_idx;
-            let lhs_priority =
-                state.retailer_inventory[lhs_retailer] as i64 - state.customer_backorders[lhs_retailer] as i64;
-            let rhs_priority =
-                state.retailer_inventory[rhs_retailer] as i64 - state.customer_backorders[rhs_retailer] as i64;
-            lhs_priority
-                .cmp(&rhs_priority)
-                .then(lhs.cmp(rhs))
+            let lhs_priority = state.retailer_inventory[lhs_retailer] as i64
+                - state.customer_backorders[lhs_retailer] as i64;
+            let rhs_priority = state.retailer_inventory[rhs_retailer] as i64
+                - state.customer_backorders[rhs_retailer] as i64;
+            lhs_priority.cmp(&rhs_priority).then(lhs.cmp(rhs))
         });
     }
     for edge_idx in open_edges {
@@ -332,6 +332,7 @@ fn fulfill_current_retail_orders_for_warehouse(
         let fulfilled = requested.min(state.warehouse_inventory[warehouse_idx]);
         if fulfilled > 0 {
             ship_to_retailer(state, network, edge_idx, fulfilled);
+            fulfilled_current_retail_orders[edge_idx] += fulfilled;
         }
         let remaining = requested - fulfilled;
         if remaining > 0 {
@@ -341,10 +342,15 @@ fn fulfill_current_retail_orders_for_warehouse(
     }
 }
 
-fn fulfill_existing_backorders(state: &mut GeneralBackorderFixedCostState, network: &GeneralBackorderFixedCostNetwork) {
+fn fulfill_existing_backorders(
+    state: &mut GeneralBackorderFixedCostState,
+    network: &GeneralBackorderFixedCostNetwork,
+) {
     for retail_edge_idx in 0..network.retail_edges.len() {
         let edge = network.retail_edges[retail_edge_idx];
-        if state.warehouse_inventory[edge.warehouse_idx] == 0 || state.retailer_backorders[retail_edge_idx] == 0 {
+        if state.warehouse_inventory[edge.warehouse_idx] == 0
+            || state.retailer_backorders[retail_edge_idx] == 0
+        {
             continue;
         }
         let fulfilled = state.warehouse_inventory[edge.warehouse_idx]
@@ -353,10 +359,13 @@ fn fulfill_existing_backorders(state: &mut GeneralBackorderFixedCostState, netwo
         state.retailer_backorders[retail_edge_idx] -= fulfilled;
     }
     for retailer_idx in 0..network.num_retailers {
-        if state.retailer_inventory[retailer_idx] == 0 || state.customer_backorders[retailer_idx] == 0 {
+        if state.retailer_inventory[retailer_idx] == 0
+            || state.customer_backorders[retailer_idx] == 0
+        {
             continue;
         }
-        let fulfilled = state.retailer_inventory[retailer_idx].min(state.customer_backorders[retailer_idx]);
+        let fulfilled =
+            state.retailer_inventory[retailer_idx].min(state.customer_backorders[retailer_idx]);
         state.retailer_inventory[retailer_idx] -= fulfilled;
         state.customer_backorders[retailer_idx] -= fulfilled;
     }
@@ -386,10 +395,11 @@ pub fn advance_to_decision_state(
             "cost vector lengths must match the network dimensions",
         ));
     }
-
     let mut decision_state = state.clone();
     let received_supplier_deliveries = decision_state.supplier_deliveries_due.clone();
     let received_retail_deliveries = decision_state.retailer_deliveries_due.clone();
+    let mut fulfilled_current_retail_orders = vec![0usize; network.retail_edges.len()];
+    let mut fulfilled_customer_demands = vec![0usize; network.num_retailers];
 
     for warehouse_idx in 0..network.num_warehouses {
         let received = decision_state.supplier_deliveries_due[warehouse_idx];
@@ -414,7 +424,12 @@ pub fn advance_to_decision_state(
     }
 
     for warehouse_idx in 0..network.num_warehouses {
-        fulfill_current_retail_orders_for_warehouse(&mut decision_state, network, warehouse_idx);
+        fulfill_current_retail_orders_for_warehouse(
+            &mut decision_state,
+            network,
+            warehouse_idx,
+            &mut fulfilled_current_retail_orders,
+        );
     }
 
     for retailer_idx in 0..network.num_retailers {
@@ -422,13 +437,15 @@ pub fn advance_to_decision_state(
         let fulfilled = demand.min(decision_state.retailer_inventory[retailer_idx]);
         decision_state.retailer_inventory[retailer_idx] -= fulfilled;
         decision_state.customer_backorders[retailer_idx] += demand - fulfilled;
+        fulfilled_customer_demands[retailer_idx] = fulfilled;
     }
 
     fulfill_existing_backorders(&mut decision_state, network);
 
     let holding_cost = (0..network.num_warehouses)
         .map(|warehouse_idx| {
-            warehouse_holding_costs[warehouse_idx] * decision_state.warehouse_inventory[warehouse_idx] as f64
+            warehouse_holding_costs[warehouse_idx]
+                * decision_state.warehouse_inventory[warehouse_idx] as f64
         })
         .sum::<f64>()
         + (0..network.num_retailers)
@@ -448,7 +465,8 @@ pub fn advance_to_decision_state(
         .sum::<f64>();
     let customer_backorder_cost = (0..network.num_retailers)
         .map(|retailer_idx| {
-            retailer_backorder_costs[retailer_idx] * decision_state.customer_backorders[retailer_idx] as f64
+            retailer_backorder_costs[retailer_idx]
+                * decision_state.customer_backorders[retailer_idx] as f64
         })
         .sum::<f64>();
     let period_cost = holding_cost + warehouse_backorder_cost + customer_backorder_cost;
@@ -458,6 +476,8 @@ pub fn advance_to_decision_state(
         realized_demands: realized_demands.to_vec(),
         received_supplier_deliveries,
         received_retail_deliveries,
+        fulfilled_current_retail_orders,
+        fulfilled_customer_demands,
         period_cost,
         holding_cost,
         warehouse_backorder_cost,

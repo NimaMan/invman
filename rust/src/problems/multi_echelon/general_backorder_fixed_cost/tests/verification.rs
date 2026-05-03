@@ -1,9 +1,9 @@
-use rand::SeedableRng;
 use rand::rngs::StdRng;
+use rand::SeedableRng;
 
 use crate::problems::multi_echelon::general_backorder_fixed_cost::env::{
-    advance_to_decision_state, apply_next_orders, build_raw_state, initialize_zero_state,
-    incoming_retail_edge_indices, retailer_total_inventory_positions, warehouse_inventory_positions,
+    advance_to_decision_state, apply_next_orders, build_raw_state, incoming_retail_edge_indices,
+    initialize_zero_state, retailer_total_inventory_positions, warehouse_inventory_positions,
     GeneralBackorderFixedCostNetwork,
 };
 use crate::problems::multi_echelon::general_backorder_fixed_cost::heuristics::{
@@ -28,9 +28,18 @@ fn benchmark_network() -> GeneralBackorderFixedCostNetwork {
 #[test]
 fn literature_catalog_matches_paper_rows() {
     assert_eq!(LITERATURE_REFERENCE_INSTANCES.len(), 3);
-    assert_eq!(LITERATURE_REFERENCE_INSTANCES[0].published_benchmark_cost, 10_467.0);
-    assert_eq!(LITERATURE_REFERENCE_INSTANCES[1].published_benchmark_cost, 4_797.0);
-    assert_eq!(LITERATURE_REFERENCE_INSTANCES[2].published_benchmark_cost, 4_797.0);
+    assert_eq!(
+        LITERATURE_REFERENCE_INSTANCES[0].published_benchmark_cost,
+        10_467.0
+    );
+    assert_eq!(
+        LITERATURE_REFERENCE_INSTANCES[1].published_benchmark_cost,
+        4_797.0
+    );
+    assert_eq!(
+        LITERATURE_REFERENCE_INSTANCES[2].published_benchmark_cost,
+        4_797.0
+    );
     assert_eq!(
         LITERATURE_REFERENCE_INSTANCES[0].benchmark_base_stock_levels,
         GEEVERS_SET1_BASE_STOCK_LEVELS
