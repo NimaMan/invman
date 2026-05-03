@@ -9,7 +9,52 @@ use crate::problems::ameliorating_inventory::heuristics::{
 };
 use crate::problems::ameliorating_inventory::literature::{
     PAHR_GRUNOW_2025_REFERENCE, PAHR_GRUNOW_2025_REPOSITORY_REFERENCE, PRIMARY_REFERENCE_INSTANCE,
-    VERIFICATION_PROBLEM_INSTANCE, WORKED_TRANSITION_REFERENCE,
+    VERIFICATION_PROBLEM_INSTANCE,
+};
+
+#[derive(Clone, Copy)]
+struct WorkedTransitionCase {
+    initial_inventory_by_age: &'static [usize],
+    target_ages: &'static [usize],
+    product_prices: &'static [f64],
+    age_retention: &'static [f64],
+    purchase_cost_per_unit: f64,
+    holding_cost_per_unit: f64,
+    decay_salvage_values: &'static [f64],
+    purchase_quantity: usize,
+    realized_demands: &'static [usize],
+    expected_shipments_by_product_age: &'static [&'static [usize]],
+    expected_shipped_by_product: &'static [usize],
+    expected_lost_sales_by_product: &'static [usize],
+    expected_next_inventory_by_age: &'static [usize],
+    expected_decayed_units_by_age: &'static [usize],
+    expected_revenue: f64,
+    expected_purchase_cost: f64,
+    expected_holding_cost: f64,
+    expected_salvage_credit: f64,
+    expected_period_cost: f64,
+}
+
+const WORKED_TRANSITION_CASE: WorkedTransitionCase = WorkedTransitionCase {
+    initial_inventory_by_age: &[1, 2, 1],
+    target_ages: &[1, 2],
+    product_prices: &[5.0, 9.0],
+    age_retention: &[1.0, 1.0, 1.0],
+    purchase_cost_per_unit: 3.0,
+    holding_cost_per_unit: 0.5,
+    decay_salvage_values: &[0.0, 0.0, 0.0],
+    purchase_quantity: 1,
+    realized_demands: &[1, 1],
+    expected_shipments_by_product_age: &[&[0, 1, 0], &[0, 0, 1]],
+    expected_shipped_by_product: &[1, 1],
+    expected_lost_sales_by_product: &[0, 0],
+    expected_next_inventory_by_age: &[0, 2, 1],
+    expected_decayed_units_by_age: &[0, 0, 0],
+    expected_revenue: 14.0,
+    expected_purchase_cost: 3.0,
+    expected_holding_cost: 1.5,
+    expected_salvage_credit: 0.0,
+    expected_period_cost: -9.5,
 };
 
 fn nested_vec(rows: &[&[usize]]) -> Vec<Vec<usize>> {
@@ -19,6 +64,8 @@ fn nested_vec(rows: &[&[usize]]) -> Vec<Vec<usize>> {
 #[test]
 fn reference_set_has_expected_shape() {
     assert_eq!(PAHR_GRUNOW_2025_REFERENCE.benchmark_policies.len(), 4);
+    assert!(PAHR_GRUNOW_2025_REFERENCE.reported_numbers_available);
+    assert!(!PAHR_GRUNOW_2025_REFERENCE.numbers_anchor_repo_assertions);
     assert_eq!(
         PAHR_GRUNOW_2025_REPOSITORY_REFERENCE.benchmark_policies,
         &[
@@ -27,10 +74,17 @@ fn reference_set_has_expected_shape() {
             "rolling_lp"
         ]
     );
+    assert!(PAHR_GRUNOW_2025_REPOSITORY_REFERENCE.reported_numbers_available);
+    assert!(!PAHR_GRUNOW_2025_REPOSITORY_REFERENCE.numbers_anchor_repo_assertions);
     assert_eq!(PRIMARY_REFERENCE_INSTANCE.num_ages, 5);
     assert_eq!(PRIMARY_REFERENCE_INSTANCE.target_ages, &[1, 3]);
     assert_eq!(VERIFICATION_PROBLEM_INSTANCE.target_ages, &[1, 2]);
     assert_eq!(VERIFICATION_PROBLEM_INSTANCE.max_purchase_quantity, 4);
+    assert!(!VERIFICATION_PROBLEM_INSTANCE.literature_verified);
+    assert_eq!(
+        VERIFICATION_PROBLEM_INSTANCE.verification_source,
+        "repo_exact_solver_not_verified_against_literature"
+    );
 }
 
 #[test]
@@ -50,7 +104,7 @@ fn policy_state_layout_matches_expected_shape() {
 
 #[test]
 fn worked_transition_matches_expected_accounting() {
-    let worked = WORKED_TRANSITION_REFERENCE;
+    let worked = WORKED_TRANSITION_CASE;
     let state = initialize_state(worked.initial_inventory_by_age).expect("state must build");
     let outcome = step_state(
         &state,

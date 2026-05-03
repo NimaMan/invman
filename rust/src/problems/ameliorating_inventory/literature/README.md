@@ -17,6 +17,8 @@ Why:
   instance uses five age classes and two products
 - the paper environment also includes stochastic sales-price and decay processes that are fixed in
   the current Rust approximation
+- reported benchmark performance is available for the full paper model, but those numbers do not
+  anchor executable assertions for this reduced Rust package
 
 Use `literature/references.rs` as the source of truth for:
 

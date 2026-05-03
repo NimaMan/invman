@@ -130,7 +130,8 @@ fn search_best_plan(
             product_prices,
         );
         let shipped_units = allocation.iter().sum::<usize>();
-        let mut shipments_by_product_age = Vec::with_capacity(suffix_plan.shipments_by_product_age.len() + 1);
+        let mut shipments_by_product_age =
+            Vec::with_capacity(suffix_plan.shipments_by_product_age.len() + 1);
         shipments_by_product_age.push(allocation.clone());
         shipments_by_product_age.extend(suffix_plan.shipments_by_product_age.iter().cloned());
         let candidate = CandidatePlan {
@@ -153,8 +154,13 @@ pub fn optimize_average_age_blending(
     target_ages: &[usize],
     product_prices: &[f64],
 ) -> IssuancePlan {
-    let candidate =
-        search_best_plan(0, inventory_by_age, realized_demands, target_ages, product_prices);
+    let candidate = search_best_plan(
+        0,
+        inventory_by_age,
+        realized_demands,
+        target_ages,
+        product_prices,
+    );
     let shipped_by_product = candidate
         .shipments_by_product_age
         .iter()

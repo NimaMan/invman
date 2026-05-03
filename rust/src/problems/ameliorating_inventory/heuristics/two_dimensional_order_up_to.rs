@@ -23,6 +23,7 @@ pub fn two_dimensional_order_up_to_order_quantity(
     young_age_cutoff: usize,
 ) -> PyResult<usize> {
     let total_gap = total_target_inventory.saturating_sub(total_inventory(state));
-    let young_gap = young_target_inventory.saturating_sub(young_inventory(state, young_age_cutoff)?);
+    let young_gap =
+        young_target_inventory.saturating_sub(young_inventory(state, young_age_cutoff)?);
     Ok(total_gap.max(young_gap))
 }

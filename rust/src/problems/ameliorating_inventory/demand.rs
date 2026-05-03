@@ -47,8 +47,8 @@ pub fn sample_demand<R: Rng + ?Sized>(rng: &mut R, model: &DemandModel) -> PyRes
             if model.param1 == 0.0 {
                 return Ok(0);
             }
-            let distribution =
-                Poisson::new(model.param1).map_err(|error| PyValueError::new_err(error.to_string()))?;
+            let distribution = Poisson::new(model.param1)
+                .map_err(|error| PyValueError::new_err(error.to_string()))?;
             Ok(distribution.sample(rng).round().max(0.0) as usize)
         }
     }

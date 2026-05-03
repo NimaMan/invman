@@ -75,9 +75,7 @@ pub fn policy_rollout_from_paths(
         decay_salvage_values,
     )?;
     if !(0.0..=1.0).contains(&discount_factor) {
-        return Err(PyValueError::new_err(
-            "discount_factor must lie in [0, 1]",
-        ));
+        return Err(PyValueError::new_err("discount_factor must lie in [0, 1]"));
     }
 
     let mut state = initial_state.clone();

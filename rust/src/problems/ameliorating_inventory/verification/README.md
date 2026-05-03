@@ -11,3 +11,7 @@ Current verifier scope:
 
 These checks are repo-native only. They validate the reduced Rust implementation, not published
 paper rows.
+
+The reduced exact verifier stores only the problem instance in the literature catalog. Optimal,
+heuristic, and worked-transition accounting values are generated or asserted in verification code, not
+stored as literature reference numbers.

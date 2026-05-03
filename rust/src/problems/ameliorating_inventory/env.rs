@@ -1,7 +1,9 @@
 use pyo3::exceptions::PyValueError;
 use pyo3::PyResult;
 
-use crate::problems::ameliorating_inventory::issuance::{optimize_average_age_blending, IssuancePlan};
+use crate::problems::ameliorating_inventory::issuance::{
+    optimize_average_age_blending, IssuancePlan,
+};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AmelioratingInventoryState {
@@ -26,10 +28,7 @@ pub struct AmelioratingInventoryStepOutcome {
     pub reward: f64,
 }
 
-pub fn validate_state(
-    state: &AmelioratingInventoryState,
-    num_ages: usize,
-) -> PyResult<()> {
+pub fn validate_state(state: &AmelioratingInventoryState, num_ages: usize) -> PyResult<()> {
     if num_ages == 0 {
         return Err(PyValueError::new_err("num_ages must be at least 1"));
     }
@@ -70,7 +69,10 @@ pub fn validate_problem_spec(
             "all target ages must be valid inventory age indices",
         ));
     }
-    if product_prices.iter().any(|price| !price.is_finite() || *price < 0.0) {
+    if product_prices
+        .iter()
+        .any(|price| !price.is_finite() || *price < 0.0)
+    {
         return Err(PyValueError::new_err(
             "product_prices must be finite and non-negative",
         ));
@@ -113,7 +115,10 @@ pub fn build_policy_state(
     total_periods: usize,
 ) -> PyResult<Vec<f32>> {
     validate_state(state, state.inventory_by_age.len())?;
-    if expected_demands.iter().any(|value| !value.is_finite() || *value < 0.0) {
+    if expected_demands
+        .iter()
+        .any(|value| !value.is_finite() || *value < 0.0)
+    {
         return Err(PyValueError::new_err(
             "expected_demands must be finite and non-negative",
         ));
@@ -122,15 +127,11 @@ pub fn build_policy_state(
     let total_inventory = total_inventory(state) as f64;
     let scale = total_inventory
         .max(state.inventory_by_age.iter().copied().max().unwrap_or(0) as f64)
-        .max(
-            expected_demands
-                .iter()
-                .copied()
-                .fold(0.0_f64, f64::max),
-        )
+        .max(expected_demands.iter().copied().fold(0.0_f64, f64::max))
         .max(1.0) as f32;
 
-    let mut features = Vec::with_capacity(state.inventory_by_age.len() + expected_demands.len() + 2);
+    let mut features =
+        Vec::with_capacity(state.inventory_by_age.len() + expected_demands.len() + 2);
     features.extend(
         state
             .inventory_by_age

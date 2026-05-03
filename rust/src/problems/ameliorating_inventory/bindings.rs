@@ -369,7 +369,10 @@ fn ameliorating_inventory_two_dimensional_order_up_to_order(
 }
 
 pub fn register_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(ameliorating_inventory_soft_tree_rollout, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        ameliorating_inventory_soft_tree_rollout,
+        m
+    )?)?;
     m.add_function(wrap_pyfunction!(
         ameliorating_inventory_soft_tree_population_rollout,
         m

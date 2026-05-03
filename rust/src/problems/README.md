@@ -164,6 +164,11 @@ otherwise explicitly.
 
 Notable current example:
 
+- `ameliorating_inventory`
+  - repo-exact verified on its reduced finite-horizon verifier
+  - not literature-verified, because the executable package is a reduced approximation of the
+    Pahr/Grunow ameliorating-food model and the reported benchmark performance belongs to the
+    richer stochastic price/decay and LP-blending setup
 - `joint_replenishment`
   - repo-exact verified on its reduced two-item finite-horizon verifier
   - not literature-verified, because the carried Vanvuchelen et al. settings expose public

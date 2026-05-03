@@ -53,8 +53,7 @@ fn validate_config(
             "demand_models length must match the number of products",
         ));
     }
-    let expected_input_dim =
-        initial_state.inventory_by_age.len() + config.demand_models.len() + 2;
+    let expected_input_dim = initial_state.inventory_by_age.len() + config.demand_models.len() + 2;
     if config.input_dim != expected_input_dim {
         return Err(PyValueError::new_err(format!(
             "input_dim {} does not match expected state size {}",
@@ -67,9 +66,7 @@ fn validate_config(
         ));
     }
     if !(0.0..=1.0).contains(&config.discount_factor) {
-        return Err(PyValueError::new_err(
-            "discount_factor must lie in [0, 1]",
-        ));
+        return Err(PyValueError::new_err("discount_factor must lie in [0, 1]"));
     }
     Ok(())
 }
