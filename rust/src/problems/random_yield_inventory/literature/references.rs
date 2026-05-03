@@ -31,22 +31,6 @@ pub struct RandomYieldReferenceInstance {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct WorkedTransitionReference {
-    pub source: &'static str,
-    pub url: &'static str,
-    pub lead_time: usize,
-    pub initial_inventory_level: f64,
-    pub initial_pipeline_orders: &'static [f64],
-    pub action: f64,
-    pub realized_demand: f64,
-    pub arrival_succeeds: bool,
-    pub expected_arrival: f64,
-    pub expected_next_inventory_level: f64,
-    pub expected_next_pipeline_orders: &'static [f64],
-    pub expected_period_cost: f64,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ExactVerificationReference {
     pub source: &'static str,
     pub url: &'static str,
@@ -290,21 +274,6 @@ pub const PRIMARY_REFERENCE_INSTANCE: RandomYieldReferenceInstance = RandomYield
     initial_inventory_level: 6.0,
     initial_pipeline_orders: &[4.0, 3.0],
     notes: "Canonical first learned-policy benchmark for the repo. This is a repo-native instance shaped after the small-lead-time discounted setting emphasized by Yan et al. (2026), not a verbatim literature table row. We use it because the paper does not expose public benchmark numbers for direct verification.",
-};
-
-pub const WORKED_TRANSITION_REFERENCE: WorkedTransitionReference = WorkedTransitionReference {
-    source: YAN_2026_REFERENCE.source,
-    url: YAN_2026_REFERENCE.url,
-    lead_time: 2,
-    initial_inventory_level: 3.0,
-    initial_pipeline_orders: &[5.0, 2.0],
-    action: 4.0,
-    realized_demand: 6.0,
-    arrival_succeeds: true,
-    expected_arrival: 5.0,
-    expected_next_inventory_level: 2.0,
-    expected_next_pipeline_orders: &[2.0, 4.0],
-    expected_period_cost: 6.0,
 };
 
 pub const VERIFICATION_DEMAND_SUPPORT: &[u32] = &[0, 1, 2, 3, 4, 5];

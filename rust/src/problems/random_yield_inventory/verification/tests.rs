@@ -12,7 +12,32 @@ use crate::problems::random_yield_inventory::literature::{
     CHEN_2018_REFERENCE, INDERFURTH_2015_POSITIVE_LEAD_TIMES,
     INDERFURTH_2015_PROPORTIONAL_YIELD_PAIRS, INDERFURTH_2015_REFERENCE,
     LITERATURE_BENCHMARK_FAMILIES, PRIMARY_REFERENCE_INSTANCE, VERIFICATION_PROBLEM_INSTANCE,
-    WORKED_TRANSITION_REFERENCE, YAN_2026_REFERENCE,
+    YAN_2026_REFERENCE,
+};
+
+#[derive(Clone, Copy)]
+struct WorkedTransitionCase {
+    initial_inventory_level: f64,
+    initial_pipeline_orders: &'static [f64],
+    action: f64,
+    realized_demand: f64,
+    arrival_succeeds: bool,
+    expected_arrival: f64,
+    expected_next_inventory_level: f64,
+    expected_next_pipeline_orders: &'static [f64],
+    expected_period_cost: f64,
+}
+
+const WORKED_TRANSITION_CASE: WorkedTransitionCase = WorkedTransitionCase {
+    initial_inventory_level: 3.0,
+    initial_pipeline_orders: &[5.0, 2.0],
+    action: 4.0,
+    realized_demand: 6.0,
+    arrival_succeeds: true,
+    expected_arrival: 5.0,
+    expected_next_inventory_level: 2.0,
+    expected_next_pipeline_orders: &[2.0, 4.0],
+    expected_period_cost: 6.0,
 };
 
 #[test]
@@ -104,7 +129,7 @@ fn raw_state_layout_matches_expected_shape() {
 
 #[test]
 fn worked_transition_matches_expected_accounting() {
-    let worked = WORKED_TRANSITION_REFERENCE;
+    let worked = WORKED_TRANSITION_CASE;
     let state = initialize_state(
         worked.initial_inventory_level,
         worked.initial_pipeline_orders,
@@ -208,7 +233,10 @@ fn exact_dp_dominates_repo_heuristics() {
     .expect("linear inflation order must compute");
 
     assert!(optimal.first_action <= VERIFICATION_PROBLEM_INSTANCE.max_order_quantity);
-    assert_eq!(linear_inflation.first_action, direct_linear_inflation as usize);
+    assert_eq!(
+        linear_inflation.first_action,
+        direct_linear_inflation as usize
+    );
     assert!(weighted_newsvendor.first_action <= VERIFICATION_PROBLEM_INSTANCE.max_order_quantity);
     assert!(
         optimal.discounted_cost <= linear_inflation.discounted_cost + 1e-9,

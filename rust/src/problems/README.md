@@ -179,6 +179,11 @@ Notable current example:
   - not literature-verified, because the executable package is a simplified procurement/removal
     inventory-control slice while the Maggiar/Sadighian anchor is a richer pricing and revenue
     management model without exact public rows for this repo package
+- `random_yield_inventory`
+  - repo-exact verified on its reduced finite-horizon all-or-nothing verifier
+  - not literature-verified, because Yan et al. matches the model family but does not expose public
+    row-level benchmark numbers, while Inderfurth/Kiesmuller reports numbers for related broader
+    random-yield models rather than this repo executable
 - `joint_pricing_inventory`
   - repo-exact verified on its reduced verifier
   - not literature-verified, because the carried Zhou/Qin anchors do not currently expose a clean

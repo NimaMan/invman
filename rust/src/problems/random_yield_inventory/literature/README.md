@@ -11,7 +11,7 @@ Repo interpretation:
 - supply-side uncertainty is the primary missing axis carried by this family
 - the first benchmark slice uses reduced discrete instances for exact verification
 
-Use `references.rs` as the source of truth for:
+Use `literature/references.rs` as the source of truth for:
 
 - `PRIMARY_REFERENCE_INSTANCE`
 - `VERIFICATION_PROBLEM_INSTANCE`
