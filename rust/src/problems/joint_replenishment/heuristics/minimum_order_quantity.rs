@@ -24,12 +24,16 @@ fn allocate_proportionally(total_quantity: usize, deficits: &[usize]) -> Vec<usi
     }
 
     remainders.sort_by(|lhs, rhs| {
-        rhs.1.partial_cmp(&lhs.1)
+        rhs.1
+            .partial_cmp(&lhs.1)
             .unwrap_or(Ordering::Equal)
             .then_with(|| lhs.0.cmp(&rhs.0))
     });
 
-    for (index, _) in remainders.into_iter().take(total_quantity.saturating_sub(assigned)) {
+    for (index, _) in remainders
+        .into_iter()
+        .take(total_quantity.saturating_sub(assigned))
+    {
         base[index] += 1;
     }
     base

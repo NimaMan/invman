@@ -49,15 +49,12 @@ fn myopic_allocation(
                     shortage_costs[item_idx],
                 )?;
                 let candidate = value[item_idx][assigned_quantity] + cost;
-                let post_order_inventory =
-                    state.inventory_levels[item_idx] + item_quantity as i32;
+                let post_order_inventory = state.inventory_levels[item_idx] + item_quantity as i32;
                 let target_gap = post_order_inventory - item_targets[item_idx] as i32;
                 let candidate_deviation = deviation[item_idx][assigned_quantity]
                     + (target_gap as i64 * target_gap as i64) as u64;
                 if candidate < value[item_idx + 1][assigned_quantity + item_quantity] - 1e-12
-                    || ((candidate
-                        - value[item_idx + 1][assigned_quantity + item_quantity])
-                        .abs()
+                    || ((candidate - value[item_idx + 1][assigned_quantity + item_quantity]).abs()
                         < 1e-12
                         && candidate_deviation
                             < deviation[item_idx + 1][assigned_quantity + item_quantity])
