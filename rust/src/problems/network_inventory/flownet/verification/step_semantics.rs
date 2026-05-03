@@ -4,16 +4,15 @@ use crate::problems::network_inventory::env::{
     initialize_state, step_state, NetworkInventoryGraph,
 };
 use crate::problems::network_inventory::heuristics::pairwise_base_stock_requests;
-use crate::problems::network_inventory::literature::{
-    VERIFICATION_PROBLEM_INSTANCE, WORKED_TRANSITION_REFERENCE,
-};
+use crate::problems::network_inventory::literature::VERIFICATION_PROBLEM_INSTANCE;
+use crate::problems::network_inventory::verification::fixtures::WORKED_TRANSITION_CASE;
 
 fn nested_vec(rows: &[&[usize]]) -> Vec<Vec<usize>> {
     rows.iter().map(|row| row.to_vec()).collect()
 }
 
 fn worked_graph() -> NetworkInventoryGraph {
-    let worked = WORKED_TRANSITION_REFERENCE;
+    let worked = WORKED_TRANSITION_CASE;
     NetworkInventoryGraph {
         num_nodes: worked.num_nodes,
         source_nodes: worked.source_nodes.to_vec(),
@@ -24,7 +23,7 @@ fn worked_graph() -> NetworkInventoryGraph {
 }
 
 fn worked_state() -> crate::problems::network_inventory::env::NetworkInventoryState {
-    let worked = WORKED_TRANSITION_REFERENCE;
+    let worked = WORKED_TRANSITION_CASE;
     initialize_state(
         &worked_graph(),
         worked.initial_finished_inventory,
@@ -37,7 +36,7 @@ fn worked_state() -> crate::problems::network_inventory::env::NetworkInventorySt
 }
 
 pub fn verify_worked_transition_reference() -> bool {
-    let worked = WORKED_TRANSITION_REFERENCE;
+    let worked = WORKED_TRANSITION_CASE;
     let outcome = step_state(
         &worked_graph(),
         &worked_state(),
@@ -93,11 +92,12 @@ pub fn verify_pairwise_base_stock_reference_action() -> bool {
         &realized_demands,
     )
     .expect("pairwise base-stock action must compute");
-    let base_stock = crate::problems::network_inventory::finite_horizon_dp::evaluate_named_heuristic(
-        &VERIFICATION_PROBLEM_INSTANCE,
-        "pairwise_base_stock",
-    )
-    .expect("pairwise base-stock evaluation must solve");
+    let base_stock =
+        crate::problems::network_inventory::finite_horizon_dp::evaluate_named_heuristic(
+            &VERIFICATION_PROBLEM_INSTANCE,
+            "pairwise_base_stock",
+        )
+        .expect("pairwise base-stock evaluation must solve");
 
     action == base_stock.first_action
 }

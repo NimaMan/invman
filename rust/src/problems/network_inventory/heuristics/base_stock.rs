@@ -47,8 +47,8 @@ pub fn pairwise_base_stock_requests(
                 - total_current_demand as i32
                 + in_transit as i32
                 + predecessor_backlog as i32;
-            requests[relation_idx] = base_stock_levels[relation_idx]
-                .saturating_sub(inventory_position.max(0) as usize);
+            requests[relation_idx] =
+                base_stock_levels[relation_idx].saturating_sub(inventory_position.max(0) as usize);
         }
     }
 

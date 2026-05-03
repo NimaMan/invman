@@ -13,9 +13,10 @@ pub fn primary_reference_instance_matches_serial_case() -> bool {
     let has_source_mask = instance.parameters.iter().any(|parameter| {
         parameter.name == "source_nodes" && parameter.value == "[true, false, false]"
     });
-    let has_serial_edges = instance.parameters.iter().any(|parameter| {
-        parameter.name == "edges" && parameter.value == "[0->1@1, 1->2@1]"
-    });
+    let has_serial_edges = instance
+        .parameters
+        .iter()
+        .any(|parameter| parameter.name == "edges" && parameter.value == "[0->1@1, 1->2@1]");
 
     has_num_nodes && has_source_mask && has_serial_edges
 }

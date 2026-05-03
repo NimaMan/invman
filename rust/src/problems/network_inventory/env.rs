@@ -185,7 +185,8 @@ pub fn total_inbound_pipeline_by_node(
     let relations = supply_relations(graph);
     let mut totals = vec![0usize; graph.num_nodes];
     for (relation_idx, relation) in relations.iter().enumerate() {
-        totals[relation.successor_node] += state.supply_pipelines[relation_idx].iter().sum::<usize>();
+        totals[relation.successor_node] +=
+            state.supply_pipelines[relation_idx].iter().sum::<usize>();
     }
     Ok(totals)
 }
@@ -483,7 +484,10 @@ pub fn step_state(
             let relation = relations[relation_idx];
             let arrival = if relation.lead_time == 0 {
                 match relation.predecessor_node {
-                    Some(_) => shipped_on_internal_edges[relation.internal_edge_idx.expect("edge idx exists")],
+                    Some(_) => {
+                        shipped_on_internal_edges
+                            [relation.internal_edge_idx.expect("edge idx exists")]
+                    }
                     None => supply_requests[relation_idx],
                 }
             } else {
@@ -541,13 +545,15 @@ pub fn step_state(
                 .push(next_state.internal_backlog_by_edge[edge_idx] + supply_requests[edge_idx]);
             current_demands.push(supply_requests[edge_idx]);
         }
-        total_requirements.push(next_state.external_backlog[node_idx] + realized_external_demands[node_idx]);
+        total_requirements
+            .push(next_state.external_backlog[node_idx] + realized_external_demands[node_idx]);
         current_demands.push(realized_external_demands[node_idx]);
 
         let available = next_state.finished_inventory[node_idx];
         let shipments = proportional_allocation(available, &total_requirements, &current_demands);
         let total_shipped = shipments.iter().sum::<usize>();
-        next_state.finished_inventory[node_idx] = next_state.finished_inventory[node_idx].saturating_sub(total_shipped);
+        next_state.finished_inventory[node_idx] =
+            next_state.finished_inventory[node_idx].saturating_sub(total_shipped);
 
         for (offset, edge_idx) in outgoing_edges.iter().copied().enumerate() {
             shipped_on_internal_edges[edge_idx] = shipments[offset];
@@ -559,8 +565,11 @@ pub fn step_state(
             }
         }
         shipped_to_external_customer[node_idx] = *shipments.last().unwrap_or(&0);
-        next_state.external_backlog[node_idx] =
-            total_requirements.last().copied().unwrap_or(0).saturating_sub(*shipments.last().unwrap_or(&0));
+        next_state.external_backlog[node_idx] = total_requirements
+            .last()
+            .copied()
+            .unwrap_or(0)
+            .saturating_sub(*shipments.last().unwrap_or(&0));
     }
 
     let inbound_counts = (0..graph.num_nodes)

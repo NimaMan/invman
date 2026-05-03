@@ -12,7 +12,7 @@ The verification surface is split into four parts:
   - checks that the primary diamond-network benchmark and the reduced exact-verification freeze map
     to the expected FlowNet instance parameters
 - `step_semantics.rs`
-  - checks that the worked transition reference and the node-base-stock first action match the
+  - checks that the worked-transition verification fixture and pairwise base-stock first action match the
     current `env.rs` and heuristic semantics
 - `policy_performance.rs`
   - checks that the reduced exact-verification reference keeps the expected optimal and

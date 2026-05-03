@@ -22,5 +22,9 @@ Use `literature/references.rs` as the source of truth for:
 - `SERIAL_BENCHMARK_ROWS`
 - `PRIMARY_REFERENCE_INSTANCE`
 - `VERIFICATION_PROBLEM_INSTANCE`
-- `WORKED_TRANSITION_REFERENCE`
 - carried benchmark-policy names and literature notes
+
+Reference hygiene:
+
+- `references.rs` stores literature rows and problem-instance definitions only
+- repo-native worked-transition expected values live in verification fixtures, not in literature references

@@ -73,7 +73,8 @@ fn validate_exact_reference(reference: &ExactVerificationReference) -> PyResult<
         ));
     }
     for node_idx in 0..reference.num_nodes {
-        if reference.demand_supports[node_idx].len() != reference.demand_probabilities[node_idx].len()
+        if reference.demand_supports[node_idx].len()
+            != reference.demand_probabilities[node_idx].len()
         {
             return Err(PyValueError::new_err(format!(
                 "demand support and probabilities must have the same length for node {node_idx}"

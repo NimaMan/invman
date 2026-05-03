@@ -14,3 +14,6 @@ These checks are repo-native only. They validate the current paper-shaped discre
 implementation on a tiny serial verifier and compare only the single-node paper rows against
 explicit Rust reproductions. The serial paper rows are cataloged in `literature/` but are not in
 verification because the public sources were insufficient to recover a stable executable protocol.
+
+Repo-native worked-transition expected values are kept in `verification/fixtures.rs`, not in
+`literature/references.rs`.

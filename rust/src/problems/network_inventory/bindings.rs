@@ -563,7 +563,12 @@ fn network_inventory_pairwise_base_stock_requests(
         &external_backlog,
         &supply_pipelines,
     )?;
-    pairwise_base_stock_requests(&graph, &state, &base_stock_levels, &realized_external_demands)
+    pairwise_base_stock_requests(
+        &graph,
+        &state,
+        &base_stock_levels,
+        &realized_external_demands,
+    )
 }
 
 #[pyfunction]

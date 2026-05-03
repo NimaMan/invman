@@ -43,6 +43,8 @@ pub struct NetworkInventoryReferenceInstance {
     pub name: &'static str,
     pub source: &'static str,
     pub url: &'static str,
+    pub literature_verified: bool,
+    pub verification_source: &'static str,
     pub periods: usize,
     pub num_nodes: usize,
     pub source_nodes: &'static [bool],
@@ -62,39 +64,11 @@ pub struct NetworkInventoryReferenceInstance {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct WorkedTransitionReference {
-    pub source: &'static str,
-    pub url: &'static str,
-    pub num_nodes: usize,
-    pub source_nodes: &'static [bool],
-    pub node_modes: &'static [NetworkNodeMode],
-    pub external_supplier_lead_times: &'static [usize],
-    pub edges: &'static [NetworkEdge],
-    pub initial_finished_inventory: &'static [usize],
-    pub initial_raw_inventory_by_relation: &'static [usize],
-    pub initial_internal_backlog_by_edge: &'static [usize],
-    pub initial_external_backlog: &'static [usize],
-    pub initial_supply_pipelines: &'static [&'static [usize]],
-    pub action: &'static [usize],
-    pub realized_external_demands: &'static [usize],
-    pub holding_costs: &'static [f64],
-    pub backlog_costs: &'static [f64],
-    pub expected_received_shipments_by_relation: &'static [usize],
-    pub expected_produced_finished_goods: &'static [usize],
-    pub expected_shipped_on_internal_edges: &'static [usize],
-    pub expected_shipped_to_external_customer: &'static [usize],
-    pub expected_next_finished_inventory: &'static [usize],
-    pub expected_next_raw_inventory_by_relation: &'static [usize],
-    pub expected_next_internal_backlog_by_edge: &'static [usize],
-    pub expected_next_external_backlog: &'static [usize],
-    pub expected_next_supply_pipelines: &'static [&'static [usize]],
-    pub expected_period_cost: f64,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ExactVerificationReference {
     pub source: &'static str,
     pub url: &'static str,
+    pub literature_verified: bool,
+    pub verification_source: &'static str,
     pub periods: usize,
     pub discount_factor: f64,
     pub num_nodes: usize,
@@ -369,6 +343,8 @@ pub const PRIMARY_REFERENCE_INSTANCE: NetworkInventoryReferenceInstance =
         name: "pirhooshyaran2021_serial_case3",
         source: PIRHOOSHYARAN_2021_REFERENCE.source,
         url: PIRHOOSHYARAN_2021_REFERENCE.url,
+        literature_verified: false,
+        verification_source: "single_node_rows_verified_serial_rows_cataloged_only",
         periods: 10,
         num_nodes: 3,
         source_nodes: &[true, false, false],
@@ -387,40 +363,11 @@ pub const PRIMARY_REFERENCE_INSTANCE: NetworkInventoryReferenceInstance =
         notes: "Paper-shaped three-echelon serial case from Tables 2 and 3. The analytical OULs are carried in the paper's published upstream-to-downstream edge order [supplier->0, 0->1, 1->2], not the internal Rust supply-relation order. The current executable package is still discrete and not literature-verified on this row.",
     };
 
-pub const WORKED_SERIAL_EDGES: &[NetworkEdge] = &[NetworkEdge {
+pub const VERIFICATION_SERIAL_EDGES: &[NetworkEdge] = &[NetworkEdge {
     from: 0,
     to: 1,
     lead_time: 1,
 }];
-
-pub const WORKED_TRANSITION_REFERENCE: WorkedTransitionReference = WorkedTransitionReference {
-    source: PIRHOOSHYARAN_2021_REFERENCE.source,
-    url: PIRHOOSHYARAN_2021_REFERENCE.url,
-    num_nodes: 2,
-    source_nodes: &[true, false],
-    node_modes: &[NetworkNodeMode::Single, NetworkNodeMode::Single],
-    external_supplier_lead_times: &[1, 0],
-    edges: WORKED_SERIAL_EDGES,
-    initial_finished_inventory: &[1, 0],
-    initial_raw_inventory_by_relation: &[0, 0],
-    initial_internal_backlog_by_edge: &[0],
-    initial_external_backlog: &[0, 0],
-    initial_supply_pipelines: &[&[0], &[1]],
-    action: &[1, 1],
-    realized_external_demands: &[0, 1],
-    holding_costs: &[1.0, 1.0],
-    backlog_costs: &[0.0, 5.0],
-    expected_received_shipments_by_relation: &[0, 1],
-    expected_produced_finished_goods: &[1, 0],
-    expected_shipped_on_internal_edges: &[1],
-    expected_shipped_to_external_customer: &[0, 0],
-    expected_next_finished_inventory: &[1, 0],
-    expected_next_raw_inventory_by_relation: &[0, 0],
-    expected_next_internal_backlog_by_edge: &[0],
-    expected_next_external_backlog: &[0, 1],
-    expected_next_supply_pipelines: &[&[1], &[1]],
-    expected_period_cost: 7.0,
-};
 
 pub const VERIFICATION_ZERO_SUPPORT: &[u32] = &[0];
 pub const VERIFICATION_ZERO_PROBABILITIES: &[f64] = &[1.0];
@@ -430,13 +377,15 @@ pub const VERIFICATION_ONE_PROBABILITIES: &[f64] = &[1.0];
 pub const VERIFICATION_PROBLEM_INSTANCE: ExactVerificationReference = ExactVerificationReference {
     source: "Repo exact verification instance for the paper-shaped network-inventory family",
     url: PIRHOOSHYARAN_2021_REFERENCE.url,
+    literature_verified: false,
+    verification_source: "repo_exact_solver_not_verified_against_literature",
     periods: 3,
     discount_factor: 0.99,
     num_nodes: 2,
     source_nodes: &[true, false],
     node_modes: &[NetworkNodeMode::Single, NetworkNodeMode::Single],
     external_supplier_lead_times: &[1, 0],
-    edges: WORKED_SERIAL_EDGES,
+    edges: VERIFICATION_SERIAL_EDGES,
     initial_finished_inventory: &[1, 0],
     initial_raw_inventory_by_relation: &[0, 0],
     initial_internal_backlog_by_edge: &[0],

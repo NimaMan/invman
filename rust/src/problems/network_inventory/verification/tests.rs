@@ -1,5 +1,5 @@
 use crate::problems::network_inventory::env::{
-    build_policy_state, initialize_state, supply_relation_count, step_state, NetworkInventoryGraph,
+    build_policy_state, initialize_state, step_state, supply_relation_count, NetworkInventoryGraph,
 };
 use crate::problems::network_inventory::finite_horizon_dp::{
     evaluate_named_heuristic, solve_optimal_policy,
@@ -7,8 +7,9 @@ use crate::problems::network_inventory::finite_horizon_dp::{
 use crate::problems::network_inventory::heuristics::pairwise_base_stock_requests;
 use crate::problems::network_inventory::literature::{
     PIRHOOSHYARAN_2021_REFERENCE, PRIMARY_REFERENCE_INSTANCE, SERIAL_BENCHMARK_ROWS,
-    SINGLE_NODE_BENCHMARK_ROWS, VERIFICATION_PROBLEM_INSTANCE, WORKED_TRANSITION_REFERENCE,
+    SINGLE_NODE_BENCHMARK_ROWS, VERIFICATION_PROBLEM_INSTANCE,
 };
+use crate::problems::network_inventory::verification::fixtures::WORKED_TRANSITION_CASE;
 use crate::problems::network_inventory::verification::literature_benchmarks::literature_benchmark_summary;
 
 fn build_graph(
@@ -37,9 +38,19 @@ fn reference_set_has_expected_shape() {
     assert_eq!(PRIMARY_REFERENCE_INSTANCE.num_nodes, 3);
     assert_eq!(PRIMARY_REFERENCE_INSTANCE.edges.len(), 2);
     assert_eq!(PRIMARY_REFERENCE_INSTANCE.pairwise_oul_levels.len(), 3);
+    assert!(!PRIMARY_REFERENCE_INSTANCE.literature_verified);
+    assert_eq!(
+        PRIMARY_REFERENCE_INSTANCE.verification_source,
+        "single_node_rows_verified_serial_rows_cataloged_only"
+    );
     assert_eq!(SINGLE_NODE_BENCHMARK_ROWS.len(), 7);
     assert_eq!(SERIAL_BENCHMARK_ROWS.len(), 10);
     assert_eq!(VERIFICATION_PROBLEM_INSTANCE.max_supply_requests, &[2, 2]);
+    assert!(!VERIFICATION_PROBLEM_INSTANCE.literature_verified);
+    assert_eq!(
+        VERIFICATION_PROBLEM_INSTANCE.verification_source,
+        "repo_exact_solver_not_verified_against_literature"
+    );
 }
 
 #[test]
@@ -113,14 +124,15 @@ fn policy_state_layout_matches_expected_shape() {
     )
     .expect("policy state must build");
 
-    let expected_len = 7 * graph.num_nodes + 2 * supply_relation_count(&graph) + graph.edges.len() + 1;
+    let expected_len =
+        7 * graph.num_nodes + 2 * supply_relation_count(&graph) + graph.edges.len() + 1;
     assert_eq!(features.len(), expected_len);
     assert!((features.last().copied().unwrap_or(-1.0) - 1.0).abs() < 1e-6);
 }
 
 #[test]
 fn worked_transition_matches_expected_accounting() {
-    let worked = WORKED_TRANSITION_REFERENCE;
+    let worked = WORKED_TRANSITION_CASE;
     let graph = build_graph(
         worked.num_nodes,
         worked.source_nodes,
@@ -221,8 +233,8 @@ fn pairwise_base_stock_first_action_matches_reference_freeze() {
 
 #[test]
 fn exact_dp_dominates_pairwise_base_stock() {
-    let optimal =
-        solve_optimal_policy(&VERIFICATION_PROBLEM_INSTANCE).expect("exact optimal policy must solve");
+    let optimal = solve_optimal_policy(&VERIFICATION_PROBLEM_INSTANCE)
+        .expect("exact optimal policy must solve");
     let base_stock =
         evaluate_named_heuristic(&VERIFICATION_PROBLEM_INSTANCE, "pairwise_base_stock")
             .expect("base-stock evaluation must solve");
