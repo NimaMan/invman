@@ -299,7 +299,6 @@ pub const PRIMARY_REFERENCE_INSTANCE_NAME: &str = "dehaybe2024_lostsales_lt2_b5_
 
 pub const ROLLING_DP_DISCOUNT_FACTOR: f64 = 0.99;
 pub const ROLLING_DP_STATIONARY_TAIL_PERIODS: usize = 32;
-pub const PRIMARY_REFERENCE_REPO_DERIVED_ROLLING_DP_LEVELS: (i32, i32) = (28, 42);
 
 pub const VERIFICATION_PROBLEM_INSTANCE: VerificationProblemInstance =
     VerificationProblemInstance {

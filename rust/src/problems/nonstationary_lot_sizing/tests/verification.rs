@@ -9,10 +9,11 @@ use crate::problems::nonstationary_lot_sizing::heuristics::{
 use crate::problems::nonstationary_lot_sizing::references::{
     build_forecast_path, get_primary_reference_instance, get_reference_instance,
     list_forecast_definitions, list_reference_instances, DEHAYBE_2024_REFERENCE,
-    DRL_MMULS_SINGLE_ITEM_REFERENCE, PRIMARY_REFERENCE_REPO_DERIVED_ROLLING_DP_LEVELS,
-    ROLLING_DP_DISCOUNT_FACTOR, ROLLING_DP_STATIONARY_TAIL_PERIODS,
-    VERIFICATION_PROBLEM_INSTANCE, WORKED_EXAMPLE_REFERENCE,
+    DRL_MMULS_SINGLE_ITEM_REFERENCE, ROLLING_DP_DISCOUNT_FACTOR,
+    ROLLING_DP_STATIONARY_TAIL_PERIODS, VERIFICATION_PROBLEM_INSTANCE, WORKED_EXAMPLE_REFERENCE,
 };
+
+const PRIMARY_REFERENCE_REPO_DERIVED_ROLLING_DP_LEVELS: (i32, i32) = (28, 42);
 
 #[test]
 fn reference_set_has_expected_shape() {
