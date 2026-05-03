@@ -332,12 +332,14 @@ fn build_policy_state(
     );
     features.push(state.warehouse_inventory as f32 / scale);
     features.extend(
-        state.warehouse_pipeline
+        state
+            .warehouse_pipeline
             .iter()
             .map(|value| *value as f32 / scale),
     );
     features.extend(
-        state.retailer_inventory
+        state
+            .retailer_inventory
             .iter()
             .map(|value| *value as f32 / scale),
     );
@@ -457,7 +459,10 @@ fn evaluate_heuristic_from_state(
     retailer_base_stock_levels: &[usize],
     allocation_policy: AllocationPolicy,
     demand_scenarios: &[(Vec<usize>, f64)],
-    cache: &mut HashMap<(ExactStateKey, usize, Vec<usize>, AllocationPolicy), ExactPolicyEvaluation>,
+    cache: &mut HashMap<
+        (ExactStateKey, usize, Vec<usize>, AllocationPolicy),
+        ExactPolicyEvaluation,
+    >,
 ) -> PyResult<ExactPolicyEvaluation> {
     if state_key.period == reference.periods {
         return Ok(ExactPolicyEvaluation {
@@ -475,7 +480,11 @@ fn evaluate_heuristic_from_state(
         return Ok(cached.clone());
     }
     let state = to_state(state_key);
-    let action = heuristic_action(&state, warehouse_base_stock_level, retailer_base_stock_levels)?;
+    let action = heuristic_action(
+        &state,
+        warehouse_base_stock_level,
+        retailer_base_stock_levels,
+    )?;
     let retailer_shipments = retailer_shipments_for_action(
         &state,
         &action[1..],

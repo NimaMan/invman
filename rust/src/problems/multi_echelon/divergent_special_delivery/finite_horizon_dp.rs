@@ -9,8 +9,8 @@ use crate::core::policies::soft_tree::{
     action_vector_from_flat_params, SoftTreeActionSpec, SoftTreeLeafType, SoftTreeSplitType,
 };
 use crate::problems::multi_echelon::env::{
-    build_decision_state, parse_allocation_mode, parse_warehouse_base_stock_mode, AllocationMode,
-    MultiEchelonState, WarehouseBaseStockMode, initialize_state, step_state,
+    build_decision_state, initialize_state, parse_allocation_mode, parse_warehouse_base_stock_mode,
+    step_state, AllocationMode, MultiEchelonState, WarehouseBaseStockMode,
 };
 use crate::problems::multi_echelon::references::ExactVerificationReference;
 use crate::problems::multi_echelon::rollout::build_policy_features;
@@ -166,9 +166,7 @@ fn binomial_probability(n: usize, k: usize, p: f64) -> f64 {
     if k > n {
         return 0.0;
     }
-    let combinations = (0..k).fold(1.0, |acc, idx| {
-        acc * (n - idx) as f64 / (idx + 1) as f64
-    });
+    let combinations = (0..k).fold(1.0, |acc, idx| acc * (n - idx) as f64 / (idx + 1) as f64);
     combinations * p.powi(k as i32) * (1.0 - p).powi((n - k) as i32)
 }
 
@@ -277,7 +275,16 @@ fn evaluate_heuristic_from_state(
     allocation_mode: AllocationMode,
     warehouse_level: usize,
     retailer_level: usize,
-    cache: &mut HashMap<(ExactStateKey, ExactHeuristicKind, AllocationMode, usize, usize), ExactPolicyEvaluation>,
+    cache: &mut HashMap<
+        (
+            ExactStateKey,
+            ExactHeuristicKind,
+            AllocationMode,
+            usize,
+            usize,
+        ),
+        ExactPolicyEvaluation,
+    >,
 ) -> PyResult<ExactPolicyEvaluation> {
     if state_key.period == reference.periods {
         return Ok(ExactPolicyEvaluation {
@@ -457,7 +464,9 @@ fn evaluate_soft_tree_from_state(
     Ok(result)
 }
 
-pub fn solve_optimal_policy(reference: &ExactVerificationReference) -> PyResult<ExactPolicyEvaluation> {
+pub fn solve_optimal_policy(
+    reference: &ExactVerificationReference,
+) -> PyResult<ExactPolicyEvaluation> {
     validate_exact_reference(reference)?;
     let demand_combinations = enumerate_demand_combinations(
         reference.num_retailers,

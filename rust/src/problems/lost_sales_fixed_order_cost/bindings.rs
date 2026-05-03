@@ -3,6 +3,13 @@ use pyo3::prelude::*;
 use pyo3::types::PyDict;
 use pyo3::wrap_pyfunction;
 
+use crate::problems::lost_sales_fixed_order_cost::exact_value_iteration::{
+    evaluate_policy, solve_optimal_policy, ExactPolicyKind,
+};
+use crate::problems::lost_sales_fixed_order_cost::experiments::{
+    expand_experiment_grid, get_experiment_grid, list_experiment_grids,
+    FixedCostExperimentDemandCase, FixedCostExperimentGrid, FixedCostExperimentInstance,
+};
 use crate::problems::lost_sales_fixed_order_cost::heuristics::{
     fixed_policy_rollout_from_demands, search_modified_s_s_q_from_demands,
     search_s_nq_from_demands, search_s_s_from_demands,
@@ -10,13 +17,6 @@ use crate::problems::lost_sales_fixed_order_cost::heuristics::{
 use crate::problems::lost_sales_fixed_order_cost::literature::{
     get_reference_instance, list_reference_instances, FixedCostLostSalesReferenceInstance,
     PublishedHeuristicRow, BIJVANK_2015_REFERENCE, BIJVANK_2015_TABLE1_REFERENCE,
-};
-use crate::problems::lost_sales_fixed_order_cost::exact_value_iteration::{
-    evaluate_policy, solve_optimal_policy, ExactPolicyKind,
-};
-use crate::problems::lost_sales_fixed_order_cost::experiments::{
-    expand_experiment_grid, get_experiment_grid, list_experiment_grids,
-    FixedCostExperimentDemandCase, FixedCostExperimentGrid, FixedCostExperimentInstance,
 };
 
 fn heuristic_row_to_py(py: Python<'_>, row: &PublishedHeuristicRow) -> PyResult<PyObject> {
@@ -102,7 +102,10 @@ fn experiment_instance_to_py(
     dict.set_item("name", instance.name.as_str())?;
     dict.set_item("description", instance.description.as_str())?;
     dict.set_item("demand_case_key", instance.demand_case_key)?;
-    dict.set_item("demand_case_display_name", instance.demand_case_display_name)?;
+    dict.set_item(
+        "demand_case_display_name",
+        instance.demand_case_display_name,
+    )?;
 
     let params = PyDict::new_bound(py);
     params.set_item("problem", "lost_sales_fixed_order_cost")?;
@@ -151,7 +154,10 @@ fn experiment_instance_to_py(
     literature_metadata.set_item("benchmark_family", instance.benchmark_family)?;
     literature_metadata.set_item("parent_problem_family", instance.parent_problem_family)?;
     literature_metadata.set_item("demand_case", instance.demand_case_key)?;
-    literature_metadata.set_item("demand_case_display_name", instance.demand_case_display_name)?;
+    literature_metadata.set_item(
+        "demand_case_display_name",
+        instance.demand_case_display_name,
+    )?;
     literature_metadata.set_item("notes", instance.notes.as_str())?;
     dict.set_item("literature_metadata", literature_metadata)?;
 
@@ -233,8 +239,9 @@ fn lost_sales_fixed_order_cost_exact_literature_summary(
     reference_name: &str,
     inventory_position_cap: usize,
 ) -> PyResult<PyObject> {
-    let reference = get_reference_instance(reference_name)
-        .ok_or_else(|| PyValueError::new_err(format!("unknown fixed-cost reference '{reference_name}'")))?;
+    let reference = get_reference_instance(reference_name).ok_or_else(|| {
+        PyValueError::new_err(format!("unknown fixed-cost reference '{reference_name}'"))
+    })?;
     let published_s_s = reference
         .published_heuristic_rows
         .iter()
@@ -292,17 +299,31 @@ fn lost_sales_fixed_order_cost_exact_literature_summary(
     dict.set_item("modified_s_s_q_first_action", modified.first_action)?;
     dict.set_item(
         "published_optimal_cost",
-        reference.published_optimal_cost.expect("published optimal cost exists"),
+        reference
+            .published_optimal_cost
+            .expect("published optimal cost exists"),
     )?;
     dict.set_item("published_s_s_cost", published_s_s.mean_cost)?;
     dict.set_item("published_s_nq_cost", published_s_nq.mean_cost)?;
-    dict.set_item("published_modified_s_s_q_cost", published_modified.mean_cost)?;
+    dict.set_item(
+        "published_modified_s_s_q_cost",
+        published_modified.mean_cost,
+    )?;
     dict.set_item(
         "optimal_gap_to_published",
-        optimal.average_cost - reference.published_optimal_cost.expect("published optimal cost exists"),
+        optimal.average_cost
+            - reference
+                .published_optimal_cost
+                .expect("published optimal cost exists"),
     )?;
-    dict.set_item("s_s_gap_to_published", s_s.average_cost - published_s_s.mean_cost)?;
-    dict.set_item("s_nq_gap_to_published", s_nq.average_cost - published_s_nq.mean_cost)?;
+    dict.set_item(
+        "s_s_gap_to_published",
+        s_s.average_cost - published_s_s.mean_cost,
+    )?;
+    dict.set_item(
+        "s_nq_gap_to_published",
+        s_nq.average_cost - published_s_nq.mean_cost,
+    )?;
     dict.set_item(
         "modified_s_s_q_gap_to_published",
         modified.average_cost - published_modified.mean_cost,

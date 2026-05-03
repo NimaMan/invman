@@ -122,14 +122,21 @@ pub fn rollout(
         )?;
 
         let demands = (0..config.initial_retailer_inventory.len())
-            .map(|_| sample_categorical_demand(&mut rng, &config.demand_support, &config.demand_probabilities))
+            .map(|_| {
+                sample_categorical_demand(
+                    &mut rng,
+                    &config.demand_support,
+                    &config.demand_probabilities,
+                )
+            })
             .collect::<PyResult<Vec<_>>>()?;
         let decision_state = build_decision_state(&state)?;
         let total_unmet_demand = demands
             .iter()
             .enumerate()
             .map(|(retailer_idx, demand)| {
-                let served = (*demand).min(decision_state.retailer_available[retailer_idx].max(0) as u32);
+                let served =
+                    (*demand).min(decision_state.retailer_available[retailer_idx].max(0) as u32);
                 (*demand - served) as usize
             })
             .sum::<usize>();

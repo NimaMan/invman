@@ -210,8 +210,11 @@ pub fn build_decision_state_with_mode(
             .collect::<Vec<_>>(),
         InventoryDynamicsMode::VanRoy1997 => state.warehouse_pipeline.clone(),
     };
-    let warehouse_regular_inventory_position =
-        warehouse_available + warehouse_future.iter().map(|value| *value as i32).sum::<i32>();
+    let warehouse_regular_inventory_position = warehouse_available
+        + warehouse_future
+            .iter()
+            .map(|value| *value as i32)
+            .sum::<i32>();
 
     let mut retailer_available = Vec::with_capacity(state.retailer_inventory.len());
     let mut retailer_future = Vec::with_capacity(state.retailer_inventory.len());
@@ -259,7 +262,10 @@ pub fn build_decision_state(state: &MultiEchelonState) -> PyResult<DecisionState
     build_decision_state_with_mode(state, InventoryDynamicsMode::Gijs2022)
 }
 
-fn proportional_allocation(desired_retail_orders: &[usize], available_inventory: usize) -> Vec<usize> {
+fn proportional_allocation(
+    desired_retail_orders: &[usize],
+    available_inventory: usize,
+) -> Vec<usize> {
     let total_desired = desired_retail_orders.iter().sum::<usize>();
     if total_desired <= available_inventory {
         return desired_retail_orders.to_vec();
@@ -305,7 +311,10 @@ fn proportional_allocation(desired_retail_orders: &[usize], available_inventory:
     shipped
 }
 
-fn min_shortage_allocation(desired_retail_orders: &[usize], available_inventory: usize) -> Vec<usize> {
+fn min_shortage_allocation(
+    desired_retail_orders: &[usize],
+    available_inventory: usize,
+) -> Vec<usize> {
     let total_desired = desired_retail_orders.iter().sum::<usize>();
     if total_desired <= available_inventory {
         return desired_retail_orders.to_vec();
@@ -375,8 +384,12 @@ fn allocate_regular_shipments(
             }
             shipped
         }
-        AllocationMode::Proportional => proportional_allocation(desired_retail_orders, available_inventory),
-        AllocationMode::MinShortage => min_shortage_allocation(desired_retail_orders, available_inventory),
+        AllocationMode::Proportional => {
+            proportional_allocation(desired_retail_orders, available_inventory)
+        }
+        AllocationMode::MinShortage => {
+            min_shortage_allocation(desired_retail_orders, available_inventory)
+        }
     }
 }
 
@@ -479,13 +492,10 @@ pub fn build_order_plan_with_explicit_warehouse_order_and_mode(
         (decision_state.warehouse_available.max(0) as usize).saturating_sub(shipped_total);
     let warehouse_regular_inventory_position_after_regular =
         remaining_warehouse_inventory_after_regular as i32 + warehouse_future_total;
-    let warehouse_order = warehouse_order
-        .min(warehouse_capacity)
-        .min(
-            warehouse_inventory_cap.saturating_sub(
-                warehouse_regular_inventory_position_after_regular.max(0) as usize,
-            ),
-        );
+    let warehouse_order = warehouse_order.min(warehouse_capacity).min(
+        warehouse_inventory_cap
+            .saturating_sub(warehouse_regular_inventory_position_after_regular.max(0) as usize),
+    );
     Ok(OrderPlan {
         warehouse_target: warehouse_regular_inventory_position_after_regular.max(0) as usize
             + warehouse_order,
@@ -566,9 +576,8 @@ pub fn step_state_with_mode(
         let served = on_hand.min(realized_demands[retailer_idx]);
         let unmet = realized_demands[retailer_idx] - served;
         total_unmet_demand += unmet as usize;
-        retailer_inventory.push(
-            order_plan.decision_state.retailer_available[retailer_idx] - served as i32,
-        );
+        retailer_inventory
+            .push(order_plan.decision_state.retailer_available[retailer_idx] - served as i32);
     }
 
     let warehouse_inventory_before_emergency = match inventory_dynamics_mode {
@@ -582,11 +591,11 @@ pub fn step_state_with_mode(
         }
     };
 
-    let expedited_shipments = accepted_emergency_shipments
-        .min(warehouse_inventory_before_emergency);
+    let expedited_shipments =
+        accepted_emergency_shipments.min(warehouse_inventory_before_emergency);
     let lost_sales = total_unmet_demand.saturating_sub(expedited_shipments);
-    let mut warehouse_inventory = warehouse_inventory_before_emergency as i32
-        - expedited_shipments as i32;
+    let mut warehouse_inventory =
+        warehouse_inventory_before_emergency as i32 - expedited_shipments as i32;
     let mut warehouse_pipeline;
     let mut retailer_pipeline;
 
@@ -618,7 +627,8 @@ pub fn step_state_with_mode(
                     retailer_inventory[retailer_idx] += arriving as i32;
                     retailer_pipeline[retailer_idx].push(0);
                 } else {
-                    retailer_inventory[retailer_idx] += order_plan.shipped_retail_orders[retailer_idx] as i32;
+                    retailer_inventory[retailer_idx] +=
+                        order_plan.shipped_retail_orders[retailer_idx] as i32;
                 }
             }
         }
@@ -632,7 +642,9 @@ pub fn step_state_with_mode(
     };
     let holding_retailer_inventory = match inventory_dynamics_mode {
         InventoryDynamicsMode::Gijs2022 => retailer_inventory.as_slice(),
-        InventoryDynamicsMode::VanRoy1997 => order_plan.decision_state.retailer_available.as_slice(),
+        InventoryDynamicsMode::VanRoy1997 => {
+            order_plan.decision_state.retailer_available.as_slice()
+        }
     };
     let warehouse_holding_cost_component =
         warehouse_holding_cost * holding_warehouse_inventory.max(0) as f64;
@@ -714,9 +726,8 @@ pub fn step_state_with_explicit_warehouse_order_and_mode(
         let served = on_hand.min(realized_demands[retailer_idx]);
         let unmet = realized_demands[retailer_idx] - served;
         total_unmet_demand += unmet as usize;
-        retailer_inventory.push(
-            order_plan.decision_state.retailer_available[retailer_idx] - served as i32,
-        );
+        retailer_inventory
+            .push(order_plan.decision_state.retailer_available[retailer_idx] - served as i32);
     }
 
     let warehouse_inventory_before_emergency = match inventory_dynamics_mode {
@@ -730,11 +741,11 @@ pub fn step_state_with_explicit_warehouse_order_and_mode(
         }
     };
 
-    let expedited_shipments = accepted_emergency_shipments
-        .min(warehouse_inventory_before_emergency);
+    let expedited_shipments =
+        accepted_emergency_shipments.min(warehouse_inventory_before_emergency);
     let lost_sales = total_unmet_demand.saturating_sub(expedited_shipments);
-    let mut warehouse_inventory = warehouse_inventory_before_emergency as i32
-        - expedited_shipments as i32;
+    let mut warehouse_inventory =
+        warehouse_inventory_before_emergency as i32 - expedited_shipments as i32;
     let mut warehouse_pipeline;
     let mut retailer_pipeline;
 
@@ -779,7 +790,9 @@ pub fn step_state_with_explicit_warehouse_order_and_mode(
     };
     let holding_retailer_inventory = match inventory_dynamics_mode {
         InventoryDynamicsMode::Gijs2022 => retailer_inventory.as_slice(),
-        InventoryDynamicsMode::VanRoy1997 => order_plan.decision_state.retailer_available.as_slice(),
+        InventoryDynamicsMode::VanRoy1997 => {
+            order_plan.decision_state.retailer_available.as_slice()
+        }
     };
     let warehouse_holding_cost_component =
         warehouse_holding_cost * holding_warehouse_inventory.max(0) as f64;

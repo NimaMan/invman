@@ -58,15 +58,23 @@ fn sample_demands(
 ) -> PyResult<Vec<u32>> {
     match config.demand_distribution {
         SymmetricDemandDistribution::NormalRoundedClipped => {
-            let distribution = rand_distr::Normal::new(config.demand_mean, config.demand_std.max(1e-6))
-                .map_err(|err| PyValueError::new_err(format!("invalid normal demand parameters: {err}")))?;
+            let distribution =
+                rand_distr::Normal::new(config.demand_mean, config.demand_std.max(1e-6)).map_err(
+                    |err| PyValueError::new_err(format!("invalid normal demand parameters: {err}")),
+                )?;
             Ok((0..config.num_retailers)
-                .map(|_| rand_distr::Distribution::sample(&distribution, rng).round().max(0.0) as u32)
+                .map(|_| {
+                    rand_distr::Distribution::sample(&distribution, rng)
+                        .round()
+                        .max(0.0) as u32
+                })
                 .collect())
         }
         SymmetricDemandDistribution::Poisson => {
-            let distribution = rand_distr::Poisson::new(config.demand_mean.max(1e-9))
-                .map_err(|err| PyValueError::new_err(format!("invalid poisson demand_mean: {err}")))?;
+            let distribution =
+                rand_distr::Poisson::new(config.demand_mean.max(1e-9)).map_err(|err| {
+                    PyValueError::new_err(format!("invalid poisson demand_mean: {err}"))
+                })?;
             Ok((0..config.num_retailers)
                 .map(|_| rand_distr::Distribution::sample(&distribution, rng) as u32)
                 .collect())
@@ -114,7 +122,8 @@ fn simulate_stationary_policy_once(
             .iter()
             .enumerate()
             .map(|(retailer_idx, demand)| {
-                let served = (*demand).min(decision_state.retailer_available[retailer_idx].max(0) as u32);
+                let served =
+                    (*demand).min(decision_state.retailer_available[retailer_idx].max(0) as u32);
                 (*demand - served) as usize
             })
             .sum::<usize>();

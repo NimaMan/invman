@@ -133,9 +133,14 @@ fn allocation_and_base_stock_orders_match_named_heuristic_evaluators() {
 
     assert_eq!(action, proportional_eval.first_action);
     assert_eq!(action, min_shortage_eval.first_action);
-    assert_eq!(proportional.iter().sum::<usize>(), min_shortage.iter().sum::<usize>());
-    assert!(proportional.iter().sum::<usize>()
-        <= (state.warehouse_inventory + state.warehouse_pipeline[0] as i32).max(0) as usize);
+    assert_eq!(
+        proportional.iter().sum::<usize>(),
+        min_shortage.iter().sum::<usize>()
+    );
+    assert!(
+        proportional.iter().sum::<usize>()
+            <= (state.warehouse_inventory + state.warehouse_pipeline[0] as i32).max(0) as usize
+    );
 }
 
 #[test]

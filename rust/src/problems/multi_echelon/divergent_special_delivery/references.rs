@@ -129,13 +129,12 @@ pub const VAN_ROY_1997_REFERENCE: PublishedBenchmarkReference = PublishedBenchma
 
 pub const GIJS_SETTING_WAREHOUSE_LEVELS: &[usize] = &[50, 60, 70, 80, 90, 100];
 pub const GIJS_SETTING1_RETAILER_LEVELS: &[usize] = &[0, 5, 10, 15, 20, 25, 30, 35, 40];
-pub const GIJS_SETTING2_RETAILER_LEVELS: &[usize] =
-    &[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
+pub const GIJS_SETTING2_RETAILER_LEVELS: &[usize] = &[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
 pub const VAN_ROY_SIMPLE_ORDER_LEVELS: &[usize] = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 pub const VAN_ROY_SIMPLE_RETAILER_LEVELS: &[usize] = &[
-    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
-    25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47,
-    48, 49, 50,
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
+    26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49,
+    50,
 ];
 pub const VAN_ROY_SIMPLE_LEVELS: &[usize] = &[10, 16];
 pub const VAN_ROY_CASE_STUDY_LEVELS: &[usize] = &[330, 23];
@@ -274,8 +273,7 @@ pub const VAN_ROY_1997_CASE_STUDY1: MultiEchelonReferenceInstance =
     LITERATURE_REFERENCE_INSTANCES[1];
 pub const VAN_ROY_1997_CASE_STUDY2: MultiEchelonReferenceInstance =
     LITERATURE_REFERENCE_INSTANCES[2];
-pub const VAN_ROY_1997_CASE_STUDY: MultiEchelonReferenceInstance =
-    VAN_ROY_1997_CASE_STUDY1;
+pub const VAN_ROY_1997_CASE_STUDY: MultiEchelonReferenceInstance = VAN_ROY_1997_CASE_STUDY1;
 
 pub const EXACT_WAREHOUSE_LEVELS: &[usize] = &[0, 1, 2, 3, 4, 5, 6, 7, 8];
 pub const EXACT_RETAILER_LEVELS: &[usize] = &[0, 1, 2, 3, 4];

@@ -100,7 +100,8 @@ fn validate_config(
             config.action_spec.action_dim, expected_action_dim, config.policy_action_mode
         )));
     }
-    if config.policy_action_mode == PolicyActionMode::SymmetricEchelonTargets && num_retailers == 0 {
+    if config.policy_action_mode == PolicyActionMode::SymmetricEchelonTargets && num_retailers == 0
+    {
         return Err(PyValueError::new_err(
             "symmetric_echelon_targets requires at least one retailer",
         ));
@@ -218,9 +219,7 @@ pub fn policy_action_from_tree(
     match config.policy_action_mode {
         PolicyActionMode::DirectOrders => Ok(PolicyAction {
             orders: actions,
-            retailer_target_inventory_positions: config
-                .retailer_target_inventory_positions
-                .clone(),
+            retailer_target_inventory_positions: config.retailer_target_inventory_positions.clone(),
         }),
         PolicyActionMode::EchelonTargets => {
             if actions.len() < 2 {
@@ -260,13 +259,11 @@ fn retailer_shipments<R: Rng + ?Sized>(
         AllocationPolicy::Proportional => {
             proportional_shipments(available_warehouse_inventory, &policy_action.orders[1..])
         }
-        AllocationPolicy::RandomSequential => {
-            random_sequential_shipments(
-                rng,
-                available_warehouse_inventory,
-                &policy_action.orders[1..],
-            )
-        }
+        AllocationPolicy::RandomSequential => random_sequential_shipments(
+            rng,
+            available_warehouse_inventory,
+            &policy_action.orders[1..],
+        ),
         AllocationPolicy::MinShortage => min_shortage_shipments(
             available_warehouse_inventory,
             &policy_action.orders[1..],

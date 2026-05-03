@@ -80,7 +80,9 @@ pub struct MultiEchelonRolloutConfig {
 
 pub fn parse_demand_distribution(value: &str) -> PyResult<SymmetricDemandDistribution> {
     match value {
-        "normal" | "normal_rounded_clipped" => Ok(SymmetricDemandDistribution::NormalRoundedClipped),
+        "normal" | "normal_rounded_clipped" => {
+            Ok(SymmetricDemandDistribution::NormalRoundedClipped)
+        }
         "poisson" => Ok(SymmetricDemandDistribution::Poisson),
         other => Err(PyValueError::new_err(format!(
             "unsupported demand_distribution '{other}'"
@@ -90,7 +92,9 @@ pub fn parse_demand_distribution(value: &str) -> PyResult<SymmetricDemandDistrib
 
 pub fn parse_rollout_objective(value: &str) -> PyResult<RolloutObjective> {
     match value {
-        "average_cost_after_warmup" | "average_cost" => Ok(RolloutObjective::AverageCostAfterWarmup),
+        "average_cost_after_warmup" | "average_cost" => {
+            Ok(RolloutObjective::AverageCostAfterWarmup)
+        }
         "cumulative_cost" | "total_cost" => Ok(RolloutObjective::CumulativeCost),
         "discounted_cost" => Ok(RolloutObjective::DiscountedCost),
         other => Err(PyValueError::new_err(format!(
@@ -148,7 +152,11 @@ fn build_full_decision_state_features(
             .map(|value| *value as f32 / retailer_scale),
     );
     for retailer_future in &decision_state.retailer_future {
-        features.extend(retailer_future.iter().map(|value| *value as f32 / retailer_scale));
+        features.extend(
+            retailer_future
+                .iter()
+                .map(|value| *value as f32 / retailer_scale),
+        );
     }
     Ok(features)
 }
@@ -246,7 +254,11 @@ fn padded_stage_sum(rows: &[Vec<u32>], stage_idx: usize) -> f32 {
         .sum::<f32>()
 }
 
-fn retailer_stage_inventory(retailer_idx: usize, decision_state: &crate::problems::multi_echelon::env::DecisionState, future_horizon: usize) -> f32 {
+fn retailer_stage_inventory(
+    retailer_idx: usize,
+    decision_state: &crate::problems::multi_echelon::env::DecisionState,
+    future_horizon: usize,
+) -> f32 {
     decision_state.retailer_available[retailer_idx] as f32
         + (0..future_horizon)
             .map(|stage_idx| {
@@ -283,9 +295,13 @@ fn build_compact_summary_features(
     let warehouse_scale = warehouse_inventory_cap.max(1) as f32;
     let store_total_scale =
         (decision_state.retailer_available.len() * retailer_inventory_cap.max(1)).max(1) as f32;
-    let retailer_position_scale =
-        (retailer_inventory_cap.max(1) * (1 + decision_state.retailer_future.first().map(|row| row.len()).unwrap_or(0)))
-            .max(1) as f32;
+    let retailer_position_scale = (retailer_inventory_cap.max(1)
+        * (1 + decision_state
+            .retailer_future
+            .first()
+            .map(|row| row.len())
+            .unwrap_or(0)))
+    .max(1) as f32;
 
     let store_on_hand = decision_state
         .retailer_available
@@ -308,13 +324,19 @@ fn build_compact_summary_features(
     let f7 = warehouse_arrive_3 / warehouse_scale;
 
     let retailer_stage_0 = (0..decision_state.retailer_available.len())
-        .map(|retailer_idx| retailer_stage_inventory(retailer_idx, &decision_state, 0) / retailer_position_scale)
+        .map(|retailer_idx| {
+            retailer_stage_inventory(retailer_idx, &decision_state, 0) / retailer_position_scale
+        })
         .collect::<Vec<_>>();
     let retailer_stage_1 = (0..decision_state.retailer_available.len())
-        .map(|retailer_idx| retailer_stage_inventory(retailer_idx, &decision_state, 1) / retailer_position_scale)
+        .map(|retailer_idx| {
+            retailer_stage_inventory(retailer_idx, &decision_state, 1) / retailer_position_scale
+        })
         .collect::<Vec<_>>();
     let retailer_stage_2 = (0..decision_state.retailer_available.len())
-        .map(|retailer_idx| retailer_stage_inventory(retailer_idx, &decision_state, 2) / retailer_position_scale)
+        .map(|retailer_idx| {
+            retailer_stage_inventory(retailer_idx, &decision_state, 2) / retailer_position_scale
+        })
         .collect::<Vec<_>>();
 
     Ok(vec![
@@ -371,30 +393,24 @@ pub fn build_policy_features_with_mode(
     inventory_dynamics_mode: InventoryDynamicsMode,
 ) -> PyResult<Vec<f32>> {
     let mut features = match policy_feature_mode {
-        PolicyFeatureMode::FullDecisionState => {
-            build_full_decision_state_features(
-                state,
-                warehouse_inventory_cap,
-                retailer_inventory_cap,
-                inventory_dynamics_mode,
-            )?
-        }
-        PolicyFeatureMode::SymmetricSummary => {
-            build_symmetric_summary_features(
-                state,
-                warehouse_inventory_cap,
-                retailer_inventory_cap,
-                inventory_dynamics_mode,
-            )?
-        }
-        PolicyFeatureMode::CompactSummary => {
-            build_compact_summary_features(
-                state,
-                warehouse_inventory_cap,
-                retailer_inventory_cap,
-                inventory_dynamics_mode,
-            )?
-        }
+        PolicyFeatureMode::FullDecisionState => build_full_decision_state_features(
+            state,
+            warehouse_inventory_cap,
+            retailer_inventory_cap,
+            inventory_dynamics_mode,
+        )?,
+        PolicyFeatureMode::SymmetricSummary => build_symmetric_summary_features(
+            state,
+            warehouse_inventory_cap,
+            retailer_inventory_cap,
+            inventory_dynamics_mode,
+        )?,
+        PolicyFeatureMode::CompactSummary => build_compact_summary_features(
+            state,
+            warehouse_inventory_cap,
+            retailer_inventory_cap,
+            inventory_dynamics_mode,
+        )?,
     };
     if include_period_feature {
         features.push(state.period as f32 / horizon.max(1) as f32);
@@ -402,21 +418,21 @@ pub fn build_policy_features_with_mode(
     Ok(features)
 }
 
-fn sample_demands(
-    rng: &mut StdRng,
-    config: &MultiEchelonRolloutConfig,
-) -> PyResult<Vec<u32>> {
+fn sample_demands(rng: &mut StdRng, config: &MultiEchelonRolloutConfig) -> PyResult<Vec<u32>> {
     match config.demand_distribution {
         SymmetricDemandDistribution::NormalRoundedClipped => {
             let distribution = Normal::new(config.demand_mean, config.demand_std.max(1e-6))
-                .map_err(|err| PyValueError::new_err(format!("invalid normal demand parameters: {err}")))?;
+                .map_err(|err| {
+                    PyValueError::new_err(format!("invalid normal demand parameters: {err}"))
+                })?;
             Ok((0..config.num_retailers)
                 .map(|_| distribution.sample(rng).round().max(0.0) as u32)
                 .collect())
         }
         SymmetricDemandDistribution::Poisson => {
-            let distribution = Poisson::new(config.demand_mean.max(1e-9))
-                .map_err(|err| PyValueError::new_err(format!("invalid poisson demand_mean: {err}")))?;
+            let distribution = Poisson::new(config.demand_mean.max(1e-9)).map_err(|err| {
+                PyValueError::new_err(format!("invalid poisson demand_mean: {err}"))
+            })?;
             Ok((0..config.num_retailers)
                 .map(|_| distribution.sample(rng) as u32)
                 .collect())
@@ -434,11 +450,17 @@ fn sample_accepted_emergency_shipments(
         .count()
 }
 
-pub fn rollout_metric(period_costs: &[f64], warm_up_periods_ratio: f64, discount_factor: f64, objective: RolloutObjective) -> f64 {
+pub fn rollout_metric(
+    period_costs: &[f64],
+    warm_up_periods_ratio: f64,
+    discount_factor: f64,
+    objective: RolloutObjective,
+) -> f64 {
     match objective {
         RolloutObjective::AverageCostAfterWarmup => {
             let horizon = period_costs.len();
-            let warm_up_periods = ((warm_up_periods_ratio * horizon as f64).floor() as usize).min(horizon);
+            let warm_up_periods =
+                ((warm_up_periods_ratio * horizon as f64).floor() as usize).min(horizon);
             let active_costs = if warm_up_periods < period_costs.len() {
                 &period_costs[warm_up_periods..]
             } else {
@@ -513,15 +535,17 @@ pub fn rollout(
                 PolicyActionMode::DirectWarehouseOrderStoreTarget => {
                     (0usize, action[1], Some(action[0]))
                 }
-        };
+            };
 
         let demands = sample_demands(&mut rng, config)?;
-        let decision_state = build_decision_state_with_mode(&state, config.inventory_dynamics_mode)?;
+        let decision_state =
+            build_decision_state_with_mode(&state, config.inventory_dynamics_mode)?;
         let total_unmet_demand = demands
             .iter()
             .enumerate()
             .map(|(retailer_idx, demand)| {
-                let served = (*demand).min(decision_state.retailer_available[retailer_idx].max(0) as u32);
+                let served =
+                    (*demand).min(decision_state.retailer_available[retailer_idx].max(0) as u32);
                 (*demand - served) as usize
             })
             .sum::<usize>();

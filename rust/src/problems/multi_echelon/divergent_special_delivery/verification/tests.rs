@@ -9,17 +9,22 @@ fn gijs_relative_reference_rows_are_present_and_frozen() {
     assert_eq!(references.len(), 2);
     assert_eq!(references[0].name, "gijsbrechts2022_setting1");
     assert_eq!(references[1].name, "gijsbrechts2022_setting2");
-    assert_eq!(references[0].published_constant_base_stock_levels, &[330, 23]);
-    assert_eq!(references[1].published_constant_base_stock_levels, &[460, 22]);
+    assert_eq!(
+        references[0].published_constant_base_stock_levels,
+        &[330, 23]
+    );
+    assert_eq!(
+        references[1].published_constant_base_stock_levels,
+        &[460, 22]
+    );
     assert_eq!(references[0].published_a3c_savings_pct, Some(8.95));
     assert_eq!(references[1].published_a3c_savings_pct, Some(12.09));
 }
 
 #[test]
 fn gijs_relative_verification_summary_computes_carried_implied_costs() {
-    let summary =
-        gijs_relative_verification_summary(2, DEFAULT_GIJS_RELATIVE_VERIFICATION_SEED)
-            .expect("summary must build");
+    let summary = gijs_relative_verification_summary(2, DEFAULT_GIJS_RELATIVE_VERIFICATION_SEED)
+        .expect("summary must build");
 
     assert_eq!(summary.rows.len(), 2);
     assert_eq!(summary.source.contains("Gijsbrechts"), true);
@@ -31,9 +36,8 @@ fn gijs_relative_verification_summary_computes_carried_implied_costs() {
 
 #[test]
 fn gijs_relative_verification_summary_is_honest_about_current_status() {
-    let summary =
-        gijs_relative_verification_summary(2, DEFAULT_GIJS_RELATIVE_VERIFICATION_SEED)
-            .expect("summary must build");
+    let summary = gijs_relative_verification_summary(2, DEFAULT_GIJS_RELATIVE_VERIFICATION_SEED)
+        .expect("summary must build");
 
     assert!(summary
         .rows

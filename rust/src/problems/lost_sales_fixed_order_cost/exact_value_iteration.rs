@@ -72,10 +72,11 @@ fn validate_reference(reference: &FixedCostLostSalesReferenceInstance) -> PyResu
     if reference.lead_time == 0 {
         return Err(PyValueError::new_err("lead_time must be at least 1"));
     }
-    if reference.holding_cost < 0.0 || reference.shortage_cost < 0.0 || reference.fixed_order_cost < 0.0 {
-        return Err(PyValueError::new_err(
-            "cost parameters must be nonnegative",
-        ));
+    if reference.holding_cost < 0.0
+        || reference.shortage_cost < 0.0
+        || reference.fixed_order_cost < 0.0
+    {
+        return Err(PyValueError::new_err("cost parameters must be nonnegative"));
     }
     build_demand_model(reference).map(|_| ())
 }
@@ -88,8 +89,7 @@ fn expected_period_cost(
 ) -> f64 {
     let overage = (0..on_hand_inventory)
         .map(|demand_value| {
-            (on_hand_inventory - demand_value) as f64
-                * demand.distribution.pmf(demand_value as u64)
+            (on_hand_inventory - demand_value) as f64 * demand.distribution.pmf(demand_value as u64)
         })
         .sum::<f64>();
     let underage = demand.mean - on_hand_inventory as f64 + overage;
@@ -114,7 +114,12 @@ fn enumerate_exact_compositions(
     }
     for value in 0..=total_remaining {
         current.push(value);
-        enumerate_exact_compositions(slots_remaining - 1, total_remaining - value, current, output);
+        enumerate_exact_compositions(
+            slots_remaining - 1,
+            total_remaining - value,
+            current,
+            output,
+        );
         current.pop();
     }
 }
@@ -222,7 +227,9 @@ fn evaluate_action(
     let tail_probability = if state.on_hand_inventory == 0 {
         1.0
     } else {
-        1.0 - demand.distribution.cdf((state.on_hand_inventory - 1) as u64)
+        1.0 - demand
+            .distribution
+            .cdf((state.on_hand_inventory - 1) as u64)
     };
     if tail_probability > 0.0 {
         let successor = next_state(
@@ -311,9 +318,12 @@ fn solve_bounded_average_cost_policy(
                 on_hand_inventory: 0,
                 outstanding_orders: vec![0usize; reference.lead_time.saturating_sub(1)],
             };
-            let initial_idx = *state_space.index_by_state.get(&initial_state).ok_or_else(|| {
-                PyValueError::new_err("initial state missing from bounded state space")
-            })?;
+            let initial_idx = *state_space
+                .index_by_state
+                .get(&initial_state)
+                .ok_or_else(|| {
+                    PyValueError::new_err("initial state missing from bounded state space")
+                })?;
             return Ok((
                 ExactPolicyEvaluation {
                     average_cost: average_cost_for_values(&previous_values, &values),
@@ -422,8 +432,7 @@ pub fn evaluate_policy(
         let mut max_delta = -f64::INFINITY;
         for (state_idx, state) in state_space.states.iter().enumerate() {
             let action = greedy_action(state, inventory_position_cap, policy)?;
-            let value =
-                evaluate_action(state, action, &values, &state_space, reference, &demand)?;
+            let value = evaluate_action(state, action, &values, &state_space, reference, &demand)?;
             policy_actions[state_idx] = action;
             next_values[state_idx] = value;
             let delta = next_values[state_idx] - values[state_idx];

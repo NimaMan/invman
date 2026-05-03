@@ -1,10 +1,10 @@
 #![allow(dead_code)]
 
-use crate::problems::core::flownet::{FlowNetInstance, FlowNetParameter};
 use crate::case_studies::hormuz_strait::flownet::formulation::HORMUZ_STRAIT_FLOWNET_NAME;
 use crate::case_studies::hormuz_strait::references::{
     top_destination_2024, top_origin_2024, HormuzScenarioReference, HORMUZ_FULL_CLOSURE_SCENARIO,
 };
+use crate::problems::core::flownet::{FlowNetInstance, FlowNetParameter};
 
 pub fn instance_from_reference(reference: &HormuzScenarioReference) -> FlowNetInstance {
     FlowNetInstance {

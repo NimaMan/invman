@@ -1,21 +1,19 @@
 use std::collections::HashMap;
 
 use crate::problems::multi_echelon::env::{
-    build_decision_state, build_order_plan_with_mode, build_raw_state, initialize_state, parse_allocation_mode,
-    parse_warehouse_base_stock_mode, step_state, AllocationMode, InventoryDynamicsMode,
-    MultiEchelonState, WarehouseBaseStockMode,
+    build_decision_state, build_order_plan_with_mode, build_raw_state, initialize_state,
+    parse_allocation_mode, parse_warehouse_base_stock_mode, step_state, AllocationMode,
+    InventoryDynamicsMode, MultiEchelonState, WarehouseBaseStockMode,
 };
 use crate::problems::multi_echelon::finite_horizon_dp::{
     evaluate_stationary_policy, search_best_stationary_policy, solve_optimal_policy,
     ExactHeuristicKind, ExactPolicyEvaluation,
 };
-use crate::problems::multi_echelon::rollout::{
-    build_policy_features_with_mode, PolicyFeatureMode,
-};
 use crate::problems::multi_echelon::references::{
     GIJSBRECHTS_2022_REFERENCE, LITERATURE_REFERENCE_INSTANCES, PRIMARY_REFERENCE_INSTANCE,
     VAN_ROY_1997_CASE_STUDY, VERIFICATION_PROBLEM_INSTANCE, WORKED_TRANSITION_REFERENCE,
 };
+use crate::problems::multi_echelon::rollout::{build_policy_features_with_mode, PolicyFeatureMode};
 
 fn nested_pipeline_vec(pipelines: &[&[u32]]) -> Vec<Vec<u32>> {
     pipelines.iter().map(|pipeline| pipeline.to_vec()).collect()
@@ -88,17 +86,13 @@ fn binomial_probability(trials: usize, successes: usize, success_probability: f6
         * (1.0 - success_probability).powi((trials - successes) as i32)
 }
 
-fn total_unmet_without_emergency(
-    state: &MultiEchelonState,
-    realized_demands: &[u32],
-) -> usize {
+fn total_unmet_without_emergency(state: &MultiEchelonState, realized_demands: &[u32]) -> usize {
     let decision_state = build_decision_state(state).expect("decision state must build");
     realized_demands
         .iter()
         .enumerate()
         .map(|(retailer_idx, demand)| {
-            demand
-                .saturating_sub(decision_state.retailer_available[retailer_idx].max(0) as u32)
+            demand.saturating_sub(decision_state.retailer_available[retailer_idx].max(0) as u32)
                 as usize
         })
         .sum()
@@ -190,10 +184,9 @@ fn independent_optimal_policy(
         result
     }
 
-    let warehouse_base_stock_mode = parse_warehouse_base_stock_mode(
-        reference.warehouse_base_stock_mode,
-    )
-    .expect("warehouse mode must parse");
+    let warehouse_base_stock_mode =
+        parse_warehouse_base_stock_mode(reference.warehouse_base_stock_mode)
+            .expect("warehouse mode must parse");
     let allocation_mode =
         parse_allocation_mode(reference.allocation_mode).expect("allocation mode must parse");
     let demand_combinations = enumerate_demand_combinations(
@@ -236,7 +229,9 @@ fn brute_force_best_stationary_policy(
             )
             .expect("stationary policy must evaluate");
             let should_replace = match best.as_ref() {
-                Some((_, _, current)) => evaluation.discounted_cost < current.discounted_cost - 1e-12,
+                Some((_, _, current)) => {
+                    evaluation.discounted_cost < current.discounted_cost - 1e-12
+                }
                 None => true,
             };
             if should_replace {
@@ -252,7 +247,10 @@ fn reference_catalog_matches_gijs_and_van_roy() {
     assert_eq!(GIJSBRECHTS_2022_REFERENCE.benchmark_policies.len(), 3);
     assert_eq!(LITERATURE_REFERENCE_INSTANCES.len(), 3);
     assert_eq!(PRIMARY_REFERENCE_INSTANCE.name, "gijsbrechts2022_setting2");
-    assert_eq!(LITERATURE_REFERENCE_INSTANCES[0].name, "van_roy1997_simple_problem");
+    assert_eq!(
+        LITERATURE_REFERENCE_INSTANCES[0].name,
+        "van_roy1997_simple_problem"
+    );
     assert_eq!(
         LITERATURE_REFERENCE_INSTANCES[0].published_constant_base_stock_mean_cost,
         Some(51.7)
@@ -290,8 +288,8 @@ fn reference_catalog_matches_gijs_and_van_roy() {
 
 #[test]
 fn proportional_allocation_exhausts_available_inventory() {
-    let state = initialize_state(5, &[], &[0, 0, 4], &[vec![], vec![], vec![]])
-        .expect("state must build");
+    let state =
+        initialize_state(5, &[], &[0, 0, 4], &[vec![], vec![], vec![]]).expect("state must build");
     let plan = build_order_plan_with_mode(
         &state,
         0,
@@ -372,7 +370,10 @@ fn worked_transition_matches_expected_accounting() {
     )
     .expect("step must succeed");
 
-    assert_eq!(outcome.order_plan.warehouse_order, worked.expected_warehouse_order);
+    assert_eq!(
+        outcome.order_plan.warehouse_order,
+        worked.expected_warehouse_order
+    );
     assert_eq!(
         outcome.order_plan.shipped_retail_orders,
         worked.expected_shipped_retail_orders.to_vec()
@@ -438,29 +439,41 @@ fn exact_dp_and_heuristics_match_generated_oracles() {
     assert!((optimal.discounted_cost - independent_optimal.discounted_cost).abs() < 1e-12);
     assert_eq!(optimal.first_action, independent_optimal.first_action);
 
-    assert_eq!([sequential.0, sequential.1], [brute_force_sequential.0, brute_force_sequential.1]);
-    assert!((sequential.2.discounted_cost - brute_force_sequential.2.discounted_cost).abs() < 1e-12);
-    assert_eq!(sequential.2.first_action, brute_force_sequential.2.first_action);
+    assert_eq!(
+        [sequential.0, sequential.1],
+        [brute_force_sequential.0, brute_force_sequential.1]
+    );
+    assert!(
+        (sequential.2.discounted_cost - brute_force_sequential.2.discounted_cost).abs() < 1e-12
+    );
+    assert_eq!(
+        sequential.2.first_action,
+        brute_force_sequential.2.first_action
+    );
 
     assert_eq!(
         [proportional.0, proportional.1],
         [brute_force_proportional.0, brute_force_proportional.1]
     );
     assert!(
-        (proportional.2.discounted_cost - brute_force_proportional.2.discounted_cost).abs()
-            < 1e-12
+        (proportional.2.discounted_cost - brute_force_proportional.2.discounted_cost).abs() < 1e-12
     );
-    assert_eq!(proportional.2.first_action, brute_force_proportional.2.first_action);
+    assert_eq!(
+        proportional.2.first_action,
+        brute_force_proportional.2.first_action
+    );
 
     assert_eq!(
         [min_shortage.0, min_shortage.1],
         [brute_force_min_shortage.0, brute_force_min_shortage.1]
     );
     assert!(
-        (min_shortage.2.discounted_cost - brute_force_min_shortage.2.discounted_cost).abs()
-            < 1e-12
+        (min_shortage.2.discounted_cost - brute_force_min_shortage.2.discounted_cost).abs() < 1e-12
     );
-    assert_eq!(min_shortage.2.first_action, brute_force_min_shortage.2.first_action);
+    assert_eq!(
+        min_shortage.2.first_action,
+        brute_force_min_shortage.2.first_action
+    );
     assert!(optimal.discounted_cost <= proportional.2.discounted_cost + 1e-12);
     assert!(optimal.discounted_cost <= sequential.2.discounted_cost + 1e-12);
     assert!(optimal.discounted_cost <= min_shortage.2.discounted_cost + 1e-12);

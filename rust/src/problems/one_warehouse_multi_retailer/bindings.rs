@@ -10,12 +10,12 @@ use crate::problems::one_warehouse_multi_retailer::demand::{
 use crate::problems::one_warehouse_multi_retailer::env::{
     build_raw_state, parse_customer_behavior_model, OneWarehouseMultiRetailerState,
 };
-use crate::problems::one_warehouse_multi_retailer::heuristics::{
-    echelon_base_stock_orders, policy_rollout_from_paths, simulate_policy,
-};
 use crate::problems::one_warehouse_multi_retailer::finite_horizon_dp::{
     evaluate_echelon_base_stock_policy, evaluate_named_heuristic, evaluate_soft_tree_policy,
     solve_optimal_policy, ExactSoftTreeConfig,
+};
+use crate::problems::one_warehouse_multi_retailer::heuristics::{
+    echelon_base_stock_orders, policy_rollout_from_paths, simulate_policy,
 };
 use crate::problems::one_warehouse_multi_retailer::references::{
     ExactVerificationReference, OneWarehouseMultiRetailerReferenceInstance,
@@ -27,7 +27,9 @@ use crate::problems::one_warehouse_multi_retailer::rollout::{
     OneWarehouseMultiRetailerRolloutConfig,
 };
 
-fn allocation_policy_to_str(policy: crate::problems::one_warehouse_multi_retailer::allocation::AllocationPolicy) -> &'static str {
+fn allocation_policy_to_str(
+    policy: crate::problems::one_warehouse_multi_retailer::allocation::AllocationPolicy,
+) -> &'static str {
     match policy {
         crate::problems::one_warehouse_multi_retailer::allocation::AllocationPolicy::Proportional => "proportional",
         crate::problems::one_warehouse_multi_retailer::allocation::AllocationPolicy::RandomSequential => "random_sequential",
@@ -35,7 +37,9 @@ fn allocation_policy_to_str(policy: crate::problems::one_warehouse_multi_retaile
     }
 }
 
-fn customer_behavior_to_str(model: crate::problems::one_warehouse_multi_retailer::env::CustomerBehaviorModel) -> &'static str {
+fn customer_behavior_to_str(
+    model: crate::problems::one_warehouse_multi_retailer::env::CustomerBehaviorModel,
+) -> &'static str {
     match model {
         crate::problems::one_warehouse_multi_retailer::env::CustomerBehaviorModel::LostSales => "lost_sales",
         crate::problems::one_warehouse_multi_retailer::env::CustomerBehaviorModel::Backorder => "backorder",
@@ -76,7 +80,10 @@ fn build_demand_models(
         .collect()
 }
 
-fn benchmark_reference_to_py(py: Python<'_>, reference: &PublishedBenchmarkReference) -> PyResult<PyObject> {
+fn benchmark_reference_to_py(
+    py: Python<'_>,
+    reference: &PublishedBenchmarkReference,
+) -> PyResult<PyObject> {
     let dict = PyDict::new_bound(py);
     dict.set_item("source", reference.source)?;
     dict.set_item("url", reference.url)?;
@@ -96,9 +103,15 @@ fn reference_instance_to_py(
     dict.set_item("literature_verified", reference.literature_verified)?;
     dict.set_item("benchmark_periods", reference.benchmark_periods)?;
     dict.set_item("benchmark_replications", reference.benchmark_replications)?;
-    dict.set_item("customer_behavior", customer_behavior_to_str(reference.customer_behavior))?;
+    dict.set_item(
+        "customer_behavior",
+        customer_behavior_to_str(reference.customer_behavior),
+    )?;
     dict.set_item("warehouse_lead_time", reference.warehouse_lead_time)?;
-    dict.set_item("retailer_lead_times", reference.retailer_lead_times.to_vec())?;
+    dict.set_item(
+        "retailer_lead_times",
+        reference.retailer_lead_times.to_vec(),
+    )?;
     dict.set_item(
         "demand_kinds",
         reference
@@ -109,11 +122,19 @@ fn reference_instance_to_py(
     )?;
     dict.set_item(
         "demand_param1",
-        reference.demand_models.iter().map(|model| model.param1).collect::<Vec<_>>(),
+        reference
+            .demand_models
+            .iter()
+            .map(|model| model.param1)
+            .collect::<Vec<_>>(),
     )?;
     dict.set_item(
         "demand_param2",
-        reference.demand_models.iter().map(|model| model.param2).collect::<Vec<_>>(),
+        reference
+            .demand_models
+            .iter()
+            .map(|model| model.param2)
+            .collect::<Vec<_>>(),
     )?;
     dict.set_item("holding_cost_warehouse", reference.holding_cost_warehouse)?;
     dict.set_item(
@@ -131,7 +152,10 @@ fn reference_instance_to_py(
     if let Some(row) = reference.published_min_shortage_benchmark {
         let row_dict = PyDict::new_bound(py);
         row_dict.set_item("policy_name", row.policy_name)?;
-        row_dict.set_item("allocation_policy", row.allocation_policy.map(allocation_policy_to_str))?;
+        row_dict.set_item(
+            "allocation_policy",
+            row.allocation_policy.map(allocation_policy_to_str),
+        )?;
         row_dict.set_item("mean_cost", row.mean_cost)?;
         row_dict.set_item("standard_error", row.standard_error)?;
         row_dict.set_item("relative_gap_percent", row.relative_gap_percent)?;
@@ -142,7 +166,10 @@ fn reference_instance_to_py(
     if let Some(row) = reference.published_proportional_benchmark {
         let row_dict = PyDict::new_bound(py);
         row_dict.set_item("policy_name", row.policy_name)?;
-        row_dict.set_item("allocation_policy", row.allocation_policy.map(allocation_policy_to_str))?;
+        row_dict.set_item(
+            "allocation_policy",
+            row.allocation_policy.map(allocation_policy_to_str),
+        )?;
         row_dict.set_item("mean_cost", row.mean_cost)?;
         row_dict.set_item("standard_error", row.standard_error)?;
         row_dict.set_item("relative_gap_percent", row.relative_gap_percent)?;
@@ -153,7 +180,10 @@ fn reference_instance_to_py(
     if let Some(row) = reference.published_ppo_benchmark {
         let row_dict = PyDict::new_bound(py);
         row_dict.set_item("policy_name", row.policy_name)?;
-        row_dict.set_item("allocation_policy", row.allocation_policy.map(allocation_policy_to_str))?;
+        row_dict.set_item(
+            "allocation_policy",
+            row.allocation_policy.map(allocation_policy_to_str),
+        )?;
         row_dict.set_item("mean_cost", row.mean_cost)?;
         row_dict.set_item("standard_error", row.standard_error)?;
         row_dict.set_item("relative_gap_percent", row.relative_gap_percent)?;
@@ -165,34 +195,85 @@ fn reference_instance_to_py(
     Ok(dict.into_any().unbind().into())
 }
 
-fn exact_reference_to_py(py: Python<'_>, reference: &ExactVerificationReference) -> PyResult<PyObject> {
+fn exact_reference_to_py(
+    py: Python<'_>,
+    reference: &ExactVerificationReference,
+) -> PyResult<PyObject> {
     let dict = PyDict::new_bound(py);
     dict.set_item("source", reference.source)?;
     dict.set_item("url", reference.url)?;
     dict.set_item("literature_verified", reference.literature_verified)?;
-    dict.set_item("customer_behavior", customer_behavior_to_str(reference.customer_behavior))?;
+    dict.set_item(
+        "customer_behavior",
+        customer_behavior_to_str(reference.customer_behavior),
+    )?;
     dict.set_item("periods", reference.periods)?;
     dict.set_item("discount_factor", reference.discount_factor)?;
     dict.set_item("warehouse_lead_time", reference.warehouse_lead_time)?;
-    dict.set_item("retailer_lead_times", reference.retailer_lead_times.to_vec())?;
-    dict.set_item("initial_warehouse_inventory", reference.initial_warehouse_inventory)?;
-    dict.set_item("initial_warehouse_pipeline", reference.initial_warehouse_pipeline.to_vec())?;
-    dict.set_item("initial_retailer_inventory", reference.initial_retailer_inventory.to_vec())?;
+    dict.set_item(
+        "retailer_lead_times",
+        reference.retailer_lead_times.to_vec(),
+    )?;
+    dict.set_item(
+        "initial_warehouse_inventory",
+        reference.initial_warehouse_inventory,
+    )?;
+    dict.set_item(
+        "initial_warehouse_pipeline",
+        reference.initial_warehouse_pipeline.to_vec(),
+    )?;
+    dict.set_item(
+        "initial_retailer_inventory",
+        reference.initial_retailer_inventory.to_vec(),
+    )?;
     dict.set_item(
         "initial_retailer_pipeline",
-        reference.initial_retailer_pipeline.iter().map(|row| row.to_vec()).collect::<Vec<_>>(),
+        reference
+            .initial_retailer_pipeline
+            .iter()
+            .map(|row| row.to_vec())
+            .collect::<Vec<_>>(),
     )?;
     dict.set_item("holding_cost_warehouse", reference.holding_cost_warehouse)?;
-    dict.set_item("holding_cost_retailers", reference.holding_cost_retailers.to_vec())?;
-    dict.set_item("penalty_costs_retailers", reference.penalty_costs_retailers.to_vec())?;
-    dict.set_item("emergency_shipment_probability", reference.emergency_shipment_probability)?;
-    dict.set_item("optimal_allocation_policy", allocation_policy_to_str(reference.optimal_allocation_policy))?;
-    dict.set_item("heuristic_warehouse_base_stock_level", reference.heuristic_warehouse_base_stock_level)?;
-    dict.set_item("heuristic_retailer_base_stock_levels", reference.heuristic_retailer_base_stock_levels.to_vec())?;
-    dict.set_item("demand_supports", reference.demand_supports.iter().map(|row| row.to_vec()).collect::<Vec<_>>())?;
+    dict.set_item(
+        "holding_cost_retailers",
+        reference.holding_cost_retailers.to_vec(),
+    )?;
+    dict.set_item(
+        "penalty_costs_retailers",
+        reference.penalty_costs_retailers.to_vec(),
+    )?;
+    dict.set_item(
+        "emergency_shipment_probability",
+        reference.emergency_shipment_probability,
+    )?;
+    dict.set_item(
+        "optimal_allocation_policy",
+        allocation_policy_to_str(reference.optimal_allocation_policy),
+    )?;
+    dict.set_item(
+        "heuristic_warehouse_base_stock_level",
+        reference.heuristic_warehouse_base_stock_level,
+    )?;
+    dict.set_item(
+        "heuristic_retailer_base_stock_levels",
+        reference.heuristic_retailer_base_stock_levels.to_vec(),
+    )?;
+    dict.set_item(
+        "demand_supports",
+        reference
+            .demand_supports
+            .iter()
+            .map(|row| row.to_vec())
+            .collect::<Vec<_>>(),
+    )?;
     dict.set_item(
         "demand_probabilities",
-        reference.demand_probabilities.iter().map(|row| row.to_vec()).collect::<Vec<_>>(),
+        reference
+            .demand_probabilities
+            .iter()
+            .map(|row| row.to_vec())
+            .collect::<Vec<_>>(),
     )?;
     dict.set_item("max_action_levels", reference.max_action_levels.to_vec())?;
     dict.set_item("notes", reference.notes)?;
@@ -607,7 +688,9 @@ fn one_warehouse_multi_retailer_benchmark_reference(py: Python<'_>) -> PyResult<
 }
 
 #[pyfunction]
-fn one_warehouse_multi_retailer_list_reference_instances(py: Python<'_>) -> PyResult<Vec<PyObject>> {
+fn one_warehouse_multi_retailer_list_reference_instances(
+    py: Python<'_>,
+) -> PyResult<Vec<PyObject>> {
     TABLE_A3_INSTANCES
         .iter()
         .map(|reference| reference_instance_to_py(py, reference))
@@ -615,11 +698,18 @@ fn one_warehouse_multi_retailer_list_reference_instances(py: Python<'_>) -> PyRe
 }
 
 #[pyfunction]
-fn one_warehouse_multi_retailer_get_reference_instance(py: Python<'_>, name: &str) -> PyResult<PyObject> {
+fn one_warehouse_multi_retailer_get_reference_instance(
+    py: Python<'_>,
+    name: &str,
+) -> PyResult<PyObject> {
     let reference = TABLE_A3_INSTANCES
         .iter()
         .find(|reference| reference.name == name)
-        .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyKeyError, _>(format!("unknown reference instance '{name}'")))?;
+        .ok_or_else(|| {
+            PyErr::new::<pyo3::exceptions::PyKeyError, _>(format!(
+                "unknown reference instance '{name}'"
+            ))
+        })?;
     reference_instance_to_py(py, reference)
 }
 

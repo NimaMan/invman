@@ -1,11 +1,11 @@
-use crate::problems::lost_sales_fixed_order_cost::literature::{
-    BIJVANK_2015_REFERENCE, BIJVANK_2015_TABLE1_REFERENCE,
-};
 use crate::problems::lost_sales_fixed_order_cost::exact_value_iteration::{
     evaluate_policy, solve_optimal_policy, ExactPolicyKind,
 };
 use crate::problems::lost_sales_fixed_order_cost::experiments::{
     expand_experiment_grid, get_experiment_grid, FULL_GRID_NAME,
+};
+use crate::problems::lost_sales_fixed_order_cost::literature::{
+    BIJVANK_2015_REFERENCE, BIJVANK_2015_TABLE1_REFERENCE,
 };
 
 #[test]
@@ -100,7 +100,10 @@ fn paper_experiment_grid_has_expected_axes_and_size() {
 
     let instances = expand_experiment_grid(FULL_GRID_NAME).expect("paper grid expands");
     assert_eq!(instances.len(), 80);
-    assert_eq!(instances.first().expect("first instance").name, "lit_pois_mu5_l2_p4_k5");
+    assert_eq!(
+        instances.first().expect("first instance").name,
+        "lit_pois_mu5_l2_p4_k5"
+    );
     assert_eq!(
         instances.last().expect("last instance").name,
         "lit_mmpp2_neg_mu5_l10_p19_k25"

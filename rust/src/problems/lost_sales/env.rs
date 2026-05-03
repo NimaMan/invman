@@ -105,7 +105,9 @@ mod tests {
 
     #[test]
     fn divide_by_scale_normalizer_scales_state() {
-        let state = normalize_pipeline_state(&[5.0, 4.0, 3.0], StateNormalizer::DivideByScale, Some(5.0)).unwrap();
+        let state =
+            normalize_pipeline_state(&[5.0, 4.0, 3.0], StateNormalizer::DivideByScale, Some(5.0))
+                .unwrap();
         assert_eq!(state, vec![1.0, 0.8, 0.6]);
     }
 }

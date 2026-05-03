@@ -374,7 +374,10 @@ pub fn action_vector_from_flat_params(
     }
     if action_spec.action_dim == 1
         && action_spec.action_mode == SoftTreeActionMode::ScalarQuantity
-        && matches!(leaf_type, SoftTreeLeafType::Linear | SoftTreeLeafType::SigmoidLinear)
+        && matches!(
+            leaf_type,
+            SoftTreeLeafType::Linear | SoftTreeLeafType::SigmoidLinear
+        )
     {
         let rounded = action_value[0].round().max(0.0) as usize;
         return Ok(vec![rounded]);

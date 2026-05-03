@@ -82,11 +82,14 @@ pub const REFERENCE_INSTANCES: &[FixedCostLostSalesReferenceInstance] =
     &[BIJVANK_2015_TABLE1_REFERENCE];
 
 pub fn list_reference_instances() -> Vec<&'static str> {
-    REFERENCE_INSTANCES.iter().map(|instance| instance.name).collect()
+    REFERENCE_INSTANCES
+        .iter()
+        .map(|instance| instance.name)
+        .collect()
 }
 
-pub fn get_reference_instance(
-    name: &str,
-) -> Option<&'static FixedCostLostSalesReferenceInstance> {
-    REFERENCE_INSTANCES.iter().find(|instance| instance.name == name)
+pub fn get_reference_instance(name: &str) -> Option<&'static FixedCostLostSalesReferenceInstance> {
+    REFERENCE_INSTANCES
+        .iter()
+        .find(|instance| instance.name == name)
 }

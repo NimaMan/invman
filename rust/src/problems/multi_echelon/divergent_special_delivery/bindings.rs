@@ -13,8 +13,8 @@ use crate::problems::multi_echelon::exact_rollout::{
 };
 use crate::problems::multi_echelon::finite_horizon_dp::{
     evaluate_soft_tree_policy as exact_evaluate_soft_tree_policy,
-    search_best_stationary_policy as search_best_stationary_policy_exact,
-    solve_optimal_policy, ExactHeuristicKind, ExactSoftTreeConfig,
+    search_best_stationary_policy as search_best_stationary_policy_exact, solve_optimal_policy,
+    ExactHeuristicKind, ExactSoftTreeConfig,
 };
 use crate::problems::multi_echelon::heuristics::{
     parse_stationary_policy_kind, search_stationary_policy,
@@ -26,9 +26,8 @@ use crate::problems::multi_echelon::references::{
 };
 use crate::problems::multi_echelon::rollout::{
     parse_demand_distribution, parse_policy_action_mode, parse_policy_feature_mode,
-    parse_rollout_objective,
-    population_rollout as practical_population_rollout, rollout as practical_rollout,
-    MultiEchelonRolloutConfig,
+    parse_rollout_objective, population_rollout as practical_population_rollout,
+    rollout as practical_rollout, MultiEchelonRolloutConfig,
 };
 use crate::problems::multi_echelon::verification::{
     gijs_relative_verification_summary, GijsRelativeVerificationRow,
@@ -36,7 +35,10 @@ use crate::problems::multi_echelon::verification::{
     DEFAULT_GIJS_RELATIVE_VERIFICATION_SEED,
 };
 
-fn benchmark_reference_to_py(py: Python<'_>, reference: &PublishedBenchmarkReference) -> PyResult<PyObject> {
+fn benchmark_reference_to_py(
+    py: Python<'_>,
+    reference: &PublishedBenchmarkReference,
+) -> PyResult<PyObject> {
     let dict = PyDict::new_bound(py);
     dict.set_item("source", reference.source)?;
     dict.set_item("url", reference.url)?;
@@ -45,7 +47,10 @@ fn benchmark_reference_to_py(py: Python<'_>, reference: &PublishedBenchmarkRefer
     Ok(dict.into_any().unbind().into())
 }
 
-fn literature_reference_to_py(py: Python<'_>, reference: &MultiEchelonReferenceInstance) -> PyResult<PyObject> {
+fn literature_reference_to_py(
+    py: Python<'_>,
+    reference: &MultiEchelonReferenceInstance,
+) -> PyResult<PyObject> {
     let dict = PyDict::new_bound(py);
     dict.set_item("name", reference.name)?;
     dict.set_item("source", reference.source)?;
@@ -56,8 +61,14 @@ fn literature_reference_to_py(py: Python<'_>, reference: &MultiEchelonReferenceI
     dict.set_item("num_retailers", reference.num_retailers)?;
     dict.set_item("warehouse_holding_cost", reference.warehouse_holding_cost)?;
     dict.set_item("retailer_holding_cost", reference.retailer_holding_cost)?;
-    dict.set_item("warehouse_expedited_cost", reference.warehouse_expedited_cost)?;
-    dict.set_item("warehouse_lost_sale_cost", reference.warehouse_lost_sale_cost)?;
+    dict.set_item(
+        "warehouse_expedited_cost",
+        reference.warehouse_expedited_cost,
+    )?;
+    dict.set_item(
+        "warehouse_lost_sale_cost",
+        reference.warehouse_lost_sale_cost,
+    )?;
     dict.set_item("expedited_service_prob", reference.expedited_service_prob)?;
     dict.set_item("warehouse_capacity", reference.warehouse_capacity)?;
     dict.set_item("warehouse_inventory_cap", reference.warehouse_inventory_cap)?;
@@ -66,15 +77,27 @@ fn literature_reference_to_py(py: Python<'_>, reference: &MultiEchelonReferenceI
     dict.set_item("demand_distribution", reference.demand_distribution)?;
     dict.set_item("demand_mean", reference.demand_mean)?;
     dict.set_item("demand_std", reference.demand_std)?;
-    dict.set_item("benchmark_search_horizon", reference.benchmark_search_horizon)?;
+    dict.set_item(
+        "benchmark_search_horizon",
+        reference.benchmark_search_horizon,
+    )?;
     dict.set_item("benchmark_periods", reference.benchmark_periods)?;
     dict.set_item("benchmark_replications", reference.benchmark_replications)?;
     dict.set_item("warm_up_periods_ratio", reference.warm_up_periods_ratio)?;
     dict.set_item("rollout_objective", reference.rollout_objective)?;
-    dict.set_item("warehouse_base_stock_mode", reference.warehouse_base_stock_mode)?;
+    dict.set_item(
+        "warehouse_base_stock_mode",
+        reference.warehouse_base_stock_mode,
+    )?;
     dict.set_item("policy_allocation_mode", reference.policy_allocation_mode)?;
-    dict.set_item("benchmark_warehouse_levels", reference.benchmark_warehouse_levels.to_vec())?;
-    dict.set_item("benchmark_retailer_levels", reference.benchmark_retailer_levels.to_vec())?;
+    dict.set_item(
+        "benchmark_warehouse_levels",
+        reference.benchmark_warehouse_levels.to_vec(),
+    )?;
+    dict.set_item(
+        "benchmark_retailer_levels",
+        reference.benchmark_retailer_levels.to_vec(),
+    )?;
     dict.set_item(
         "published_constant_base_stock_mean_cost",
         reference.published_constant_base_stock_mean_cost,
@@ -87,7 +110,10 @@ fn literature_reference_to_py(py: Python<'_>, reference: &MultiEchelonReferenceI
         "published_van_roy_best_ndp_mean_cost",
         reference.published_van_roy_best_ndp_mean_cost,
     )?;
-    dict.set_item("published_a3c_savings_pct", reference.published_a3c_savings_pct)?;
+    dict.set_item(
+        "published_a3c_savings_pct",
+        reference.published_a3c_savings_pct,
+    )?;
     dict.set_item(
         "published_a3c_confidence_half_width_pct",
         reference.published_a3c_confidence_half_width_pct,
@@ -106,7 +132,10 @@ fn literature_reference_to_py(py: Python<'_>, reference: &MultiEchelonReferenceI
     Ok(dict.into_any().unbind().into())
 }
 
-fn exact_reference_to_py(py: Python<'_>, reference: &ExactVerificationReference) -> PyResult<PyObject> {
+fn exact_reference_to_py(
+    py: Python<'_>,
+    reference: &ExactVerificationReference,
+) -> PyResult<PyObject> {
     let dict = PyDict::new_bound(py);
     dict.set_item("source", reference.source)?;
     dict.set_item("url", reference.url)?;
@@ -117,15 +146,24 @@ fn exact_reference_to_py(py: Python<'_>, reference: &ExactVerificationReference)
     dict.set_item("num_retailers", reference.num_retailers)?;
     dict.set_item("warehouse_holding_cost", reference.warehouse_holding_cost)?;
     dict.set_item("retailer_holding_cost", reference.retailer_holding_cost)?;
-    dict.set_item("warehouse_expedited_cost", reference.warehouse_expedited_cost)?;
-    dict.set_item("warehouse_lost_sale_cost", reference.warehouse_lost_sale_cost)?;
+    dict.set_item(
+        "warehouse_expedited_cost",
+        reference.warehouse_expedited_cost,
+    )?;
+    dict.set_item(
+        "warehouse_lost_sale_cost",
+        reference.warehouse_lost_sale_cost,
+    )?;
     dict.set_item("expedited_service_prob", reference.expedited_service_prob)?;
     dict.set_item("warehouse_capacity", reference.warehouse_capacity)?;
     dict.set_item("warehouse_inventory_cap", reference.warehouse_inventory_cap)?;
     dict.set_item("retailer_inventory_cap", reference.retailer_inventory_cap)?;
     dict.set_item("inventory_dynamics_mode", reference.inventory_dynamics_mode)?;
     dict.set_item("discount_factor", reference.discount_factor)?;
-    dict.set_item("initial_warehouse_inventory", reference.initial_warehouse_inventory)?;
+    dict.set_item(
+        "initial_warehouse_inventory",
+        reference.initial_warehouse_inventory,
+    )?;
     dict.set_item(
         "initial_warehouse_pipeline",
         reference.initial_warehouse_pipeline.to_vec(),
@@ -159,10 +197,7 @@ fn exact_reference_to_py(py: Python<'_>, reference: &ExactVerificationReference)
         "warehouse_base_stock_mode",
         reference.warehouse_base_stock_mode,
     )?;
-    dict.set_item(
-        "allocation_mode",
-        reference.allocation_mode,
-    )?;
+    dict.set_item("allocation_mode", reference.allocation_mode)?;
     dict.set_item("notes", reference.notes)?;
     Ok(dict.into_any().unbind().into())
 }
@@ -230,7 +265,10 @@ fn gijs_relative_verification_summary_to_py(
     dict.set_item("url", summary.url)?;
     dict.set_item("repo_audit_replications", summary.repo_audit_replications)?;
     dict.set_item("seed", summary.seed)?;
-    dict.set_item("mean_published_a3c_savings_pct", summary.mean_published_a3c_savings_pct)?;
+    dict.set_item(
+        "mean_published_a3c_savings_pct",
+        summary.mean_published_a3c_savings_pct,
+    )?;
     dict.set_item(
         "mean_repo_gap_vs_published_constant_cost",
         summary.mean_repo_gap_vs_published_constant_cost,
@@ -275,7 +313,11 @@ fn multi_echelon_get_reference_instance(py: Python<'_>, name: &str) -> PyResult<
     let reference = LITERATURE_REFERENCE_INSTANCES
         .iter()
         .find(|reference| reference.name == name)
-        .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyKeyError, _>(format!("unknown reference instance '{name}'")))?;
+        .ok_or_else(|| {
+            PyErr::new::<pyo3::exceptions::PyKeyError, _>(format!(
+                "unknown reference instance '{name}'"
+            ))
+        })?;
     literature_reference_to_py(py, reference)
 }
 
@@ -320,12 +362,18 @@ fn multi_echelon_exact_dp_summary(py: Python<'_>) -> PyResult<PyObject> {
     )?;
     dict.set_item("optimal_discounted_cost", optimal.discounted_cost)?;
     dict.set_item("optimal_first_action", optimal.first_action)?;
-    dict.set_item("sequential_discounted_cost", best_sequential.2.discounted_cost)?;
+    dict.set_item(
+        "sequential_discounted_cost",
+        best_sequential.2.discounted_cost,
+    )?;
     dict.set_item(
         "sequential_first_action",
         best_sequential.2.first_action.clone(),
     )?;
-    dict.set_item("sequential_levels", vec![best_sequential.0, best_sequential.1])?;
+    dict.set_item(
+        "sequential_levels",
+        vec![best_sequential.0, best_sequential.1],
+    )?;
     dict.set_item(
         "proportional_discounted_cost",
         best_proportional.2.discounted_cost,
@@ -618,16 +666,22 @@ fn multi_echelon_soft_tree_rollout(
 ) -> PyResult<f64> {
     let action_warehouse_levels = allowed_values
         .as_ref()
-        .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("multi-echelon rollouts require allowed_values"))?
+        .ok_or_else(|| {
+            pyo3::exceptions::PyValueError::new_err("multi-echelon rollouts require allowed_values")
+        })?
         .get(0)
         .cloned()
-        .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("missing warehouse allowed_values"))?;
+        .ok_or_else(|| {
+            pyo3::exceptions::PyValueError::new_err("missing warehouse allowed_values")
+        })?;
     let action_retailer_levels = allowed_values
         .as_ref()
         .unwrap()
         .get(1)
         .cloned()
-        .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("missing retailer allowed_values"))?;
+        .ok_or_else(|| {
+            pyo3::exceptions::PyValueError::new_err("missing retailer allowed_values")
+        })?;
     let initialization_warehouse_levels =
         reference_warehouse_levels.unwrap_or_else(|| action_warehouse_levels.clone());
     let initialization_retailer_levels =
@@ -760,16 +814,22 @@ fn multi_echelon_soft_tree_population_rollout(
 ) -> PyResult<Vec<f64>> {
     let action_warehouse_levels = allowed_values
         .as_ref()
-        .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("multi-echelon rollouts require allowed_values"))?
+        .ok_or_else(|| {
+            pyo3::exceptions::PyValueError::new_err("multi-echelon rollouts require allowed_values")
+        })?
         .get(0)
         .cloned()
-        .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("missing warehouse allowed_values"))?;
+        .ok_or_else(|| {
+            pyo3::exceptions::PyValueError::new_err("missing warehouse allowed_values")
+        })?;
     let action_retailer_levels = allowed_values
         .as_ref()
         .unwrap()
         .get(1)
         .cloned()
-        .ok_or_else(|| pyo3::exceptions::PyValueError::new_err("missing retailer allowed_values"))?;
+        .ok_or_else(|| {
+            pyo3::exceptions::PyValueError::new_err("missing retailer allowed_values")
+        })?;
     let initialization_warehouse_levels =
         reference_warehouse_levels.unwrap_or_else(|| action_warehouse_levels.clone());
     let initialization_retailer_levels =
@@ -1018,11 +1078,15 @@ fn multi_echelon_worked_transition_reference(py: Python<'_>) -> PyResult<PyObjec
     )?;
     dict.set_item(
         "initial_warehouse_pipeline",
-        WORKED_TRANSITION_REFERENCE.initial_warehouse_pipeline.to_vec(),
+        WORKED_TRANSITION_REFERENCE
+            .initial_warehouse_pipeline
+            .to_vec(),
     )?;
     dict.set_item(
         "initial_retailer_inventory",
-        WORKED_TRANSITION_REFERENCE.initial_retailer_inventory.to_vec(),
+        WORKED_TRANSITION_REFERENCE
+            .initial_retailer_inventory
+            .to_vec(),
     )?;
     dict.set_item(
         "initial_retailer_pipeline",
@@ -1032,8 +1096,14 @@ fn multi_echelon_worked_transition_reference(py: Python<'_>) -> PyResult<PyObjec
             .map(|row| row.to_vec())
             .collect::<Vec<_>>(),
     )?;
-    dict.set_item("warehouse_target", WORKED_TRANSITION_REFERENCE.warehouse_target)?;
-    dict.set_item("retailer_target", WORKED_TRANSITION_REFERENCE.retailer_target)?;
+    dict.set_item(
+        "warehouse_target",
+        WORKED_TRANSITION_REFERENCE.warehouse_target,
+    )?;
+    dict.set_item(
+        "retailer_target",
+        WORKED_TRANSITION_REFERENCE.retailer_target,
+    )?;
     dict.set_item(
         "realized_demands",
         WORKED_TRANSITION_REFERENCE.realized_demands.to_vec(),
@@ -1046,14 +1116,19 @@ fn multi_echelon_worked_transition_reference(py: Python<'_>) -> PyResult<PyObjec
         "warehouse_base_stock_mode",
         WORKED_TRANSITION_REFERENCE.warehouse_base_stock_mode,
     )?;
-    dict.set_item("allocation_mode", WORKED_TRANSITION_REFERENCE.allocation_mode)?;
+    dict.set_item(
+        "allocation_mode",
+        WORKED_TRANSITION_REFERENCE.allocation_mode,
+    )?;
     dict.set_item(
         "expected_warehouse_order",
         WORKED_TRANSITION_REFERENCE.expected_warehouse_order,
     )?;
     dict.set_item(
         "expected_shipped_retail_orders",
-        WORKED_TRANSITION_REFERENCE.expected_shipped_retail_orders.to_vec(),
+        WORKED_TRANSITION_REFERENCE
+            .expected_shipped_retail_orders
+            .to_vec(),
     )?;
     dict.set_item(
         "expected_next_warehouse_inventory",
@@ -1061,11 +1136,15 @@ fn multi_echelon_worked_transition_reference(py: Python<'_>) -> PyResult<PyObjec
     )?;
     dict.set_item(
         "expected_next_warehouse_pipeline",
-        WORKED_TRANSITION_REFERENCE.expected_next_warehouse_pipeline.to_vec(),
+        WORKED_TRANSITION_REFERENCE
+            .expected_next_warehouse_pipeline
+            .to_vec(),
     )?;
     dict.set_item(
         "expected_next_retailer_inventory",
-        WORKED_TRANSITION_REFERENCE.expected_next_retailer_inventory.to_vec(),
+        WORKED_TRANSITION_REFERENCE
+            .expected_next_retailer_inventory
+            .to_vec(),
     )?;
     dict.set_item(
         "expected_next_retailer_pipeline",
@@ -1102,9 +1181,15 @@ pub fn register_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(multi_echelon_benchmark_reference, m)?)?;
     m.add_function(wrap_pyfunction!(multi_echelon_list_reference_instances, m)?)?;
     m.add_function(wrap_pyfunction!(multi_echelon_get_reference_instance, m)?)?;
-    m.add_function(wrap_pyfunction!(multi_echelon_primary_reference_instance, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        multi_echelon_primary_reference_instance,
+        m
+    )?)?;
     m.add_function(wrap_pyfunction!(multi_echelon_van_roy_case_study, m)?)?;
-    m.add_function(wrap_pyfunction!(multi_echelon_exact_verification_instance, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        multi_echelon_exact_verification_instance,
+        m
+    )?)?;
     m.add_function(wrap_pyfunction!(multi_echelon_exact_dp_summary, m)?)?;
     m.add_function(wrap_pyfunction!(
         multi_echelon_gijs_relative_verification_summary,
@@ -1113,13 +1198,19 @@ pub fn register_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(multi_echelon_exact_evaluate_soft_tree, m)?)?;
     m.add_function(wrap_pyfunction!(multi_echelon_search_stationary_policy, m)?)?;
     m.add_function(wrap_pyfunction!(multi_echelon_soft_tree_rollout, m)?)?;
-    m.add_function(wrap_pyfunction!(multi_echelon_soft_tree_population_rollout, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        multi_echelon_soft_tree_population_rollout,
+        m
+    )?)?;
     m.add_function(wrap_pyfunction!(multi_echelon_exact_soft_tree_rollout, m)?)?;
     m.add_function(wrap_pyfunction!(
         multi_echelon_exact_soft_tree_population_rollout,
         m
     )?)?;
-    m.add_function(wrap_pyfunction!(multi_echelon_worked_transition_reference, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        multi_echelon_worked_transition_reference,
+        m
+    )?)?;
     m.add_function(wrap_pyfunction!(multi_echelon_build_raw_state, m)?)?;
     Ok(())
 }

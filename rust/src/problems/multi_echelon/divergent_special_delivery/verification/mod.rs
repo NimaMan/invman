@@ -1,18 +1,14 @@
 use pyo3::exceptions::PyValueError;
 use pyo3::PyResult;
 
-use crate::problems::multi_echelon::env::{
-    parse_allocation_mode, parse_inventory_dynamics_mode,
-};
+use crate::problems::multi_echelon::env::{parse_allocation_mode, parse_inventory_dynamics_mode};
 use crate::problems::multi_echelon::heuristics::{
     evaluate_stationary_policy, HeuristicSimulationConfig, StationaryPolicyKind,
 };
 use crate::problems::multi_echelon::references::{
     MultiEchelonReferenceInstance, GIJSBRECHTS_2022_REFERENCE, LITERATURE_REFERENCE_INSTANCES,
 };
-use crate::problems::multi_echelon::rollout::{
-    parse_demand_distribution, parse_rollout_objective,
-};
+use crate::problems::multi_echelon::rollout::{parse_demand_distribution, parse_rollout_objective};
 
 pub const DEFAULT_GIJS_RELATIVE_VERIFICATION_REPLICATIONS: usize = 20;
 pub const DEFAULT_GIJS_RELATIVE_VERIFICATION_SEED: u64 = 123;
@@ -140,12 +136,13 @@ pub fn gijs_relative_verification_summary(
                         reference.name
                     ))
                 })?;
-            let published_a3c_savings_pct = reference.published_a3c_savings_pct.ok_or_else(|| {
-                PyValueError::new_err(format!(
-                    "missing published A3C savings row for '{}'",
-                    reference.name
-                ))
-            })?;
+            let published_a3c_savings_pct =
+                reference.published_a3c_savings_pct.ok_or_else(|| {
+                    PyValueError::new_err(format!(
+                        "missing published A3C savings row for '{}'",
+                        reference.name
+                    ))
+                })?;
             let published_a3c_confidence_half_width_pct = reference
                 .published_a3c_confidence_half_width_pct
                 .ok_or_else(|| {
@@ -169,8 +166,9 @@ pub fn gijs_relative_verification_summary(
             )?;
             let repo_gap_vs_published_constant_cost =
                 repo_mean_cost - published_constant_base_stock_mean_cost;
-            let repo_gap_vs_published_constant_cost_pct =
-                100.0 * repo_gap_vs_published_constant_cost / published_constant_base_stock_mean_cost;
+            let repo_gap_vs_published_constant_cost_pct = 100.0
+                * repo_gap_vs_published_constant_cost
+                / published_constant_base_stock_mean_cost;
             Ok(GijsRelativeVerificationRow {
                 instance_name: reference.name,
                 published_constant_base_stock_levels: vec![warehouse_level, retailer_level],

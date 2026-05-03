@@ -196,7 +196,8 @@ fn normalized_state(
     state_scale: Option<f64>,
 ) -> PyResult<Vec<f32>> {
     let raw_state = build_pipeline_state(current_inventory, lead_time_orders);
-    normalize_pipeline_state(&raw_state, state_normalizer, state_scale).map_err(PyValueError::new_err)
+    normalize_pipeline_state(&raw_state, state_normalizer, state_scale)
+        .map_err(PyValueError::new_err)
 }
 
 fn add_arriving_order(current_inventory: i64, arriving_order: usize) -> i64 {
@@ -254,7 +255,8 @@ pub fn rollout(flat_params: &[f32], config: &LostSalesRolloutConfig, seed: u64) 
     let mut rng = StdRng::seed_from_u64(seed);
     let mut demand_process =
         build_demand_process(config.demand_config, &mut rng).map_err(PyValueError::new_err)?;
-    let mut env_state = initialize_state(demand_mean, config.lead_time, &mut rng, &mut demand_process);
+    let mut env_state =
+        initialize_state(demand_mean, config.lead_time, &mut rng, &mut demand_process);
     let mut epoch_costs = Vec::with_capacity(config.horizon);
 
     for _ in 0..config.horizon {
@@ -382,7 +384,8 @@ pub fn linear_rollout(
     let mut rng = StdRng::seed_from_u64(seed);
     let mut demand_process =
         build_demand_process(config.demand_config, &mut rng).map_err(PyValueError::new_err)?;
-    let mut env_state = initialize_state(demand_mean, config.lead_time, &mut rng, &mut demand_process);
+    let mut env_state =
+        initialize_state(demand_mean, config.lead_time, &mut rng, &mut demand_process);
     let mut epoch_costs = Vec::with_capacity(config.horizon);
 
     for _ in 0..config.horizon {
@@ -511,7 +514,8 @@ pub fn neural_rollout(
     let mut rng = StdRng::seed_from_u64(seed);
     let mut demand_process =
         build_demand_process(config.demand_config, &mut rng).map_err(PyValueError::new_err)?;
-    let mut env_state = initialize_state(demand_mean, config.lead_time, &mut rng, &mut demand_process);
+    let mut env_state =
+        initialize_state(demand_mean, config.lead_time, &mut rng, &mut demand_process);
     let mut epoch_costs = Vec::with_capacity(config.horizon);
 
     for _ in 0..config.horizon {
