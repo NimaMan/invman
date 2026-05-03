@@ -1,0 +1,6183 @@
+{
+  "family": "one_warehouse_multi_retailer",
+  "source": "Kaynov et al. (2024), International Journal of Production Economics 267, 109088",
+  "url": "https://doi.org/10.1016/j.ijpe.2023.109088",
+  "protocol": {
+    "paper_reference": "Kaynov et al. (2024), Section 4.1, Table A.3, Table B.6",
+    "benchmark_periods": 100,
+    "heuristic_search_replications": 1000,
+    "benchmark_replications": 1000,
+    "eval_seeds": 1000,
+    "train_allocation_policy": "random_sequential",
+    "eval_allocation_policy": "proportional",
+    "paper_evaluation_note": "Paper heuristics use 1000 trajectories of length 100 with common random numbers during search; PPO and benchmark policies are evaluated on 1000 trajectories of length 100 using proportional allocation.",
+    "instance14_search_note": "Kaynov state that instance 14 searches over warehouse level z0 and a shared percentile parameter k. The paper does not publish a discrete k-grid, so the repo enumerates the unique integer retailer-target vectors induced by continuous k in [0, 3]."
+  },
+  "policy_config": {
+    "depth": 1,
+    "temperature": 0.1,
+    "split_type": "axis_aligned",
+    "leaf_type": "linear",
+    "small_training_episodes": 300,
+    "large_training_episodes": 400,
+    "es_population": 16,
+    "sigma_init": 1.5,
+    "train_seed_batch": 16
+  },
+  "instance_results": {
+    "kaynov2024_instance_1": {
+      "reference": {
+        "name": "kaynov2024_instance_1",
+        "source": "Kaynov et al. (2024), International Journal of Production Economics 267, 109088",
+        "url": "https://doi.org/10.1016/j.ijpe.2023.109088",
+        "literature_verified": true,
+        "benchmark_periods": 100,
+        "benchmark_replications": 1000,
+        "customer_behavior": "backorder",
+        "warehouse_lead_time": 2,
+        "retailer_lead_times": [
+          1,
+          1,
+          1
+        ],
+        "demand_kinds": [
+          "poisson",
+          "poisson",
+          "poisson"
+        ],
+        "demand_param1": [
+          3.0,
+          3.0,
+          3.0
+        ],
+        "demand_param2": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "holding_cost_warehouse": 0.5,
+        "holding_cost_retailers": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "penalty_costs_retailers": [
+          9.0,
+          9.0,
+          9.0
+        ],
+        "emergency_shipment_probability": 0.0,
+        "published_min_shortage_benchmark": {
+          "policy_name": "echelon_base_stock",
+          "allocation_policy": "min_shortage",
+          "mean_cost": -1609.47,
+          "standard_error": 1.67,
+          "relative_gap_percent": -2.78
+        },
+        "published_proportional_benchmark": {
+          "policy_name": "echelon_base_stock",
+          "allocation_policy": "proportional",
+          "mean_cost": -1655.51,
+          "standard_error": 1.66,
+          "relative_gap_percent": 0.0
+        },
+        "published_ppo_benchmark": {
+          "policy_name": "ppo",
+          "allocation_policy": null,
+          "mean_cost": -1637.2,
+          "standard_error": 5.23,
+          "relative_gap_percent": -1.11
+        },
+        "notes": "Table 1 / Table A.3 instance from Kaynov et al. (2024)."
+      },
+      "initial_state": {
+        "initial_warehouse_inventory": 9,
+        "initial_warehouse_pipeline": [
+          9,
+          9
+        ],
+        "initial_retailer_inventory": [
+          3,
+          3,
+          3
+        ],
+        "initial_retailer_pipeline": [
+          [
+            3
+          ],
+          [
+            3
+          ],
+          [
+            3
+          ]
+        ],
+        "initial_state_rule": "mean_filled_pipeline_warm_start"
+      },
+      "search_results": {
+        "proportional": {
+          "warehouse_base_stock_level": 48,
+          "retailer_base_stock_levels": [
+            10,
+            10,
+            10
+          ],
+          "allocation_policy": "proportional",
+          "mean_cost": 1572.0655,
+          "cost_std": 131.72600145662216,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 9,
+            "initial_warehouse_pipeline": [
+              9,
+              9
+            ],
+            "initial_retailer_inventory": [
+              3,
+              3,
+              3
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3
+              ],
+              [
+                3
+              ],
+              [
+                3
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation",
+          "search_bounds": {
+            "warehouse": [
+              36,
+              54
+            ],
+            "retailers": [
+              [
+                6,
+                14
+              ],
+              [
+                6,
+                14
+              ],
+              [
+                6,
+                14
+              ]
+            ],
+            "symmetric_retailers": true
+          },
+          "search_seed": 266751,
+          "search_protocol": "full_cartesian_symmetric_reduction",
+          "search_replications": 1000
+        },
+        "min_shortage": {
+          "warehouse_base_stock_level": 48,
+          "retailer_base_stock_levels": [
+            10,
+            10,
+            10
+          ],
+          "allocation_policy": "min_shortage",
+          "mean_cost": 1559.4055,
+          "cost_std": 123.6180905844691,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 9,
+            "initial_warehouse_pipeline": [
+              9,
+              9
+            ],
+            "initial_retailer_inventory": [
+              3,
+              3,
+              3
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3
+              ],
+              [
+                3
+              ],
+              [
+                3
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation",
+          "search_bounds": {
+            "warehouse": [
+              36,
+              54
+            ],
+            "retailers": [
+              [
+                6,
+                14
+              ],
+              [
+                6,
+                14
+              ],
+              [
+                6,
+                14
+              ]
+            ],
+            "symmetric_retailers": true
+          },
+          "search_seed": 266751,
+          "search_protocol": "full_cartesian_symmetric_reduction",
+          "search_replications": 1000
+        }
+      },
+      "heuristics": {
+        "proportional": {
+          "warehouse_base_stock_level": 48,
+          "retailer_base_stock_levels": [
+            10,
+            10,
+            10
+          ],
+          "allocation_policy": "proportional",
+          "mean_cost": 1575.794,
+          "cost_std": 139.42350255247501,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 9,
+            "initial_warehouse_pipeline": [
+              9,
+              9
+            ],
+            "initial_retailer_inventory": [
+              3,
+              3,
+              3
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3
+              ],
+              [
+                3
+              ],
+              [
+                3
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation"
+        },
+        "min_shortage": {
+          "warehouse_base_stock_level": 48,
+          "retailer_base_stock_levels": [
+            10,
+            10,
+            10
+          ],
+          "allocation_policy": "min_shortage",
+          "mean_cost": 1562.124,
+          "cost_std": 130.73290375418114,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 9,
+            "initial_warehouse_pipeline": [
+              9,
+              9
+            ],
+            "initial_retailer_inventory": [
+              3,
+              3,
+              3
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3
+              ],
+              [
+                3
+              ],
+              [
+                3
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation"
+        }
+      },
+      "policy_config": {
+        "depth": 1,
+        "temperature": 0.1,
+        "split_type": "axis_aligned",
+        "leaf_type": "linear",
+        "policy_action_mode": "symmetric_echelon_targets",
+        "training_episodes": 300,
+        "es_population": 16,
+        "sigma_init": 1.5,
+        "train_seed_batch": 16
+      },
+      "training_seed": 904632,
+      "heuristic_search_seed": 266751,
+      "benchmark_seed": 577292,
+      "eval_seed_start": 1635877,
+      "evaluation": {
+        "mean_cost": 1600.0065,
+        "cost_std": 128.20849116868197,
+        "min_cost": 1311.5,
+        "max_cost": 2209.0,
+        "num_samples": 1000
+      },
+      "comparison_rows": [
+        {
+          "policy": "published_echelon_base_stock_proportional",
+          "mean_cost": 1655.51,
+          "note": "Kaynov Table A.3",
+          "gap_vs_soft_tree_cost": 55.50350000000003
+        },
+        {
+          "policy": "published_echelon_base_stock_min_shortage",
+          "mean_cost": 1609.47,
+          "note": "Kaynov Table A.3",
+          "gap_vs_soft_tree_cost": 9.463500000000067
+        },
+        {
+          "policy": "published_ppo",
+          "mean_cost": 1637.2,
+          "note": "Kaynov Table A.3",
+          "gap_vs_soft_tree_cost": 37.193500000000085
+        },
+        {
+          "policy": "repo_echelon_base_stock_proportional",
+          "mean_cost": 1575.794,
+          "note": "repo reproduction",
+          "gap_vs_soft_tree_cost": -24.212499999999864
+        },
+        {
+          "policy": "repo_echelon_base_stock_min_shortage",
+          "mean_cost": 1562.124,
+          "note": "repo reproduction",
+          "gap_vs_soft_tree_cost": -37.882499999999936
+        },
+        {
+          "policy": "soft_tree",
+          "mean_cost": 1600.0065,
+          "note": "CMA-ES soft tree",
+          "gap_vs_soft_tree_cost": 0.0
+        },
+        {
+          "policy": "summary_best_published_heuristic",
+          "mean_cost": 1609.47,
+          "note": "min(published proportional, published min-shortage)",
+          "gap_vs_soft_tree_cost": 9.463500000000067
+        },
+        {
+          "policy": "summary_best_repo_heuristic",
+          "mean_cost": 1562.124,
+          "note": "min(repo proportional, repo min-shortage)",
+          "gap_vs_soft_tree_cost": -37.882499999999936
+        }
+      ],
+      "summary": {
+        "instance_name": "kaynov2024_instance_1",
+        "customer_behavior": "backorder",
+        "soft_tree_mean_cost": 1600.0065,
+        "best_repo_heuristic_cost": 1562.124,
+        "best_published_heuristic_cost": 1609.47,
+        "published_ppo_cost": 1637.2,
+        "gap_vs_repo_best": -37.882499999999936,
+        "gap_vs_published_best_heuristic": 9.463500000000067,
+        "gap_vs_published_ppo": 37.193500000000085
+      }
+    },
+    "kaynov2024_instance_2": {
+      "reference": {
+        "name": "kaynov2024_instance_2",
+        "source": "Kaynov et al. (2024), International Journal of Production Economics 267, 109088",
+        "url": "https://doi.org/10.1016/j.ijpe.2023.109088",
+        "literature_verified": true,
+        "benchmark_periods": 100,
+        "benchmark_replications": 1000,
+        "customer_behavior": "backorder",
+        "warehouse_lead_time": 2,
+        "retailer_lead_times": [
+          1,
+          1,
+          1
+        ],
+        "demand_kinds": [
+          "discrete_uniform",
+          "rounded_normal",
+          "poisson"
+        ],
+        "demand_param1": [
+          0.0,
+          3.0,
+          3.0
+        ],
+        "demand_param2": [
+          6.0,
+          1.0,
+          0.0
+        ],
+        "holding_cost_warehouse": 0.5,
+        "holding_cost_retailers": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "penalty_costs_retailers": [
+          9.0,
+          9.0,
+          9.0
+        ],
+        "emergency_shipment_probability": 0.0,
+        "published_min_shortage_benchmark": {
+          "policy_name": "echelon_base_stock",
+          "allocation_policy": "min_shortage",
+          "mean_cost": -1426.84,
+          "standard_error": 1.53,
+          "relative_gap_percent": 3.1
+        },
+        "published_proportional_benchmark": {
+          "policy_name": "echelon_base_stock",
+          "allocation_policy": "proportional",
+          "mean_cost": -1383.88,
+          "standard_error": 1.36,
+          "relative_gap_percent": 0.0
+        },
+        "published_ppo_benchmark": {
+          "policy_name": "ppo",
+          "allocation_policy": null,
+          "mean_cost": -1417.46,
+          "standard_error": 4.26,
+          "relative_gap_percent": 2.43
+        },
+        "notes": "Table 1 / Table A.3 instance from Kaynov et al. (2024)."
+      },
+      "initial_state": {
+        "initial_warehouse_inventory": 9,
+        "initial_warehouse_pipeline": [
+          9,
+          9
+        ],
+        "initial_retailer_inventory": [
+          3,
+          3,
+          3
+        ],
+        "initial_retailer_pipeline": [
+          [
+            3
+          ],
+          [
+            3
+          ],
+          [
+            3
+          ]
+        ],
+        "initial_state_rule": "mean_filled_pipeline_warm_start"
+      },
+      "search_results": {
+        "proportional": {
+          "warehouse_base_stock_level": 47,
+          "retailer_base_stock_levels": [
+            10,
+            8,
+            10
+          ],
+          "allocation_policy": "proportional",
+          "mean_cost": 1390.352,
+          "cost_std": 110.127562835105,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 9,
+            "initial_warehouse_pipeline": [
+              9,
+              9
+            ],
+            "initial_retailer_inventory": [
+              3,
+              3,
+              3
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3
+              ],
+              [
+                3
+              ],
+              [
+                3
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation",
+          "search_bounds": {
+            "warehouse": [
+              36,
+              54
+            ],
+            "retailers": [
+              [
+                6,
+                15
+              ],
+              [
+                6,
+                11
+              ],
+              [
+                6,
+                14
+              ]
+            ],
+            "symmetric_retailers": false
+          },
+          "search_seed": 446400,
+          "search_protocol": "full_cartesian_symmetric_reduction",
+          "search_replications": 1000
+        },
+        "min_shortage": {
+          "warehouse_base_stock_level": 47,
+          "retailer_base_stock_levels": [
+            10,
+            9,
+            10
+          ],
+          "allocation_policy": "min_shortage",
+          "mean_cost": 1382.409,
+          "cost_std": 108.01357886395576,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 9,
+            "initial_warehouse_pipeline": [
+              9,
+              9
+            ],
+            "initial_retailer_inventory": [
+              3,
+              3,
+              3
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3
+              ],
+              [
+                3
+              ],
+              [
+                3
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation",
+          "search_bounds": {
+            "warehouse": [
+              36,
+              54
+            ],
+            "retailers": [
+              [
+                6,
+                15
+              ],
+              [
+                6,
+                11
+              ],
+              [
+                6,
+                14
+              ]
+            ],
+            "symmetric_retailers": false
+          },
+          "search_seed": 446400,
+          "search_protocol": "full_cartesian_symmetric_reduction",
+          "search_replications": 1000
+        }
+      },
+      "heuristics": {
+        "proportional": {
+          "warehouse_base_stock_level": 47,
+          "retailer_base_stock_levels": [
+            10,
+            8,
+            10
+          ],
+          "allocation_policy": "proportional",
+          "mean_cost": 1388.5805,
+          "cost_std": 104.7863577463689,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 9,
+            "initial_warehouse_pipeline": [
+              9,
+              9
+            ],
+            "initial_retailer_inventory": [
+              3,
+              3,
+              3
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3
+              ],
+              [
+                3
+              ],
+              [
+                3
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation"
+        },
+        "min_shortage": {
+          "warehouse_base_stock_level": 47,
+          "retailer_base_stock_levels": [
+            10,
+            9,
+            10
+          ],
+          "allocation_policy": "min_shortage",
+          "mean_cost": 1381.7835,
+          "cost_std": 100.69669993475455,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 9,
+            "initial_warehouse_pipeline": [
+              9,
+              9
+            ],
+            "initial_retailer_inventory": [
+              3,
+              3,
+              3
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3
+              ],
+              [
+                3
+              ],
+              [
+                3
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation"
+        }
+      },
+      "policy_config": {
+        "depth": 1,
+        "temperature": 0.1,
+        "split_type": "axis_aligned",
+        "leaf_type": "linear",
+        "policy_action_mode": "echelon_targets",
+        "training_episodes": 300,
+        "es_population": 16,
+        "sigma_init": 1.5,
+        "train_seed_batch": 16
+      },
+      "training_seed": 363385,
+      "heuristic_search_seed": 446400,
+      "benchmark_seed": 625869,
+      "eval_seed_start": 1701414,
+      "evaluation": {
+        "mean_cost": 1605.4125,
+        "cost_std": 87.43792994890718,
+        "min_cost": 1398.5,
+        "max_cost": 1951.5,
+        "num_samples": 1000
+      },
+      "comparison_rows": [
+        {
+          "policy": "published_echelon_base_stock_proportional",
+          "mean_cost": 1383.88,
+          "note": "Kaynov Table A.3",
+          "gap_vs_soft_tree_cost": -221.5324999999998
+        },
+        {
+          "policy": "published_echelon_base_stock_min_shortage",
+          "mean_cost": 1426.84,
+          "note": "Kaynov Table A.3",
+          "gap_vs_soft_tree_cost": -178.5725
+        },
+        {
+          "policy": "published_ppo",
+          "mean_cost": 1417.46,
+          "note": "Kaynov Table A.3",
+          "gap_vs_soft_tree_cost": -187.95249999999987
+        },
+        {
+          "policy": "repo_echelon_base_stock_proportional",
+          "mean_cost": 1388.5805,
+          "note": "repo reproduction",
+          "gap_vs_soft_tree_cost": -216.83199999999988
+        },
+        {
+          "policy": "repo_echelon_base_stock_min_shortage",
+          "mean_cost": 1381.7835,
+          "note": "repo reproduction",
+          "gap_vs_soft_tree_cost": -223.6289999999999
+        },
+        {
+          "policy": "soft_tree",
+          "mean_cost": 1605.4125,
+          "note": "CMA-ES soft tree",
+          "gap_vs_soft_tree_cost": 0.0
+        },
+        {
+          "policy": "summary_best_published_heuristic",
+          "mean_cost": 1383.88,
+          "note": "min(published proportional, published min-shortage)",
+          "gap_vs_soft_tree_cost": -221.5324999999998
+        },
+        {
+          "policy": "summary_best_repo_heuristic",
+          "mean_cost": 1381.7835,
+          "note": "min(repo proportional, repo min-shortage)",
+          "gap_vs_soft_tree_cost": -223.6289999999999
+        }
+      ],
+      "summary": {
+        "instance_name": "kaynov2024_instance_2",
+        "customer_behavior": "backorder",
+        "soft_tree_mean_cost": 1605.4125,
+        "best_repo_heuristic_cost": 1381.7835,
+        "best_published_heuristic_cost": 1383.88,
+        "published_ppo_cost": 1417.46,
+        "gap_vs_repo_best": -223.6289999999999,
+        "gap_vs_published_best_heuristic": -221.5324999999998,
+        "gap_vs_published_ppo": -187.95249999999987
+      }
+    },
+    "kaynov2024_instance_3": {
+      "reference": {
+        "name": "kaynov2024_instance_3",
+        "source": "Kaynov et al. (2024), International Journal of Production Economics 267, 109088",
+        "url": "https://doi.org/10.1016/j.ijpe.2023.109088",
+        "literature_verified": true,
+        "benchmark_periods": 100,
+        "benchmark_replications": 1000,
+        "customer_behavior": "backorder",
+        "warehouse_lead_time": 2,
+        "retailer_lead_times": [
+          1,
+          1,
+          1
+        ],
+        "demand_kinds": [
+          "rounded_normal",
+          "rounded_normal",
+          "poisson"
+        ],
+        "demand_param1": [
+          1.0,
+          5.0,
+          0.5
+        ],
+        "demand_param2": [
+          5.0,
+          1.0,
+          0.0
+        ],
+        "holding_cost_warehouse": 0.5,
+        "holding_cost_retailers": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "penalty_costs_retailers": [
+          9.0,
+          9.0,
+          9.0
+        ],
+        "emergency_shipment_probability": 0.0,
+        "published_min_shortage_benchmark": {
+          "policy_name": "echelon_base_stock",
+          "allocation_policy": "min_shortage",
+          "mean_cost": -1800.5,
+          "standard_error": 2.08,
+          "relative_gap_percent": 1.38
+        },
+        "published_proportional_benchmark": {
+          "policy_name": "echelon_base_stock",
+          "allocation_policy": "proportional",
+          "mean_cost": -1776.04,
+          "standard_error": 2.1,
+          "relative_gap_percent": 0.0
+        },
+        "published_ppo_benchmark": {
+          "policy_name": "ppo",
+          "allocation_policy": null,
+          "mean_cost": -1731.67,
+          "standard_error": 7.16,
+          "relative_gap_percent": -2.5
+        },
+        "notes": "Table 1 / Table A.3 instance from Kaynov et al. (2024)."
+      },
+      "initial_state": {
+        "initial_warehouse_inventory": 8,
+        "initial_warehouse_pipeline": [
+          8,
+          8
+        ],
+        "initial_retailer_inventory": [
+          3,
+          5,
+          0
+        ],
+        "initial_retailer_pipeline": [
+          [
+            3
+          ],
+          [
+            5
+          ],
+          [
+            0
+          ]
+        ],
+        "initial_state_rule": "mean_filled_pipeline_warm_start"
+      },
+      "search_results": {
+        "proportional": {
+          "warehouse_base_stock_level": 46,
+          "retailer_base_stock_levels": [
+            13,
+            13,
+            2
+          ],
+          "allocation_policy": "proportional",
+          "mean_cost": 1740.742,
+          "cost_std": 180.1458199237495,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 8,
+            "initial_warehouse_pipeline": [
+              8,
+              8
+            ],
+            "initial_retailer_inventory": [
+              3,
+              5,
+              0
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3
+              ],
+              [
+                5
+              ],
+              [
+                0
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation",
+          "search_bounds": {
+            "warehouse": [
+              32,
+              54
+            ],
+            "retailers": [
+              [
+                5,
+                19
+              ],
+              [
+                10,
+                15
+              ],
+              [
+                1,
+                4
+              ]
+            ],
+            "symmetric_retailers": false
+          },
+          "search_seed": 626049,
+          "search_protocol": "full_cartesian_symmetric_reduction",
+          "search_replications": 1000
+        },
+        "min_shortage": {
+          "warehouse_base_stock_level": 46,
+          "retailer_base_stock_levels": [
+            12,
+            13,
+            3
+          ],
+          "allocation_policy": "min_shortage",
+          "mean_cost": 1760.172,
+          "cost_std": 202.08514892490263,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 8,
+            "initial_warehouse_pipeline": [
+              8,
+              8
+            ],
+            "initial_retailer_inventory": [
+              3,
+              5,
+              0
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3
+              ],
+              [
+                5
+              ],
+              [
+                0
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation",
+          "search_bounds": {
+            "warehouse": [
+              32,
+              54
+            ],
+            "retailers": [
+              [
+                5,
+                19
+              ],
+              [
+                10,
+                15
+              ],
+              [
+                1,
+                4
+              ]
+            ],
+            "symmetric_retailers": false
+          },
+          "search_seed": 626049,
+          "search_protocol": "full_cartesian_symmetric_reduction",
+          "search_replications": 1000
+        }
+      },
+      "heuristics": {
+        "proportional": {
+          "warehouse_base_stock_level": 46,
+          "retailer_base_stock_levels": [
+            13,
+            13,
+            2
+          ],
+          "allocation_policy": "proportional",
+          "mean_cost": 1728.0195,
+          "cost_std": 174.1586342095907,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 8,
+            "initial_warehouse_pipeline": [
+              8,
+              8
+            ],
+            "initial_retailer_inventory": [
+              3,
+              5,
+              0
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3
+              ],
+              [
+                5
+              ],
+              [
+                0
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation"
+        },
+        "min_shortage": {
+          "warehouse_base_stock_level": 46,
+          "retailer_base_stock_levels": [
+            12,
+            13,
+            3
+          ],
+          "allocation_policy": "min_shortage",
+          "mean_cost": 1747.1895,
+          "cost_std": 194.4942758534298,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 8,
+            "initial_warehouse_pipeline": [
+              8,
+              8
+            ],
+            "initial_retailer_inventory": [
+              3,
+              5,
+              0
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3
+              ],
+              [
+                5
+              ],
+              [
+                0
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation"
+        }
+      },
+      "policy_config": {
+        "depth": 1,
+        "temperature": 0.1,
+        "split_type": "axis_aligned",
+        "leaf_type": "linear",
+        "policy_action_mode": "echelon_targets",
+        "training_episodes": 300,
+        "es_population": 16,
+        "sigma_init": 1.5,
+        "train_seed_batch": 16
+      },
+      "training_seed": 822138,
+      "heuristic_search_seed": 626049,
+      "benchmark_seed": 674446,
+      "eval_seed_start": 1766951,
+      "evaluation": {
+        "mean_cost": 1870.7815,
+        "cost_std": 154.10901501128998,
+        "min_cost": 1540.5,
+        "max_cost": 2697.5,
+        "num_samples": 1000
+      },
+      "comparison_rows": [
+        {
+          "policy": "published_echelon_base_stock_proportional",
+          "mean_cost": 1776.04,
+          "note": "Kaynov Table A.3",
+          "gap_vs_soft_tree_cost": -94.74150000000009
+        },
+        {
+          "policy": "published_echelon_base_stock_min_shortage",
+          "mean_cost": 1800.5,
+          "note": "Kaynov Table A.3",
+          "gap_vs_soft_tree_cost": -70.28150000000005
+        },
+        {
+          "policy": "published_ppo",
+          "mean_cost": 1731.67,
+          "note": "Kaynov Table A.3",
+          "gap_vs_soft_tree_cost": -139.11149999999998
+        },
+        {
+          "policy": "repo_echelon_base_stock_proportional",
+          "mean_cost": 1728.0195,
+          "note": "repo reproduction",
+          "gap_vs_soft_tree_cost": -142.76199999999994
+        },
+        {
+          "policy": "repo_echelon_base_stock_min_shortage",
+          "mean_cost": 1747.1895,
+          "note": "repo reproduction",
+          "gap_vs_soft_tree_cost": -123.5920000000001
+        },
+        {
+          "policy": "soft_tree",
+          "mean_cost": 1870.7815,
+          "note": "CMA-ES soft tree",
+          "gap_vs_soft_tree_cost": 0.0
+        },
+        {
+          "policy": "summary_best_published_heuristic",
+          "mean_cost": 1776.04,
+          "note": "min(published proportional, published min-shortage)",
+          "gap_vs_soft_tree_cost": -94.74150000000009
+        },
+        {
+          "policy": "summary_best_repo_heuristic",
+          "mean_cost": 1728.0195,
+          "note": "min(repo proportional, repo min-shortage)",
+          "gap_vs_soft_tree_cost": -142.76199999999994
+        }
+      ],
+      "summary": {
+        "instance_name": "kaynov2024_instance_3",
+        "customer_behavior": "backorder",
+        "soft_tree_mean_cost": 1870.7815,
+        "best_repo_heuristic_cost": 1728.0195,
+        "best_published_heuristic_cost": 1776.04,
+        "published_ppo_cost": 1731.67,
+        "gap_vs_repo_best": -142.76199999999994,
+        "gap_vs_published_best_heuristic": -94.74150000000009,
+        "gap_vs_published_ppo": -139.11149999999998
+      }
+    },
+    "kaynov2024_instance_4": {
+      "reference": {
+        "name": "kaynov2024_instance_4",
+        "source": "Kaynov et al. (2024), International Journal of Production Economics 267, 109088",
+        "url": "https://doi.org/10.1016/j.ijpe.2023.109088",
+        "literature_verified": true,
+        "benchmark_periods": 100,
+        "benchmark_replications": 1000,
+        "customer_behavior": "backorder",
+        "warehouse_lead_time": 2,
+        "retailer_lead_times": [
+          1,
+          2,
+          3
+        ],
+        "demand_kinds": [
+          "poisson",
+          "poisson",
+          "poisson"
+        ],
+        "demand_param1": [
+          3.0,
+          3.0,
+          3.0
+        ],
+        "demand_param2": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "holding_cost_warehouse": 0.5,
+        "holding_cost_retailers": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "penalty_costs_retailers": [
+          9.0,
+          9.0,
+          9.0
+        ],
+        "emergency_shipment_probability": 0.0,
+        "published_min_shortage_benchmark": {
+          "policy_name": "echelon_base_stock",
+          "allocation_policy": "min_shortage",
+          "mean_cost": -1857.3,
+          "standard_error": 1.76,
+          "relative_gap_percent": -0.09
+        },
+        "published_proportional_benchmark": {
+          "policy_name": "echelon_base_stock",
+          "allocation_policy": "proportional",
+          "mean_cost": -1858.93,
+          "standard_error": 1.89,
+          "relative_gap_percent": 0.0
+        },
+        "published_ppo_benchmark": {
+          "policy_name": "ppo",
+          "allocation_policy": null,
+          "mean_cost": -1908.95,
+          "standard_error": 6.73,
+          "relative_gap_percent": 2.69
+        },
+        "notes": "Table 1 / Table A.3 instance from Kaynov et al. (2024)."
+      },
+      "initial_state": {
+        "initial_warehouse_inventory": 9,
+        "initial_warehouse_pipeline": [
+          9,
+          9
+        ],
+        "initial_retailer_inventory": [
+          3,
+          3,
+          3
+        ],
+        "initial_retailer_pipeline": [
+          [
+            3
+          ],
+          [
+            3,
+            3
+          ],
+          [
+            3,
+            3,
+            3
+          ]
+        ],
+        "initial_state_rule": "mean_filled_pipeline_warm_start"
+      },
+      "search_results": {
+        "proportional": {
+          "warehouse_base_stock_level": 59,
+          "retailer_base_stock_levels": [
+            10,
+            14,
+            18
+          ],
+          "allocation_policy": "proportional",
+          "mean_cost": 1836.902,
+          "cost_std": 170.91552853968528,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 9,
+            "initial_warehouse_pipeline": [
+              9,
+              9
+            ],
+            "initial_retailer_inventory": [
+              3,
+              3,
+              3
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3
+              ],
+              [
+                3,
+                3
+              ],
+              [
+                3,
+                3,
+                3
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation",
+          "search_bounds": {
+            "warehouse": [
+              54,
+              77
+            ],
+            "retailers": [
+              [
+                6,
+                14
+              ],
+              [
+                9,
+                18
+              ],
+              [
+                12,
+                23
+              ]
+            ],
+            "symmetric_retailers": false
+          },
+          "search_seed": 805698,
+          "search_protocol": "full_cartesian_symmetric_reduction",
+          "search_replications": 1000
+        },
+        "min_shortage": {
+          "warehouse_base_stock_level": 58,
+          "retailer_base_stock_levels": [
+            10,
+            14,
+            18
+          ],
+          "allocation_policy": "min_shortage",
+          "mean_cost": 1812.8585,
+          "cost_std": 177.12864174873005,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 9,
+            "initial_warehouse_pipeline": [
+              9,
+              9
+            ],
+            "initial_retailer_inventory": [
+              3,
+              3,
+              3
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3
+              ],
+              [
+                3,
+                3
+              ],
+              [
+                3,
+                3,
+                3
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation",
+          "search_bounds": {
+            "warehouse": [
+              54,
+              77
+            ],
+            "retailers": [
+              [
+                6,
+                14
+              ],
+              [
+                9,
+                18
+              ],
+              [
+                12,
+                23
+              ]
+            ],
+            "symmetric_retailers": false
+          },
+          "search_seed": 805698,
+          "search_protocol": "full_cartesian_symmetric_reduction",
+          "search_replications": 1000
+        }
+      },
+      "heuristics": {
+        "proportional": {
+          "warehouse_base_stock_level": 59,
+          "retailer_base_stock_levels": [
+            10,
+            14,
+            18
+          ],
+          "allocation_policy": "proportional",
+          "mean_cost": 1828.5665,
+          "cost_std": 171.37097282722644,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 9,
+            "initial_warehouse_pipeline": [
+              9,
+              9
+            ],
+            "initial_retailer_inventory": [
+              3,
+              3,
+              3
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3
+              ],
+              [
+                3,
+                3
+              ],
+              [
+                3,
+                3,
+                3
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation"
+        },
+        "min_shortage": {
+          "warehouse_base_stock_level": 58,
+          "retailer_base_stock_levels": [
+            10,
+            14,
+            18
+          ],
+          "allocation_policy": "min_shortage",
+          "mean_cost": 1802.271,
+          "cost_std": 175.79065976040934,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 9,
+            "initial_warehouse_pipeline": [
+              9,
+              9
+            ],
+            "initial_retailer_inventory": [
+              3,
+              3,
+              3
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3
+              ],
+              [
+                3,
+                3
+              ],
+              [
+                3,
+                3,
+                3
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation"
+        }
+      },
+      "policy_config": {
+        "depth": 1,
+        "temperature": 0.1,
+        "split_type": "axis_aligned",
+        "leaf_type": "linear",
+        "policy_action_mode": "echelon_targets",
+        "training_episodes": 300,
+        "es_population": 16,
+        "sigma_init": 1.5,
+        "train_seed_batch": 16
+      },
+      "training_seed": 280891,
+      "heuristic_search_seed": 805698,
+      "benchmark_seed": 723023,
+      "eval_seed_start": 1832488,
+      "evaluation": {
+        "mean_cost": 1913.9865,
+        "cost_std": 161.73325282003697,
+        "min_cost": 1505.0,
+        "max_cost": 2788.5,
+        "num_samples": 1000
+      },
+      "comparison_rows": [
+        {
+          "policy": "published_echelon_base_stock_proportional",
+          "mean_cost": 1858.93,
+          "note": "Kaynov Table A.3",
+          "gap_vs_soft_tree_cost": -55.056499999999915
+        },
+        {
+          "policy": "published_echelon_base_stock_min_shortage",
+          "mean_cost": 1857.3,
+          "note": "Kaynov Table A.3",
+          "gap_vs_soft_tree_cost": -56.686500000000024
+        },
+        {
+          "policy": "published_ppo",
+          "mean_cost": 1908.95,
+          "note": "Kaynov Table A.3",
+          "gap_vs_soft_tree_cost": -5.036499999999933
+        },
+        {
+          "policy": "repo_echelon_base_stock_proportional",
+          "mean_cost": 1828.5665,
+          "note": "repo reproduction",
+          "gap_vs_soft_tree_cost": -85.42000000000007
+        },
+        {
+          "policy": "repo_echelon_base_stock_min_shortage",
+          "mean_cost": 1802.271,
+          "note": "repo reproduction",
+          "gap_vs_soft_tree_cost": -111.71550000000002
+        },
+        {
+          "policy": "soft_tree",
+          "mean_cost": 1913.9865,
+          "note": "CMA-ES soft tree",
+          "gap_vs_soft_tree_cost": 0.0
+        },
+        {
+          "policy": "summary_best_published_heuristic",
+          "mean_cost": 1857.3,
+          "note": "min(published proportional, published min-shortage)",
+          "gap_vs_soft_tree_cost": -56.686500000000024
+        },
+        {
+          "policy": "summary_best_repo_heuristic",
+          "mean_cost": 1802.271,
+          "note": "min(repo proportional, repo min-shortage)",
+          "gap_vs_soft_tree_cost": -111.71550000000002
+        }
+      ],
+      "summary": {
+        "instance_name": "kaynov2024_instance_4",
+        "customer_behavior": "backorder",
+        "soft_tree_mean_cost": 1913.9865,
+        "best_repo_heuristic_cost": 1802.271,
+        "best_published_heuristic_cost": 1857.3,
+        "published_ppo_cost": 1908.95,
+        "gap_vs_repo_best": -111.71550000000002,
+        "gap_vs_published_best_heuristic": -56.686500000000024,
+        "gap_vs_published_ppo": -5.036499999999933
+      }
+    },
+    "kaynov2024_instance_5": {
+      "reference": {
+        "name": "kaynov2024_instance_5",
+        "source": "Kaynov et al. (2024), International Journal of Production Economics 267, 109088",
+        "url": "https://doi.org/10.1016/j.ijpe.2023.109088",
+        "literature_verified": true,
+        "benchmark_periods": 100,
+        "benchmark_replications": 1000,
+        "customer_behavior": "backorder",
+        "warehouse_lead_time": 5,
+        "retailer_lead_times": [
+          3,
+          3,
+          3
+        ],
+        "demand_kinds": [
+          "rounded_normal",
+          "rounded_normal",
+          "poisson"
+        ],
+        "demand_param1": [
+          1.0,
+          5.0,
+          0.5
+        ],
+        "demand_param2": [
+          5.0,
+          1.0,
+          0.0
+        ],
+        "holding_cost_warehouse": 0.5,
+        "holding_cost_retailers": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "penalty_costs_retailers": [
+          9.0,
+          9.0,
+          9.0
+        ],
+        "emergency_shipment_probability": 0.0,
+        "published_min_shortage_benchmark": {
+          "policy_name": "echelon_base_stock",
+          "allocation_policy": "min_shortage",
+          "mean_cost": -2306.89,
+          "standard_error": 3.47,
+          "relative_gap_percent": 2.67
+        },
+        "published_proportional_benchmark": {
+          "policy_name": "echelon_base_stock",
+          "allocation_policy": "proportional",
+          "mean_cost": -2246.84,
+          "standard_error": 3.18,
+          "relative_gap_percent": 0.0
+        },
+        "published_ppo_benchmark": {
+          "policy_name": "ppo",
+          "allocation_policy": null,
+          "mean_cost": -2331.07,
+          "standard_error": 13.45,
+          "relative_gap_percent": 3.75
+        },
+        "notes": "Table 1 / Table A.3 instance from Kaynov et al. (2024)."
+      },
+      "initial_state": {
+        "initial_warehouse_inventory": 8,
+        "initial_warehouse_pipeline": [
+          8,
+          8,
+          8,
+          8,
+          8
+        ],
+        "initial_retailer_inventory": [
+          3,
+          5,
+          0
+        ],
+        "initial_retailer_pipeline": [
+          [
+            3,
+            3,
+            3
+          ],
+          [
+            5,
+            5,
+            5
+          ],
+          [
+            0,
+            0,
+            0
+          ]
+        ],
+        "initial_state_rule": "mean_filled_pipeline_warm_start"
+      },
+      "search_results": {
+        "proportional": {
+          "warehouse_base_stock_level": 92,
+          "retailer_base_stock_levels": [
+            20,
+            24,
+            4
+          ],
+          "allocation_policy": "proportional",
+          "mean_cost": 2456.4325,
+          "cost_std": 387.13326477293333,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 8,
+            "initial_warehouse_pipeline": [
+              8,
+              8,
+              8,
+              8,
+              8
+            ],
+            "initial_retailer_inventory": [
+              3,
+              5,
+              0
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3,
+                3,
+                3
+              ],
+              [
+                5,
+                5,
+                5
+              ],
+              [
+                0,
+                0,
+                0
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation",
+          "search_bounds": {
+            "warehouse": [
+              72,
+              104
+            ],
+            "retailers": [
+              [
+                10,
+                30
+              ],
+              [
+                20,
+                27
+              ],
+              [
+                2,
+                7
+              ]
+            ],
+            "symmetric_retailers": false
+          },
+          "search_seed": 985347,
+          "search_protocol": "full_cartesian_symmetric_reduction",
+          "search_replications": 1000
+        },
+        "min_shortage": {
+          "warehouse_base_stock_level": 92,
+          "retailer_base_stock_levels": [
+            20,
+            24,
+            5
+          ],
+          "allocation_policy": "min_shortage",
+          "mean_cost": 2468.71,
+          "cost_std": 392.4173567771947,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 8,
+            "initial_warehouse_pipeline": [
+              8,
+              8,
+              8,
+              8,
+              8
+            ],
+            "initial_retailer_inventory": [
+              3,
+              5,
+              0
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3,
+                3,
+                3
+              ],
+              [
+                5,
+                5,
+                5
+              ],
+              [
+                0,
+                0,
+                0
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation",
+          "search_bounds": {
+            "warehouse": [
+              72,
+              104
+            ],
+            "retailers": [
+              [
+                10,
+                30
+              ],
+              [
+                20,
+                27
+              ],
+              [
+                2,
+                7
+              ]
+            ],
+            "symmetric_retailers": false
+          },
+          "search_seed": 985347,
+          "search_protocol": "full_cartesian_symmetric_reduction",
+          "search_replications": 1000
+        }
+      },
+      "heuristics": {
+        "proportional": {
+          "warehouse_base_stock_level": 92,
+          "retailer_base_stock_levels": [
+            20,
+            24,
+            4
+          ],
+          "allocation_policy": "proportional",
+          "mean_cost": 2454.6215,
+          "cost_std": 385.21653130122826,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 8,
+            "initial_warehouse_pipeline": [
+              8,
+              8,
+              8,
+              8,
+              8
+            ],
+            "initial_retailer_inventory": [
+              3,
+              5,
+              0
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3,
+                3,
+                3
+              ],
+              [
+                5,
+                5,
+                5
+              ],
+              [
+                0,
+                0,
+                0
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation"
+        },
+        "min_shortage": {
+          "warehouse_base_stock_level": 92,
+          "retailer_base_stock_levels": [
+            20,
+            24,
+            5
+          ],
+          "allocation_policy": "min_shortage",
+          "mean_cost": 2465.534,
+          "cost_std": 387.1647735060616,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 8,
+            "initial_warehouse_pipeline": [
+              8,
+              8,
+              8,
+              8,
+              8
+            ],
+            "initial_retailer_inventory": [
+              3,
+              5,
+              0
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3,
+                3,
+                3
+              ],
+              [
+                5,
+                5,
+                5
+              ],
+              [
+                0,
+                0,
+                0
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation"
+        }
+      },
+      "policy_config": {
+        "depth": 1,
+        "temperature": 0.1,
+        "split_type": "axis_aligned",
+        "leaf_type": "linear",
+        "policy_action_mode": "echelon_targets",
+        "training_episodes": 300,
+        "es_population": 16,
+        "sigma_init": 1.5,
+        "train_seed_batch": 16
+      },
+      "training_seed": 739644,
+      "heuristic_search_seed": 985347,
+      "benchmark_seed": 771600,
+      "eval_seed_start": 1898025,
+      "evaluation": {
+        "mean_cost": 2648.7405,
+        "cost_std": 316.89771758368664,
+        "min_cost": 1969.5,
+        "max_cost": 4544.5,
+        "num_samples": 1000
+      },
+      "comparison_rows": [
+        {
+          "policy": "published_echelon_base_stock_proportional",
+          "mean_cost": 2246.84,
+          "note": "Kaynov Table A.3",
+          "gap_vs_soft_tree_cost": -401.90049999999974
+        },
+        {
+          "policy": "published_echelon_base_stock_min_shortage",
+          "mean_cost": 2306.89,
+          "note": "Kaynov Table A.3",
+          "gap_vs_soft_tree_cost": -341.8505
+        },
+        {
+          "policy": "published_ppo",
+          "mean_cost": 2331.07,
+          "note": "Kaynov Table A.3",
+          "gap_vs_soft_tree_cost": -317.6704999999997
+        },
+        {
+          "policy": "repo_echelon_base_stock_proportional",
+          "mean_cost": 2454.6215,
+          "note": "repo reproduction",
+          "gap_vs_soft_tree_cost": -194.1189999999997
+        },
+        {
+          "policy": "repo_echelon_base_stock_min_shortage",
+          "mean_cost": 2465.534,
+          "note": "repo reproduction",
+          "gap_vs_soft_tree_cost": -183.20649999999978
+        },
+        {
+          "policy": "soft_tree",
+          "mean_cost": 2648.7405,
+          "note": "CMA-ES soft tree",
+          "gap_vs_soft_tree_cost": 0.0
+        },
+        {
+          "policy": "summary_best_published_heuristic",
+          "mean_cost": 2246.84,
+          "note": "min(published proportional, published min-shortage)",
+          "gap_vs_soft_tree_cost": -401.90049999999974
+        },
+        {
+          "policy": "summary_best_repo_heuristic",
+          "mean_cost": 2454.6215,
+          "note": "min(repo proportional, repo min-shortage)",
+          "gap_vs_soft_tree_cost": -194.1189999999997
+        }
+      ],
+      "summary": {
+        "instance_name": "kaynov2024_instance_5",
+        "customer_behavior": "backorder",
+        "soft_tree_mean_cost": 2648.7405,
+        "best_repo_heuristic_cost": 2454.6215,
+        "best_published_heuristic_cost": 2246.84,
+        "published_ppo_cost": 2331.07,
+        "gap_vs_repo_best": -194.1189999999997,
+        "gap_vs_published_best_heuristic": -401.90049999999974,
+        "gap_vs_published_ppo": -317.6704999999997
+      }
+    },
+    "kaynov2024_instance_6": {
+      "reference": {
+        "name": "kaynov2024_instance_6",
+        "source": "Kaynov et al. (2024), International Journal of Production Economics 267, 109088",
+        "url": "https://doi.org/10.1016/j.ijpe.2023.109088",
+        "literature_verified": true,
+        "benchmark_periods": 100,
+        "benchmark_replications": 1000,
+        "customer_behavior": "lost_sales",
+        "warehouse_lead_time": 1,
+        "retailer_lead_times": [
+          1,
+          1,
+          1
+        ],
+        "demand_kinds": [
+          "poisson",
+          "poisson",
+          "poisson"
+        ],
+        "demand_param1": [
+          3.0,
+          3.0,
+          3.0
+        ],
+        "demand_param2": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "holding_cost_warehouse": 0.5,
+        "holding_cost_retailers": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "penalty_costs_retailers": [
+          9.0,
+          9.0,
+          9.0
+        ],
+        "emergency_shipment_probability": 0.0,
+        "published_min_shortage_benchmark": {
+          "policy_name": "echelon_base_stock",
+          "allocation_policy": "min_shortage",
+          "mean_cost": -1366.51,
+          "standard_error": 0.91,
+          "relative_gap_percent": -0.54
+        },
+        "published_proportional_benchmark": {
+          "policy_name": "echelon_base_stock",
+          "allocation_policy": "proportional",
+          "mean_cost": -1373.91,
+          "standard_error": 0.92,
+          "relative_gap_percent": 0.0
+        },
+        "published_ppo_benchmark": {
+          "policy_name": "ppo",
+          "allocation_policy": null,
+          "mean_cost": -1347.34,
+          "standard_error": 2.89,
+          "relative_gap_percent": -1.93
+        },
+        "notes": "Table 1 / Table A.3 instance from Kaynov et al. (2024)."
+      },
+      "initial_state": {
+        "initial_warehouse_inventory": 9,
+        "initial_warehouse_pipeline": [
+          9
+        ],
+        "initial_retailer_inventory": [
+          3,
+          3,
+          3
+        ],
+        "initial_retailer_pipeline": [
+          [
+            3
+          ],
+          [
+            3
+          ],
+          [
+            3
+          ]
+        ],
+        "initial_state_rule": "mean_filled_pipeline_warm_start"
+      },
+      "search_results": {
+        "proportional": {
+          "warehouse_base_stock_level": 34,
+          "retailer_base_stock_levels": [
+            9,
+            9,
+            9
+          ],
+          "allocation_policy": "proportional",
+          "mean_cost": 1343.6775,
+          "cost_std": 95.32059716425411,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 9,
+            "initial_warehouse_pipeline": [
+              9
+            ],
+            "initial_retailer_inventory": [
+              3,
+              3,
+              3
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3
+              ],
+              [
+                3
+              ],
+              [
+                3
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation",
+          "search_bounds": {
+            "warehouse": [
+              27,
+              43
+            ],
+            "retailers": [
+              [
+                6,
+                14
+              ],
+              [
+                6,
+                14
+              ],
+              [
+                6,
+                14
+              ]
+            ],
+            "symmetric_retailers": true
+          },
+          "search_seed": 164996,
+          "search_protocol": "full_cartesian_symmetric_reduction",
+          "search_replications": 1000
+        },
+        "min_shortage": {
+          "warehouse_base_stock_level": 35,
+          "retailer_base_stock_levels": [
+            10,
+            10,
+            10
+          ],
+          "allocation_policy": "min_shortage",
+          "mean_cost": 1357.1595,
+          "cost_std": 89.59102248411942,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 9,
+            "initial_warehouse_pipeline": [
+              9
+            ],
+            "initial_retailer_inventory": [
+              3,
+              3,
+              3
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3
+              ],
+              [
+                3
+              ],
+              [
+                3
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation",
+          "search_bounds": {
+            "warehouse": [
+              27,
+              43
+            ],
+            "retailers": [
+              [
+                6,
+                14
+              ],
+              [
+                6,
+                14
+              ],
+              [
+                6,
+                14
+              ]
+            ],
+            "symmetric_retailers": true
+          },
+          "search_seed": 164996,
+          "search_protocol": "full_cartesian_symmetric_reduction",
+          "search_replications": 1000
+        }
+      },
+      "heuristics": {
+        "proportional": {
+          "warehouse_base_stock_level": 34,
+          "retailer_base_stock_levels": [
+            9,
+            9,
+            9
+          ],
+          "allocation_policy": "proportional",
+          "mean_cost": 1346.834,
+          "cost_std": 97.49483803771358,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 9,
+            "initial_warehouse_pipeline": [
+              9
+            ],
+            "initial_retailer_inventory": [
+              3,
+              3,
+              3
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3
+              ],
+              [
+                3
+              ],
+              [
+                3
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation"
+        },
+        "min_shortage": {
+          "warehouse_base_stock_level": 35,
+          "retailer_base_stock_levels": [
+            10,
+            10,
+            10
+          ],
+          "allocation_policy": "min_shortage",
+          "mean_cost": 1358.4485,
+          "cost_std": 91.5515652392137,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 9,
+            "initial_warehouse_pipeline": [
+              9
+            ],
+            "initial_retailer_inventory": [
+              3,
+              3,
+              3
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3
+              ],
+              [
+                3
+              ],
+              [
+                3
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation"
+        }
+      },
+      "policy_config": {
+        "depth": 1,
+        "temperature": 0.1,
+        "split_type": "axis_aligned",
+        "leaf_type": "linear",
+        "policy_action_mode": "symmetric_echelon_targets",
+        "training_episodes": 300,
+        "es_population": 16,
+        "sigma_init": 1.5,
+        "train_seed_batch": 16
+      },
+      "training_seed": 198397,
+      "heuristic_search_seed": 164996,
+      "benchmark_seed": 820177,
+      "eval_seed_start": 1963562,
+      "evaluation": {
+        "mean_cost": 1394.4695,
+        "cost_std": 88.87482950616558,
+        "min_cost": 1142.5,
+        "max_cost": 1706.0,
+        "num_samples": 1000
+      },
+      "comparison_rows": [
+        {
+          "policy": "published_echelon_base_stock_proportional",
+          "mean_cost": 1373.91,
+          "note": "Kaynov Table A.3",
+          "gap_vs_soft_tree_cost": -20.559499999999844
+        },
+        {
+          "policy": "published_echelon_base_stock_min_shortage",
+          "mean_cost": 1366.51,
+          "note": "Kaynov Table A.3",
+          "gap_vs_soft_tree_cost": -27.959499999999935
+        },
+        {
+          "policy": "published_ppo",
+          "mean_cost": 1347.34,
+          "note": "Kaynov Table A.3",
+          "gap_vs_soft_tree_cost": -47.12950000000001
+        },
+        {
+          "policy": "repo_echelon_base_stock_proportional",
+          "mean_cost": 1346.834,
+          "note": "repo reproduction",
+          "gap_vs_soft_tree_cost": -47.635499999999865
+        },
+        {
+          "policy": "repo_echelon_base_stock_min_shortage",
+          "mean_cost": 1358.4485,
+          "note": "repo reproduction",
+          "gap_vs_soft_tree_cost": -36.02099999999996
+        },
+        {
+          "policy": "soft_tree",
+          "mean_cost": 1394.4695,
+          "note": "CMA-ES soft tree",
+          "gap_vs_soft_tree_cost": 0.0
+        },
+        {
+          "policy": "summary_best_published_heuristic",
+          "mean_cost": 1366.51,
+          "note": "min(published proportional, published min-shortage)",
+          "gap_vs_soft_tree_cost": -27.959499999999935
+        },
+        {
+          "policy": "summary_best_repo_heuristic",
+          "mean_cost": 1346.834,
+          "note": "min(repo proportional, repo min-shortage)",
+          "gap_vs_soft_tree_cost": -47.635499999999865
+        }
+      ],
+      "summary": {
+        "instance_name": "kaynov2024_instance_6",
+        "customer_behavior": "lost_sales",
+        "soft_tree_mean_cost": 1394.4695,
+        "best_repo_heuristic_cost": 1346.834,
+        "best_published_heuristic_cost": 1366.51,
+        "published_ppo_cost": 1347.34,
+        "gap_vs_repo_best": -47.635499999999865,
+        "gap_vs_published_best_heuristic": -27.959499999999935,
+        "gap_vs_published_ppo": -47.12950000000001
+      }
+    },
+    "kaynov2024_instance_7": {
+      "reference": {
+        "name": "kaynov2024_instance_7",
+        "source": "Kaynov et al. (2024), International Journal of Production Economics 267, 109088",
+        "url": "https://doi.org/10.1016/j.ijpe.2023.109088",
+        "literature_verified": true,
+        "benchmark_periods": 100,
+        "benchmark_replications": 1000,
+        "customer_behavior": "lost_sales",
+        "warehouse_lead_time": 2,
+        "retailer_lead_times": [
+          1,
+          1,
+          1
+        ],
+        "demand_kinds": [
+          "poisson",
+          "poisson",
+          "poisson"
+        ],
+        "demand_param1": [
+          3.0,
+          3.0,
+          3.0
+        ],
+        "demand_param2": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "holding_cost_warehouse": 0.5,
+        "holding_cost_retailers": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "penalty_costs_retailers": [
+          9.0,
+          9.0,
+          9.0
+        ],
+        "emergency_shipment_probability": 0.0,
+        "published_min_shortage_benchmark": {
+          "policy_name": "echelon_base_stock",
+          "allocation_policy": "min_shortage",
+          "mean_cost": -1408.08,
+          "standard_error": 0.95,
+          "relative_gap_percent": 0.13
+        },
+        "published_proportional_benchmark": {
+          "policy_name": "echelon_base_stock",
+          "allocation_policy": "proportional",
+          "mean_cost": -1406.27,
+          "standard_error": 0.99,
+          "relative_gap_percent": 0.0
+        },
+        "published_ppo_benchmark": {
+          "policy_name": "ppo",
+          "allocation_policy": null,
+          "mean_cost": -1405.08,
+          "standard_error": 3.11,
+          "relative_gap_percent": -0.09
+        },
+        "notes": "Table 1 / Table A.3 instance from Kaynov et al. (2024)."
+      },
+      "initial_state": {
+        "initial_warehouse_inventory": 9,
+        "initial_warehouse_pipeline": [
+          9,
+          9
+        ],
+        "initial_retailer_inventory": [
+          3,
+          3,
+          3
+        ],
+        "initial_retailer_pipeline": [
+          [
+            3
+          ],
+          [
+            3
+          ],
+          [
+            3
+          ]
+        ],
+        "initial_state_rule": "mean_filled_pipeline_warm_start"
+      },
+      "search_results": {
+        "proportional": {
+          "warehouse_base_stock_level": 44,
+          "retailer_base_stock_levels": [
+            10,
+            10,
+            10
+          ],
+          "allocation_policy": "proportional",
+          "mean_cost": 1397.4095,
+          "cost_std": 91.56368581348178,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 9,
+            "initial_warehouse_pipeline": [
+              9,
+              9
+            ],
+            "initial_retailer_inventory": [
+              3,
+              3,
+              3
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3
+              ],
+              [
+                3
+              ],
+              [
+                3
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation",
+          "search_bounds": {
+            "warehouse": [
+              36,
+              54
+            ],
+            "retailers": [
+              [
+                6,
+                14
+              ],
+              [
+                6,
+                14
+              ],
+              [
+                6,
+                14
+              ]
+            ],
+            "symmetric_retailers": true
+          },
+          "search_seed": 344645,
+          "search_protocol": "full_cartesian_symmetric_reduction",
+          "search_replications": 1000
+        },
+        "min_shortage": {
+          "warehouse_base_stock_level": 44,
+          "retailer_base_stock_levels": [
+            10,
+            10,
+            10
+          ],
+          "allocation_policy": "min_shortage",
+          "mean_cost": 1406.724,
+          "cost_std": 91.30420759198343,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 9,
+            "initial_warehouse_pipeline": [
+              9,
+              9
+            ],
+            "initial_retailer_inventory": [
+              3,
+              3,
+              3
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3
+              ],
+              [
+                3
+              ],
+              [
+                3
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation",
+          "search_bounds": {
+            "warehouse": [
+              36,
+              54
+            ],
+            "retailers": [
+              [
+                6,
+                14
+              ],
+              [
+                6,
+                14
+              ],
+              [
+                6,
+                14
+              ]
+            ],
+            "symmetric_retailers": true
+          },
+          "search_seed": 344645,
+          "search_protocol": "full_cartesian_symmetric_reduction",
+          "search_replications": 1000
+        }
+      },
+      "heuristics": {
+        "proportional": {
+          "warehouse_base_stock_level": 44,
+          "retailer_base_stock_levels": [
+            10,
+            10,
+            10
+          ],
+          "allocation_policy": "proportional",
+          "mean_cost": 1390.966,
+          "cost_std": 93.47451975806027,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 9,
+            "initial_warehouse_pipeline": [
+              9,
+              9
+            ],
+            "initial_retailer_inventory": [
+              3,
+              3,
+              3
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3
+              ],
+              [
+                3
+              ],
+              [
+                3
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation"
+        },
+        "min_shortage": {
+          "warehouse_base_stock_level": 44,
+          "retailer_base_stock_levels": [
+            10,
+            10,
+            10
+          ],
+          "allocation_policy": "min_shortage",
+          "mean_cost": 1400.791,
+          "cost_std": 94.61115589083568,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 9,
+            "initial_warehouse_pipeline": [
+              9,
+              9
+            ],
+            "initial_retailer_inventory": [
+              3,
+              3,
+              3
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3
+              ],
+              [
+                3
+              ],
+              [
+                3
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation"
+        }
+      },
+      "policy_config": {
+        "depth": 1,
+        "temperature": 0.1,
+        "split_type": "axis_aligned",
+        "leaf_type": "linear",
+        "policy_action_mode": "symmetric_echelon_targets",
+        "training_episodes": 300,
+        "es_population": 16,
+        "sigma_init": 1.5,
+        "train_seed_batch": 16
+      },
+      "training_seed": 657150,
+      "heuristic_search_seed": 344645,
+      "benchmark_seed": 868754,
+      "eval_seed_start": 1029099,
+      "evaluation": {
+        "mean_cost": 1444.7565,
+        "cost_std": 95.83933408444572,
+        "min_cost": 1188.0,
+        "max_cost": 1791.0,
+        "num_samples": 1000
+      },
+      "comparison_rows": [
+        {
+          "policy": "published_echelon_base_stock_proportional",
+          "mean_cost": 1406.27,
+          "note": "Kaynov Table A.3",
+          "gap_vs_soft_tree_cost": -38.48649999999998
+        },
+        {
+          "policy": "published_echelon_base_stock_min_shortage",
+          "mean_cost": 1408.08,
+          "note": "Kaynov Table A.3",
+          "gap_vs_soft_tree_cost": -36.67650000000003
+        },
+        {
+          "policy": "published_ppo",
+          "mean_cost": 1405.08,
+          "note": "Kaynov Table A.3",
+          "gap_vs_soft_tree_cost": -39.67650000000003
+        },
+        {
+          "policy": "repo_echelon_base_stock_proportional",
+          "mean_cost": 1390.966,
+          "note": "repo reproduction",
+          "gap_vs_soft_tree_cost": -53.790500000000065
+        },
+        {
+          "policy": "repo_echelon_base_stock_min_shortage",
+          "mean_cost": 1400.791,
+          "note": "repo reproduction",
+          "gap_vs_soft_tree_cost": -43.96550000000002
+        },
+        {
+          "policy": "soft_tree",
+          "mean_cost": 1444.7565,
+          "note": "CMA-ES soft tree",
+          "gap_vs_soft_tree_cost": 0.0
+        },
+        {
+          "policy": "summary_best_published_heuristic",
+          "mean_cost": 1406.27,
+          "note": "min(published proportional, published min-shortage)",
+          "gap_vs_soft_tree_cost": -38.48649999999998
+        },
+        {
+          "policy": "summary_best_repo_heuristic",
+          "mean_cost": 1390.966,
+          "note": "min(repo proportional, repo min-shortage)",
+          "gap_vs_soft_tree_cost": -53.790500000000065
+        }
+      ],
+      "summary": {
+        "instance_name": "kaynov2024_instance_7",
+        "customer_behavior": "lost_sales",
+        "soft_tree_mean_cost": 1444.7565,
+        "best_repo_heuristic_cost": 1390.966,
+        "best_published_heuristic_cost": 1406.27,
+        "published_ppo_cost": 1405.08,
+        "gap_vs_repo_best": -53.790500000000065,
+        "gap_vs_published_best_heuristic": -38.48649999999998,
+        "gap_vs_published_ppo": -39.67650000000003
+      }
+    },
+    "kaynov2024_instance_8": {
+      "reference": {
+        "name": "kaynov2024_instance_8",
+        "source": "Kaynov et al. (2024), International Journal of Production Economics 267, 109088",
+        "url": "https://doi.org/10.1016/j.ijpe.2023.109088",
+        "literature_verified": true,
+        "benchmark_periods": 100,
+        "benchmark_replications": 1000,
+        "customer_behavior": "lost_sales",
+        "warehouse_lead_time": 5,
+        "retailer_lead_times": [
+          1,
+          1,
+          1
+        ],
+        "demand_kinds": [
+          "poisson",
+          "poisson",
+          "poisson"
+        ],
+        "demand_param1": [
+          3.0,
+          3.0,
+          3.0
+        ],
+        "demand_param2": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "holding_cost_warehouse": 0.5,
+        "holding_cost_retailers": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "penalty_costs_retailers": [
+          9.0,
+          9.0,
+          9.0
+        ],
+        "emergency_shipment_probability": 0.0,
+        "published_min_shortage_benchmark": {
+          "policy_name": "echelon_base_stock",
+          "allocation_policy": "min_shortage",
+          "mean_cost": -1516.67,
+          "standard_error": 1.14,
+          "relative_gap_percent": 0.57
+        },
+        "published_proportional_benchmark": {
+          "policy_name": "echelon_base_stock",
+          "allocation_policy": "proportional",
+          "mean_cost": -1508.12,
+          "standard_error": 1.11,
+          "relative_gap_percent": 0.0
+        },
+        "published_ppo_benchmark": {
+          "policy_name": "ppo",
+          "allocation_policy": null,
+          "mean_cost": -1495.49,
+          "standard_error": 3.76,
+          "relative_gap_percent": -0.84
+        },
+        "notes": "Table 1 / Table A.3 instance from Kaynov et al. (2024)."
+      },
+      "initial_state": {
+        "initial_warehouse_inventory": 9,
+        "initial_warehouse_pipeline": [
+          9,
+          9,
+          9,
+          9,
+          9
+        ],
+        "initial_retailer_inventory": [
+          3,
+          3,
+          3
+        ],
+        "initial_retailer_pipeline": [
+          [
+            3
+          ],
+          [
+            3
+          ],
+          [
+            3
+          ]
+        ],
+        "initial_state_rule": "mean_filled_pipeline_warm_start"
+      },
+      "search_results": {
+        "proportional": {
+          "warehouse_base_stock_level": 70,
+          "retailer_base_stock_levels": [
+            10,
+            10,
+            10
+          ],
+          "allocation_policy": "proportional",
+          "mean_cost": 1472.3475,
+          "cost_std": 108.3224583996781,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 9,
+            "initial_warehouse_pipeline": [
+              9,
+              9,
+              9,
+              9,
+              9
+            ],
+            "initial_retailer_inventory": [
+              3,
+              3,
+              3
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3
+              ],
+              [
+                3
+              ],
+              [
+                3
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation",
+          "search_bounds": {
+            "warehouse": [
+              63,
+              87
+            ],
+            "retailers": [
+              [
+                6,
+                14
+              ],
+              [
+                6,
+                14
+              ],
+              [
+                6,
+                14
+              ]
+            ],
+            "symmetric_retailers": true
+          },
+          "search_seed": 524294,
+          "search_protocol": "full_cartesian_symmetric_reduction",
+          "search_replications": 1000
+        },
+        "min_shortage": {
+          "warehouse_base_stock_level": 70,
+          "retailer_base_stock_levels": [
+            10,
+            10,
+            10
+          ],
+          "allocation_policy": "min_shortage",
+          "mean_cost": 1481.6565,
+          "cost_std": 109.19986381745173,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 9,
+            "initial_warehouse_pipeline": [
+              9,
+              9,
+              9,
+              9,
+              9
+            ],
+            "initial_retailer_inventory": [
+              3,
+              3,
+              3
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3
+              ],
+              [
+                3
+              ],
+              [
+                3
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation",
+          "search_bounds": {
+            "warehouse": [
+              63,
+              87
+            ],
+            "retailers": [
+              [
+                6,
+                14
+              ],
+              [
+                6,
+                14
+              ],
+              [
+                6,
+                14
+              ]
+            ],
+            "symmetric_retailers": true
+          },
+          "search_seed": 524294,
+          "search_protocol": "full_cartesian_symmetric_reduction",
+          "search_replications": 1000
+        }
+      },
+      "heuristics": {
+        "proportional": {
+          "warehouse_base_stock_level": 70,
+          "retailer_base_stock_levels": [
+            10,
+            10,
+            10
+          ],
+          "allocation_policy": "proportional",
+          "mean_cost": 1473.796,
+          "cost_std": 104.63577009799273,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 9,
+            "initial_warehouse_pipeline": [
+              9,
+              9,
+              9,
+              9,
+              9
+            ],
+            "initial_retailer_inventory": [
+              3,
+              3,
+              3
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3
+              ],
+              [
+                3
+              ],
+              [
+                3
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation"
+        },
+        "min_shortage": {
+          "warehouse_base_stock_level": 70,
+          "retailer_base_stock_levels": [
+            10,
+            10,
+            10
+          ],
+          "allocation_policy": "min_shortage",
+          "mean_cost": 1484.019,
+          "cost_std": 106.48921841670175,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 9,
+            "initial_warehouse_pipeline": [
+              9,
+              9,
+              9,
+              9,
+              9
+            ],
+            "initial_retailer_inventory": [
+              3,
+              3,
+              3
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3
+              ],
+              [
+                3
+              ],
+              [
+                3
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation"
+        }
+      },
+      "policy_config": {
+        "depth": 1,
+        "temperature": 0.1,
+        "split_type": "axis_aligned",
+        "leaf_type": "linear",
+        "policy_action_mode": "symmetric_echelon_targets",
+        "training_episodes": 300,
+        "es_population": 16,
+        "sigma_init": 1.5,
+        "train_seed_batch": 16
+      },
+      "training_seed": 115903,
+      "heuristic_search_seed": 524294,
+      "benchmark_seed": 917331,
+      "eval_seed_start": 1094636,
+      "evaluation": {
+        "mean_cost": 1504.9805,
+        "cost_std": 107.1283849861931,
+        "min_cost": 1165.5,
+        "max_cost": 1853.5,
+        "num_samples": 1000
+      },
+      "comparison_rows": [
+        {
+          "policy": "published_echelon_base_stock_proportional",
+          "mean_cost": 1508.12,
+          "note": "Kaynov Table A.3",
+          "gap_vs_soft_tree_cost": 3.139499999999998
+        },
+        {
+          "policy": "published_echelon_base_stock_min_shortage",
+          "mean_cost": 1516.67,
+          "note": "Kaynov Table A.3",
+          "gap_vs_soft_tree_cost": 11.68950000000018
+        },
+        {
+          "policy": "published_ppo",
+          "mean_cost": 1495.49,
+          "note": "Kaynov Table A.3",
+          "gap_vs_soft_tree_cost": -9.490499999999884
+        },
+        {
+          "policy": "repo_echelon_base_stock_proportional",
+          "mean_cost": 1473.796,
+          "note": "repo reproduction",
+          "gap_vs_soft_tree_cost": -31.184499999999844
+        },
+        {
+          "policy": "repo_echelon_base_stock_min_shortage",
+          "mean_cost": 1484.019,
+          "note": "repo reproduction",
+          "gap_vs_soft_tree_cost": -20.961499999999887
+        },
+        {
+          "policy": "soft_tree",
+          "mean_cost": 1504.9805,
+          "note": "CMA-ES soft tree",
+          "gap_vs_soft_tree_cost": 0.0
+        },
+        {
+          "policy": "summary_best_published_heuristic",
+          "mean_cost": 1508.12,
+          "note": "min(published proportional, published min-shortage)",
+          "gap_vs_soft_tree_cost": 3.139499999999998
+        },
+        {
+          "policy": "summary_best_repo_heuristic",
+          "mean_cost": 1473.796,
+          "note": "min(repo proportional, repo min-shortage)",
+          "gap_vs_soft_tree_cost": -31.184499999999844
+        }
+      ],
+      "summary": {
+        "instance_name": "kaynov2024_instance_8",
+        "customer_behavior": "lost_sales",
+        "soft_tree_mean_cost": 1504.9805,
+        "best_repo_heuristic_cost": 1473.796,
+        "best_published_heuristic_cost": 1508.12,
+        "published_ppo_cost": 1495.49,
+        "gap_vs_repo_best": -31.184499999999844,
+        "gap_vs_published_best_heuristic": 3.139499999999998,
+        "gap_vs_published_ppo": -9.490499999999884
+      }
+    },
+    "kaynov2024_instance_9": {
+      "reference": {
+        "name": "kaynov2024_instance_9",
+        "source": "Kaynov et al. (2024), International Journal of Production Economics 267, 109088",
+        "url": "https://doi.org/10.1016/j.ijpe.2023.109088",
+        "literature_verified": true,
+        "benchmark_periods": 100,
+        "benchmark_replications": 1000,
+        "customer_behavior": "lost_sales",
+        "warehouse_lead_time": 2,
+        "retailer_lead_times": [
+          1,
+          2,
+          3
+        ],
+        "demand_kinds": [
+          "poisson",
+          "poisson",
+          "poisson"
+        ],
+        "demand_param1": [
+          3.0,
+          3.0,
+          3.0
+        ],
+        "demand_param2": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "holding_cost_warehouse": 0.5,
+        "holding_cost_retailers": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "penalty_costs_retailers": [
+          9.0,
+          9.0,
+          9.0
+        ],
+        "emergency_shipment_probability": 0.0,
+        "published_min_shortage_benchmark": {
+          "policy_name": "echelon_base_stock",
+          "allocation_policy": "min_shortage",
+          "mean_cost": -1561.56,
+          "standard_error": 1.17,
+          "relative_gap_percent": 1.67
+        },
+        "published_proportional_benchmark": {
+          "policy_name": "echelon_base_stock",
+          "allocation_policy": "proportional",
+          "mean_cost": -1535.96,
+          "standard_error": 1.14,
+          "relative_gap_percent": 0.0
+        },
+        "published_ppo_benchmark": {
+          "policy_name": "ppo",
+          "allocation_policy": null,
+          "mean_cost": -1511.68,
+          "standard_error": 3.65,
+          "relative_gap_percent": -1.58
+        },
+        "notes": "Table 1 / Table A.3 instance from Kaynov et al. (2024)."
+      },
+      "initial_state": {
+        "initial_warehouse_inventory": 9,
+        "initial_warehouse_pipeline": [
+          9,
+          9
+        ],
+        "initial_retailer_inventory": [
+          3,
+          3,
+          3
+        ],
+        "initial_retailer_pipeline": [
+          [
+            3
+          ],
+          [
+            3,
+            3
+          ],
+          [
+            3,
+            3,
+            3
+          ]
+        ],
+        "initial_state_rule": "mean_filled_pipeline_warm_start"
+      },
+      "search_results": {
+        "proportional": {
+          "warehouse_base_stock_level": 54,
+          "retailer_base_stock_levels": [
+            10,
+            13,
+            16
+          ],
+          "allocation_policy": "proportional",
+          "mean_cost": 1522.457,
+          "cost_std": 99.21689952321631,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 9,
+            "initial_warehouse_pipeline": [
+              9,
+              9
+            ],
+            "initial_retailer_inventory": [
+              3,
+              3,
+              3
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3
+              ],
+              [
+                3,
+                3
+              ],
+              [
+                3,
+                3,
+                3
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation",
+          "search_bounds": {
+            "warehouse": [
+              54,
+              77
+            ],
+            "retailers": [
+              [
+                6,
+                14
+              ],
+              [
+                9,
+                18
+              ],
+              [
+                12,
+                23
+              ]
+            ],
+            "symmetric_retailers": false
+          },
+          "search_seed": 703943,
+          "search_protocol": "full_cartesian_symmetric_reduction",
+          "search_replications": 1000
+        },
+        "min_shortage": {
+          "warehouse_base_stock_level": 54,
+          "retailer_base_stock_levels": [
+            10,
+            13,
+            16
+          ],
+          "allocation_policy": "min_shortage",
+          "mean_cost": 1540.456,
+          "cost_std": 101.745717669099,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 9,
+            "initial_warehouse_pipeline": [
+              9,
+              9
+            ],
+            "initial_retailer_inventory": [
+              3,
+              3,
+              3
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3
+              ],
+              [
+                3,
+                3
+              ],
+              [
+                3,
+                3,
+                3
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation",
+          "search_bounds": {
+            "warehouse": [
+              54,
+              77
+            ],
+            "retailers": [
+              [
+                6,
+                14
+              ],
+              [
+                9,
+                18
+              ],
+              [
+                12,
+                23
+              ]
+            ],
+            "symmetric_retailers": false
+          },
+          "search_seed": 703943,
+          "search_protocol": "full_cartesian_symmetric_reduction",
+          "search_replications": 1000
+        }
+      },
+      "heuristics": {
+        "proportional": {
+          "warehouse_base_stock_level": 54,
+          "retailer_base_stock_levels": [
+            10,
+            13,
+            16
+          ],
+          "allocation_policy": "proportional",
+          "mean_cost": 1521.8145,
+          "cost_std": 103.00970750249704,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 9,
+            "initial_warehouse_pipeline": [
+              9,
+              9
+            ],
+            "initial_retailer_inventory": [
+              3,
+              3,
+              3
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3
+              ],
+              [
+                3,
+                3
+              ],
+              [
+                3,
+                3,
+                3
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation"
+        },
+        "min_shortage": {
+          "warehouse_base_stock_level": 54,
+          "retailer_base_stock_levels": [
+            10,
+            13,
+            16
+          ],
+          "allocation_policy": "min_shortage",
+          "mean_cost": 1540.675,
+          "cost_std": 104.85459157805133,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 9,
+            "initial_warehouse_pipeline": [
+              9,
+              9
+            ],
+            "initial_retailer_inventory": [
+              3,
+              3,
+              3
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3
+              ],
+              [
+                3,
+                3
+              ],
+              [
+                3,
+                3,
+                3
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation"
+        }
+      },
+      "policy_config": {
+        "depth": 1,
+        "temperature": 0.1,
+        "split_type": "axis_aligned",
+        "leaf_type": "linear",
+        "policy_action_mode": "echelon_targets",
+        "training_episodes": 300,
+        "es_population": 16,
+        "sigma_init": 1.5,
+        "train_seed_batch": 16
+      },
+      "training_seed": 574656,
+      "heuristic_search_seed": 703943,
+      "benchmark_seed": 965908,
+      "eval_seed_start": 1160173,
+      "evaluation": {
+        "mean_cost": 1659.611,
+        "cost_std": 98.62006985903022,
+        "min_cost": 1409.0,
+        "max_cost": 1967.5,
+        "num_samples": 1000
+      },
+      "comparison_rows": [
+        {
+          "policy": "published_echelon_base_stock_proportional",
+          "mean_cost": 1535.96,
+          "note": "Kaynov Table A.3",
+          "gap_vs_soft_tree_cost": -123.65100000000007
+        },
+        {
+          "policy": "published_echelon_base_stock_min_shortage",
+          "mean_cost": 1561.56,
+          "note": "Kaynov Table A.3",
+          "gap_vs_soft_tree_cost": -98.05100000000016
+        },
+        {
+          "policy": "published_ppo",
+          "mean_cost": 1511.68,
+          "note": "Kaynov Table A.3",
+          "gap_vs_soft_tree_cost": -147.93100000000004
+        },
+        {
+          "policy": "repo_echelon_base_stock_proportional",
+          "mean_cost": 1521.8145,
+          "note": "repo reproduction",
+          "gap_vs_soft_tree_cost": -137.79650000000015
+        },
+        {
+          "policy": "repo_echelon_base_stock_min_shortage",
+          "mean_cost": 1540.675,
+          "note": "repo reproduction",
+          "gap_vs_soft_tree_cost": -118.93600000000015
+        },
+        {
+          "policy": "soft_tree",
+          "mean_cost": 1659.611,
+          "note": "CMA-ES soft tree",
+          "gap_vs_soft_tree_cost": 0.0
+        },
+        {
+          "policy": "summary_best_published_heuristic",
+          "mean_cost": 1535.96,
+          "note": "min(published proportional, published min-shortage)",
+          "gap_vs_soft_tree_cost": -123.65100000000007
+        },
+        {
+          "policy": "summary_best_repo_heuristic",
+          "mean_cost": 1521.8145,
+          "note": "min(repo proportional, repo min-shortage)",
+          "gap_vs_soft_tree_cost": -137.79650000000015
+        }
+      ],
+      "summary": {
+        "instance_name": "kaynov2024_instance_9",
+        "customer_behavior": "lost_sales",
+        "soft_tree_mean_cost": 1659.611,
+        "best_repo_heuristic_cost": 1521.8145,
+        "best_published_heuristic_cost": 1535.96,
+        "published_ppo_cost": 1511.68,
+        "gap_vs_repo_best": -137.79650000000015,
+        "gap_vs_published_best_heuristic": -123.65100000000007,
+        "gap_vs_published_ppo": -147.93100000000004
+      }
+    },
+    "kaynov2024_instance_10": {
+      "reference": {
+        "name": "kaynov2024_instance_10",
+        "source": "Kaynov et al. (2024), International Journal of Production Economics 267, 109088",
+        "url": "https://doi.org/10.1016/j.ijpe.2023.109088",
+        "literature_verified": true,
+        "benchmark_periods": 100,
+        "benchmark_replications": 1000,
+        "customer_behavior": "lost_sales",
+        "warehouse_lead_time": 5,
+        "retailer_lead_times": [
+          3,
+          3,
+          3
+        ],
+        "demand_kinds": [
+          "rounded_normal",
+          "rounded_normal",
+          "poisson"
+        ],
+        "demand_param1": [
+          1.0,
+          5.0,
+          0.5
+        ],
+        "demand_param2": [
+          5.0,
+          1.0,
+          0.0
+        ],
+        "holding_cost_warehouse": 0.5,
+        "holding_cost_retailers": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "penalty_costs_retailers": [
+          9.0,
+          9.0,
+          9.0
+        ],
+        "emergency_shipment_probability": 0.0,
+        "published_min_shortage_benchmark": {
+          "policy_name": "echelon_base_stock",
+          "allocation_policy": "min_shortage",
+          "mean_cost": -1741.6,
+          "standard_error": 1.85,
+          "relative_gap_percent": 0.29
+        },
+        "published_proportional_benchmark": {
+          "policy_name": "echelon_base_stock",
+          "allocation_policy": "proportional",
+          "mean_cost": -1736.55,
+          "standard_error": 1.69,
+          "relative_gap_percent": 0.0
+        },
+        "published_ppo_benchmark": {
+          "policy_name": "ppo",
+          "allocation_policy": null,
+          "mean_cost": -1674.54,
+          "standard_error": 5.45,
+          "relative_gap_percent": -3.57
+        },
+        "notes": "Table 1 / Table A.3 instance from Kaynov et al. (2024)."
+      },
+      "initial_state": {
+        "initial_warehouse_inventory": 8,
+        "initial_warehouse_pipeline": [
+          8,
+          8,
+          8,
+          8,
+          8
+        ],
+        "initial_retailer_inventory": [
+          3,
+          5,
+          0
+        ],
+        "initial_retailer_pipeline": [
+          [
+            3,
+            3,
+            3
+          ],
+          [
+            5,
+            5,
+            5
+          ],
+          [
+            0,
+            0,
+            0
+          ]
+        ],
+        "initial_state_rule": "mean_filled_pipeline_warm_start"
+      },
+      "search_results": {
+        "proportional": {
+          "warehouse_base_stock_level": 76,
+          "retailer_base_stock_levels": [
+            14,
+            24,
+            3
+          ],
+          "allocation_policy": "proportional",
+          "mean_cost": 1767.028,
+          "cost_std": 170.65582825089814,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 8,
+            "initial_warehouse_pipeline": [
+              8,
+              8,
+              8,
+              8,
+              8
+            ],
+            "initial_retailer_inventory": [
+              3,
+              5,
+              0
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3,
+                3,
+                3
+              ],
+              [
+                5,
+                5,
+                5
+              ],
+              [
+                0,
+                0,
+                0
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation",
+          "search_bounds": {
+            "warehouse": [
+              72,
+              104
+            ],
+            "retailers": [
+              [
+                10,
+                30
+              ],
+              [
+                20,
+                27
+              ],
+              [
+                2,
+                7
+              ]
+            ],
+            "symmetric_retailers": false
+          },
+          "search_seed": 143855,
+          "search_protocol": "full_cartesian_symmetric_reduction",
+          "search_replications": 1000
+        },
+        "min_shortage": {
+          "warehouse_base_stock_level": 75,
+          "retailer_base_stock_levels": [
+            14,
+            24,
+            4
+          ],
+          "allocation_policy": "min_shortage",
+          "mean_cost": 1764.284,
+          "cost_std": 174.2629588983269,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 8,
+            "initial_warehouse_pipeline": [
+              8,
+              8,
+              8,
+              8,
+              8
+            ],
+            "initial_retailer_inventory": [
+              3,
+              5,
+              0
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3,
+                3,
+                3
+              ],
+              [
+                5,
+                5,
+                5
+              ],
+              [
+                0,
+                0,
+                0
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation",
+          "search_bounds": {
+            "warehouse": [
+              72,
+              104
+            ],
+            "retailers": [
+              [
+                10,
+                30
+              ],
+              [
+                20,
+                27
+              ],
+              [
+                2,
+                7
+              ]
+            ],
+            "symmetric_retailers": false
+          },
+          "search_seed": 143855,
+          "search_protocol": "full_cartesian_symmetric_reduction",
+          "search_replications": 1000
+        }
+      },
+      "heuristics": {
+        "proportional": {
+          "warehouse_base_stock_level": 76,
+          "retailer_base_stock_levels": [
+            14,
+            24,
+            3
+          ],
+          "allocation_policy": "proportional",
+          "mean_cost": 1780.439,
+          "cost_std": 161.57420827285526,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 8,
+            "initial_warehouse_pipeline": [
+              8,
+              8,
+              8,
+              8,
+              8
+            ],
+            "initial_retailer_inventory": [
+              3,
+              5,
+              0
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3,
+                3,
+                3
+              ],
+              [
+                5,
+                5,
+                5
+              ],
+              [
+                0,
+                0,
+                0
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation"
+        },
+        "min_shortage": {
+          "warehouse_base_stock_level": 75,
+          "retailer_base_stock_levels": [
+            14,
+            24,
+            4
+          ],
+          "allocation_policy": "min_shortage",
+          "mean_cost": 1777.7195,
+          "cost_std": 166.27902023331137,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 8,
+            "initial_warehouse_pipeline": [
+              8,
+              8,
+              8,
+              8,
+              8
+            ],
+            "initial_retailer_inventory": [
+              3,
+              5,
+              0
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3,
+                3,
+                3
+              ],
+              [
+                5,
+                5,
+                5
+              ],
+              [
+                0,
+                0,
+                0
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation"
+        }
+      },
+      "policy_config": {
+        "depth": 1,
+        "temperature": 0.1,
+        "split_type": "axis_aligned",
+        "leaf_type": "linear",
+        "policy_action_mode": "echelon_targets",
+        "training_episodes": 300,
+        "es_population": 16,
+        "sigma_init": 1.5,
+        "train_seed_batch": 16
+      },
+      "training_seed": 178728,
+      "heuristic_search_seed": 143855,
+      "benchmark_seed": 178684,
+      "eval_seed_start": 1035605,
+      "evaluation": {
+        "mean_cost": 1981.2855,
+        "cost_std": 156.72724313197753,
+        "min_cost": 1507.0,
+        "max_cost": 2565.5,
+        "num_samples": 1000
+      },
+      "comparison_rows": [
+        {
+          "policy": "published_echelon_base_stock_proportional",
+          "mean_cost": 1736.55,
+          "note": "Kaynov Table A.3",
+          "gap_vs_soft_tree_cost": -244.7355
+        },
+        {
+          "policy": "published_echelon_base_stock_min_shortage",
+          "mean_cost": 1741.6,
+          "note": "Kaynov Table A.3",
+          "gap_vs_soft_tree_cost": -239.68550000000005
+        },
+        {
+          "policy": "published_ppo",
+          "mean_cost": 1674.54,
+          "note": "Kaynov Table A.3",
+          "gap_vs_soft_tree_cost": -306.7455
+        },
+        {
+          "policy": "repo_echelon_base_stock_proportional",
+          "mean_cost": 1780.439,
+          "note": "repo reproduction",
+          "gap_vs_soft_tree_cost": -200.84649999999988
+        },
+        {
+          "policy": "repo_echelon_base_stock_min_shortage",
+          "mean_cost": 1777.7195,
+          "note": "repo reproduction",
+          "gap_vs_soft_tree_cost": -203.56600000000003
+        },
+        {
+          "policy": "soft_tree",
+          "mean_cost": 1981.2855,
+          "note": "CMA-ES soft tree",
+          "gap_vs_soft_tree_cost": 0.0
+        },
+        {
+          "policy": "summary_best_published_heuristic",
+          "mean_cost": 1736.55,
+          "note": "min(published proportional, published min-shortage)",
+          "gap_vs_soft_tree_cost": -244.7355
+        },
+        {
+          "policy": "summary_best_repo_heuristic",
+          "mean_cost": 1777.7195,
+          "note": "min(repo proportional, repo min-shortage)",
+          "gap_vs_soft_tree_cost": -203.56600000000003
+        }
+      ],
+      "summary": {
+        "instance_name": "kaynov2024_instance_10",
+        "customer_behavior": "lost_sales",
+        "soft_tree_mean_cost": 1981.2855,
+        "best_repo_heuristic_cost": 1777.7195,
+        "best_published_heuristic_cost": 1736.55,
+        "published_ppo_cost": 1674.54,
+        "gap_vs_repo_best": -203.56600000000003,
+        "gap_vs_published_best_heuristic": -244.7355,
+        "gap_vs_published_ppo": -306.7455
+      }
+    },
+    "kaynov2024_instance_11": {
+      "reference": {
+        "name": "kaynov2024_instance_11",
+        "source": "Kaynov et al. (2024), International Journal of Production Economics 267, 109088",
+        "url": "https://doi.org/10.1016/j.ijpe.2023.109088",
+        "literature_verified": true,
+        "benchmark_periods": 100,
+        "benchmark_replications": 1000,
+        "customer_behavior": "partial_backorder",
+        "warehouse_lead_time": 2,
+        "retailer_lead_times": [
+          1,
+          1,
+          1
+        ],
+        "demand_kinds": [
+          "poisson",
+          "poisson",
+          "poisson"
+        ],
+        "demand_param1": [
+          3.0,
+          3.0,
+          3.0
+        ],
+        "demand_param2": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "holding_cost_warehouse": 0.5,
+        "holding_cost_retailers": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "penalty_costs_retailers": [
+          9.0,
+          9.0,
+          9.0
+        ],
+        "emergency_shipment_probability": 0.8,
+        "published_min_shortage_benchmark": {
+          "policy_name": "echelon_base_stock",
+          "allocation_policy": "min_shortage",
+          "mean_cost": -1109.96,
+          "standard_error": 1.02,
+          "relative_gap_percent": -0.16
+        },
+        "published_proportional_benchmark": {
+          "policy_name": "echelon_base_stock",
+          "allocation_policy": "proportional",
+          "mean_cost": -1111.76,
+          "standard_error": 1.02,
+          "relative_gap_percent": 0.0
+        },
+        "published_ppo_benchmark": {
+          "policy_name": "ppo",
+          "allocation_policy": null,
+          "mean_cost": -971.86,
+          "standard_error": 3.13,
+          "relative_gap_percent": -12.58
+        },
+        "notes": "Partial-backorder instance from Table 2 / Table A.3."
+      },
+      "initial_state": {
+        "initial_warehouse_inventory": 9,
+        "initial_warehouse_pipeline": [
+          9,
+          9
+        ],
+        "initial_retailer_inventory": [
+          3,
+          3,
+          3
+        ],
+        "initial_retailer_pipeline": [
+          [
+            3
+          ],
+          [
+            3
+          ],
+          [
+            3
+          ]
+        ],
+        "initial_state_rule": "mean_filled_pipeline_warm_start"
+      },
+      "search_results": {
+        "proportional": {
+          "warehouse_base_stock_level": 43,
+          "retailer_base_stock_levels": [
+            6,
+            6,
+            6
+          ],
+          "allocation_policy": "proportional",
+          "mean_cost": 1187.258,
+          "cost_std": 102.27074819321503,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 9,
+            "initial_warehouse_pipeline": [
+              9,
+              9
+            ],
+            "initial_retailer_inventory": [
+              3,
+              3,
+              3
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3
+              ],
+              [
+                3
+              ],
+              [
+                3
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation",
+          "search_bounds": {
+            "warehouse": [
+              36,
+              54
+            ],
+            "retailers": [
+              [
+                6,
+                14
+              ],
+              [
+                6,
+                14
+              ],
+              [
+                6,
+                14
+              ]
+            ],
+            "symmetric_retailers": true
+          },
+          "search_seed": 323504,
+          "search_protocol": "full_cartesian_symmetric_reduction",
+          "search_replications": 1000
+        },
+        "min_shortage": {
+          "warehouse_base_stock_level": 43,
+          "retailer_base_stock_levels": [
+            6,
+            6,
+            6
+          ],
+          "allocation_policy": "min_shortage",
+          "mean_cost": 1188.0075,
+          "cost_std": 102.50531544144438,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 9,
+            "initial_warehouse_pipeline": [
+              9,
+              9
+            ],
+            "initial_retailer_inventory": [
+              3,
+              3,
+              3
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3
+              ],
+              [
+                3
+              ],
+              [
+                3
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation",
+          "search_bounds": {
+            "warehouse": [
+              36,
+              54
+            ],
+            "retailers": [
+              [
+                6,
+                14
+              ],
+              [
+                6,
+                14
+              ],
+              [
+                6,
+                14
+              ]
+            ],
+            "symmetric_retailers": true
+          },
+          "search_seed": 323504,
+          "search_protocol": "full_cartesian_symmetric_reduction",
+          "search_replications": 1000
+        }
+      },
+      "heuristics": {
+        "proportional": {
+          "warehouse_base_stock_level": 43,
+          "retailer_base_stock_levels": [
+            6,
+            6,
+            6
+          ],
+          "allocation_policy": "proportional",
+          "mean_cost": 1178.3815,
+          "cost_std": 94.99577731536274,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 9,
+            "initial_warehouse_pipeline": [
+              9,
+              9
+            ],
+            "initial_retailer_inventory": [
+              3,
+              3,
+              3
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3
+              ],
+              [
+                3
+              ],
+              [
+                3
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation"
+        },
+        "min_shortage": {
+          "warehouse_base_stock_level": 43,
+          "retailer_base_stock_levels": [
+            6,
+            6,
+            6
+          ],
+          "allocation_policy": "min_shortage",
+          "mean_cost": 1179.08,
+          "cost_std": 95.04042087448896,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 9,
+            "initial_warehouse_pipeline": [
+              9,
+              9
+            ],
+            "initial_retailer_inventory": [
+              3,
+              3,
+              3
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3
+              ],
+              [
+                3
+              ],
+              [
+                3
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation"
+        }
+      },
+      "policy_config": {
+        "depth": 1,
+        "temperature": 0.1,
+        "split_type": "axis_aligned",
+        "leaf_type": "linear",
+        "policy_action_mode": "symmetric_echelon_targets",
+        "training_episodes": 300,
+        "es_population": 16,
+        "sigma_init": 1.5,
+        "train_seed_batch": 16
+      },
+      "training_seed": 637481,
+      "heuristic_search_seed": 323504,
+      "benchmark_seed": 227261,
+      "eval_seed_start": 1101142,
+      "evaluation": {
+        "mean_cost": 1141.5585,
+        "cost_std": 89.03036463898145,
+        "min_cost": 903.0,
+        "max_cost": 1475.5,
+        "num_samples": 1000
+      },
+      "comparison_rows": [
+        {
+          "policy": "published_echelon_base_stock_proportional",
+          "mean_cost": 1111.76,
+          "note": "Kaynov Table A.3",
+          "gap_vs_soft_tree_cost": -29.798500000000104
+        },
+        {
+          "policy": "published_echelon_base_stock_min_shortage",
+          "mean_cost": 1109.96,
+          "note": "Kaynov Table A.3",
+          "gap_vs_soft_tree_cost": -31.598500000000058
+        },
+        {
+          "policy": "published_ppo",
+          "mean_cost": 971.86,
+          "note": "Kaynov Table A.3",
+          "gap_vs_soft_tree_cost": -169.69850000000008
+        },
+        {
+          "policy": "repo_echelon_base_stock_proportional",
+          "mean_cost": 1178.3815,
+          "note": "repo reproduction",
+          "gap_vs_soft_tree_cost": 36.822999999999865
+        },
+        {
+          "policy": "repo_echelon_base_stock_min_shortage",
+          "mean_cost": 1179.08,
+          "note": "repo reproduction",
+          "gap_vs_soft_tree_cost": 37.52149999999983
+        },
+        {
+          "policy": "soft_tree",
+          "mean_cost": 1141.5585,
+          "note": "CMA-ES soft tree",
+          "gap_vs_soft_tree_cost": 0.0
+        },
+        {
+          "policy": "summary_best_published_heuristic",
+          "mean_cost": 1109.96,
+          "note": "min(published proportional, published min-shortage)",
+          "gap_vs_soft_tree_cost": -31.598500000000058
+        },
+        {
+          "policy": "summary_best_repo_heuristic",
+          "mean_cost": 1178.3815,
+          "note": "min(repo proportional, repo min-shortage)",
+          "gap_vs_soft_tree_cost": 36.822999999999865
+        }
+      ],
+      "summary": {
+        "instance_name": "kaynov2024_instance_11",
+        "customer_behavior": "partial_backorder",
+        "soft_tree_mean_cost": 1141.5585,
+        "best_repo_heuristic_cost": 1178.3815,
+        "best_published_heuristic_cost": 1109.96,
+        "published_ppo_cost": 971.86,
+        "gap_vs_repo_best": 36.822999999999865,
+        "gap_vs_published_best_heuristic": -31.598500000000058,
+        "gap_vs_published_ppo": -169.69850000000008
+      }
+    },
+    "kaynov2024_instance_12": {
+      "reference": {
+        "name": "kaynov2024_instance_12",
+        "source": "Kaynov et al. (2024), International Journal of Production Economics 267, 109088",
+        "url": "https://doi.org/10.1016/j.ijpe.2023.109088",
+        "literature_verified": true,
+        "benchmark_periods": 100,
+        "benchmark_replications": 1000,
+        "customer_behavior": "partial_backorder",
+        "warehouse_lead_time": 2,
+        "retailer_lead_times": [
+          1,
+          1,
+          1
+        ],
+        "demand_kinds": [
+          "rounded_normal",
+          "rounded_normal",
+          "poisson"
+        ],
+        "demand_param1": [
+          1.0,
+          5.0,
+          0.5
+        ],
+        "demand_param2": [
+          5.0,
+          1.0,
+          0.0
+        ],
+        "holding_cost_warehouse": 0.5,
+        "holding_cost_retailers": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "penalty_costs_retailers": [
+          9.0,
+          9.0,
+          9.0
+        ],
+        "emergency_shipment_probability": 0.8,
+        "published_min_shortage_benchmark": {
+          "policy_name": "echelon_base_stock",
+          "allocation_policy": "min_shortage",
+          "mean_cost": -1406.43,
+          "standard_error": 1.45,
+          "relative_gap_percent": 0.29
+        },
+        "published_proportional_benchmark": {
+          "policy_name": "echelon_base_stock",
+          "allocation_policy": "proportional",
+          "mean_cost": -1402.38,
+          "standard_error": 1.44,
+          "relative_gap_percent": 0.0
+        },
+        "published_ppo_benchmark": {
+          "policy_name": "ppo",
+          "allocation_policy": null,
+          "mean_cost": -1118.92,
+          "standard_error": 4.51,
+          "relative_gap_percent": -20.21
+        },
+        "notes": "Partial-backorder instance from Table 2 / Table A.3."
+      },
+      "initial_state": {
+        "initial_warehouse_inventory": 8,
+        "initial_warehouse_pipeline": [
+          8,
+          8
+        ],
+        "initial_retailer_inventory": [
+          3,
+          5,
+          0
+        ],
+        "initial_retailer_pipeline": [
+          [
+            3
+          ],
+          [
+            5
+          ],
+          [
+            0
+          ]
+        ],
+        "initial_state_rule": "mean_filled_pipeline_warm_start"
+      },
+      "search_results": {
+        "proportional": {
+          "warehouse_base_stock_level": 39,
+          "retailer_base_stock_levels": [
+            5,
+            10,
+            1
+          ],
+          "allocation_policy": "proportional",
+          "mean_cost": 1233.2995,
+          "cost_std": 133.2060398396034,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 8,
+            "initial_warehouse_pipeline": [
+              8,
+              8
+            ],
+            "initial_retailer_inventory": [
+              3,
+              5,
+              0
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3
+              ],
+              [
+                5
+              ],
+              [
+                0
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation",
+          "search_bounds": {
+            "warehouse": [
+              32,
+              54
+            ],
+            "retailers": [
+              [
+                5,
+                19
+              ],
+              [
+                10,
+                15
+              ],
+              [
+                1,
+                4
+              ]
+            ],
+            "symmetric_retailers": false
+          },
+          "search_seed": 503153,
+          "search_protocol": "full_cartesian_symmetric_reduction",
+          "search_replications": 1000
+        },
+        "min_shortage": {
+          "warehouse_base_stock_level": 39,
+          "retailer_base_stock_levels": [
+            5,
+            10,
+            1
+          ],
+          "allocation_policy": "min_shortage",
+          "mean_cost": 1232.997,
+          "cost_std": 133.05676416853075,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 8,
+            "initial_warehouse_pipeline": [
+              8,
+              8
+            ],
+            "initial_retailer_inventory": [
+              3,
+              5,
+              0
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3
+              ],
+              [
+                5
+              ],
+              [
+                0
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation",
+          "search_bounds": {
+            "warehouse": [
+              32,
+              54
+            ],
+            "retailers": [
+              [
+                5,
+                19
+              ],
+              [
+                10,
+                15
+              ],
+              [
+                1,
+                4
+              ]
+            ],
+            "symmetric_retailers": false
+          },
+          "search_seed": 503153,
+          "search_protocol": "full_cartesian_symmetric_reduction",
+          "search_replications": 1000
+        }
+      },
+      "heuristics": {
+        "proportional": {
+          "warehouse_base_stock_level": 39,
+          "retailer_base_stock_levels": [
+            5,
+            10,
+            1
+          ],
+          "allocation_policy": "proportional",
+          "mean_cost": 1240.9065,
+          "cost_std": 130.3932552233819,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 8,
+            "initial_warehouse_pipeline": [
+              8,
+              8
+            ],
+            "initial_retailer_inventory": [
+              3,
+              5,
+              0
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3
+              ],
+              [
+                5
+              ],
+              [
+                0
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation"
+        },
+        "min_shortage": {
+          "warehouse_base_stock_level": 39,
+          "retailer_base_stock_levels": [
+            5,
+            10,
+            1
+          ],
+          "allocation_policy": "min_shortage",
+          "mean_cost": 1240.1245,
+          "cost_std": 130.55473277422772,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 8,
+            "initial_warehouse_pipeline": [
+              8,
+              8
+            ],
+            "initial_retailer_inventory": [
+              3,
+              5,
+              0
+            ],
+            "initial_retailer_pipeline": [
+              [
+                3
+              ],
+              [
+                5
+              ],
+              [
+                0
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation"
+        }
+      },
+      "policy_config": {
+        "depth": 1,
+        "temperature": 0.1,
+        "split_type": "axis_aligned",
+        "leaf_type": "linear",
+        "policy_action_mode": "echelon_targets",
+        "training_episodes": 300,
+        "es_population": 16,
+        "sigma_init": 1.5,
+        "train_seed_batch": 16
+      },
+      "training_seed": 96234,
+      "heuristic_search_seed": 503153,
+      "benchmark_seed": 275838,
+      "eval_seed_start": 1166679,
+      "evaluation": {
+        "mean_cost": 1221.1315,
+        "cost_std": 130.9102725447854,
+        "min_cost": 888.5,
+        "max_cost": 1725.5,
+        "num_samples": 1000
+      },
+      "comparison_rows": [
+        {
+          "policy": "published_echelon_base_stock_proportional",
+          "mean_cost": 1402.38,
+          "note": "Kaynov Table A.3",
+          "gap_vs_soft_tree_cost": 181.24850000000015
+        },
+        {
+          "policy": "published_echelon_base_stock_min_shortage",
+          "mean_cost": 1406.43,
+          "note": "Kaynov Table A.3",
+          "gap_vs_soft_tree_cost": 185.2985000000001
+        },
+        {
+          "policy": "published_ppo",
+          "mean_cost": 1118.92,
+          "note": "Kaynov Table A.3",
+          "gap_vs_soft_tree_cost": -102.21149999999989
+        },
+        {
+          "policy": "repo_echelon_base_stock_proportional",
+          "mean_cost": 1240.9065,
+          "note": "repo reproduction",
+          "gap_vs_soft_tree_cost": 19.77500000000009
+        },
+        {
+          "policy": "repo_echelon_base_stock_min_shortage",
+          "mean_cost": 1240.1245,
+          "note": "repo reproduction",
+          "gap_vs_soft_tree_cost": 18.992999999999938
+        },
+        {
+          "policy": "soft_tree",
+          "mean_cost": 1221.1315,
+          "note": "CMA-ES soft tree",
+          "gap_vs_soft_tree_cost": 0.0
+        },
+        {
+          "policy": "summary_best_published_heuristic",
+          "mean_cost": 1402.38,
+          "note": "min(published proportional, published min-shortage)",
+          "gap_vs_soft_tree_cost": 181.24850000000015
+        },
+        {
+          "policy": "summary_best_repo_heuristic",
+          "mean_cost": 1240.1245,
+          "note": "min(repo proportional, repo min-shortage)",
+          "gap_vs_soft_tree_cost": 18.992999999999938
+        }
+      ],
+      "summary": {
+        "instance_name": "kaynov2024_instance_12",
+        "customer_behavior": "partial_backorder",
+        "soft_tree_mean_cost": 1221.1315,
+        "best_repo_heuristic_cost": 1240.1245,
+        "best_published_heuristic_cost": 1402.38,
+        "published_ppo_cost": 1118.92,
+        "gap_vs_repo_best": 18.992999999999938,
+        "gap_vs_published_best_heuristic": 181.24850000000015,
+        "gap_vs_published_ppo": -102.21149999999989
+      }
+    },
+    "kaynov2024_instance_13": {
+      "reference": {
+        "name": "kaynov2024_instance_13",
+        "source": "Kaynov et al. (2024), International Journal of Production Economics 267, 109088",
+        "url": "https://doi.org/10.1016/j.ijpe.2023.109088",
+        "literature_verified": true,
+        "benchmark_periods": 100,
+        "benchmark_replications": 1000,
+        "customer_behavior": "partial_backorder",
+        "warehouse_lead_time": 2,
+        "retailer_lead_times": [
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "demand_kinds": [
+          "rounded_normal",
+          "rounded_normal",
+          "rounded_normal",
+          "rounded_normal",
+          "rounded_normal",
+          "rounded_normal",
+          "rounded_normal",
+          "rounded_normal",
+          "rounded_normal",
+          "rounded_normal"
+        ],
+        "demand_param1": [
+          5.0,
+          5.0,
+          5.0,
+          5.0,
+          5.0,
+          5.0,
+          5.0,
+          5.0,
+          5.0,
+          5.0
+        ],
+        "demand_param2": [
+          14.0,
+          14.0,
+          14.0,
+          14.0,
+          14.0,
+          14.0,
+          14.0,
+          14.0,
+          14.0,
+          14.0
+        ],
+        "holding_cost_warehouse": 3.0,
+        "holding_cost_retailers": [
+          3.0,
+          3.0,
+          3.0,
+          3.0,
+          3.0,
+          3.0,
+          3.0,
+          3.0,
+          3.0,
+          3.0
+        ],
+        "penalty_costs_retailers": [
+          60.0,
+          60.0,
+          60.0,
+          60.0,
+          60.0,
+          60.0,
+          60.0,
+          60.0,
+          60.0,
+          60.0
+        ],
+        "emergency_shipment_probability": 0.8,
+        "published_min_shortage_benchmark": {
+          "policy_name": "echelon_base_stock",
+          "allocation_policy": "min_shortage",
+          "mean_cost": -99882.51,
+          "standard_error": 86.58,
+          "relative_gap_percent": -1.81
+        },
+        "published_proportional_benchmark": {
+          "policy_name": "echelon_base_stock",
+          "allocation_policy": "proportional",
+          "mean_cost": -101727.47,
+          "standard_error": 87.32,
+          "relative_gap_percent": 0.0
+        },
+        "published_ppo_benchmark": {
+          "policy_name": "ppo",
+          "allocation_policy": null,
+          "mean_cost": -79727.39,
+          "standard_error": 215.39,
+          "relative_gap_percent": -21.63
+        },
+        "notes": "Large 10-retailer partial-backorder instance aligned with prior OWMR work."
+      },
+      "initial_state": {
+        "initial_warehouse_inventory": 84,
+        "initial_warehouse_pipeline": [
+          84,
+          84
+        ],
+        "initial_retailer_inventory": [
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8
+        ],
+        "initial_retailer_pipeline": [
+          [
+            8,
+            8
+          ],
+          [
+            8,
+            8
+          ],
+          [
+            8,
+            8
+          ],
+          [
+            8,
+            8
+          ],
+          [
+            8,
+            8
+          ],
+          [
+            8,
+            8
+          ],
+          [
+            8,
+            8
+          ],
+          [
+            8,
+            8
+          ],
+          [
+            8,
+            8
+          ],
+          [
+            8,
+            8
+          ]
+        ],
+        "initial_state_rule": "mean_filled_pipeline_warm_start"
+      },
+      "search_results": {
+        "proportional": {
+          "warehouse_base_stock_level": 574,
+          "retailer_base_stock_levels": [
+            33,
+            33,
+            33,
+            33,
+            33,
+            33,
+            33,
+            33,
+            33,
+            33
+          ],
+          "allocation_policy": "proportional",
+          "mean_cost": 96599.037,
+          "cost_std": 5688.331542520266,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 84,
+            "initial_warehouse_pipeline": [
+              84,
+              84
+            ],
+            "initial_retailer_inventory": [
+              8,
+              8,
+              8,
+              8,
+              8,
+              8,
+              8,
+              8,
+              8,
+              8
+            ],
+            "initial_retailer_pipeline": [
+              [
+                8,
+                8
+              ],
+              [
+                8,
+                8
+              ],
+              [
+                8,
+                8
+              ],
+              [
+                8,
+                8
+              ],
+              [
+                8,
+                8
+              ],
+              [
+                8,
+                8
+              ],
+              [
+                8,
+                8
+              ],
+              [
+                8,
+                8
+              ],
+              [
+                8,
+                8
+              ],
+              [
+                8,
+                8
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation",
+          "search_bounds": {
+            "warehouse": [
+              421,
+              631
+            ],
+            "retailers": [
+              [
+                25,
+                77
+              ],
+              [
+                25,
+                77
+              ],
+              [
+                25,
+                77
+              ],
+              [
+                25,
+                77
+              ],
+              [
+                25,
+                77
+              ],
+              [
+                25,
+                77
+              ],
+              [
+                25,
+                77
+              ],
+              [
+                25,
+                77
+              ],
+              [
+                25,
+                77
+              ],
+              [
+                25,
+                77
+              ]
+            ],
+            "symmetric_retailers": true
+          },
+          "search_seed": 682802,
+          "search_protocol": "full_cartesian_symmetric_reduction",
+          "search_replications": 1000
+        },
+        "min_shortage": {
+          "warehouse_base_stock_level": 574,
+          "retailer_base_stock_levels": [
+            33,
+            33,
+            33,
+            33,
+            33,
+            33,
+            33,
+            33,
+            33,
+            33
+          ],
+          "allocation_policy": "min_shortage",
+          "mean_cost": 96607.059,
+          "cost_std": 5691.597746988012,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 84,
+            "initial_warehouse_pipeline": [
+              84,
+              84
+            ],
+            "initial_retailer_inventory": [
+              8,
+              8,
+              8,
+              8,
+              8,
+              8,
+              8,
+              8,
+              8,
+              8
+            ],
+            "initial_retailer_pipeline": [
+              [
+                8,
+                8
+              ],
+              [
+                8,
+                8
+              ],
+              [
+                8,
+                8
+              ],
+              [
+                8,
+                8
+              ],
+              [
+                8,
+                8
+              ],
+              [
+                8,
+                8
+              ],
+              [
+                8,
+                8
+              ],
+              [
+                8,
+                8
+              ],
+              [
+                8,
+                8
+              ],
+              [
+                8,
+                8
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation",
+          "search_bounds": {
+            "warehouse": [
+              421,
+              631
+            ],
+            "retailers": [
+              [
+                25,
+                77
+              ],
+              [
+                25,
+                77
+              ],
+              [
+                25,
+                77
+              ],
+              [
+                25,
+                77
+              ],
+              [
+                25,
+                77
+              ],
+              [
+                25,
+                77
+              ],
+              [
+                25,
+                77
+              ],
+              [
+                25,
+                77
+              ],
+              [
+                25,
+                77
+              ],
+              [
+                25,
+                77
+              ]
+            ],
+            "symmetric_retailers": true
+          },
+          "search_seed": 682802,
+          "search_protocol": "full_cartesian_symmetric_reduction",
+          "search_replications": 1000
+        }
+      },
+      "heuristics": {
+        "proportional": {
+          "warehouse_base_stock_level": 574,
+          "retailer_base_stock_levels": [
+            33,
+            33,
+            33,
+            33,
+            33,
+            33,
+            33,
+            33,
+            33,
+            33
+          ],
+          "allocation_policy": "proportional",
+          "mean_cost": 97166.7,
+          "cost_std": 5645.880408403995,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 84,
+            "initial_warehouse_pipeline": [
+              84,
+              84
+            ],
+            "initial_retailer_inventory": [
+              8,
+              8,
+              8,
+              8,
+              8,
+              8,
+              8,
+              8,
+              8,
+              8
+            ],
+            "initial_retailer_pipeline": [
+              [
+                8,
+                8
+              ],
+              [
+                8,
+                8
+              ],
+              [
+                8,
+                8
+              ],
+              [
+                8,
+                8
+              ],
+              [
+                8,
+                8
+              ],
+              [
+                8,
+                8
+              ],
+              [
+                8,
+                8
+              ],
+              [
+                8,
+                8
+              ],
+              [
+                8,
+                8
+              ],
+              [
+                8,
+                8
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation"
+        },
+        "min_shortage": {
+          "warehouse_base_stock_level": 574,
+          "retailer_base_stock_levels": [
+            33,
+            33,
+            33,
+            33,
+            33,
+            33,
+            33,
+            33,
+            33,
+            33
+          ],
+          "allocation_policy": "min_shortage",
+          "mean_cost": 97178.562,
+          "cost_std": 5648.783034084063,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 84,
+            "initial_warehouse_pipeline": [
+              84,
+              84
+            ],
+            "initial_retailer_inventory": [
+              8,
+              8,
+              8,
+              8,
+              8,
+              8,
+              8,
+              8,
+              8,
+              8
+            ],
+            "initial_retailer_pipeline": [
+              [
+                8,
+                8
+              ],
+              [
+                8,
+                8
+              ],
+              [
+                8,
+                8
+              ],
+              [
+                8,
+                8
+              ],
+              [
+                8,
+                8
+              ],
+              [
+                8,
+                8
+              ],
+              [
+                8,
+                8
+              ],
+              [
+                8,
+                8
+              ],
+              [
+                8,
+                8
+              ],
+              [
+                8,
+                8
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation"
+        }
+      },
+      "policy_config": {
+        "depth": 1,
+        "temperature": 0.1,
+        "split_type": "axis_aligned",
+        "leaf_type": "linear",
+        "policy_action_mode": "symmetric_echelon_targets",
+        "training_episodes": 400,
+        "es_population": 16,
+        "sigma_init": 1.5,
+        "train_seed_batch": 16
+      },
+      "training_seed": 554987,
+      "heuristic_search_seed": 682802,
+      "benchmark_seed": 324415,
+      "eval_seed_start": 1232216,
+      "evaluation": {
+        "mean_cost": 89098.8,
+        "cost_std": 5263.812987559493,
+        "min_cost": 75231.0,
+        "max_cost": 107412.0,
+        "num_samples": 1000
+      },
+      "comparison_rows": [
+        {
+          "policy": "published_echelon_base_stock_proportional",
+          "mean_cost": 101727.47,
+          "note": "Kaynov Table A.3",
+          "gap_vs_soft_tree_cost": 12628.669999999998
+        },
+        {
+          "policy": "published_echelon_base_stock_min_shortage",
+          "mean_cost": 99882.51,
+          "note": "Kaynov Table A.3",
+          "gap_vs_soft_tree_cost": 10783.709999999992
+        },
+        {
+          "policy": "published_ppo",
+          "mean_cost": 79727.39,
+          "note": "Kaynov Table A.3",
+          "gap_vs_soft_tree_cost": -9371.410000000003
+        },
+        {
+          "policy": "repo_echelon_base_stock_proportional",
+          "mean_cost": 97166.7,
+          "note": "repo reproduction",
+          "gap_vs_soft_tree_cost": 8067.899999999994
+        },
+        {
+          "policy": "repo_echelon_base_stock_min_shortage",
+          "mean_cost": 97178.562,
+          "note": "repo reproduction",
+          "gap_vs_soft_tree_cost": 8079.762000000002
+        },
+        {
+          "policy": "soft_tree",
+          "mean_cost": 89098.8,
+          "note": "CMA-ES soft tree",
+          "gap_vs_soft_tree_cost": 0.0
+        },
+        {
+          "policy": "summary_best_published_heuristic",
+          "mean_cost": 99882.51,
+          "note": "min(published proportional, published min-shortage)",
+          "gap_vs_soft_tree_cost": 10783.709999999992
+        },
+        {
+          "policy": "summary_best_repo_heuristic",
+          "mean_cost": 97166.7,
+          "note": "min(repo proportional, repo min-shortage)",
+          "gap_vs_soft_tree_cost": 8067.899999999994
+        }
+      ],
+      "summary": {
+        "instance_name": "kaynov2024_instance_13",
+        "customer_behavior": "partial_backorder",
+        "soft_tree_mean_cost": 89098.8,
+        "best_repo_heuristic_cost": 97166.7,
+        "best_published_heuristic_cost": 99882.51,
+        "published_ppo_cost": 79727.39,
+        "gap_vs_repo_best": 8067.899999999994,
+        "gap_vs_published_best_heuristic": 10783.709999999992,
+        "gap_vs_published_ppo": -9371.410000000003
+      }
+    },
+    "kaynov2024_instance_14": {
+      "reference": {
+        "name": "kaynov2024_instance_14",
+        "source": "Kaynov et al. (2024), International Journal of Production Economics 267, 109088",
+        "url": "https://doi.org/10.1016/j.ijpe.2023.109088",
+        "literature_verified": true,
+        "benchmark_periods": 100,
+        "benchmark_replications": 1000,
+        "customer_behavior": "partial_backorder",
+        "warehouse_lead_time": 2,
+        "retailer_lead_times": [
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2,
+          2
+        ],
+        "demand_kinds": [
+          "rounded_normal",
+          "rounded_normal",
+          "rounded_normal",
+          "rounded_normal",
+          "rounded_normal",
+          "rounded_normal",
+          "poisson",
+          "poisson",
+          "poisson",
+          "poisson"
+        ],
+        "demand_param1": [
+          0.0,
+          2.0,
+          4.0,
+          6.0,
+          8.0,
+          10.0,
+          0.5,
+          3.0,
+          9.0,
+          12.0
+        ],
+        "demand_param2": [
+          20.0,
+          16.0,
+          12.0,
+          8.0,
+          4.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "holding_cost_warehouse": 3.0,
+        "holding_cost_retailers": [
+          3.0,
+          3.0,
+          3.0,
+          3.0,
+          3.0,
+          3.0,
+          3.0,
+          3.0,
+          3.0,
+          3.0
+        ],
+        "penalty_costs_retailers": [
+          60.0,
+          60.0,
+          60.0,
+          60.0,
+          60.0,
+          60.0,
+          60.0,
+          60.0,
+          60.0,
+          60.0
+        ],
+        "emergency_shipment_probability": 0.8,
+        "published_min_shortage_benchmark": {
+          "policy_name": "echelon_base_stock",
+          "allocation_policy": "min_shortage",
+          "mean_cost": -52787.41,
+          "standard_error": 49.29,
+          "relative_gap_percent": -1.07
+        },
+        "published_proportional_benchmark": {
+          "policy_name": "echelon_base_stock",
+          "allocation_policy": "proportional",
+          "mean_cost": -53358.86,
+          "standard_error": 45.4,
+          "relative_gap_percent": 0.0
+        },
+        "published_ppo_benchmark": {
+          "policy_name": "ppo",
+          "allocation_policy": null,
+          "mean_cost": -42835.02,
+          "standard_error": 124.09,
+          "relative_gap_percent": -19.72
+        },
+        "notes": "Asymmetric 10-retailer partial-backorder instance from Table 2 / Table A.3."
+      },
+      "initial_state": {
+        "initial_warehouse_inventory": 72,
+        "initial_warehouse_pipeline": [
+          72,
+          72
+        ],
+        "initial_retailer_inventory": [
+          8,
+          7,
+          7,
+          7,
+          8,
+          10,
+          0,
+          3,
+          9,
+          12
+        ],
+        "initial_retailer_pipeline": [
+          [
+            8,
+            8
+          ],
+          [
+            7,
+            7
+          ],
+          [
+            7,
+            7
+          ],
+          [
+            7,
+            7
+          ],
+          [
+            8,
+            8
+          ],
+          [
+            10,
+            10
+          ],
+          [
+            0,
+            0
+          ],
+          [
+            3,
+            3
+          ],
+          [
+            9,
+            9
+          ],
+          [
+            12,
+            12
+          ]
+        ],
+        "initial_state_rule": "mean_filled_pipeline_warm_start"
+      },
+      "search_results": {
+        "proportional": {
+          "warehouse_base_stock_level": 448,
+          "retailer_base_stock_levels": [
+            34,
+            31,
+            28,
+            27,
+            28,
+            30,
+            2,
+            11,
+            30,
+            39
+          ],
+          "allocation_policy": "proportional",
+          "mean_cost": 53036.835,
+          "cost_std": 3923.8965077808816,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 72,
+            "initial_warehouse_pipeline": [
+              72,
+              72
+            ],
+            "initial_retailer_inventory": [
+              8,
+              7,
+              7,
+              7,
+              8,
+              10,
+              0,
+              3,
+              9,
+              12
+            ],
+            "initial_retailer_pipeline": [
+              [
+                8,
+                8
+              ],
+              [
+                7,
+                7
+              ],
+              [
+                7,
+                7
+              ],
+              [
+                7,
+                7
+              ],
+              [
+                8,
+                8
+              ],
+              [
+                10,
+                10
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                3,
+                3
+              ],
+              [
+                9,
+                9
+              ],
+              [
+                12,
+                12
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation",
+          "search_bounds": {
+            "warehouse": [
+              360,
+              493
+            ],
+            "retailers": [
+              [
+                23,
+                85
+              ],
+              [
+                22,
+                75
+              ],
+              [
+                21,
+                65
+              ],
+              [
+                21,
+                55
+              ],
+              [
+                24,
+                45
+              ],
+              [
+                30,
+                30
+              ],
+              [
+                1,
+                6
+              ],
+              [
+                9,
+                18
+              ],
+              [
+                27,
+                43
+              ],
+              [
+                36,
+                54
+              ]
+            ],
+            "symmetric_retailers": false
+          },
+          "search_seed": 862451,
+          "search_protocol": "kaynov_instance14_z0_k",
+          "k_value_candidates": [
+            0.5048150060274461
+          ],
+          "search_replications": 1000
+        },
+        "min_shortage": {
+          "warehouse_base_stock_level": 448,
+          "retailer_base_stock_levels": [
+            34,
+            31,
+            28,
+            27,
+            28,
+            30,
+            2,
+            11,
+            30,
+            39
+          ],
+          "allocation_policy": "min_shortage",
+          "mean_cost": 53072.472,
+          "cost_std": 3939.3784536670228,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 72,
+            "initial_warehouse_pipeline": [
+              72,
+              72
+            ],
+            "initial_retailer_inventory": [
+              8,
+              7,
+              7,
+              7,
+              8,
+              10,
+              0,
+              3,
+              9,
+              12
+            ],
+            "initial_retailer_pipeline": [
+              [
+                8,
+                8
+              ],
+              [
+                7,
+                7
+              ],
+              [
+                7,
+                7
+              ],
+              [
+                7,
+                7
+              ],
+              [
+                8,
+                8
+              ],
+              [
+                10,
+                10
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                3,
+                3
+              ],
+              [
+                9,
+                9
+              ],
+              [
+                12,
+                12
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation",
+          "search_bounds": {
+            "warehouse": [
+              360,
+              493
+            ],
+            "retailers": [
+              [
+                23,
+                85
+              ],
+              [
+                22,
+                75
+              ],
+              [
+                21,
+                65
+              ],
+              [
+                21,
+                55
+              ],
+              [
+                24,
+                45
+              ],
+              [
+                30,
+                30
+              ],
+              [
+                1,
+                6
+              ],
+              [
+                9,
+                18
+              ],
+              [
+                27,
+                43
+              ],
+              [
+                36,
+                54
+              ]
+            ],
+            "symmetric_retailers": false
+          },
+          "search_seed": 862451,
+          "search_protocol": "kaynov_instance14_z0_k",
+          "k_value_candidates": [
+            0.5048150060274461
+          ],
+          "search_replications": 1000
+        }
+      },
+      "heuristics": {
+        "proportional": {
+          "warehouse_base_stock_level": 448,
+          "retailer_base_stock_levels": [
+            34,
+            31,
+            28,
+            27,
+            28,
+            30,
+            2,
+            11,
+            30,
+            39
+          ],
+          "allocation_policy": "proportional",
+          "mean_cost": 53051.904,
+          "cost_std": 4083.3740471311226,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 72,
+            "initial_warehouse_pipeline": [
+              72,
+              72
+            ],
+            "initial_retailer_inventory": [
+              8,
+              7,
+              7,
+              7,
+              8,
+              10,
+              0,
+              3,
+              9,
+              12
+            ],
+            "initial_retailer_pipeline": [
+              [
+                8,
+                8
+              ],
+              [
+                7,
+                7
+              ],
+              [
+                7,
+                7
+              ],
+              [
+                7,
+                7
+              ],
+              [
+                8,
+                8
+              ],
+              [
+                10,
+                10
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                3,
+                3
+              ],
+              [
+                9,
+                9
+              ],
+              [
+                12,
+                12
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation"
+        },
+        "min_shortage": {
+          "warehouse_base_stock_level": 448,
+          "retailer_base_stock_levels": [
+            34,
+            31,
+            28,
+            27,
+            28,
+            30,
+            2,
+            11,
+            30,
+            39
+          ],
+          "allocation_policy": "min_shortage",
+          "mean_cost": 53082.561,
+          "cost_std": 4093.969362645378,
+          "num_samples": 1000,
+          "initial_state": {
+            "initial_warehouse_inventory": 72,
+            "initial_warehouse_pipeline": [
+              72,
+              72
+            ],
+            "initial_retailer_inventory": [
+              8,
+              7,
+              7,
+              7,
+              8,
+              10,
+              0,
+              3,
+              9,
+              12
+            ],
+            "initial_retailer_pipeline": [
+              [
+                8,
+                8
+              ],
+              [
+                7,
+                7
+              ],
+              [
+                7,
+                7
+              ],
+              [
+                7,
+                7
+              ],
+              [
+                8,
+                8
+              ],
+              [
+                10,
+                10
+              ],
+              [
+                0,
+                0
+              ],
+              [
+                3,
+                3
+              ],
+              [
+                9,
+                9
+              ],
+              [
+                12,
+                12
+              ]
+            ],
+            "initial_state_rule": "mean_filled_pipeline_warm_start"
+          },
+          "evaluation_mode": "simulation"
+        }
+      },
+      "policy_config": {
+        "depth": 1,
+        "temperature": 0.1,
+        "split_type": "axis_aligned",
+        "leaf_type": "linear",
+        "policy_action_mode": "echelon_targets",
+        "training_episodes": 400,
+        "es_population": 16,
+        "sigma_init": 1.5,
+        "train_seed_batch": 16
+      },
+      "training_seed": 13740,
+      "heuristic_search_seed": 862451,
+      "benchmark_seed": 372992,
+      "eval_seed_start": 1297753,
+      "evaluation": {
+        "mean_cost": 64648.989,
+        "cost_std": 5784.549129091999,
+        "min_cost": 48075.0,
+        "max_cost": 84945.0,
+        "num_samples": 1000
+      },
+      "comparison_rows": [
+        {
+          "policy": "published_echelon_base_stock_proportional",
+          "mean_cost": 53358.86,
+          "note": "Kaynov Table A.3",
+          "gap_vs_soft_tree_cost": -11290.129
+        },
+        {
+          "policy": "published_echelon_base_stock_min_shortage",
+          "mean_cost": 52787.41,
+          "note": "Kaynov Table A.3",
+          "gap_vs_soft_tree_cost": -11861.578999999998
+        },
+        {
+          "policy": "published_ppo",
+          "mean_cost": 42835.02,
+          "note": "Kaynov Table A.3",
+          "gap_vs_soft_tree_cost": -21813.969000000005
+        },
+        {
+          "policy": "repo_echelon_base_stock_proportional",
+          "mean_cost": 53051.904,
+          "note": "repo reproduction",
+          "gap_vs_soft_tree_cost": -11597.085
+        },
+        {
+          "policy": "repo_echelon_base_stock_min_shortage",
+          "mean_cost": 53082.561,
+          "note": "repo reproduction",
+          "gap_vs_soft_tree_cost": -11566.428
+        },
+        {
+          "policy": "soft_tree",
+          "mean_cost": 64648.989,
+          "note": "CMA-ES soft tree",
+          "gap_vs_soft_tree_cost": 0.0
+        },
+        {
+          "policy": "summary_best_published_heuristic",
+          "mean_cost": 52787.41,
+          "note": "min(published proportional, published min-shortage)",
+          "gap_vs_soft_tree_cost": -11861.578999999998
+        },
+        {
+          "policy": "summary_best_repo_heuristic",
+          "mean_cost": 53051.904,
+          "note": "min(repo proportional, repo min-shortage)",
+          "gap_vs_soft_tree_cost": -11597.085
+        }
+      ],
+      "summary": {
+        "instance_name": "kaynov2024_instance_14",
+        "customer_behavior": "partial_backorder",
+        "soft_tree_mean_cost": 64648.989,
+        "best_repo_heuristic_cost": 53051.904,
+        "best_published_heuristic_cost": 52787.41,
+        "published_ppo_cost": 42835.02,
+        "gap_vs_repo_best": -11597.085,
+        "gap_vs_published_best_heuristic": -11861.578999999998,
+        "gap_vs_published_ppo": -21813.969000000005
+      }
+    }
+  },
+  "instance_table": [
+    {
+      "instance_name": "kaynov2024_instance_1",
+      "customer_behavior": "backorder",
+      "soft_tree_mean_cost": 1600.0065,
+      "best_repo_heuristic_cost": 1562.124,
+      "best_published_heuristic_cost": 1609.47,
+      "published_ppo_cost": 1637.2,
+      "gap_vs_repo_best": -37.882499999999936,
+      "gap_vs_published_best_heuristic": 9.463500000000067,
+      "gap_vs_published_ppo": 37.193500000000085
+    },
+    {
+      "instance_name": "kaynov2024_instance_2",
+      "customer_behavior": "backorder",
+      "soft_tree_mean_cost": 1605.4125,
+      "best_repo_heuristic_cost": 1381.7835,
+      "best_published_heuristic_cost": 1383.88,
+      "published_ppo_cost": 1417.46,
+      "gap_vs_repo_best": -223.6289999999999,
+      "gap_vs_published_best_heuristic": -221.5324999999998,
+      "gap_vs_published_ppo": -187.95249999999987
+    },
+    {
+      "instance_name": "kaynov2024_instance_3",
+      "customer_behavior": "backorder",
+      "soft_tree_mean_cost": 1870.7815,
+      "best_repo_heuristic_cost": 1728.0195,
+      "best_published_heuristic_cost": 1776.04,
+      "published_ppo_cost": 1731.67,
+      "gap_vs_repo_best": -142.76199999999994,
+      "gap_vs_published_best_heuristic": -94.74150000000009,
+      "gap_vs_published_ppo": -139.11149999999998
+    },
+    {
+      "instance_name": "kaynov2024_instance_4",
+      "customer_behavior": "backorder",
+      "soft_tree_mean_cost": 1913.9865,
+      "best_repo_heuristic_cost": 1802.271,
+      "best_published_heuristic_cost": 1857.3,
+      "published_ppo_cost": 1908.95,
+      "gap_vs_repo_best": -111.71550000000002,
+      "gap_vs_published_best_heuristic": -56.686500000000024,
+      "gap_vs_published_ppo": -5.036499999999933
+    },
+    {
+      "instance_name": "kaynov2024_instance_5",
+      "customer_behavior": "backorder",
+      "soft_tree_mean_cost": 2648.7405,
+      "best_repo_heuristic_cost": 2454.6215,
+      "best_published_heuristic_cost": 2246.84,
+      "published_ppo_cost": 2331.07,
+      "gap_vs_repo_best": -194.1189999999997,
+      "gap_vs_published_best_heuristic": -401.90049999999974,
+      "gap_vs_published_ppo": -317.6704999999997
+    },
+    {
+      "instance_name": "kaynov2024_instance_6",
+      "customer_behavior": "lost_sales",
+      "soft_tree_mean_cost": 1394.4695,
+      "best_repo_heuristic_cost": 1346.834,
+      "best_published_heuristic_cost": 1366.51,
+      "published_ppo_cost": 1347.34,
+      "gap_vs_repo_best": -47.635499999999865,
+      "gap_vs_published_best_heuristic": -27.959499999999935,
+      "gap_vs_published_ppo": -47.12950000000001
+    },
+    {
+      "instance_name": "kaynov2024_instance_7",
+      "customer_behavior": "lost_sales",
+      "soft_tree_mean_cost": 1444.7565,
+      "best_repo_heuristic_cost": 1390.966,
+      "best_published_heuristic_cost": 1406.27,
+      "published_ppo_cost": 1405.08,
+      "gap_vs_repo_best": -53.790500000000065,
+      "gap_vs_published_best_heuristic": -38.48649999999998,
+      "gap_vs_published_ppo": -39.67650000000003
+    },
+    {
+      "instance_name": "kaynov2024_instance_8",
+      "customer_behavior": "lost_sales",
+      "soft_tree_mean_cost": 1504.9805,
+      "best_repo_heuristic_cost": 1473.796,
+      "best_published_heuristic_cost": 1508.12,
+      "published_ppo_cost": 1495.49,
+      "gap_vs_repo_best": -31.184499999999844,
+      "gap_vs_published_best_heuristic": 3.139499999999998,
+      "gap_vs_published_ppo": -9.490499999999884
+    },
+    {
+      "instance_name": "kaynov2024_instance_9",
+      "customer_behavior": "lost_sales",
+      "soft_tree_mean_cost": 1659.611,
+      "best_repo_heuristic_cost": 1521.8145,
+      "best_published_heuristic_cost": 1535.96,
+      "published_ppo_cost": 1511.68,
+      "gap_vs_repo_best": -137.79650000000015,
+      "gap_vs_published_best_heuristic": -123.65100000000007,
+      "gap_vs_published_ppo": -147.93100000000004
+    },
+    {
+      "instance_name": "kaynov2024_instance_10",
+      "customer_behavior": "lost_sales",
+      "soft_tree_mean_cost": 1981.2855,
+      "best_repo_heuristic_cost": 1777.7195,
+      "best_published_heuristic_cost": 1736.55,
+      "published_ppo_cost": 1674.54,
+      "gap_vs_repo_best": -203.56600000000003,
+      "gap_vs_published_best_heuristic": -244.7355,
+      "gap_vs_published_ppo": -306.7455
+    },
+    {
+      "instance_name": "kaynov2024_instance_11",
+      "customer_behavior": "partial_backorder",
+      "soft_tree_mean_cost": 1141.5585,
+      "best_repo_heuristic_cost": 1178.3815,
+      "best_published_heuristic_cost": 1109.96,
+      "published_ppo_cost": 971.86,
+      "gap_vs_repo_best": 36.822999999999865,
+      "gap_vs_published_best_heuristic": -31.598500000000058,
+      "gap_vs_published_ppo": -169.69850000000008
+    },
+    {
+      "instance_name": "kaynov2024_instance_12",
+      "customer_behavior": "partial_backorder",
+      "soft_tree_mean_cost": 1221.1315,
+      "best_repo_heuristic_cost": 1240.1245,
+      "best_published_heuristic_cost": 1402.38,
+      "published_ppo_cost": 1118.92,
+      "gap_vs_repo_best": 18.992999999999938,
+      "gap_vs_published_best_heuristic": 181.24850000000015,
+      "gap_vs_published_ppo": -102.21149999999989
+    },
+    {
+      "instance_name": "kaynov2024_instance_13",
+      "customer_behavior": "partial_backorder",
+      "soft_tree_mean_cost": 89098.8,
+      "best_repo_heuristic_cost": 97166.7,
+      "best_published_heuristic_cost": 99882.51,
+      "published_ppo_cost": 79727.39,
+      "gap_vs_repo_best": 8067.899999999994,
+      "gap_vs_published_best_heuristic": 10783.709999999992,
+      "gap_vs_published_ppo": -9371.410000000003
+    },
+    {
+      "instance_name": "kaynov2024_instance_14",
+      "customer_behavior": "partial_backorder",
+      "soft_tree_mean_cost": 64648.989,
+      "best_repo_heuristic_cost": 53051.904,
+      "best_published_heuristic_cost": 52787.41,
+      "published_ppo_cost": 42835.02,
+      "gap_vs_repo_best": -11597.085,
+      "gap_vs_published_best_heuristic": -11861.578999999998,
+      "gap_vs_published_ppo": -21813.969000000005
+    }
+  ],
+  "aggregate": {
+    "num_instances": 14,
+    "beats_best_repo_heuristic_count": 3,
+    "beats_best_published_heuristic_count": 4,
+    "beats_published_ppo_count": 1,
+    "mean_gap_vs_repo_best": -332.6750000000003,
+    "mean_gap_vs_published_ppo": -2330.059964285715
+  }
+}
