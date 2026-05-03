@@ -46,36 +46,11 @@ pub struct DecentralizedInventoryReferenceInstance {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct WorkedTransitionReference {
-    pub source: &'static str,
-    pub url: &'static str,
-    pub initial_on_hand_inventory: &'static [usize],
-    pub initial_backlog: &'static [usize],
-    pub initial_shipment_pipelines: &'static [&'static [usize]],
-    pub initial_order_pipelines: &'static [&'static [usize]],
-    pub initial_last_received_shipments: &'static [usize],
-    pub initial_last_received_orders: &'static [usize],
-    pub initial_forecast_orders: &'static [f64],
-    pub initial_last_actions: &'static [usize],
-    pub action: &'static [usize],
-    pub realized_customer_demand: usize,
-    pub demand_smoothing_factors: &'static [f64],
-    pub holding_costs: &'static [f64],
-    pub backlog_costs: &'static [f64],
-    pub expected_received_shipments: &'static [usize],
-    pub expected_received_orders: &'static [usize],
-    pub expected_downstream_shipments: &'static [usize],
-    pub expected_next_on_hand_inventory: &'static [usize],
-    pub expected_next_backlog: &'static [usize],
-    pub expected_next_shipment_pipelines: &'static [&'static [usize]],
-    pub expected_next_order_pipelines: &'static [&'static [usize]],
-    pub expected_period_cost: f64,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ExactVerificationReference {
     pub source: &'static str,
     pub url: &'static str,
+    pub literature_verified: bool,
+    pub verification_source: &'static str,
     pub periods: usize,
     pub discount_factor: f64,
     pub initial_on_hand_inventory: &'static [usize],
@@ -100,8 +75,8 @@ pub struct ExactVerificationReference {
 }
 
 pub const CLASSIC_BEER_GAME_CUSTOMER_DEMANDS: &[usize] = &[
-    4, 4, 4, 4, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
-    8, 8, 8, 8, 8, 8,
+    4, 4, 4, 4, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+    8, 8, 8, 8,
 ];
 
 pub const STERMAN_1989_REFERENCE: PublishedBenchmarkReference = PublishedBenchmarkReference {
@@ -168,38 +143,14 @@ pub const PRIMARY_REFERENCE_INSTANCE: DecentralizedInventoryReferenceInstance =
         notes: "Classic four-stage Beer Game state with the canonical 36-week demand path 4,4,4,4,8,...,8. The state and Sterman parameter values follow the exact board-game reconstruction reported by Caner et al. (2014), which in turn reproduces the benchmark costs from Sterman (1989).",
     };
 
-pub const WORKED_TRANSITION_REFERENCE: WorkedTransitionReference = WorkedTransitionReference {
-    source: PRIMARY_REFERENCE_INSTANCE.source,
-    url: PRIMARY_REFERENCE_INSTANCE.url,
-    initial_on_hand_inventory: &[12, 12, 12, 12],
-    initial_backlog: &[0, 0, 0, 0],
-    initial_shipment_pipelines: &[&[4, 4], &[4, 4], &[4, 4], &[4, 4]],
-    initial_order_pipelines: &[&[], &[4], &[4], &[4]],
-    initial_last_received_shipments: &[4, 4, 4, 4],
-    initial_last_received_orders: &[4, 4, 4, 4],
-    initial_forecast_orders: &[4.0, 4.0, 4.0, 4.0],
-    initial_last_actions: &[4, 4, 4, 4],
-    action: &[4, 4, 4, 4],
-    realized_customer_demand: 4,
-    demand_smoothing_factors: &[0.0, 0.0, 0.0, 0.0],
-    holding_costs: &[0.5, 0.5, 0.5, 0.5],
-    backlog_costs: &[1.0, 1.0, 1.0, 1.0],
-    expected_received_shipments: &[4, 4, 4, 4],
-    expected_received_orders: &[4, 4, 4, 4],
-    expected_downstream_shipments: &[4, 4, 4, 4],
-    expected_next_on_hand_inventory: &[12, 12, 12, 12],
-    expected_next_backlog: &[0, 0, 0, 0],
-    expected_next_shipment_pipelines: &[&[4, 4], &[4, 4], &[4, 4], &[4, 4]],
-    expected_next_order_pipelines: &[&[], &[4], &[4], &[4]],
-    expected_period_cost: 24.0,
-};
-
 pub const VERIFICATION_CUSTOMER_DEMAND_SUPPORT: &[u32] = &[0, 1];
 pub const VERIFICATION_CUSTOMER_DEMAND_PROBABILITIES: &[f64] = &[0.5, 0.5];
 
 pub const VERIFICATION_PROBLEM_INSTANCE: ExactVerificationReference = ExactVerificationReference {
     source: "Repo exact verification instance for decentralized inventory control",
     url: "",
+    literature_verified: false,
+    verification_source: "repo_exact_solver_not_verified_against_literature",
     periods: 3,
     discount_factor: 0.99,
     initial_on_hand_inventory: &[2, 1],

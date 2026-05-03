@@ -17,3 +17,4 @@ Important distinction:
 
 - the classic board-game benchmark is literature-verified
 - the reduced finite-horizon DP instance is repo-native and only verifies internal implementation consistency
+- repo-native worked-transition expected values live in verification tests, not in the literature references

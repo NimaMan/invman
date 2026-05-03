@@ -9,11 +9,59 @@ use crate::problems::decentralized_inventory_control::heuristics::{
 };
 use crate::problems::decentralized_inventory_control::literature::references::{
     CANER_2014_REFERENCE, CLASSIC_BEER_GAME_CUSTOMER_DEMANDS, MOUSA_2024_REFERENCE,
-    OROOJLOYJADID_2021_REFERENCE, PRIMARY_REFERENCE_INSTANCE,
-    STERMAN_1989_CLASSIC_BENCHMARK, STERMAN_1989_REFERENCE, VERIFICATION_PROBLEM_INSTANCE,
-    WORKED_TRANSITION_REFERENCE,
+    OROOJLOYJADID_2021_REFERENCE, PRIMARY_REFERENCE_INSTANCE, STERMAN_1989_CLASSIC_BENCHMARK,
+    STERMAN_1989_REFERENCE, VERIFICATION_PROBLEM_INSTANCE,
 };
 use crate::problems::decentralized_inventory_control::verification::classic_board_game::simulate_classic_sterman_benchmark;
+
+#[derive(Clone, Copy, Debug)]
+struct WorkedTransitionCase {
+    initial_on_hand_inventory: &'static [usize],
+    initial_backlog: &'static [usize],
+    initial_shipment_pipelines: &'static [&'static [usize]],
+    initial_order_pipelines: &'static [&'static [usize]],
+    initial_last_received_shipments: &'static [usize],
+    initial_last_received_orders: &'static [usize],
+    initial_forecast_orders: &'static [f64],
+    initial_last_actions: &'static [usize],
+    action: &'static [usize],
+    realized_customer_demand: usize,
+    demand_smoothing_factors: &'static [f64],
+    holding_costs: &'static [f64],
+    backlog_costs: &'static [f64],
+    expected_received_shipments: &'static [usize],
+    expected_received_orders: &'static [usize],
+    expected_downstream_shipments: &'static [usize],
+    expected_next_on_hand_inventory: &'static [usize],
+    expected_next_backlog: &'static [usize],
+    expected_next_shipment_pipelines: &'static [&'static [usize]],
+    expected_next_order_pipelines: &'static [&'static [usize]],
+    expected_period_cost: f64,
+}
+
+const WORKED_TRANSITION_CASE: WorkedTransitionCase = WorkedTransitionCase {
+    initial_on_hand_inventory: &[12, 12, 12, 12],
+    initial_backlog: &[0, 0, 0, 0],
+    initial_shipment_pipelines: &[&[4, 4], &[4, 4], &[4, 4], &[4, 4]],
+    initial_order_pipelines: &[&[], &[4], &[4], &[4]],
+    initial_last_received_shipments: &[4, 4, 4, 4],
+    initial_last_received_orders: &[4, 4, 4, 4],
+    initial_forecast_orders: &[4.0, 4.0, 4.0, 4.0],
+    initial_last_actions: &[4, 4, 4, 4],
+    action: &[4, 4, 4, 4],
+    realized_customer_demand: 4,
+    demand_smoothing_factors: &[0.0, 0.0, 0.0, 0.0],
+    holding_costs: &[0.5, 0.5, 0.5, 0.5],
+    backlog_costs: &[1.0, 1.0, 1.0, 1.0],
+    expected_received_shipments: &[4, 4, 4, 4],
+    expected_received_orders: &[4, 4, 4, 4],
+    expected_downstream_shipments: &[4, 4, 4, 4],
+    expected_next_on_hand_inventory: &[12, 12, 12, 12],
+    expected_next_backlog: &[0, 0, 0, 0],
+    expected_next_shipment_pipelines: &[&[4, 4], &[4, 4], &[4, 4], &[4, 4]],
+    expected_next_order_pipelines: &[&[], &[4], &[4], &[4]],
+    expected_period_cost: 24.0,
+};
 
 fn nested_vec(rows: &[&[usize]]) -> Vec<Vec<usize>> {
     rows.iter().map(|row| row.to_vec()).collect()
@@ -22,7 +70,10 @@ fn nested_vec(rows: &[&[usize]]) -> Vec<Vec<usize>> {
 #[test]
 fn reference_set_has_expected_shape() {
     assert_eq!(OROOJLOYJADID_2021_REFERENCE.benchmark_policies.len(), 3);
-    assert_eq!(STERMAN_1989_REFERENCE.benchmark_policies, &["sterman_anchor_adjust"]);
+    assert_eq!(
+        STERMAN_1989_REFERENCE.benchmark_policies,
+        &["sterman_anchor_adjust"]
+    );
     assert_eq!(
         CANER_2014_REFERENCE.benchmark_policies,
         &["sterman_anchor_adjust"]
@@ -35,6 +86,11 @@ fn reference_set_has_expected_shape() {
     );
     assert_eq!(PRIMARY_REFERENCE_INSTANCE.sterman_target_positions[3], 20.0);
     assert_eq!(VERIFICATION_PROBLEM_INSTANCE.max_order_quantities, &[4, 4]);
+    assert!(!VERIFICATION_PROBLEM_INSTANCE.literature_verified);
+    assert_eq!(
+        VERIFICATION_PROBLEM_INSTANCE.verification_source,
+        "repo_exact_solver_not_verified_against_literature"
+    );
     assert_eq!(MOUSA_2024_REFERENCE.benchmark_policies.len(), 2);
 }
 
@@ -78,7 +134,7 @@ fn local_policy_state_layout_matches_expected_shape() {
 
 #[test]
 fn worked_transition_matches_expected_accounting() {
-    let worked = WORKED_TRANSITION_REFERENCE;
+    let worked = WORKED_TRANSITION_CASE;
     let state = initialize_state(
         worked.initial_on_hand_inventory,
         worked.initial_backlog,
@@ -144,7 +200,11 @@ fn heuristic_first_actions_match_named_heuristic_evaluators() {
         evaluate_named_heuristic(&VERIFICATION_PROBLEM_INSTANCE, "sterman_anchor_adjust")
             .expect("Sterman evaluation must solve");
 
-    for demand in VERIFICATION_PROBLEM_INSTANCE.customer_demand_support.iter().copied() {
+    for demand in VERIFICATION_PROBLEM_INSTANCE
+        .customer_demand_support
+        .iter()
+        .copied()
+    {
         let observed_orders =
             current_received_orders(&state, demand as usize).expect("observed orders must build");
         let base_stock = base_stock_orders(

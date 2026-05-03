@@ -109,14 +109,18 @@ pub fn simulate_classic_sterman_benchmark() -> ClassicBeerGameBenchmarkSummary {
             o_d[t + 1] = 4;
             psr[t + 1] = 4;
         } else {
-            o_r[t + 1] =
-                round_half_away_from_zero((eecd + (s_prime[0] - ei[0] as f64 - sl_r as f64)).max(0.0));
-            o_w[t + 1] =
-                round_half_away_from_zero((eo_r + (s_prime[1] - ei[1] as f64 - sl_w as f64)).max(0.0));
-            o_d[t + 1] =
-                round_half_away_from_zero((eo_w + (s_prime[2] - ei[2] as f64 - sl_d as f64)).max(0.0));
-            psr[t + 1] =
-                round_half_away_from_zero((eo_d + (s_prime[3] - ei[3] as f64 - sl_f as f64)).max(0.0));
+            o_r[t + 1] = round_half_away_from_zero(
+                (eecd + (s_prime[0] - ei[0] as f64 - sl_r as f64)).max(0.0),
+            );
+            o_w[t + 1] = round_half_away_from_zero(
+                (eo_r + (s_prime[1] - ei[1] as f64 - sl_w as f64)).max(0.0),
+            );
+            o_d[t + 1] = round_half_away_from_zero(
+                (eo_w + (s_prime[2] - ei[2] as f64 - sl_d as f64)).max(0.0),
+            );
+            psr[t + 1] = round_half_away_from_zero(
+                (eo_d + (s_prime[3] - ei[3] as f64 - sl_f as f64)).max(0.0),
+            );
         }
 
         for agent_idx in 0..4 {
