@@ -153,6 +153,11 @@ Current literature-verified package anchors:
   - the Kranenburg Chapter 5 exact benchmark family is literature-verified
 - `decentralized_inventory_control`
   - the classic Sterman / Caner Beer-Game benchmark is literature-verified through the exact public verification code path
+- `vendor_managed_inventory`
+  - the public Gosavi/Sui/Giannoccaro/Lin worked newsvendor calculation is literature-verified
+    through the Rust analytical verification helper
+  - the full Giannoccaro and Pontrandolfo (2010) 8-case truck-dispatch profit table is not carried
+    as a verified benchmark because the public demand-signal semantics do not reproduce the rows
 
 Everything else should be treated as not literature-verified unless the problem README states
 otherwise explicitly.

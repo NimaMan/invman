@@ -1,7 +1,14 @@
 mod dc_reserve_base_stock;
+mod paper_mean_demand;
+mod paper_newsvendor;
 mod retailer_base_stock;
 
 pub use dc_reserve_base_stock::dc_reserve_base_stock_shipment_quantity;
+pub use paper_mean_demand::{paper_mean_demand_dispatch, paper_mean_demand_order_up_to_levels};
+pub use paper_newsvendor::{
+    paper_allocate_from_order_up_to_levels, paper_allocate_with_trucks, paper_newsvendor_dispatch,
+    paper_newsvendor_order_up_to_levels, simulate_paper_policy, PaperPolicySimulationSummary,
+};
 pub use retailer_base_stock::retailer_base_stock_shipment_quantity;
 
 use pyo3::exceptions::PyValueError;

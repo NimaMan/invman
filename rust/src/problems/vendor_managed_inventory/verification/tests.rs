@@ -7,20 +7,106 @@ use crate::problems::vendor_managed_inventory::finite_horizon_dp::{
 use crate::problems::vendor_managed_inventory::heuristics::{
     dc_reserve_base_stock_shipment_quantity, retailer_base_stock_shipment_quantity,
 };
-use crate::problems::vendor_managed_inventory::references::{
+use crate::problems::vendor_managed_inventory::literature::references::{
+    GIANNOCCARO_2010_CASE_DEFINITIONS, GIANNOCCARO_2010_NEWSVENDOR_WORKED_CASE,
     GIANNOCCARO_2010_REFERENCE, PRIMARY_REFERENCE_INSTANCE, VERIFICATION_PROBLEM_INSTANCE,
-    WORKED_TRANSITION_REFERENCE,
+};
+use crate::problems::vendor_managed_inventory::verification::newsvendor_case::{
+    evaluate_newsvendor_worked_case, NewsvendorWorkedCaseSummary,
+};
+
+#[derive(Clone, Copy)]
+struct WorkedTransitionCase {
+    initial_dc_on_hand: usize,
+    initial_retailer_on_hand: usize,
+    initial_retailer_pipeline: usize,
+    shipment_quantity: usize,
+    realized_demand: usize,
+    dc_replenishment_quantity: usize,
+    dc_capacity: usize,
+    shipment_cost_per_unit: f64,
+    dc_holding_cost_per_unit: f64,
+    retailer_holding_cost_per_unit: f64,
+    stockout_cost_per_unit: f64,
+    expected_arrivals_to_retailer: usize,
+    expected_sales: usize,
+    expected_lost_sales: usize,
+    expected_dc_replenishment: usize,
+    expected_next_dc_on_hand: usize,
+    expected_next_retailer_on_hand: usize,
+    expected_next_retailer_pipeline: usize,
+    expected_period_cost: f64,
+}
+
+const WORKED_TRANSITION_CASE: WorkedTransitionCase = WorkedTransitionCase {
+    initial_dc_on_hand: 4,
+    initial_retailer_on_hand: 1,
+    initial_retailer_pipeline: 1,
+    shipment_quantity: 2,
+    realized_demand: 3,
+    dc_replenishment_quantity: 2,
+    dc_capacity: 5,
+    shipment_cost_per_unit: 0.4,
+    dc_holding_cost_per_unit: 0.3,
+    retailer_holding_cost_per_unit: 0.6,
+    stockout_cost_per_unit: 4.0,
+    expected_arrivals_to_retailer: 1,
+    expected_sales: 2,
+    expected_lost_sales: 1,
+    expected_dc_replenishment: 2,
+    expected_next_dc_on_hand: 4,
+    expected_next_retailer_on_hand: 0,
+    expected_next_retailer_pipeline: 2,
+    expected_period_cost: 6.0,
 };
 
 #[test]
-fn reference_set_has_expected_shape() {
+fn literature_catalog_has_expected_shape() {
     assert_eq!(
         GIANNOCCARO_2010_REFERENCE.benchmark_policies,
-        &["retailer_base_stock", "projected_order_up_to", "rl_policy"]
+        &["worked_newsvendor_calculation"]
     );
+    assert_eq!(GIANNOCCARO_2010_CASE_DEFINITIONS.len(), 8);
+    assert_eq!(GIANNOCCARO_2010_CASE_DEFINITIONS[0].case_id, 1);
     assert_eq!(PRIMARY_REFERENCE_INSTANCE.dc_capacity, 10);
     assert_eq!(PRIMARY_REFERENCE_INSTANCE.benchmark_dc_reserve_quantity, 2);
     assert_eq!(VERIFICATION_PROBLEM_INSTANCE.max_shipment_quantity, 4);
+}
+
+#[test]
+fn newsvendor_worked_case_matches_public_case_study_rounding() {
+    let summary: NewsvendorWorkedCaseSummary =
+        evaluate_newsvendor_worked_case(&GIANNOCCARO_2010_NEWSVENDOR_WORKED_CASE)
+            .expect("worked case must evaluate");
+
+    assert!((summary.mean_demand_rate - 0.375).abs() < 1e-12);
+    assert!((summary.demand_variance - 0.5833333333333334).abs() < 1e-12);
+    assert!((summary.cycle_time_mean - 40.0).abs() < 1e-12);
+    assert!((summary.cycle_time_variance - 50.0).abs() < 1e-12);
+    assert!((summary.cycle_demand_mean - 15.0).abs() < 1e-12);
+    assert!((summary.cycle_demand_variance - 30.364583333333336).abs() < 1e-12);
+    assert!((summary.mean_demand_heuristic_order_up_to - 15.0).abs() < 1e-12);
+    assert!((summary.six_sigma_order_up_to - 31.53122046311161).abs() < 1e-12);
+    assert!((summary.newsvendor_order_up_to - 26.9905428333404).abs() < 1e-12);
+
+    assert!(
+        (summary.cycle_demand_variance
+            - GIANNOCCARO_2010_NEWSVENDOR_WORKED_CASE.displayed_cycle_demand_variance)
+            .abs()
+            < 0.01
+    );
+    assert!(
+        (summary.six_sigma_order_up_to
+            - GIANNOCCARO_2010_NEWSVENDOR_WORKED_CASE.displayed_six_sigma_order_up_to)
+            .abs()
+            < 0.01
+    );
+    assert!(
+        (summary.newsvendor_order_up_to
+            - GIANNOCCARO_2010_NEWSVENDOR_WORKED_CASE.displayed_newsvendor_order_up_to)
+            .abs()
+            < 0.05
+    );
 }
 
 #[test]
@@ -53,7 +139,7 @@ fn policy_state_layout_matches_expected_shape() {
 
 #[test]
 fn worked_transition_matches_expected_accounting() {
-    let worked = WORKED_TRANSITION_REFERENCE;
+    let worked = WORKED_TRANSITION_CASE;
     let state = initialize_state(
         worked.initial_dc_on_hand,
         worked.initial_retailer_on_hand,

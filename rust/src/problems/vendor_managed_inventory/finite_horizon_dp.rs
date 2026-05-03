@@ -11,7 +11,7 @@ use crate::problems::vendor_managed_inventory::env::{
 use crate::problems::vendor_managed_inventory::heuristics::{
     dc_reserve_base_stock_shipment_quantity, retailer_base_stock_shipment_quantity,
 };
-use crate::problems::vendor_managed_inventory::references::ExactVerificationReference;
+use crate::problems::vendor_managed_inventory::literature::references::ExactVerificationReference;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 struct ExactStateKey {

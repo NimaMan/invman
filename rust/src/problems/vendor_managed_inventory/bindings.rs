@@ -5,15 +5,21 @@ use pyo3::wrap_pyfunction;
 use crate::core::policies::soft_tree::{build_action_spec, parse_leaf_type, parse_split_type};
 use crate::problems::vendor_managed_inventory::demand::parse_demand_distribution_kind;
 use crate::problems::vendor_managed_inventory::env::{
-    build_policy_state, initialize_state, step_state,
+    build_paper_policy_state, build_policy_state, initialize_paper_state, initialize_state,
+    step_state,
 };
 use crate::problems::vendor_managed_inventory::heuristics::{
     dc_reserve_base_stock_shipment_quantity, policy_rollout_from_demands,
     retailer_base_stock_shipment_quantity, simulate_policy, PolicySimulationSummary,
 };
-use crate::problems::vendor_managed_inventory::rollout::{
-    population_rollout, rollout, rollout_from_demands, VendorManagedInventoryRolloutConfig,
+use crate::problems::vendor_managed_inventory::literature::references::{
+    build_giannoccaro_2010_case, GIANNOCCARO_2010_NEWSVENDOR_WORKED_CASE,
 };
+use crate::problems::vendor_managed_inventory::rollout::{
+    paper_population_rollout, paper_rollout, population_rollout, rollout, rollout_from_demands,
+    VendorManagedInventoryPaperRolloutConfig, VendorManagedInventoryRolloutConfig,
+};
+use crate::problems::vendor_managed_inventory::verification::newsvendor_case::evaluate_newsvendor_worked_case;
 
 fn build_rollout_config(
     input_dim: usize,
@@ -60,6 +66,33 @@ fn build_rollout_config(
     })
 }
 
+fn build_paper_rollout_config(
+    case_id: usize,
+    input_dim: usize,
+    depth: usize,
+    min_values: Vec<usize>,
+    max_values: Vec<usize>,
+    action_mode: &str,
+    warmup_time: f64,
+    evaluation_time: f64,
+    temperature: f32,
+    split_type: &str,
+    leaf_type: &str,
+    allowed_values: Option<Vec<Vec<usize>>>,
+) -> PyResult<VendorManagedInventoryPaperRolloutConfig> {
+    Ok(VendorManagedInventoryPaperRolloutConfig {
+        case_id,
+        input_dim,
+        depth,
+        action_spec: build_action_spec(action_mode, min_values, max_values, allowed_values)?,
+        warmup_time,
+        evaluation_time,
+        temperature,
+        split_type: parse_split_type(split_type)?,
+        leaf_type: parse_leaf_type(leaf_type)?,
+    })
+}
+
 fn simulation_summary_to_py(
     py: Python<'_>,
     summary: &PolicySimulationSummary,
@@ -68,6 +101,156 @@ fn simulation_summary_to_py(
     dict.set_item("mean_discounted_cost", summary.mean_discounted_cost)?;
     dict.set_item("std_discounted_cost", summary.std_discounted_cost)?;
     Ok(dict.into_any().unbind().into())
+}
+
+#[pyfunction]
+fn vendor_managed_inventory_newsvendor_worked_case_summary(py: Python<'_>) -> PyResult<PyObject> {
+    let summary = evaluate_newsvendor_worked_case(&GIANNOCCARO_2010_NEWSVENDOR_WORKED_CASE)?;
+    let dict = PyDict::new_bound(py);
+    dict.set_item("source", GIANNOCCARO_2010_NEWSVENDOR_WORKED_CASE.source)?;
+    dict.set_item("url", GIANNOCCARO_2010_NEWSVENDOR_WORKED_CASE.url)?;
+    dict.set_item(
+        "matlab_code_url",
+        GIANNOCCARO_2010_NEWSVENDOR_WORKED_CASE.matlab_code_url,
+    )?;
+    dict.set_item("mean_demand_rate", summary.mean_demand_rate)?;
+    dict.set_item("demand_variance", summary.demand_variance)?;
+    dict.set_item("cycle_time_mean", summary.cycle_time_mean)?;
+    dict.set_item("cycle_time_variance", summary.cycle_time_variance)?;
+    dict.set_item("cycle_demand_mean", summary.cycle_demand_mean)?;
+    dict.set_item("cycle_demand_variance", summary.cycle_demand_variance)?;
+    dict.set_item("cycle_demand_stddev", summary.cycle_demand_stddev)?;
+    dict.set_item("critical_ratio", summary.critical_ratio)?;
+    dict.set_item("k", summary.k)?;
+    dict.set_item(
+        "mean_demand_heuristic_order_up_to",
+        summary.mean_demand_heuristic_order_up_to,
+    )?;
+    dict.set_item("six_sigma_order_up_to", summary.six_sigma_order_up_to)?;
+    dict.set_item("newsvendor_order_up_to", summary.newsvendor_order_up_to)?;
+    dict.set_item(
+        "displayed_newsvendor_order_up_to",
+        GIANNOCCARO_2010_NEWSVENDOR_WORKED_CASE.displayed_newsvendor_order_up_to,
+    )?;
+    Ok(dict.into_any().unbind().into())
+}
+
+#[pyfunction]
+#[pyo3(signature = (case_id, seed=1234))]
+fn vendor_managed_inventory_paper_initial_policy_state(
+    case_id: usize,
+    seed: u64,
+) -> PyResult<Vec<f32>> {
+    use rand::SeedableRng;
+    let model = build_giannoccaro_2010_case(case_id).ok_or_else(|| {
+        PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
+            "unknown Giannoccaro 2010 case_id {}",
+            case_id
+        ))
+    })?;
+    let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
+    let state = initialize_paper_state(&model, &mut rng)?;
+    build_paper_policy_state(&model, &state)
+}
+
+#[pyfunction]
+#[pyo3(signature = (
+    case_id,
+    flat_params,
+    input_dim,
+    depth,
+    min_values,
+    max_values,
+    action_mode,
+    seed=1234,
+    warmup_time=1_000_000.0,
+    evaluation_time=100_000.0,
+    temperature=0.25,
+    split_type="oblique",
+    leaf_type="constant",
+    allowed_values=None
+))]
+fn vendor_managed_inventory_paper_soft_tree_rollout(
+    case_id: usize,
+    flat_params: Vec<f32>,
+    input_dim: usize,
+    depth: usize,
+    min_values: Vec<usize>,
+    max_values: Vec<usize>,
+    action_mode: &str,
+    seed: u64,
+    warmup_time: f64,
+    evaluation_time: f64,
+    temperature: f32,
+    split_type: &str,
+    leaf_type: &str,
+    allowed_values: Option<Vec<Vec<usize>>>,
+) -> PyResult<f64> {
+    let config = build_paper_rollout_config(
+        case_id,
+        input_dim,
+        depth,
+        min_values,
+        max_values,
+        action_mode,
+        warmup_time,
+        evaluation_time,
+        temperature,
+        split_type,
+        leaf_type,
+        allowed_values,
+    )?;
+    paper_rollout(&flat_params, &config, seed)
+}
+
+#[pyfunction]
+#[pyo3(signature = (
+    case_id,
+    params_batch,
+    input_dim,
+    depth,
+    min_values,
+    max_values,
+    action_mode,
+    seeds,
+    warmup_time=1_000_000.0,
+    evaluation_time=100_000.0,
+    temperature=0.25,
+    split_type="oblique",
+    leaf_type="constant",
+    allowed_values=None
+))]
+fn vendor_managed_inventory_paper_soft_tree_population_rollout(
+    case_id: usize,
+    params_batch: Vec<Vec<f32>>,
+    input_dim: usize,
+    depth: usize,
+    min_values: Vec<usize>,
+    max_values: Vec<usize>,
+    action_mode: &str,
+    seeds: Vec<u64>,
+    warmup_time: f64,
+    evaluation_time: f64,
+    temperature: f32,
+    split_type: &str,
+    leaf_type: &str,
+    allowed_values: Option<Vec<Vec<usize>>>,
+) -> PyResult<Vec<f64>> {
+    let config = build_paper_rollout_config(
+        case_id,
+        input_dim,
+        depth,
+        min_values,
+        max_values,
+        action_mode,
+        warmup_time,
+        evaluation_time,
+        temperature,
+        split_type,
+        leaf_type,
+        allowed_values,
+    )?;
+    paper_population_rollout(&params_batch, &config, &seeds)
 }
 
 #[pyfunction]
@@ -556,6 +739,22 @@ fn vendor_managed_inventory_simulate_policy(
 }
 
 pub fn register_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add_function(wrap_pyfunction!(
+        vendor_managed_inventory_newsvendor_worked_case_summary,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        vendor_managed_inventory_paper_initial_policy_state,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        vendor_managed_inventory_paper_soft_tree_rollout,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        vendor_managed_inventory_paper_soft_tree_population_rollout,
+        m
+    )?)?;
     m.add_function(wrap_pyfunction!(
         vendor_managed_inventory_build_policy_state,
         m
