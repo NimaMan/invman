@@ -10,7 +10,38 @@ use crate::problems::joint_pricing_inventory::heuristics::{
 };
 use crate::problems::joint_pricing_inventory::literature::{
     PRIMARY_REFERENCE_INSTANCE, QIN_2022_REFERENCE, VERIFICATION_PROBLEM_INSTANCE,
-    WORKED_TRANSITION_REFERENCE, ZHOU_2022_REFERENCE,
+    ZHOU_2022_REFERENCE,
+};
+
+#[derive(Clone, Copy, Debug)]
+struct WorkedTransitionCase {
+    price_levels: &'static [f64],
+    initial_inventory_level: usize,
+    order_quantity: usize,
+    price_index: usize,
+    realized_demand: usize,
+    procurement_cost_per_unit: f64,
+    holding_cost_per_unit: f64,
+    stockout_cost_per_unit: f64,
+    expected_sales: usize,
+    expected_lost_sales: usize,
+    expected_next_inventory_level: usize,
+    expected_period_cost: f64,
+}
+
+const WORKED_TRANSITION_CASE: WorkedTransitionCase = WorkedTransitionCase {
+    price_levels: PRIMARY_REFERENCE_INSTANCE.price_levels,
+    initial_inventory_level: 1,
+    order_quantity: 2,
+    price_index: 1,
+    realized_demand: 4,
+    procurement_cost_per_unit: 4.0,
+    holding_cost_per_unit: 0.5,
+    stockout_cost_per_unit: 5.0,
+    expected_sales: 3,
+    expected_lost_sales: 1,
+    expected_next_inventory_level: 0,
+    expected_period_cost: -17.0,
 };
 
 #[test]
@@ -32,7 +63,17 @@ fn reference_set_has_expected_shape() {
         ]
     );
     assert_eq!(PRIMARY_REFERENCE_INSTANCE.price_levels.len(), 3);
+    assert!(!PRIMARY_REFERENCE_INSTANCE.literature_verified);
+    assert_eq!(
+        PRIMARY_REFERENCE_INSTANCE.verification_source,
+        "repo_exact_solver_not_verified_against_literature"
+    );
     assert_eq!(VERIFICATION_PROBLEM_INSTANCE.max_order_quantity, 4);
+    assert!(!VERIFICATION_PROBLEM_INSTANCE.literature_verified);
+    assert_eq!(
+        VERIFICATION_PROBLEM_INSTANCE.verification_source,
+        "repo_exact_solver_not_verified_against_literature"
+    );
 }
 
 #[test]
@@ -47,7 +88,7 @@ fn raw_state_layout_matches_expected_shape() {
 
 #[test]
 fn worked_transition_matches_expected_accounting() {
-    let worked = WORKED_TRANSITION_REFERENCE;
+    let worked = WORKED_TRANSITION_CASE;
     let state = initialize_state(worked.initial_inventory_level).expect("state must build");
     let outcome = step_state(
         &state,

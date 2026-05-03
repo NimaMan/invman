@@ -19,3 +19,8 @@ Why:
 
 So the repo uses these papers as formulation anchors only. The executable verification target for
 the current package remains repo-native.
+
+Reference hygiene:
+
+- `references.rs` stores literature anchors and problem-instance definitions only
+- repo-native worked-transition expected values live in verification tests, not in literature references

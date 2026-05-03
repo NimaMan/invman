@@ -10,4 +10,7 @@ The verification target for this family is a reduced finite-horizon joint pricin
 This verifier is repo-native. It is used to check implementation correctness, not to claim
 literature verification.
 
+Repo-native worked-transition expected values are kept in the verification tests, not in
+`literature/references.rs`.
+
 The executable assertions live in `rust/src/problems/joint_pricing_inventory/verification/tests.rs`.
