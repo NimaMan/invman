@@ -169,6 +169,11 @@ Notable current example:
   - not literature-verified, because the carried Vanvuchelen et al. settings expose public
     instance definitions and relative figures but not exact per-setting benchmark rows suitable for
     repo assertions
+- `procurement_removal_inventory`
+  - repo-exact verified on its reduced finite-horizon verifier
+  - not literature-verified, because the executable package is a simplified procurement/removal
+    inventory-control slice while the Maggiar/Sadighian anchor is a richer pricing and revenue
+    management model without exact public rows for this repo package
 - `joint_pricing_inventory`
   - repo-exact verified on its reduced verifier
   - not literature-verified, because the carried Zhou/Qin anchors do not currently expose a clean

@@ -9,7 +9,7 @@ use crate::problems::procurement_removal_inventory::env::{
 use crate::problems::procurement_removal_inventory::heuristics::{
     interval_stock_action, returnability_buffer_interval_stock_action,
 };
-use crate::problems::procurement_removal_inventory::references::ExactVerificationReference;
+use crate::problems::procurement_removal_inventory::literature::references::ExactVerificationReference;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 struct ExactStateKey {
@@ -34,9 +34,7 @@ fn validate_exact_reference(reference: &ExactVerificationReference) -> PyResult<
         ));
     }
     if reference.demand_support.is_empty() {
-        return Err(PyValueError::new_err(
-            "demand_support must be non-empty",
-        ));
+        return Err(PyValueError::new_err("demand_support must be non-empty"));
     }
     let probability_sum = reference.demand_probabilities.iter().sum::<f64>();
     if (probability_sum - 1.0).abs() > 1e-12 {
@@ -45,9 +43,7 @@ fn validate_exact_reference(reference: &ExactVerificationReference) -> PyResult<
         )));
     }
     if !(0.0..=1.0).contains(&reference.discount_factor) {
-        return Err(PyValueError::new_err(
-            "discount_factor must lie in [0, 1]",
-        ));
+        return Err(PyValueError::new_err("discount_factor must lie in [0, 1]"));
     }
     Ok(())
 }
@@ -146,8 +142,10 @@ pub fn solve_optimal_policy(
     reference: &ExactVerificationReference,
 ) -> PyResult<ExactPolicyEvaluation> {
     validate_exact_reference(reference)?;
-    let initial_state =
-        initialize_state(reference.initial_inventory_level, reference.initial_returnable_inventory)?;
+    let initial_state = initialize_state(
+        reference.initial_inventory_level,
+        reference.initial_returnable_inventory,
+    )?;
     let mut cache = HashMap::new();
     solve_optimal_from_state(state_key_from_state(&initial_state), reference, &mut cache)
 }
@@ -224,8 +222,7 @@ fn evaluate_heuristic_from_state(
             cache,
         )?;
         expected_cost += probability
-            * (outcome.period_cost
-                + reference.discount_factor * continuation.discounted_cost);
+            * (outcome.period_cost + reference.discount_factor * continuation.discounted_cost);
     }
 
     let result = ExactPolicyEvaluation {
@@ -241,8 +238,10 @@ pub fn evaluate_named_heuristic(
     heuristic_name: &str,
 ) -> PyResult<ExactPolicyEvaluation> {
     validate_exact_reference(reference)?;
-    let initial_state =
-        initialize_state(reference.initial_inventory_level, reference.initial_returnable_inventory)?;
+    let initial_state = initialize_state(
+        reference.initial_inventory_level,
+        reference.initial_returnable_inventory,
+    )?;
     let mut cache = HashMap::new();
     evaluate_heuristic_from_state(
         state_key_from_state(&initial_state),

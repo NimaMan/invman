@@ -100,8 +100,13 @@ pub fn policy_rollout(
     let mut discounted_cost = 0.0;
 
     for period in 0..periods {
-        let (purchase_quantity, removal_quantity) =
-            dispatch_action(policy_name, params, &state, max_purchase_quantity, max_removal_quantity)?;
+        let (purchase_quantity, removal_quantity) = dispatch_action(
+            policy_name,
+            params,
+            &state,
+            max_purchase_quantity,
+            max_removal_quantity,
+        )?;
         let demand = sample_demand(&mut rng, demand_mean, demand_kind)?;
         let outcome = step_state(
             &state,
@@ -180,10 +185,7 @@ pub fn simulate_policy(
         mean_discounted_cost,
         std_discounted_cost: variance.sqrt(),
         min_discounted_cost: costs.iter().copied().fold(f64::INFINITY, f64::min),
-        max_discounted_cost: costs
-            .iter()
-            .copied()
-            .fold(f64::NEG_INFINITY, f64::max),
+        max_discounted_cost: costs.iter().copied().fold(f64::NEG_INFINITY, f64::max),
         num_seeds: costs.len(),
     })
 }
@@ -215,10 +217,20 @@ pub fn policy_rollout_from_demands(
     let mut state = initial_state.clone();
     let mut discounted_cost = 0.0;
     for (period, demand) in demands.iter().copied().enumerate() {
-        let raw_action =
-            dispatch_action(policy_name, params, &state, max_purchase_quantity, max_removal_quantity)?;
-        let (purchase_quantity, removal_quantity) =
-            clip_action(&state, raw_action.0, raw_action.1, max_purchase_quantity, max_removal_quantity)?;
+        let raw_action = dispatch_action(
+            policy_name,
+            params,
+            &state,
+            max_purchase_quantity,
+            max_removal_quantity,
+        )?;
+        let (purchase_quantity, removal_quantity) = clip_action(
+            &state,
+            raw_action.0,
+            raw_action.1,
+            max_purchase_quantity,
+            max_removal_quantity,
+        )?;
         let outcome = step_state(
             &state,
             purchase_quantity,

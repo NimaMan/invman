@@ -7,9 +7,52 @@ use crate::problems::procurement_removal_inventory::finite_horizon_dp::{
 use crate::problems::procurement_removal_inventory::heuristics::{
     interval_stock_action, returnability_buffer_interval_stock_action,
 };
-use crate::problems::procurement_removal_inventory::references::{
+use crate::problems::procurement_removal_inventory::literature::references::{
     MAGGIAR_2017_REFERENCE, MAGGIAR_2025_REFERENCE, PRIMARY_REFERENCE_INSTANCE,
-    VERIFICATION_PROBLEM_INSTANCE, WORKED_TRANSITION_REFERENCE,
+    VERIFICATION_PROBLEM_INSTANCE,
+};
+
+#[derive(Clone, Copy)]
+struct WorkedTransitionCase {
+    initial_inventory_level: usize,
+    initial_returnable_inventory: usize,
+    purchase_quantity: usize,
+    removal_quantity: usize,
+    realized_demand: usize,
+    returnable_purchase_cap: usize,
+    purchase_cost_per_unit: f64,
+    return_value_per_unit: f64,
+    liquidation_value_per_unit: f64,
+    holding_cost_per_unit: f64,
+    shortage_cost_per_unit: f64,
+    expected_returned_units: usize,
+    expected_liquidated_units: usize,
+    expected_sales: usize,
+    expected_shortage: usize,
+    expected_next_inventory_level: usize,
+    expected_next_returnable_inventory: usize,
+    expected_period_cost: f64,
+}
+
+const WORKED_TRANSITION_CASE: WorkedTransitionCase = WorkedTransitionCase {
+    initial_inventory_level: 4,
+    initial_returnable_inventory: 2,
+    purchase_quantity: 3,
+    removal_quantity: 2,
+    realized_demand: 4,
+    returnable_purchase_cap: 2,
+    purchase_cost_per_unit: 6.0,
+    return_value_per_unit: 4.0,
+    liquidation_value_per_unit: 1.0,
+    holding_cost_per_unit: 0.5,
+    shortage_cost_per_unit: 9.0,
+    expected_returned_units: 2,
+    expected_liquidated_units: 0,
+    expected_sales: 4,
+    expected_shortage: 0,
+    expected_next_inventory_level: 1,
+    expected_next_returnable_inventory: 1,
+    expected_period_cost: 10.5,
 };
 
 #[test]
@@ -30,10 +73,19 @@ fn reference_set_has_expected_shape() {
             "interval_stock"
         ]
     );
+    assert!(!MAGGIAR_2017_REFERENCE.reported_numbers_available);
+    assert!(!MAGGIAR_2017_REFERENCE.numbers_anchor_repo_assertions);
+    assert!(!MAGGIAR_2025_REFERENCE.reported_numbers_available);
+    assert!(!MAGGIAR_2025_REFERENCE.numbers_anchor_repo_assertions);
     assert_eq!(PRIMARY_REFERENCE_INSTANCE.returnable_purchase_cap, 2);
     assert_eq!(PRIMARY_REFERENCE_INSTANCE.benchmark_returnable_buffer, 2);
     assert_eq!(VERIFICATION_PROBLEM_INSTANCE.max_purchase_quantity, 4);
     assert_eq!(VERIFICATION_PROBLEM_INSTANCE.max_removal_quantity, 4);
+    assert!(!VERIFICATION_PROBLEM_INSTANCE.literature_verified);
+    assert_eq!(
+        VERIFICATION_PROBLEM_INSTANCE.verification_source,
+        "repo_exact_solver_not_verified_against_literature"
+    );
 }
 
 #[test]
@@ -58,7 +110,7 @@ fn raw_state_preserves_high_inventory_magnitude() {
 
 #[test]
 fn worked_transition_matches_expected_accounting() {
-    let worked = WORKED_TRANSITION_REFERENCE;
+    let worked = WORKED_TRANSITION_CASE;
     let state = initialize_state(
         worked.initial_inventory_level,
         worked.initial_returnable_inventory,

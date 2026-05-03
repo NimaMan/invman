@@ -7,17 +7,25 @@ Repo interpretation:
 - single-item procurement plus removal control
 - returnable quota state
 - joint purchase and removal action each period
+- simplified inventory-control slice only; the full Maggiar/Sadighian paper model also includes
+  pricing, selling revenue, markdowns, and richer demand response
 
 Code lives under `rust/src/problems/procurement_removal_inventory/`.
 
 Verification and benchmark anchors live in:
 
-- `references.rs`
-- `tests/verification.rs`
-- `literature/`
+- `literature/references.rs`
+- `verification/tests.rs`
 - `practical/`
 - `experiments/`
-- `verification/`
+
+Current status:
+
+- literature-verified: no
+- repo-exact verified: yes on the reduced finite-horizon verifier
+- the Maggiar/Sadighian papers are carried as structural anchors, but the current Rust package is
+  not the full pricing/revenue-management model and no exact public row verifies this simplified
+  package
 
 State interface:
 

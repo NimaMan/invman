@@ -5,6 +5,8 @@ pub struct PublishedBenchmarkReference {
     pub source: &'static str,
     pub url: &'static str,
     pub benchmark_policies: &'static [&'static str],
+    pub reported_numbers_available: bool,
+    pub numbers_anchor_repo_assertions: bool,
     pub notes: &'static str,
 }
 
@@ -33,33 +35,11 @@ pub struct ProcurementRemovalReferenceInstance {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct WorkedTransitionReference {
-    pub source: &'static str,
-    pub url: &'static str,
-    pub initial_inventory_level: usize,
-    pub initial_returnable_inventory: usize,
-    pub purchase_quantity: usize,
-    pub removal_quantity: usize,
-    pub realized_demand: usize,
-    pub returnable_purchase_cap: usize,
-    pub purchase_cost_per_unit: f64,
-    pub return_value_per_unit: f64,
-    pub liquidation_value_per_unit: f64,
-    pub holding_cost_per_unit: f64,
-    pub shortage_cost_per_unit: f64,
-    pub expected_returned_units: usize,
-    pub expected_liquidated_units: usize,
-    pub expected_sales: usize,
-    pub expected_shortage: usize,
-    pub expected_next_inventory_level: usize,
-    pub expected_next_returnable_inventory: usize,
-    pub expected_period_cost: f64,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ExactVerificationReference {
     pub source: &'static str,
     pub url: &'static str,
+    pub literature_verified: bool,
+    pub verification_source: &'static str,
     pub periods: usize,
     pub discount_factor: f64,
     pub initial_inventory_level: usize,
@@ -86,14 +66,18 @@ pub const MAGGIAR_2017_REFERENCE: PublishedBenchmarkReference = PublishedBenchma
     source: "Maggiar and Sadighian (2017), Joint Inventory and Revenue Management with Removal Decisions",
     url: "https://assets.amazon.science/7b/48/bc8c1c21450b9dac198e1f4ed13a/joint-inventory-and-revenue-management-with-removal-decisions.pdf",
     benchmark_policies: &["optimal_interval_stock", "order_up_to_remove_down_to", "pricing_and_markdown_variants"],
-    notes: "The paper studies a finite-horizon inventory system with procurement and removal decisions under return and liquidation credits. It proves interval-stock structure for the inventory-control component and shows how the returnable quota changes the optimal thresholds.",
+    reported_numbers_available: false,
+    numbers_anchor_repo_assertions: false,
+    notes: "The paper studies a richer finite-horizon joint replenishment, pricing, and removal revenue-management model under return and liquidation credits. It gives structural policy results and graphical numerical examples, but no exact benchmark row for this simplified repo control-only package.",
 };
 
 pub const MAGGIAR_2025_REFERENCE: PublishedBenchmarkReference = PublishedBenchmarkReference {
     source: "Maggiar et al. (2025), Structure-Informed Deep Reinforcement Learning for Inventory Management",
     url: "https://openreview.net/pdf?id=asKybwTGUt",
     benchmark_policies: &["directbackprop_drl", "structure_informed_policy_network", "interval_stock"],
-    notes: "The DRL paper explicitly includes joint procurement-removal decisions as one of the core benchmark families and reports that the learned policy recovers interval-stock structure.",
+    reported_numbers_available: false,
+    numbers_anchor_repo_assertions: false,
+    notes: "The DRL paper explicitly includes joint procurement-removal decisions as one of the benchmark families and reports that the learned policy recovers interval-stock structure, but it does not expose a public exact cost row for this repo package.",
 };
 
 pub const PRIMARY_REFERENCE_INSTANCE: ProcurementRemovalReferenceInstance =
@@ -117,35 +101,14 @@ pub const PRIMARY_REFERENCE_INSTANCE: ProcurementRemovalReferenceInstance =
         benchmark_order_up_to: 6,
         benchmark_remove_down_to: 8,
         benchmark_returnable_buffer: 2,
-        notes: "Canonical repo interpretation of procurement-removal inventory: a single-item finite-horizon system with a fixed per-period cap on returnable purchases, explicit return and liquidation credits, and shortage penalties. This strips away pricing while keeping the procurement-removal structure highlighted by the literature.",
+        notes: "Canonical repo interpretation of procurement-removal inventory: a single-item finite-horizon system with a fixed per-period cap on returnable purchases, explicit return and liquidation credits, and shortage penalties. This strips away pricing while keeping the procurement-removal structure highlighted by the literature; it is therefore a repo-native instance, not a literature-verified benchmark row.",
     };
-
-pub const WORKED_TRANSITION_REFERENCE: WorkedTransitionReference = WorkedTransitionReference {
-    source: PRIMARY_REFERENCE_INSTANCE.source,
-    url: PRIMARY_REFERENCE_INSTANCE.url,
-    initial_inventory_level: 4,
-    initial_returnable_inventory: 2,
-    purchase_quantity: 3,
-    removal_quantity: 2,
-    realized_demand: 4,
-    returnable_purchase_cap: 2,
-    purchase_cost_per_unit: 6.0,
-    return_value_per_unit: 4.0,
-    liquidation_value_per_unit: 1.0,
-    holding_cost_per_unit: 0.5,
-    shortage_cost_per_unit: 9.0,
-    expected_returned_units: 2,
-    expected_liquidated_units: 0,
-    expected_sales: 4,
-    expected_shortage: 0,
-    expected_next_inventory_level: 1,
-    expected_next_returnable_inventory: 1,
-    expected_period_cost: 10.5,
-};
 
 pub const VERIFICATION_PROBLEM_INSTANCE: ExactVerificationReference = ExactVerificationReference {
     source: MAGGIAR_2017_REFERENCE.source,
     url: MAGGIAR_2017_REFERENCE.url,
+    literature_verified: false,
+    verification_source: "repo_exact_solver_not_verified_against_literature",
     periods: 5,
     discount_factor: 0.99,
     initial_inventory_level: 2,

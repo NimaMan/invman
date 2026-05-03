@@ -14,7 +14,7 @@ use crate::problems::procurement_removal_inventory::heuristics::{
     interval_stock_action, policy_rollout, policy_rollout_from_demands,
     returnability_buffer_interval_stock_action, simulate_policy, PolicySimulationSummary,
 };
-use crate::problems::procurement_removal_inventory::references::{
+use crate::problems::procurement_removal_inventory::literature::references::{
     ExactVerificationReference, ProcurementRemovalReferenceInstance, PRIMARY_REFERENCE_INSTANCE,
     VERIFICATION_PROBLEM_INSTANCE,
 };
@@ -64,7 +64,7 @@ fn primary_reference_to_py(
     dict.set_item("literature_verified", false)?;
     dict.set_item(
         "verification_source",
-        "repo_exact_solver_not_verified_against_literature",
+        "repo_native_instance_not_verified_against_literature",
     )?;
     dict.set_item("notes", reference.notes)?;
     Ok(dict.into_any().unbind().into())
@@ -77,11 +77,8 @@ fn verification_reference_to_py(
     let dict = PyDict::new_bound(py);
     dict.set_item("source", reference.source)?;
     dict.set_item("url", reference.url)?;
-    dict.set_item("literature_verified", false)?;
-    dict.set_item(
-        "verification_source",
-        "repo_exact_solver_not_verified_against_literature",
-    )?;
+    dict.set_item("literature_verified", reference.literature_verified)?;
+    dict.set_item("verification_source", reference.verification_source)?;
     dict.set_item("periods", reference.periods)?;
     dict.set_item("discount_factor", reference.discount_factor)?;
     dict.set_item("initial_inventory_level", reference.initial_inventory_level)?;
