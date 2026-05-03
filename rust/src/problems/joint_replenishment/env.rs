@@ -82,8 +82,12 @@ pub fn trucks_required(order_quantities: &[usize], truck_capacity: usize) -> PyR
     let total_order_quantity = order_quantities.iter().sum::<usize>();
     if total_order_quantity == 0 {
         Ok(0)
+    } else if total_order_quantity % truck_capacity != 0 {
+        Err(PyValueError::new_err(format!(
+            "total order quantity {total_order_quantity} must be zero or an exact multiple of truck_capacity {truck_capacity}",
+        )))
     } else {
-        Ok((total_order_quantity + truck_capacity - 1) / truck_capacity)
+        Ok(total_order_quantity / truck_capacity)
     }
 }
 

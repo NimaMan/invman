@@ -3,6 +3,7 @@ use pyo3::PyResult;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
 use rayon::prelude::*;
+use std::cmp::Ordering;
 
 use crate::core::policies::soft_tree::{
     action_vector_from_flat_params, SoftTreeActionSpec, SoftTreeLeafType, SoftTreeSplitType,
@@ -83,7 +84,7 @@ fn action_quantities(
     config: &JointReplenishmentRolloutConfig,
 ) -> PyResult<Vec<usize>> {
     let policy_state = policy_state(state, config.periods)?;
-    action_vector_from_flat_params(
+    let raw_action = action_vector_from_flat_params(
         &policy_state,
         flat_params,
         config.input_dim,
@@ -92,17 +93,71 @@ fn action_quantities(
         config.split_type,
         config.leaf_type,
         &config.action_spec,
-    )
+    )?;
+    project_to_full_truckloads(raw_action, config.truck_capacity)
 }
 
-fn policy_state(
-    state: &JointReplenishmentState,
-    total_periods: usize,
-) -> PyResult<Vec<f32>> {
+fn project_to_full_truckloads(
+    order_quantities: Vec<usize>,
+    truck_capacity: usize,
+) -> PyResult<Vec<usize>> {
+    if truck_capacity == 0 {
+        return Err(PyValueError::new_err(
+            "truck_capacity must be strictly positive",
+        ));
+    }
+    let total_order_quantity = order_quantities.iter().sum::<usize>();
+    if total_order_quantity == 0 || total_order_quantity % truck_capacity == 0 {
+        return Ok(order_quantities);
+    }
+
+    let lower_multiple = (total_order_quantity / truck_capacity) * truck_capacity;
+    let upper_multiple = lower_multiple + truck_capacity;
+    let target_quantity =
+        if total_order_quantity - lower_multiple < upper_multiple - total_order_quantity {
+            lower_multiple
+        } else {
+            upper_multiple
+        };
+    if target_quantity == 0 {
+        return Ok(vec![0; order_quantities.len()]);
+    }
+
+    let total_as_f64 = total_order_quantity as f64;
+    let mut projected = vec![0usize; order_quantities.len()];
+    let mut remainders = Vec::with_capacity(order_quantities.len());
+    let mut assigned = 0usize;
+    for (index, quantity) in order_quantities.iter().copied().enumerate() {
+        let exact_share = target_quantity as f64 * quantity as f64 / total_as_f64;
+        let floor_share = exact_share.floor() as usize;
+        projected[index] = floor_share;
+        assigned += floor_share;
+        remainders.push((index, exact_share - floor_share as f64));
+    }
+
+    remainders.sort_by(|lhs, rhs| {
+        rhs.1
+            .partial_cmp(&lhs.1)
+            .unwrap_or(Ordering::Equal)
+            .then_with(|| lhs.0.cmp(&rhs.0))
+    });
+    for (index, _) in remainders
+        .into_iter()
+        .take(target_quantity.saturating_sub(assigned))
+    {
+        projected[index] += 1;
+    }
+    Ok(projected)
+}
+
+fn policy_state(state: &JointReplenishmentState, total_periods: usize) -> PyResult<Vec<f32>> {
     let raw_state = build_raw_state(state)?;
     let period = raw_state.last().copied().unwrap_or(0.0) as usize;
     let inventory_levels = &raw_state[..raw_state.len().saturating_sub(1)];
-    let total_inventory = inventory_levels.iter().map(|value| *value as i32).sum::<i32>();
+    let total_inventory = inventory_levels
+        .iter()
+        .map(|value| *value as i32)
+        .sum::<i32>();
     let scale = inventory_levels
         .iter()
         .map(|value| value.abs())

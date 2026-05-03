@@ -5,8 +5,10 @@ Rust-first problem home for `joint_replenishment`.
 Repo interpretation:
 
 - multi-item replenishment
-- shared major ordering or truck cost
+- shared full-truckload replenishment cost
 - item-specific demand and inventory costs
+- feasible raw actions are item order quantities whose aggregate quantity is either zero or an exact
+  multiple of the truck capacity
 
 Code lives under `rust/src/problems/joint_replenishment/`.
 
@@ -27,5 +29,8 @@ Current status:
 State interface:
 
 - `env.rs` exposes raw state quantities only
+- `env.rs` validates raw action feasibility, including the full-truckload multiple constraint
 - the current soft-tree benchmark keeps any aggregate or normalized policy features in `rollout.rs`
+- learned-policy actions are converted to feasible full-truckload quantities in `rollout.rs` before
+  entering the environment
 - environment code must not hide learned-policy preprocessing

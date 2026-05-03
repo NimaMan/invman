@@ -32,19 +32,19 @@ struct WorkedTransitionCase {
 
 const WORKED_TRANSITION_CASE: WorkedTransitionCase = WorkedTransitionCase {
     initial_inventory_levels: &[1, -2],
-    action: &[4, 1],
+    action: &[4, 2],
     realized_demands: &[3, 0],
     truck_capacity: 6,
     major_order_cost: 75.0,
     minor_order_costs: &[10.0, 10.0],
     holding_costs: &[1.0, 1.0],
     shortage_costs: &[19.0, 19.0],
-    expected_next_inventory_levels: &[2, -1],
+    expected_next_inventory_levels: &[2, 0],
     expected_trucks_used: 1,
     expected_order_cost: 95.0,
     expected_holding_cost: 2.0,
-    expected_shortage_cost: 19.0,
-    expected_period_cost: 116.0,
+    expected_shortage_cost: 0.0,
+    expected_period_cost: 97.0,
 };
 
 #[test]
@@ -102,6 +102,22 @@ fn worked_transition_matches_expected_accounting() {
     assert_eq!(outcome.shortage_cost, worked.expected_shortage_cost);
     assert_eq!(outcome.period_cost, worked.expected_period_cost);
     assert_eq!(outcome.reward, -worked.expected_period_cost);
+}
+
+#[test]
+fn partial_truck_actions_are_rejected() {
+    let state = initialize_state(&[1, -2]).expect("state must build");
+    let result = step_state(
+        &state,
+        &[4, 1],
+        &[3, 0],
+        6,
+        &[10.0, 10.0],
+        75.0,
+        &[1.0, 1.0],
+        &[19.0, 19.0],
+    );
+    assert!(result.is_err());
 }
 
 #[test]

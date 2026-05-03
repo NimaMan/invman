@@ -64,6 +64,11 @@ fn lexicographically_smaller(lhs: &[usize; 2], rhs: &[usize; 2]) -> bool {
     lhs[0] < rhs[0] || (lhs[0] == rhs[0] && lhs[1] < rhs[1])
 }
 
+fn is_full_truckload_action(action: &[usize; 2], truck_capacity: usize) -> bool {
+    let total_order_quantity = action[0] + action[1];
+    total_order_quantity == 0 || total_order_quantity % truck_capacity == 0
+}
+
 fn demand_scenarios(demand_ranges: &[DemandRange]) -> PyResult<Vec<([usize; 2], f64)>> {
     let left_support = support(demand_ranges[0])?;
     let right_support = support(demand_ranges[1])?;
@@ -102,6 +107,9 @@ fn solve_optimal_from_state(
     for action_0 in 0..=reference.max_order_quantities[0] {
         for action_1 in 0..=reference.max_order_quantities[1] {
             let action = [action_0, action_1];
+            if !is_full_truckload_action(&action, reference.truck_capacity) {
+                continue;
+            }
             let mut expected_cost = 0.0;
             for (demands, probability) in scenarios.iter() {
                 let outcome = step_state(
@@ -178,10 +186,17 @@ fn heuristic_action(
             )))
         }
     };
-    Ok([
+    let bounded_action = [
         action[0].min(reference.max_order_quantities[0]),
         action[1].min(reference.max_order_quantities[1]),
-    ])
+    ];
+    if !is_full_truckload_action(&bounded_action, reference.truck_capacity) {
+        return Err(PyValueError::new_err(format!(
+            "heuristic '{heuristic_name}' produced an infeasible bounded action {:?}",
+            bounded_action,
+        )));
+    }
+    Ok(bounded_action)
 }
 
 fn evaluate_heuristic_from_state(

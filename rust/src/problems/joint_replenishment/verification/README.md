@@ -7,6 +7,7 @@ Current verifier scope:
 - reference-shape checks from `literature/references.rs`
 - policy-state layout checks
 - worked-transition accounting checks
+- full-truckload action-feasibility checks
 - exact reduced finite-horizon DP comparison against the carried heuristics
 
 The reduced exact verifier stores only the problem instance in the literature catalog. Optimal and

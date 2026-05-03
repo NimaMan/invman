@@ -6,7 +6,10 @@ Current literature anchor for `joint_replenishment`:
 
 Repo interpretation:
 
-- the first carried slice is a small-scale multi-item setting with a shared major replenishment cost
+- the first carried slice is a small-scale multi-item setting with a shared full-truckload
+  replenishment cost
+- the Vanvuchelen action constraint is enforced as `sum_i q_i = M V`, so every nonzero shipment
+  must use an exact integer number of full trucks
 - benchmark policies and reduced exact verification are defined against that interpretation
 
 Use `literature/references.rs` as the source of truth for:
