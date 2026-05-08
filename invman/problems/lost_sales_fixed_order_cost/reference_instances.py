@@ -1,5 +1,6 @@
 from copy import deepcopy
 from itertools import product
+from math import ceil, sqrt
 
 from invman.config import get_config
 from invman.problems.lost_sales.demand import (
@@ -7,6 +8,11 @@ from invman.problems.lost_sales.demand import (
     MMPP2_POSITIVE_MEAN5,
     build_demand_config,
 )
+
+try:
+    import invman_rust
+except ImportError:  # pragma: no cover - fallback when the Rust extension is unavailable
+    invman_rust = None
 
 
 _MMPP2_POSITIVE_CONFIG = build_demand_config(**MMPP2_POSITIVE_MEAN5)
@@ -45,6 +51,46 @@ CANONICAL_REFERENCE_NAME = "lit_pois_mu5_l4_p4_k5"
 PUBLISHED_VALIDATION_REFERENCE_NAME = "bijvank2015_table1_l2_p14_k5"
 CORRELATED_POSITIVE_REFERENCE_NAME = "corr_mmpp2_pos_mu5_l4_p4_k5"
 CORRELATED_NEGATIVE_REFERENCE_NAME = "corr_mmpp2_neg_mu5_l4_p4_k5"
+FULL_GRID_NAME = "lost_sales_style_full_grid_mu5"
+
+DEMAND_CASE_SPECS = {
+    "poisson": {
+        "display_name": "Poisson",
+        "name_token": "pois",
+        "params": {
+            "demand_dist_name": "Poisson",
+            "demand_rate": 5.0,
+        },
+        "notes": "Poisson demand with mean 5.",
+    },
+    "geometric": {
+        "display_name": "Geometric",
+        "name_token": "geom",
+        "params": {
+            "demand_dist_name": "Geometric",
+            "demand_rate": 5.0,
+        },
+        "notes": "Geometric demand with mean 5.",
+    },
+    "mmpp2_positive": {
+        "display_name": "MMPP2 positive",
+        "name_token": "mmpp2_pos",
+        "params": dict(MMPP2_POSITIVE_MEAN5),
+        "notes": (
+            "Two-state Markov-modulated Poisson demand with positive lag-1 autocorrelation and "
+            "stationary mean 5."
+        ),
+    },
+    "mmpp2_negative": {
+        "display_name": "MMPP2 negative",
+        "name_token": "mmpp2_neg",
+        "params": dict(MMPP2_NEGATIVE_MEAN5),
+        "notes": (
+            "Two-state Markov-modulated Poisson demand with negative lag-1 autocorrelation and "
+            "stationary mean 5."
+        ),
+    },
+}
 
 BENCHMARK_ANCHORS = {
     PUBLISHED_VALIDATION_REFERENCE_NAME: {
@@ -193,6 +239,20 @@ BENCHMARK_GRIDS = {
         "search": dict(DEFAULT_SEARCH_CONFIG),
         "evaluation": dict(DEFAULT_EVALUATION_CONFIG),
     },
+    FULL_GRID_NAME: {
+        "name": FULL_GRID_NAME,
+        "description": (
+            "Fixed-cost lost-sales paper grid aligned with the vanilla lost-sales benchmark shape: "
+            "lead times {4,6,8,10}, shortage costs {4,19}, fixed costs {5,25}, and demand "
+            "families {Poisson, Geometric, MMPP2 positive, MMPP2 negative}, all with mean demand 5."
+        ),
+        "axes": {
+            "demand_case": ["poisson", "geometric", "mmpp2_positive", "mmpp2_negative"],
+            "lead_time": [4, 6, 8, 10],
+            "shortage_cost": [4.0, 19.0],
+            "fixed_order_cost": [5.0, 25.0],
+        },
+    },
     "correlated_mmpp2_mu5_l4_p4_k5": {
         "name": "correlated_mmpp2_mu5_l4_p4_k5",
         "description": (
@@ -296,8 +356,10 @@ def _format_number(value):
 
 
 def _build_instance_name(params):
+    demand_case = _infer_demand_case_key(params)
+    token = DEMAND_CASE_SPECS[demand_case]["name_token"]
     return (
-        "lit_pois_mu"
+        f"lit_{token}_mu"
         f"{_format_number(params['demand_rate'])}_"
         f"l{int(params['lead_time'])}_"
         f"p{_format_number(params['shortage_cost'])}_"
@@ -311,6 +373,42 @@ def get_order_overlap_indicator(params):
         * params["fixed_order_cost"]
         / (params["demand_rate"] * params["holding_cost"] * (params["lead_time"] ** 2))
     )
+
+
+def _infer_demand_case_key(params):
+    demand_name = params["demand_dist_name"]
+    if demand_name == "Poisson":
+        return "poisson"
+    if demand_name == "Geometric":
+        return "geometric"
+    if demand_name == "MarkovModulatedPoisson2":
+        p00 = float(params.get("demand_p00", 0.0))
+        p11 = float(params.get("demand_p11", 0.0))
+        if (
+            abs(p00 - float(MMPP2_POSITIVE_MEAN5["demand_p00"])) < 1e-12
+            and abs(p11 - float(MMPP2_POSITIVE_MEAN5["demand_p11"])) < 1e-12
+        ):
+            return "mmpp2_positive"
+        if (
+            abs(p00 - float(MMPP2_NEGATIVE_MEAN5["demand_p00"])) < 1e-12
+            and abs(p11 - float(MMPP2_NEGATIVE_MEAN5["demand_p11"])) < 1e-12
+        ):
+            return "mmpp2_negative"
+    raise ValueError(f"Unsupported fixed-cost demand configuration: {params}")
+
+
+def _default_position_upper_bound_for_params(params):
+    config = build_demand_config(
+        demand_dist_name=params["demand_dist_name"],
+        demand_rate=params["demand_rate"],
+        demand_lambda_low=params.get("demand_lambda_low", MMPP2_POSITIVE_MEAN5["demand_lambda_low"]),
+        demand_lambda_high=params.get("demand_lambda_high", MMPP2_POSITIVE_MEAN5["demand_lambda_high"]),
+        demand_p00=params.get("demand_p00", MMPP2_POSITIVE_MEAN5["demand_p00"]),
+        demand_p11=params.get("demand_p11", MMPP2_POSITIVE_MEAN5["demand_p11"]),
+    )
+    protection_mean = (int(params["lead_time"]) + 1) * float(params["demand_rate"])
+    protection_std = sqrt(float(config.cumulative_variance(int(params["lead_time"]) + 1)))
+    return max(1, int(ceil(protection_mean + 4.0 * protection_std)))
 
 
 def _build_instance_from_params(name, description, params, search, evaluation):
@@ -329,6 +427,77 @@ def _build_instance_from_params(name, description, params, search, evaluation):
     if name in BENCHMARK_ANCHORS:
         instance["benchmark_anchors"] = deepcopy(BENCHMARK_ANCHORS[name])
     return instance
+
+
+def _build_full_grid_instances():
+    instances = []
+    for demand_case_key, lead_time, shortage_cost, fixed_order_cost in product(
+        BENCHMARK_GRIDS[FULL_GRID_NAME]["axes"]["demand_case"],
+        BENCHMARK_GRIDS[FULL_GRID_NAME]["axes"]["lead_time"],
+        BENCHMARK_GRIDS[FULL_GRID_NAME]["axes"]["shortage_cost"],
+        BENCHMARK_GRIDS[FULL_GRID_NAME]["axes"]["fixed_order_cost"],
+    ):
+        demand_case = DEMAND_CASE_SPECS[demand_case_key]
+        instance_params = {
+            "lead_time": lead_time,
+            "shortage_cost": shortage_cost,
+            "fixed_order_cost": fixed_order_cost,
+            **demand_case["params"],
+        }
+        instance_name = _build_instance_name(instance_params)
+        description = (
+            f"Fixed-cost lost-sales full-grid instance with {demand_case['display_name']} demand, "
+            f"mean demand {_format_number(instance_params['demand_rate'])}, L={lead_time}, "
+            f"p={_format_number(shortage_cost)}, and K={_format_number(fixed_order_cost)}."
+        )
+        instances.append(
+            {
+                "name": instance_name,
+                "description": description,
+                "params": instance_params,
+                "search": {
+                    **DEFAULT_SEARCH_CONFIG,
+                    "position_upper_bound": _default_position_upper_bound_for_params(
+                        {**BASE_INSTANCE_PARAMS, **instance_params}
+                    ),
+                },
+                "evaluation": dict(DEFAULT_EVALUATION_CONFIG),
+                "literature_metadata": {
+                    "benchmark_family": "repo_fixed_cost_lost_sales_full_grid",
+                    "parent_problem_family": "Bijvank2015ParametricPolicies",
+                    "demand_case": demand_case_key,
+                    "demand_case_display_name": demand_case["display_name"],
+                    "notes": (
+                        "Fixed-cost extension of the lost-sales paper grid with the extra setup-cost "
+                        "axis K in {5,25}; Poisson and Geometric slices align with the literature-style "
+                        "single-item benchmark surface, while the two MMPP2 slices are repo extensions "
+                        "used to match the four-demand benchmark shape of the vanilla lost-sales suite. "
+                        + demand_case["notes"]
+                    ),
+                },
+            }
+        )
+    return instances
+
+
+def _build_full_grid_instances_from_rust():
+    if invman_rust is None:
+        return None
+    allowed_lead_times = set(BENCHMARK_GRIDS[FULL_GRID_NAME]["axes"]["lead_time"])
+    instances = []
+    for item in invman_rust.lost_sales_fixed_order_cost_expand_experiment_grid(FULL_GRID_NAME):
+        payload = dict(item)
+        payload["params"] = dict(payload["params"])
+        if int(payload["params"]["lead_time"]) not in allowed_lead_times:
+            continue
+        payload["search"] = dict(payload["search"])
+        payload["evaluation"] = dict(payload["evaluation"])
+        payload["literature_metadata"] = dict(payload["literature_metadata"])
+        payload["literature_metadata"]["order_overlap_indicator"] = get_order_overlap_indicator(payload["params"])
+        if payload["name"] in BENCHMARK_ANCHORS:
+            payload["benchmark_anchors"] = deepcopy(BENCHMARK_ANCHORS[payload["name"]])
+        instances.append(payload)
+    return instances
 
 
 def _build_manual_reference_instances():
@@ -351,12 +520,30 @@ def _build_manual_reference_instances():
     return instances
 
 
-def build_grid_instances(grid_name: str = "literature_subset_poisson_mu5"):
+def build_grid_instances(grid_name: str = FULL_GRID_NAME):
     try:
         grid = BENCHMARK_GRIDS[grid_name]
     except KeyError as exc:  # pragma: no cover - defensive programming
         known = ", ".join(sorted(BENCHMARK_GRIDS))
         raise KeyError(f"Unknown fixed-order-cost grid '{grid_name}'. Available: {known}") from exc
+
+    if grid_name == FULL_GRID_NAME:
+        rust_instances = _build_full_grid_instances_from_rust()
+        if rust_instances is not None:
+            return rust_instances
+        instances = []
+        for instance in _build_full_grid_instances():
+            instances.append(
+                _build_instance_from_params(
+                    name=instance["name"],
+                    description=instance["description"],
+                    params=instance["params"],
+                    search=instance["search"],
+                    evaluation=instance["evaluation"],
+                )
+            )
+            instances[-1]["literature_metadata"].update(deepcopy(instance.get("literature_metadata", {})))
+        return instances
 
     explicit_instances = grid.get("instances")
     if explicit_instances is not None:
@@ -402,7 +589,7 @@ def build_grid_instances(grid_name: str = "literature_subset_poisson_mu5"):
     return instances
 
 
-def get_benchmark_grid(grid_name: str = "literature_subset_poisson_mu5"):
+def get_benchmark_grid(grid_name: str = FULL_GRID_NAME):
     instances = build_grid_instances(grid_name)
     grid = deepcopy(BENCHMARK_GRIDS[grid_name])
     grid["instances"] = instances

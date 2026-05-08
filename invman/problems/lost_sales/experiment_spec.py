@@ -6,10 +6,8 @@ from invman.problems.lost_sales.reference_instances import build_reference_args
 
 COMMON_BUDGET = {
     "training_episodes_default": 2000,
-    "training_episodes_lead_time_2": 5000,
     "es_population": 64,
     "horizon_default": 2000,
-    "horizon_lead_time_2": 5000,
     "eval_horizon": int(1e6),
     "eval_seeds": 10,
     "sigma_init": 5.0,
@@ -34,6 +32,11 @@ EXPERIMENT_SPECS = [
         "status": "trusted",
     },
     {
+        "id": "nn_soft_gated_direct_quantity_h8_selu",
+        "rollout_backend": "rust",
+        "status": "provisional",
+    },
+    {
         "id": "linear_hard_gated_direct_quantity",
         "rollout_backend": "rust",
         "status": "trusted",
@@ -42,6 +45,11 @@ EXPERIMENT_SPECS = [
         "id": "linear_soft_gated_ordinal_quantity",
         "rollout_backend": "rust",
         "status": "trusted",
+    },
+    {
+        "id": "nn_soft_gated_ordinal_quantity_h8_selu",
+        "rollout_backend": "rust",
+        "status": "provisional",
     },
     {
         "id": "nn_categorical_quantity_q20",
@@ -76,15 +84,38 @@ EXPERIMENT_SPECS = [
 ]
 
 
-def _resolve_budget(args):
-    if int(args.lead_time) == 2:
-        return {
-            "training_episodes": COMMON_BUDGET["training_episodes_lead_time_2"],
-            "horizon": COMMON_BUDGET["horizon_lead_time_2"],
-        }
+def _resolve_budget(parsed, args):
+    del args
+    if getattr(parsed, "training_episodes", None) is not None:
+        training_episodes = int(parsed.training_episodes)
+    else:
+        training_episodes = COMMON_BUDGET["training_episodes_default"]
+
+    if getattr(parsed, "training_horizon", None) is not None:
+        horizon = int(parsed.training_horizon)
+    else:
+        horizon = COMMON_BUDGET["horizon_default"]
+
     return {
-        "training_episodes": COMMON_BUDGET["training_episodes_default"],
-        "horizon": COMMON_BUDGET["horizon_default"],
+        "training_episodes": training_episodes,
+        "horizon": horizon,
+    }
+
+
+def resolved_protocol_budget(parsed) -> dict:
+    if getattr(parsed, "training_episodes", None) is not None:
+        training_episodes_default = int(parsed.training_episodes)
+    else:
+        training_episodes_default = COMMON_BUDGET["training_episodes_default"]
+
+    if getattr(parsed, "training_horizon", None) is not None:
+        horizon_default = int(parsed.training_horizon)
+    else:
+        horizon_default = COMMON_BUDGET["horizon_default"]
+
+    return {
+        "training_episodes_default": training_episodes_default,
+        "horizon_default": horizon_default,
     }
 
 
@@ -97,7 +128,7 @@ def configure_run_args(
     include_reference_in_experiment_name: bool = True,
 ):
     args = build_reference_args(reference_name)
-    budget = _resolve_budget(args)
+    budget = _resolve_budget(parsed, args)
     args.problem = "lost_sales"
     args.reference_instance = reference_name
     args.seed = parsed.seed

@@ -98,6 +98,21 @@ def test_build_policy_returns_nn_gated_direct_policy():
     assert 0 <= action <= args.max_order_size
 
 
+def test_build_policy_returns_h8_nn_gated_policies():
+    env = LostSalesEnv(demand_rate=5.0, lead_time=4, max_order_size=20, horizon=10, track_demand=True)
+    for policy_name in (
+        "nn_soft_gated_direct_quantity_h8_selu",
+        "nn_soft_gated_ordinal_quantity_h8_selu",
+    ):
+        args = _make_args(policy_name)
+        model = build_policy(args, env)
+        assert isinstance(model, PolicyNet)
+        assert tuple(model.hidden_dim) == (8,)
+        action = model(env.policy_state)
+        assert isinstance(action, int)
+        assert 0 <= action <= args.max_order_size
+
+
 def test_build_policy_returns_linear_gated_sigmoid_direct_policy():
     env = LostSalesEnv(demand_rate=5.0, lead_time=4, max_order_size=20, horizon=10, track_demand=True)
     args = _make_args("linear_gated_sigmoid_direct_quantity")

@@ -16,6 +16,7 @@ from invman.problems.lost_sales_fixed_order_cost.experiment_spec import (
     EXPERIMENT_SPECS,
     configure_run_args,
     result_path_for,
+    resolved_protocol_budget,
 )
 from invman.problems.lost_sales_fixed_order_cost.reference_instances import (
     get_benchmark_grid,
@@ -26,9 +27,9 @@ from invman.utils import RunStatusTracker
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Run the full fixed-cost literature-aligned benchmark suite over the configured instance grid."
+        description="Run the full fixed-cost lost-sales paper benchmark suite over the configured instance grid."
     )
-    parser.add_argument("--grid_name", default="literature_subset_poisson_mu5")
+    parser.add_argument("--grid_name", default="lost_sales_style_full_grid_mu5")
     parser.add_argument("--run_tag", default="fixed_cost_full_grid_suite_2k_linear_h1000_3000")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--same_seed", action="store_true")
@@ -37,6 +38,18 @@ def parse_args():
     parser.add_argument("--search_horizon", type=int, default=None)
     parser.add_argument("--eval_horizon", type=int, default=int(1e6))
     parser.add_argument("--eval_seeds", type=int, default=10)
+    parser.add_argument(
+        "--training_episodes",
+        type=int,
+        default=None,
+        help="Override CMA-ES training episodes for every instance.",
+    )
+    parser.add_argument(
+        "--training_horizon",
+        type=int,
+        default=None,
+        help="Override simulation horizon used during training for every instance.",
+    )
     parser.add_argument("--state_scale", type=float, default=None)
     parser.add_argument(
         "--references",
@@ -113,10 +126,11 @@ def _optimal_reference(reference_name: str) -> dict:
 
 
 def _instance_protocol(parsed) -> dict:
+    budget = resolved_protocol_budget(parsed)
     return {
-        "training_episodes": COMMON_BUDGET["training_episodes"],
+        "training_episodes": budget["training_episodes"],
         "es_population": COMMON_BUDGET["es_population"],
-        "training_horizon": COMMON_BUDGET["horizon"],
+        "training_horizon": budget["horizon"],
         "dynamic_horizon": COMMON_BUDGET.get("dynamic_horizon", False),
         "min_dynamic_horizon": COMMON_BUDGET.get("min_dynamic_horizon", COMMON_BUDGET["horizon"]),
         "max_dynamic_horizon": COMMON_BUDGET.get("max_dynamic_horizon", COMMON_BUDGET["horizon"]),
@@ -301,12 +315,20 @@ def _shared_child_command_args(parsed, *, mp_num_processors: int) -> list[str]:
         str(parsed.eval_horizon),
         "--eval_seeds",
         str(parsed.eval_seeds),
+        "--training_episodes",
+        str(parsed.training_episodes) if getattr(parsed, "training_episodes", None) is not None else "",
+        "--training_horizon",
+        str(parsed.training_horizon) if getattr(parsed, "training_horizon", None) is not None else "",
         "--state_scale",
         str(parsed.state_scale) if parsed.state_scale is not None else "",
         "--instance_jobs",
         "1",
         "--skip_suite_summary",
     ]
+    if command[command.index("--training_episodes") + 1] == "":
+        del command[command.index("--training_episodes"):command.index("--training_episodes") + 2]
+    if command[command.index("--training_horizon") + 1] == "":
+        del command[command.index("--training_horizon"):command.index("--training_horizon") + 2]
     if command[command.index("--state_scale") + 1] == "":
         del command[command.index("--state_scale"):command.index("--state_scale") + 2]
     if parsed.same_seed:

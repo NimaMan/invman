@@ -5,7 +5,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 DEFAULT_SUITE_ROOT = (
-    REPO_ROOT / "outputs" / "benchmarks" / "fixed_cost_selected_paper_suite_scale20_rust_seed42"
+    REPO_ROOT / "outputs" / "benchmarks" / "fixed_cost_paper_suite_2k_scale20_seed42"
 )
 REPORTS_DIR = Path(__file__).resolve().parent / "reports"
 DEFAULT_MD_PATH = REPORTS_DIR / "selected_policy_tables.md"
@@ -13,7 +13,8 @@ DEFAULT_TEX_PATH = REPORTS_DIR / "selected_policy_tables.tex"
 
 EXPECTED_SHORTAGE_COSTS = [4, 19]
 EXPECTED_FIXED_COSTS = [5, 25]
-EXPECTED_LEAD_TIMES = [1, 2, 3, 4]
+EXPECTED_LEAD_TIMES = [4, 6, 8, 10]
+EXPECTED_DEMANDS = ["Poisson", "Geometric", "MMPP2 positive", "MMPP2 negative"]
 
 HEURISTIC_ROWS = [
     ("s_s", "$(s,S)$"),
@@ -22,7 +23,9 @@ HEURISTIC_ROWS = [
 ]
 POLICY_ROWS = [
     ("linear_soft_gated_direct_quantity", "Linear soft-gated direct quantity"),
+    ("nn_soft_gated_direct_quantity_h8_selu", "NN h8 soft-gated direct quantity"),
     ("linear_soft_gated_ordinal_quantity", "Linear soft-gated ordinal quantity"),
+    ("nn_soft_gated_ordinal_quantity_h8_selu", "NN h8 soft-gated ordinal quantity"),
     ("soft_tree_depth1_linear_leaf", "Soft tree, depth-1 linear leaf"),
     ("soft_tree_depth2_linear_leaf", "Soft tree, depth-2 linear leaf"),
 ]
@@ -45,10 +48,11 @@ def _collect_tables(payloads: list[dict]):
     tables = {}
     for payload in payloads:
         params = payload["params"]
+        demand = _demand_label(payload)
         shortage_cost = int(round(float(params["shortage_cost"])))
         fixed_cost = int(round(float(params["fixed_order_cost"])))
         lead_time = int(params["lead_time"])
-        block_key = (shortage_cost, fixed_cost)
+        block_key = (demand, shortage_cost, fixed_cost)
         bucket = tables.setdefault(block_key, {})
 
         column = {}
@@ -62,6 +66,21 @@ def _collect_tables(payloads: list[dict]):
                 column[key] = float(entry["evaluation"]["learned_policy"]["mean_cost"])
         bucket[lead_time] = column
     return tables
+
+
+def _demand_label(payload: dict) -> str:
+    params = payload["params"]
+    demand_name = params["demand_dist_name"]
+    if demand_name in {"Poisson", "Geometric"}:
+        return str(demand_name)
+    if demand_name == "MarkovModulatedPoisson2":
+        display = payload.get("literature_metadata", {}).get("demand_case_display_name")
+        if display:
+            return str(display)
+        p00 = float(params.get("demand_p00", 0.0))
+        p11 = float(params.get("demand_p11", 0.0))
+        return "MMPP2 positive" if p00 + p11 >= 1.0 else "MMPP2 negative"
+    return str(demand_name)
 
 
 def _format_value(value: float, *, bold: bool, latex: bool) -> str:
@@ -81,11 +100,11 @@ def _best_rows_by_lead_time(lead_time_map: dict):
     return best
 
 
-def _block_markdown(shortage_cost: int, fixed_cost: int, lead_time_map: dict):
+def _block_markdown(demand: str, shortage_cost: int, fixed_cost: int, lead_time_map: dict):
     available_columns = len(lead_time_map)
     best_by_lead_time = _best_rows_by_lead_time(lead_time_map)
     lines = [
-        f"## p={shortage_cost}, K={fixed_cost}",
+        f"## {demand}, p={shortage_cost}, K={fixed_cost}",
         "",
         f"Completed columns: `{available_columns}/{len(EXPECTED_LEAD_TIMES)}`",
         "",
@@ -110,19 +129,19 @@ def _block_markdown(shortage_cost: int, fixed_cost: int, lead_time_map: dict):
     return "\n".join(lines)
 
 
-def _latex_table(shortage_cost: int, fixed_cost: int, lead_time_map: dict):
+def _latex_table(demand: str, shortage_cost: int, fixed_cost: int, lead_time_map: dict):
     best_by_lead_time = _best_rows_by_lead_time(lead_time_map)
     incomplete = len(lead_time_map) < len(EXPECTED_LEAD_TIMES)
     column_spec = "|l||" + "|".join("c" for _ in EXPECTED_LEAD_TIMES) + "|"
     caption = (
-        f"Fixed-cost lost-sales mean costs for shortage cost $p={shortage_cost}$ and fixed order cost "
-        f"$K={fixed_cost}$ across lead times $L \\in \\{{1,2,3,4\\}}$ under the selected $2000$-iteration / "
-        "population-$64$ CMA-ES protocol with policy-side state scaling $20$."
+        f"Fixed-cost lost-sales mean costs for {demand.lower()} demand with shortage cost $p={shortage_cost}$ "
+        f"and fixed order cost $K={fixed_cost}$ across lead times $L \\in \\{{4,6,8,10\\}}$ "
+        "under the selected CMA-ES protocol."
     )
     if incomplete:
         caption += " Cells marked --- denote runs not yet completed."
     caption += " Bold entries mark the best value in each lead-time column."
-    label = f"tab:fixed-cost-p{shortage_cost}-k{fixed_cost}-selected-scale20"
+    label = f"tab:fixed-cost-{demand.lower()}-p{shortage_cost}-k{fixed_cost}-selected-scale20"
     lines = [
         "\\begin{table}[t]",
         "\\centering",
@@ -166,13 +185,14 @@ def render_reports(payloads: list[dict]):
         "",
     ]
     tex_sections = []
-    for shortage_cost in EXPECTED_SHORTAGE_COSTS:
-        for fixed_cost in EXPECTED_FIXED_COSTS:
-            block = tables.get((shortage_cost, fixed_cost), {})
-            md_sections.append(_block_markdown(shortage_cost, fixed_cost, block))
-            md_sections.append("")
-            tex_sections.append(_latex_table(shortage_cost, fixed_cost, block))
-            tex_sections.append("")
+    for demand in EXPECTED_DEMANDS:
+        for shortage_cost in EXPECTED_SHORTAGE_COSTS:
+            for fixed_cost in EXPECTED_FIXED_COSTS:
+                block = tables.get((demand, shortage_cost, fixed_cost), {})
+                md_sections.append(_block_markdown(demand, shortage_cost, fixed_cost, block))
+                md_sections.append("")
+                tex_sections.append(_latex_table(demand, shortage_cost, fixed_cost, block))
+                tex_sections.append("")
     return "\n".join(md_sections).rstrip() + "\n", "\n".join(tex_sections).rstrip() + "\n"
 
 

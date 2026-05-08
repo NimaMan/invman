@@ -98,11 +98,9 @@ def _render_markdown(summary):
             "",
             "## Protocol",
             "",
-            f"- training episodes (default): `{COMMON_BUDGET['training_episodes_default']}`",
-            f"- training episodes for `L=2`: `{COMMON_BUDGET['training_episodes_lead_time_2']}`",
+            f"- training episodes: `{COMMON_BUDGET['training_episodes_default']}`",
             f"- ES population: `{COMMON_BUDGET['es_population']}`",
-            f"- training horizon (default): `{COMMON_BUDGET['horizon_default']}`",
-            f"- training horizon for `L=2`: `{COMMON_BUDGET['horizon_lead_time_2']}`",
+            f"- training horizon: `{COMMON_BUDGET['horizon_default']}`",
             f"- evaluation horizon: `{summary['eval_horizon']}`",
             f"- evaluation seeds: `{summary['eval_seeds']}`",
         ]

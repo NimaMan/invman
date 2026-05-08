@@ -30,9 +30,9 @@ this repo.
 
 The broader `invman` vanilla benchmark grid is larger:
 
-- lead times `L in {2, 4, 6, 8, 10}`
+- lead times `L in {4, 6, 8, 10}`
 - shortage costs `p in {4, 19}`
-- demand families `{Poisson, Geometric}`
+- demand families `{Poisson, Geometric, MMPP2 positive, MMPP2 negative}`
 - mean demand `5`
 
 ### Published neural architecture
@@ -121,7 +121,7 @@ For the detailed refresh note, see `../../../docs/benchmarks/lost_sales_l4_refre
 Stable vanilla lost-sales benchmark entrypoints now come in two modes:
 
 - `scripts/lost_sales/benchmark_canonical_suite.py`: one canonical preflight instance
-- `scripts/lost_sales/benchmark_full_suite.py`: full 20-instance literature-aligned grid
+- `scripts/lost_sales/benchmark_full_suite.py`: full 32-instance paper grid
 
 Paper-suite notes live in:
 

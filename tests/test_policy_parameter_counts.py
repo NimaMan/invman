@@ -69,15 +69,23 @@ def test_l4_pipeline_parameter_counts_match_formulas_for_canonical_instances():
             "nn_hard_gated_direct_quantity": h * (d + 1) + 2 * (h + 1),
             "nn_soft_gated_ordinal_quantity": h * (d + 1) + (h + 1) * (q + 1),
         }
+        h8 = 8
+        nn_h8_expected_counts = {
+            "nn_soft_gated_direct_quantity_h8_selu": h8 * (d + 1) + 2 * (h8 + 1),
+            "nn_soft_gated_ordinal_quantity_h8_selu": h8 * (d + 1) + (h8 + 1) * (q + 1),
+        }
 
         for policy_name, expected_num_params in {
             **linear_expected_counts,
             **nn_expected_counts,
+            **nn_h8_expected_counts,
             **tree_expected_counts,
         }.items():
             _, env, model = _build_model(build_args, build_env, reference_name, policy_name)
             assert env.state_space_dim == d
-            if policy_name.startswith("nn_"):
+            if policy_name in nn_h8_expected_counts:
+                assert tuple(model.hidden_dim) == (h8,)
+            elif policy_name.startswith("nn_"):
                 assert tuple(model.hidden_dim) == (h,)
             assert model.num_params == expected_num_params, (
                 f"{reference_name} / {policy_name}: expected {expected_num_params} "

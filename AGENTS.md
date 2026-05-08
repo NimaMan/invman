@@ -114,10 +114,8 @@ Current defaults:
 - `eval_horizon = 1e6`
 - `eval_seeds = 10`
 
-For vanilla lost sales, the lead-time-2 literature cases still use a longer budget:
-
-- `training_episodes = 5000`
-- `training_horizon = 5000`
+The active paper-style lost-sales grids currently exclude `L=2`; the reported lead-time axis is
+`L in {4, 6, 8, 10}`.
 
 ## Canonical Single Instances
 
@@ -253,7 +251,7 @@ These per-instance JSON files contain:
 
 The new manuscript workspace is:
 
-- `paper/fixed_order_cost_lost_sales.tex`
+- `paper/inventory_control_policy_benchmarks.tex`
 - `paper/references.bib`
 
 The TeX file is currently a working note aligned with the architecture study, not just the old

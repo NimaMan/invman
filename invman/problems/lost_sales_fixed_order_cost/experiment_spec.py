@@ -34,6 +34,11 @@ EXPERIMENT_SPECS = [
         "status": "trusted",
     },
     {
+        "id": "nn_soft_gated_direct_quantity_h8_selu",
+        "rollout_backend": "rust",
+        "status": "provisional",
+    },
+    {
         "id": "linear_hard_gated_direct_quantity",
         "rollout_backend": "rust",
         "status": "trusted",
@@ -42,6 +47,11 @@ EXPERIMENT_SPECS = [
         "id": "linear_soft_gated_ordinal_quantity",
         "rollout_backend": "rust",
         "status": "trusted",
+    },
+    {
+        "id": "nn_soft_gated_ordinal_quantity_h8_selu",
+        "rollout_backend": "rust",
+        "status": "provisional",
     },
     {
         "id": "nn_categorical_quantity",
@@ -94,9 +104,17 @@ def configure_run_args(
     args.same_seed = parsed.same_seed
     args.mp_num_processors = parsed.mp_num_processors
     args.training_method = "cma"
-    args.training_episodes = COMMON_BUDGET["training_episodes"]
+    args.training_episodes = int(
+        parsed.training_episodes
+        if getattr(parsed, "training_episodes", None) is not None
+        else COMMON_BUDGET["training_episodes"]
+    )
     args.es_population = COMMON_BUDGET["es_population"]
-    args.horizon = COMMON_BUDGET["horizon"]
+    args.horizon = int(
+        parsed.training_horizon
+        if getattr(parsed, "training_horizon", None) is not None
+        else COMMON_BUDGET["horizon"]
+    )
     args.dynamic_horizon = COMMON_BUDGET["dynamic_horizon"]
     args.min_dynamic_horizon = COMMON_BUDGET["min_dynamic_horizon"]
     args.max_dynamic_horizon = COMMON_BUDGET["max_dynamic_horizon"]
@@ -120,3 +138,18 @@ def configure_run_args(
 
 def result_path_for(args):
     return Path(args.results_dir) / f"{args.experiment_name}.json"
+
+
+def resolved_protocol_budget(parsed) -> dict:
+    return {
+        "training_episodes": int(
+            parsed.training_episodes
+            if getattr(parsed, "training_episodes", None) is not None
+            else COMMON_BUDGET["training_episodes"]
+        ),
+        "horizon": int(
+            parsed.training_horizon
+            if getattr(parsed, "training_horizon", None) is not None
+            else COMMON_BUDGET["horizon"]
+        ),
+    }

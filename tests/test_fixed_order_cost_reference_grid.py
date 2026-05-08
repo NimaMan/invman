@@ -11,6 +11,17 @@ def test_literature_subset_grid_has_expected_size():
     assert len(instances) == 16
 
 
+def test_full_grid_has_expected_size_and_axes():
+    instances = build_grid_instances("lost_sales_style_full_grid_mu5")
+    assert len(instances) == 64
+    demand_names = {instance["params"]["demand_dist_name"] for instance in instances}
+    assert demand_names == {"Poisson", "Geometric", "MarkovModulatedPoisson2"}
+    lead_times = {instance["params"]["lead_time"] for instance in instances}
+    assert lead_times == {4, 6, 8, 10}
+    fixed_costs = {instance["params"]["fixed_order_cost"] for instance in instances}
+    assert fixed_costs == {5.0, 25.0}
+
+
 def test_correlated_mmpp2_grid_has_positive_and_negative_cases():
     instances = build_grid_instances("correlated_mmpp2_mu5_l4_p4_k5")
     assert len(instances) == 2
@@ -43,7 +54,7 @@ def test_reference_instance_names_are_sorted_and_stable():
     names = list_reference_instances()
     assert "bijvank2015_table1_l2_p14_k5" in names
     assert names[0] == "bijvank2015_table1_l2_p14_k5"
-    assert names[-1] == "lit_pois_mu5_l4_p4_k5"
+    assert "lit_pois_mu5_l4_p4_k5" in names
 
 
 def test_published_validation_instance_matches_reported_benchmark():

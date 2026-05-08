@@ -71,7 +71,16 @@ Canonical reference instance:
 - holding cost `h=1`
 - demand `~ Poisson(5)`
 
-Reference grid used for the first literature-aligned benchmark subset:
+Full benchmark grid used for the fixed-cost paper suite:
+
+- name: `lost_sales_style_full_grid_mu5`
+- `L in {4, 6, 8, 10}`
+- `p in {4, 19}`
+- `K in {5, 25}`
+- demand families `{Poisson, Geometric, MMPP2 positive, MMPP2 negative}`
+- mean demand `5`
+
+Legacy literature-aligned subset kept for smaller Poisson-only runs:
 
 - name: `literature_subset_poisson_mu5`
 - `L in {1, 2, 3, 4}`

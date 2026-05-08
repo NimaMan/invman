@@ -6,6 +6,11 @@ from dataclasses import dataclass
 import numpy as np
 
 from invman.config import get_config
+from invman.problems.lost_sales.demand import (
+    MMPP2_NEGATIVE_MEAN5,
+    MMPP2_POSITIVE_MEAN5,
+    build_demand_config,
+)
 from invman.problems.lost_sales.heuristics import get_heuristic_policy_cost
 from invman.problems.lost_sales.problem_info import problem_info
 
@@ -25,20 +30,23 @@ class ReferenceInstance:
 
 def _make_reference_instance(
     *,
-    name: str,
-    demand_dist_name: str,
+    demand_case_key: str,
     shortage_cost: int,
     lead_time: int,
 ) -> ReferenceInstance:
-    problem_key = f"{demand_dist_name}_demand_shortage_cost_{shortage_cost}"
-    literature_values = problem_info[problem_key][lead_time]
+    demand_case = DEMAND_CASES[demand_case_key]
+    problem_key = None
+    literature_values = {}
+    if demand_case.get("problem_info_token") is not None:
+        problem_key = f"{demand_case['problem_info_token']}_demand_shortage_cost_{shortage_cost}"
+        literature_values = problem_info[problem_key][lead_time]
     params = {
         "problem": "lost_sales",
         "demand_rate": 5.0,
         "lead_time": lead_time,
         "holding_cost": 1.0,
         "shortage_cost": float(shortage_cost),
-        "demand_dist_name": demand_dist_name,
+        **demand_case["params"],
         "max_order_size": 20,
         "horizon": 2000,
         "eval_horizon": int(1e6),
@@ -50,7 +58,7 @@ def _make_reference_instance(
         "state_scale": 20.0,
     }
     description = (
-        f"Literature-aligned lost-sales instance with {demand_dist_name} demand, "
+        f"Lost-sales paper-grid instance with {demand_case['display_name']} demand, "
         f"mean demand 5, lead time {lead_time}, shortage cost {shortage_cost}, and holding cost 1."
     )
     literature_metadata = {
@@ -58,13 +66,17 @@ def _make_reference_instance(
         "parent_reference": "Zipkin2008OldSystems",
         "problem_info_key": problem_key,
         "reported_values": dict(literature_values),
+        "demand_case": demand_case_key,
+        "demand_case_display_name": demand_case["display_name"],
         "notes": (
-            "This repository uses the 20-instance vanilla lost-sales family from Xin (2020), "
-            "which extends the classic Zipkin (2008) set to larger lead times."
+            "Poisson and Geometric rows are literature-aligned with the Xin (2020) extension of "
+            "the classic Zipkin (2008) set. The MMPP2 rows are mean-preserving repo extensions "
+            "used to match the four-demand paper surface. "
+            + demand_case["notes"]
         ),
     }
     return ReferenceInstance(
-        name=name,
+        name=_make_grid_instance_name(demand_case, shortage_cost, lead_time),
         params=params,
         expected_costs={
             "optimal": literature_values.get("optimal"),
@@ -151,20 +163,67 @@ VANILLA_L4_P4_POISSON5 = ReferenceInstance(
 )
 
 
-_LITERATURE_GRID_INSTANCES = tuple(
+DEMAND_CASES = {
+    "poisson": {
+        "display_name": "Poisson",
+        "name_token": "poisson",
+        "problem_info_token": "Poisson",
+        "params": {
+            "demand_dist_name": "Poisson",
+            "demand_rate": 5.0,
+        },
+        "notes": "Poisson demand with mean 5.",
+    },
+    "geometric": {
+        "display_name": "Geometric",
+        "name_token": "geometric",
+        "problem_info_token": "Geometric",
+        "params": {
+            "demand_dist_name": "Geometric",
+            "demand_rate": 5.0,
+        },
+        "notes": "Geometric demand with mean 5.",
+    },
+    "mmpp2_positive": {
+        "display_name": "MMPP2 positive",
+        "name_token": "mmpp2_pos",
+        "problem_info_token": None,
+        "params": dict(MMPP2_POSITIVE_MEAN5),
+        "notes": (
+            "Two-state Markov-modulated Poisson demand with positive lag-1 autocorrelation "
+            f"{build_demand_config(**MMPP2_POSITIVE_MEAN5).lag_k_autocorrelation(1):.6f}."
+        ),
+    },
+    "mmpp2_negative": {
+        "display_name": "MMPP2 negative",
+        "name_token": "mmpp2_neg",
+        "problem_info_token": None,
+        "params": dict(MMPP2_NEGATIVE_MEAN5),
+        "notes": (
+            "Two-state Markov-modulated Poisson demand with negative lag-1 autocorrelation "
+            f"{build_demand_config(**MMPP2_NEGATIVE_MEAN5).lag_k_autocorrelation(1):.6f}."
+        ),
+    },
+}
+
+
+def _make_grid_instance_name(demand_case: dict, shortage_cost: int, lead_time: int) -> str:
+    return f"lit_{demand_case['name_token']}_p{shortage_cost}_l{lead_time}"
+
+
+_PAPER_GRID_INSTANCES = tuple(
     _make_reference_instance(
-        name=f"lit_{demand_dist_name.lower()}_p{shortage_cost}_l{lead_time}",
-        demand_dist_name=demand_dist_name,
+        demand_case_key=demand_case_key,
         shortage_cost=shortage_cost,
         lead_time=lead_time,
     )
-    for demand_dist_name in ("Poisson", "Geometric")
+    for demand_case_key in ("poisson", "geometric", "mmpp2_positive", "mmpp2_negative")
     for shortage_cost in (4, 19)
-    for lead_time in (2, 4, 6, 8, 10)
+    for lead_time in (4, 6, 8, 10)
 )
 
 
-REFERENCE_INSTANCES = {instance.name: instance for instance in _LITERATURE_GRID_INSTANCES}
+REFERENCE_INSTANCES = {instance.name: instance for instance in _PAPER_GRID_INSTANCES}
 REFERENCE_INSTANCES[VANILLA_L4_P4_POISSON5.name] = VANILLA_L4_P4_POISSON5
 
 
@@ -172,14 +231,17 @@ BENCHMARK_GRIDS = {
     "xin2020_extended_lost_sales": {
         "name": "xin2020_extended_lost_sales",
         "description": (
-            "Twenty literature-aligned lost-sales instances from Xin (2020): "
-            "lead times {2,4,6,8,10}, shortage costs {4,19}, and demand distributions "
-            "{Poisson, Geometric}, all with mean demand 5 and holding cost 1."
+            "Thirty-two lost-sales paper-grid instances: "
+            "lead times {4,6,8,10}, shortage costs {4,19}, and demand distributions "
+            "{Poisson, Geometric, MMPP2 positive, MMPP2 negative}, all with mean demand 5 "
+            "and holding cost 1. Poisson and Geometric rows are literature-aligned with Xin (2020); "
+            "MMPP2 rows are repo demand-robustness extensions."
         ),
         "axes": {
-            "lead_time": [2, 4, 6, 8, 10],
+            "lead_time": [4, 6, 8, 10],
             "shortage_cost": [4, 19],
-            "demand_dist_name": ["Poisson", "Geometric"],
+            "demand_case": ["poisson", "geometric", "mmpp2_positive", "mmpp2_negative"],
+            "demand_dist_name": ["Poisson", "Geometric", "MarkovModulatedPoisson2"],
             "demand_rate": [5.0],
         },
         "instances": [
@@ -189,7 +251,7 @@ BENCHMARK_GRIDS = {
                 "params": instance.params,
                 "literature_metadata": instance.literature_metadata,
             }
-            for instance in _LITERATURE_GRID_INSTANCES
+            for instance in _PAPER_GRID_INSTANCES
         ],
     }
 }

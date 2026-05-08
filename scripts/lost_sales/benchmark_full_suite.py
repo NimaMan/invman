@@ -16,6 +16,7 @@ from invman.problems.lost_sales.experiment_spec import (
     EXPERIMENT_SPECS,
     configure_run_args,
     result_path_for,
+    resolved_protocol_budget,
 )
 from invman.problems.lost_sales.reference_instances import get_benchmark_grid
 from invman.utils import RunStatusTracker
@@ -23,7 +24,7 @@ from invman.utils import RunStatusTracker
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Run the full vanilla lost-sales literature-aligned benchmark suite over the configured instance grid."
+        description="Run the full vanilla lost-sales paper benchmark suite over the configured instance grid."
     )
     parser.add_argument("--grid_name", default="xin2020_extended_lost_sales")
     parser.add_argument("--run_tag", default="lost_sales_full_grid_suite_paperlike")
@@ -33,6 +34,18 @@ def parse_args():
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--eval_horizon", type=int, default=int(1e6))
     parser.add_argument("--eval_seeds", type=int, default=10)
+    parser.add_argument(
+        "--training_episodes",
+        type=int,
+        default=None,
+        help="Override CMA-ES training episodes for every instance.",
+    )
+    parser.add_argument(
+        "--training_horizon",
+        type=int,
+        default=None,
+        help="Override simulation horizon used during training for every instance.",
+    )
     parser.add_argument("--state_scale", type=float, default=None)
     parser.add_argument("--references", nargs="+", default=None)
     parser.add_argument("--only", nargs="+", default=None)
@@ -81,12 +94,11 @@ def _load_or_run_experiment(args, *, reuse_existing: bool):
 
 
 def _instance_protocol(parsed) -> dict:
+    budget = resolved_protocol_budget(parsed)
     return {
-        "training_episodes_default": COMMON_BUDGET["training_episodes_default"],
-        "training_episodes_lead_time_2": COMMON_BUDGET["training_episodes_lead_time_2"],
+        "training_episodes_default": budget["training_episodes_default"],
         "es_population": COMMON_BUDGET["es_population"],
-        "training_horizon_default": COMMON_BUDGET["horizon_default"],
-        "training_horizon_lead_time_2": COMMON_BUDGET["horizon_lead_time_2"],
+        "training_horizon_default": budget["horizon_default"],
         "eval_horizon": parsed.eval_horizon,
         "eval_seeds": parsed.eval_seeds,
         "sigma_init": COMMON_BUDGET["sigma_init"],
@@ -103,11 +115,9 @@ def _render_markdown(summary: dict) -> str:
         "",
         "## Protocol",
         "",
-        f"- training episodes (default): `{summary['protocol']['training_episodes_default']}`",
-        f"- training episodes for `L=2`: `{summary['protocol']['training_episodes_lead_time_2']}`",
+        f"- training episodes: `{summary['protocol']['training_episodes_default']}`",
         f"- ES population: `{summary['protocol']['es_population']}`",
-        f"- training horizon (default): `{summary['protocol']['training_horizon_default']}`",
-        f"- training horizon for `L=2`: `{summary['protocol']['training_horizon_lead_time_2']}`",
+        f"- training horizon: `{summary['protocol']['training_horizon_default']}`",
         f"- evaluation horizon: `{summary['protocol']['eval_horizon']}`",
         f"- evaluation seeds: `{summary['protocol']['eval_seeds']}`",
         "",
@@ -255,12 +265,20 @@ def _shared_child_command_args(parsed, *, mp_num_processors: int) -> list[str]:
         str(parsed.eval_horizon),
         "--eval_seeds",
         str(parsed.eval_seeds),
+        "--training_episodes",
+        str(parsed.training_episodes) if getattr(parsed, "training_episodes", None) is not None else "",
+        "--training_horizon",
+        str(parsed.training_horizon) if getattr(parsed, "training_horizon", None) is not None else "",
         "--state_scale",
         str(parsed.state_scale) if parsed.state_scale is not None else "",
         "--instance_jobs",
         "1",
         "--skip_suite_summary",
     ]
+    if command[command.index("--training_episodes") + 1] == "":
+        del command[command.index("--training_episodes"):command.index("--training_episodes") + 2]
+    if command[command.index("--training_horizon") + 1] == "":
+        del command[command.index("--training_horizon"):command.index("--training_horizon") + 2]
     if command[command.index("--state_scale") + 1] == "":
         del command[command.index("--state_scale"):command.index("--state_scale") + 2]
     if parsed.same_seed:

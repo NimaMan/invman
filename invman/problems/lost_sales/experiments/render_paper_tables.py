@@ -5,15 +5,15 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 DEFAULT_SUITE_ROOT = (
-    REPO_ROOT / "outputs" / "benchmarks" / "lost_sales_selected_paper_suite_scale20_rust_seed42"
+    REPO_ROOT / "outputs" / "benchmarks" / "lost_sales_paper_suite_2k_scale20_seed42"
 )
 REPORTS_DIR = Path(__file__).resolve().parent / "reports"
 DEFAULT_MD_PATH = REPORTS_DIR / "selected_policy_tables.md"
 DEFAULT_TEX_PATH = REPORTS_DIR / "selected_policy_tables.tex"
 
-EXPECTED_DEMANDS = ["Poisson", "Geometric"]
+EXPECTED_DEMANDS = ["Poisson", "Geometric", "MMPP2 positive", "MMPP2 negative"]
 EXPECTED_SHORTAGE_COSTS = [4, 19]
-EXPECTED_LEAD_TIMES = [2, 4, 6, 8, 10]
+EXPECTED_LEAD_TIMES = [4, 6, 8, 10]
 
 HEURISTIC_ROWS = [
     ("myopic1", "myopic1"),
@@ -22,7 +22,9 @@ HEURISTIC_ROWS = [
 ]
 POLICY_ROWS = [
     ("linear_soft_gated_direct_quantity", "Linear soft-gated direct quantity"),
+    ("nn_soft_gated_direct_quantity_h8_selu", "NN h8 soft-gated direct quantity"),
     ("linear_soft_gated_ordinal_quantity", "Linear soft-gated ordinal quantity"),
+    ("nn_soft_gated_ordinal_quantity_h8_selu", "NN h8 soft-gated ordinal quantity"),
     ("soft_tree_depth1_linear_leaf", "Soft tree, depth-1 linear leaf"),
     ("soft_tree_depth2_linear_leaf", "Soft tree, depth-2 linear leaf"),
 ]
@@ -45,7 +47,7 @@ def _collect_tables(payloads: list[dict]):
     tables = {}
     for payload in payloads:
         params = payload["params"]
-        demand = params["demand_dist_name"]
+        demand = _demand_label(payload)
         shortage_cost = int(round(float(params["shortage_cost"])))
         lead_time = int(params["lead_time"])
         block_key = (demand, shortage_cost)
@@ -62,6 +64,21 @@ def _collect_tables(payloads: list[dict]):
                 column[key] = float(entry["evaluation"]["learned_policy"]["mean_cost"])
         bucket[lead_time] = column
     return tables
+
+
+def _demand_label(payload: dict) -> str:
+    params = payload["params"]
+    demand_name = params["demand_dist_name"]
+    if demand_name in {"Poisson", "Geometric"}:
+        return str(demand_name)
+    if demand_name == "MarkovModulatedPoisson2":
+        display = payload.get("literature_metadata", {}).get("demand_case_display_name")
+        if display:
+            return str(display)
+        p00 = float(params.get("demand_p00", 0.0))
+        p11 = float(params.get("demand_p11", 0.0))
+        return "MMPP2 positive" if p00 + p11 >= 1.0 else "MMPP2 negative"
+    return str(demand_name)
 
 
 def _format_value(value: float, *, bold: bool, latex: bool) -> str:
@@ -116,8 +133,7 @@ def _latex_table(demand: str, shortage_cost: int, lead_time_map: dict):
     column_spec = "|l||" + "|".join("c" for _ in EXPECTED_LEAD_TIMES) + "|"
     caption = (
         f"Vanilla lost-sales mean costs for {demand.lower()} demand with shortage cost $p={shortage_cost}$ "
-        f"across lead times $L \\in \\{{2,4,6,8,10\\}}$ under the selected $2000$-iteration / population-$64$ "
-        "CMA-ES protocol with policy-side state scaling $20$."
+        f"across lead times $L \\in \\{{4,6,8,10\\}}$ under the selected CMA-ES protocol."
     )
     if incomplete:
         caption += " Cells marked --- denote runs not yet completed."
