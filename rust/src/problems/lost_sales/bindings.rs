@@ -1017,6 +1017,60 @@ fn lost_sales_heuristics_all(
     Ok(result.into())
 }
 
+/// Names of all lost-sales benchmark-grid reference instances.
+#[pyfunction]
+fn lost_sales_reference_instance_names() -> Vec<String> {
+    crate::problems::lost_sales::reference_costs::reference_instance_names()
+        .into_iter()
+        .map(|name| name.to_string())
+        .collect()
+}
+
+/// Reference heuristic costs and parameters for one benchmark-grid instance, or
+/// `None` if the name is unknown. Costs (`optimal`/`myopic1`/`myopic2`/`svbs`/
+/// `capped_base_stock`) are literature values where available and repo-computed
+/// otherwise; `source` records which.
+#[pyfunction]
+fn lost_sales_reference_costs(
+    py: Python<'_>,
+    name: &str,
+) -> PyResult<Option<Py<pyo3::types::PyDict>>> {
+    use pyo3::types::PyDict;
+
+    let inst = match crate::problems::lost_sales::reference_costs::reference_instance(name) {
+        Some(inst) => inst,
+        None => return Ok(None),
+    };
+    let demand_kind = match inst.demand.kind {
+        LostSalesDemandKind::Poisson => "Poisson",
+        LostSalesDemandKind::Geometric => "Geometric",
+        LostSalesDemandKind::MarkovModulatedPoisson2 => "MarkovModulatedPoisson2",
+    };
+
+    let result = PyDict::new_bound(py);
+    result.set_item("name", inst.name)?;
+    result.set_item("demand_kind", demand_kind)?;
+    result.set_item("demand_rate", inst.demand.demand_rate)?;
+    result.set_item("demand_lambda_low", inst.demand.demand_lambda_low)?;
+    result.set_item("demand_lambda_high", inst.demand.demand_lambda_high)?;
+    result.set_item("demand_p00", inst.demand.demand_p00)?;
+    result.set_item("demand_p11", inst.demand.demand_p11)?;
+    result.set_item("lead_time", inst.lead_time)?;
+    result.set_item("holding_cost", inst.holding_cost)?;
+    result.set_item("shortage_cost", inst.shortage_cost)?;
+    result.set_item("source", inst.source)?;
+
+    let costs = PyDict::new_bound(py);
+    costs.set_item("optimal", inst.costs.optimal)?;
+    costs.set_item("myopic1", inst.costs.myopic1)?;
+    costs.set_item("myopic2", inst.costs.myopic2)?;
+    costs.set_item("svbs", inst.costs.svbs)?;
+    costs.set_item("capped_base_stock", inst.costs.capped_base_stock)?;
+    result.set_item("costs", costs)?;
+
+    Ok(Some(result.into()))
+}
+
 pub fn register_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(lost_sales_constant_action_rollout, m)?)?;
     m.add_function(wrap_pyfunction!(lost_sales_soft_tree_rollout, m)?)?;
@@ -1036,5 +1090,7 @@ pub fn register_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     )?)?;
     m.add_function(wrap_pyfunction!(lost_sales_heuristic_mean_cost, m)?)?;
     m.add_function(wrap_pyfunction!(lost_sales_heuristics_all, m)?)?;
+    m.add_function(wrap_pyfunction!(lost_sales_reference_instance_names, m)?)?;
+    m.add_function(wrap_pyfunction!(lost_sales_reference_costs, m)?)?;
     Ok(())
 }
