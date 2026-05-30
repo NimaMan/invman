@@ -71,6 +71,50 @@ BUDGETS = {
 }
 
 
+def literature_reproduction(args, horizon, replications, seed):
+    """Reproduce the published Van Roy constant base-stock cost at the PUBLISHED levels.
+
+    Distinct from the grid-best baseline: this evaluates the exact (yw, yr) levels Van Roy
+    reported (e.g. (10, 16) -> 51.7) so we can report the literature-reproduction gap.
+    """
+    reference = dict(invman_rust.multi_echelon_get_reference_instance(REFERENCE))
+    levels = [int(v) for v in reference["published_constant_base_stock_levels"]]
+    published = float(reference["published_constant_base_stock_mean_cost"])
+    result = invman_rust.multi_echelon_search_stationary_policy(
+        policy_kind="constant_base_stock",
+        allocation_mode="min_shortage",
+        warehouse_levels=[levels[0]],
+        retailer_levels=[levels[1]],
+        warehouse_lead_time=int(args.warehouse_lead_time),
+        retailer_lead_time=int(args.retailer_lead_time),
+        num_retailers=int(args.num_retailers),
+        warehouse_holding_cost=float(args.warehouse_holding_cost),
+        retailer_holding_cost=float(args.retailer_holding_cost),
+        warehouse_expedited_cost=float(args.warehouse_expedited_cost),
+        warehouse_lost_sale_cost=float(args.warehouse_lost_sale_cost),
+        expedited_service_prob=float(args.expedited_service_prob),
+        warehouse_capacity=int(args.warehouse_capacity),
+        warehouse_inventory_cap=int(args.warehouse_inventory_cap),
+        retailer_inventory_cap=int(args.retailer_inventory_cap),
+        inventory_dynamics_mode=str(args.inventory_dynamics_mode),
+        demand_distribution=str(args.demand_distribution),
+        demand_mean=float(args.multi_demand_mean),
+        demand_std=float(args.multi_demand_std),
+        horizon=int(horizon),
+        replications=int(replications),
+        seed=int(seed),
+        warm_up_periods_ratio=float(getattr(args, "warm_up_periods_ratio", 0.0)),
+        objective="average_cost_after_warmup",
+    )
+    repro = float(dict(result["best_result"])["mean_cost"])
+    return {
+        "published_levels": levels,
+        "published_cost": published,
+        "repro_cost": repro,
+        "gap_pct": 100.0 * (repro - published) / published,
+    }
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--budget", choices=sorted(BUDGETS), default="full")
@@ -123,10 +167,18 @@ def main():
     out_dir.mkdir(parents=True, exist_ok=True)
 
     base_args = _are.build_reference_args(REFERENCE)
+
+    repro = literature_reproduction(
+        base_args, horizon=budget["eval_horizon"], replications=budget["eval_seeds"], seed=parsed.seed
+    )
+    print(f"[literature] published constant base-stock {tuple(repro['published_levels'])} = "
+          f"{repro['published_cost']} ; repo = {repro['repro_cost']:.3f} "
+          f"(gap {repro['gap_pct']:+.2f}%)   [reproduction in van_roy_1997 mode]")
+
     baseline = _are.best_constant_base_stock_baseline(
         base_args, horizon=budget["eval_horizon"], replications=budget["eval_seeds"], seed=parsed.seed
     )
-    print(f"[benchmark] best constant base-stock: yw={baseline['warehouse_level']} "
+    print(f"[benchmark] best constant base-stock (grid search): yw={baseline['warehouse_level']} "
           f"yr={baseline['retailer_level']} mean_cost={baseline['mean_cost']:.3f} "
           f"+/- {baseline['std_cost']:.3f}   (published 51.7, best NDP 52.6)")
 
@@ -143,6 +195,7 @@ def main():
         "reference": REFERENCE,
         "budget": parsed.budget,
         "seed": parsed.seed,
+        "literature_reproduction": repro,
         "benchmark_best_constant_base_stock": baseline,
         "published_constant_base_stock": 51.7,
         "published_best_ndp": 52.6,
