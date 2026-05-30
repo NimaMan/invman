@@ -9,18 +9,140 @@ PACKAGE_ROOT = Path(__file__).resolve().parents[2]
 if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
 
+import invman_rust
+
+from invman.config import get_config
 from invman.experiment_runner import run_experiment
-from invman.lost_sales_fixed_order_cost_benchmark import (
-    COMMON_BUDGET,
-    EXPERIMENT_SPECS,
-    benchmark_reference_instance,
-    configure_run_args,
-    get_benchmark_grid,
-    get_reference_instance,
-    resolved_protocol_budget,
-    result_path_for,
-)
+from invman.policy_registry import apply_policy_name
 from invman.utils import RunStatusTracker
+
+# --- suite orchestration glue (grid + reference data come from Rust) ----------
+# The fixed-cost grid, instance params and (s,S)/(s,nQ)/(s,S,q) heuristics live in
+# the Rust crate; this script only carries the CMA-ES budget, policy roster, and
+# the arg-building/summary glue. Heuristic baselines are omitted until the Rust
+# grid+baseline binding lands (the (s,S,q) family is implemented in Rust but not
+# yet precomputed over this grid).
+FULL_GRID_NAME = "lost_sales_style_full_grid_mu5"
+GRID_LEAD_TIMES = {4, 6, 8, 10}  # the paper grid; the Rust grid also includes L=2
+
+COMMON_BUDGET = {
+    "training_episodes": 2000,
+    "es_population": 64,
+    "horizon": 2000,
+    "dynamic_horizon": False,
+    "min_dynamic_horizon": 2000,
+    "max_dynamic_horizon": 2000,
+    "eval_horizon": int(1e6),
+    "eval_seeds": 10,
+    "sigma_init": 5.0,
+}
+EXPERIMENT_SPECS = [
+    {"id": "linear_soft_gated_direct_quantity", "rollout_backend": "rust", "status": "trusted"},
+    {"id": "nn_soft_gated_direct_quantity_h8_selu", "rollout_backend": "rust", "status": "provisional"},
+    {"id": "linear_soft_gated_ordinal_quantity", "rollout_backend": "rust", "status": "trusted"},
+    {"id": "nn_soft_gated_ordinal_quantity_h8_selu", "rollout_backend": "rust", "status": "provisional"},
+    {"id": "soft_tree_depth1_linear_leaf", "rollout_backend": "rust", "status": "trusted"},
+    {"id": "soft_tree_depth2_linear_leaf", "rollout_backend": "rust", "status": "trusted"},
+]
+_GRID_CACHE = {}
+
+
+def _rust_instances(grid_name=FULL_GRID_NAME):
+    if grid_name not in _GRID_CACHE:
+        instances = invman_rust.lost_sales_fixed_order_cost_expand_experiment_grid(grid_name)
+        _GRID_CACHE[grid_name] = [i for i in instances if int(i["params"]["lead_time"]) in GRID_LEAD_TIMES]
+    return _GRID_CACHE[grid_name]
+
+
+def get_reference_instance(name=None):
+    for instance in _rust_instances():
+        if name is None or instance["name"] == name:
+            return instance
+    raise KeyError(f"unknown fixed-cost reference instance: {name}")
+
+
+def get_benchmark_grid(grid_name=FULL_GRID_NAME):
+    instances = _rust_instances(grid_name)
+    return {
+        "name": grid_name,
+        "grid_name": grid_name,
+        "description": (
+            "Fixed-order-cost lost-sales paper grid: {Poisson, Geometric, MMPP2+, MMPP2-} demand x "
+            "shortage cost {4, 19} x lead time {4, 6, 8, 10} x setup cost {5, 25}, mean demand 5."
+        ),
+        "axes": {"lead_time": sorted(GRID_LEAD_TIMES), "shortage_cost": [4, 19], "fixed_order_cost": [5, 25]},
+        "num_instances": len(instances),
+        "instances": instances,
+    }
+
+
+def build_reference_args(name):
+    instance = get_reference_instance(name)
+    args = get_config([])
+    for key, value in instance["params"].items():
+        setattr(args, key, value)
+    args.state_normalizer = "quantity_scale"
+    args.state_scale = 20.0
+    return args
+
+
+def benchmark_reference_instance(name, *, eval_horizon=None, eval_seeds=None, **_ignored):
+    get_reference_instance(name)  # validate
+    return {
+        "reference_instance": name,
+        "evaluation": {},  # (s,S,q) baselines pending the Rust grid+baseline binding
+        "optimal_reference": {"mean_cost": None, "available": False, "source": "pending_rust_binding"},
+        "capped_base_stock_reference": {"mean_cost": None, "available": False, "source": "pending_rust_binding"},
+        "note": "fixed-cost (s,S,q) baselines pending the Rust grid+baseline binding",
+    }
+
+
+def resolved_protocol_budget(parsed):
+    return {
+        "training_episodes": int(parsed.training_episodes)
+        if getattr(parsed, "training_episodes", None) is not None
+        else COMMON_BUDGET["training_episodes"],
+        "horizon": int(parsed.training_horizon)
+        if getattr(parsed, "training_horizon", None) is not None
+        else COMMON_BUDGET["horizon"],
+    }
+
+
+def configure_run_args(parsed, spec, root, reference_name, *, include_reference_in_experiment_name=True):
+    args = build_reference_args(reference_name)
+    budget = resolved_protocol_budget(parsed)
+    args.problem = "lost_sales_fixed_order_cost"
+    args.reference_instance = reference_name
+    args.seed = parsed.seed
+    args.same_seed = parsed.same_seed
+    args.mp_num_processors = parsed.mp_num_processors
+    args.training_method = "cma"
+    args.training_episodes = budget["training_episodes"]
+    args.es_population = COMMON_BUDGET["es_population"]
+    args.horizon = budget["horizon"]
+    args.dynamic_horizon = COMMON_BUDGET["dynamic_horizon"]
+    args.min_dynamic_horizon = COMMON_BUDGET["min_dynamic_horizon"]
+    args.max_dynamic_horizon = COMMON_BUDGET["max_dynamic_horizon"]
+    args.eval_horizon = parsed.eval_horizon
+    args.eval_seeds = parsed.eval_seeds
+    args.sigma_init = COMMON_BUDGET["sigma_init"]
+    args.max_order_size = 20
+    args.policy_name = spec["id"]
+    apply_policy_name(args)
+    args.rollout_backend = spec["rollout_backend"]
+    args.results_dir = str(root / "results")
+    args.log_dir = str(root / "logs")
+    args.trained_models_dir = str(root / "models")
+    if include_reference_in_experiment_name:
+        args.experiment_name = f"{parsed.run_tag}_{reference_name}_{spec['id']}"
+    else:
+        args.experiment_name = f"{parsed.run_tag}_{spec['id']}"
+    return args
+
+
+def result_path_for(args):
+    return Path(args.results_dir) / f"{args.experiment_name}.json"
+# --- end suite orchestration glue --------------------------------------------
 
 
 def parse_args():

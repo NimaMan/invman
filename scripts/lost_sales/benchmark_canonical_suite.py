@@ -7,14 +7,115 @@ PACKAGE_ROOT = Path(__file__).resolve().parents[2]
 if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
 
+import invman_rust
+
+from invman.config import get_config
 from invman.experiment_runner import run_experiment
-from invman.lost_sales_benchmark import (
-    COMMON_BUDGET,
-    EXPERIMENT_SPECS,
-    benchmark_reference_instance,
-    configure_run_args,
-    result_path_for,
-)
+from invman.policy_registry import apply_policy_name
+
+# --- suite orchestration glue (heuristic baselines from the Rust reference-cost config) ---
+COMMON_BUDGET = {
+    "training_episodes_default": 2000,
+    "es_population": 64,
+    "horizon_default": 2000,
+    "eval_horizon": int(1e6),
+    "eval_seeds": 10,
+    "sigma_init": 5.0,
+    "save_every": 1000,
+}
+EXPERIMENT_SPECS = [
+    {"id": "linear_categorical_quantity_q20", "rollout_backend": "rust", "status": "trusted"},
+    {"id": "linear_sigmoid_direct_quantity", "rollout_backend": "rust", "status": "trusted"},
+    {"id": "linear_soft_gated_direct_quantity", "rollout_backend": "rust", "status": "trusted"},
+    {"id": "nn_soft_gated_direct_quantity_h8_selu", "rollout_backend": "rust", "status": "provisional"},
+    {"id": "linear_hard_gated_direct_quantity", "rollout_backend": "rust", "status": "trusted"},
+    {"id": "linear_soft_gated_ordinal_quantity", "rollout_backend": "rust", "status": "trusted"},
+    {"id": "nn_soft_gated_ordinal_quantity_h8_selu", "rollout_backend": "rust", "status": "provisional"},
+    {"id": "soft_tree_depth1_linear_leaf", "rollout_backend": "rust", "status": "trusted"},
+    {"id": "soft_tree_depth2_linear_leaf", "rollout_backend": "rust", "status": "trusted"},
+]
+
+
+def _reference(name):
+    ref = invman_rust.lost_sales_reference_costs(name)
+    if ref is None:
+        raise KeyError(f"unknown lost-sales reference instance: {name}")
+    return ref
+
+
+def build_reference_args(name):
+    ref = _reference(name)
+    args = get_config([])
+    args.problem = "lost_sales"
+    args.demand_dist_name = ref["demand_kind"]
+    args.demand_rate = ref["demand_rate"]
+    args.lead_time = int(ref["lead_time"])
+    args.holding_cost = ref["holding_cost"]
+    args.shortage_cost = ref["shortage_cost"]
+    args.max_order_size = 20
+    args.track_demand = True
+    args.warm_up_periods_ratio = 0.2
+    args.state_normalizer = "quantity_scale"
+    args.state_scale = 20.0
+    if ref["demand_kind"] == "MarkovModulatedPoisson2":
+        args.demand_lambda_low = ref["demand_lambda_low"]
+        args.demand_lambda_high = ref["demand_lambda_high"]
+        args.demand_p00 = ref["demand_p00"]
+        args.demand_p11 = ref["demand_p11"]
+    return args
+
+
+def _cost_summary(value):
+    return {"mean_cost": None if value is None else float(value),
+            "available": value is not None, "source": "reference_config"}
+
+
+def benchmark_reference_instance(name, *, eval_horizon=None, eval_seeds=None, **_ignored):
+    costs = _reference(name)["costs"]
+    return {
+        "reference_instance": name,
+        "evaluation": {
+            "myopic1": _cost_summary(costs["myopic1"]),
+            "myopic2": _cost_summary(costs["myopic2"]),
+            "svbs": _cost_summary(costs["svbs"]),
+        },
+        "optimal_reference": _cost_summary(costs["optimal"]),
+        "capped_base_stock_reference": _cost_summary(costs["capped_base_stock"]),
+    }
+
+
+def configure_run_args(parsed, spec, root, reference_name, *, include_reference_in_experiment_name=True):
+    args = build_reference_args(reference_name)
+    args.problem = "lost_sales"
+    args.reference_instance = reference_name
+    args.seed = parsed.seed
+    args.same_seed = parsed.same_seed
+    args.mp_num_processors = parsed.mp_num_processors
+    args.training_method = "cma"
+    args.training_episodes = int(getattr(parsed, "training_episodes", None) or COMMON_BUDGET["training_episodes_default"])
+    args.es_population = COMMON_BUDGET["es_population"]
+    args.horizon = int(getattr(parsed, "training_horizon", None) or COMMON_BUDGET["horizon_default"])
+    args.eval_horizon = parsed.eval_horizon
+    args.eval_seeds = parsed.eval_seeds
+    args.sigma_init = COMMON_BUDGET["sigma_init"]
+    args.save_every = COMMON_BUDGET["save_every"]
+    args.max_order_size = 20
+    args.policy_name = spec["id"]
+    apply_policy_name(args)
+    args.rollout_backend = spec["rollout_backend"]
+    args.results_dir = str(root / "results")
+    args.log_dir = str(root / "logs")
+    args.trained_models_dir = str(root / "models")
+    if include_reference_in_experiment_name:
+        args.experiment_name = f"{parsed.run_tag}_{reference_name}_{spec['id']}"
+    else:
+        args.experiment_name = f"{parsed.run_tag}_{spec['id']}"
+    return args
+
+
+def result_path_for(args):
+    return Path(args.results_dir) / f"{args.experiment_name}.json"
+# --- end suite orchestration glue ---
 
 
 def parse_args():

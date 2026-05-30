@@ -9,17 +9,178 @@ PACKAGE_ROOT = Path(__file__).resolve().parents[2]
 if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
 
+import invman_rust
+
+from invman.config import get_config
 from invman.experiment_runner import run_experiment
-from invman.lost_sales_benchmark import (
-    COMMON_BUDGET,
-    EXPERIMENT_SPECS,
-    benchmark_reference_instance,
-    configure_run_args,
-    get_benchmark_grid,
-    resolved_protocol_budget,
-    result_path_for,
-)
+from invman.policy_registry import apply_policy_name
 from invman.utils import RunStatusTracker
+
+# --- suite orchestration glue (grid + heuristic baselines from the Rust config) ---
+# The 32-instance grid and per-instance heuristic reference costs live in the Rust
+# crate (problems::lost_sales::reference_costs, via invman_rust); this script only
+# carries the CMA-ES budget, policy roster, and arg-building/summary glue.
+COMMON_BUDGET = {
+    "training_episodes_default": 2000,
+    "es_population": 64,
+    "horizon_default": 2000,
+    "eval_horizon": int(1e6),
+    "eval_seeds": 10,
+    "sigma_init": 5.0,
+    "save_every": 1000,
+}
+EXPERIMENT_SPECS = [
+    {"id": "linear_categorical_quantity_q20", "rollout_backend": "rust", "status": "trusted"},
+    {"id": "linear_sigmoid_direct_quantity", "rollout_backend": "rust", "status": "trusted"},
+    {"id": "linear_soft_gated_direct_quantity", "rollout_backend": "rust", "status": "trusted"},
+    {"id": "nn_soft_gated_direct_quantity_h8_selu", "rollout_backend": "rust", "status": "provisional"},
+    {"id": "linear_hard_gated_direct_quantity", "rollout_backend": "rust", "status": "trusted"},
+    {"id": "linear_soft_gated_ordinal_quantity", "rollout_backend": "rust", "status": "trusted"},
+    {"id": "nn_soft_gated_ordinal_quantity_h8_selu", "rollout_backend": "rust", "status": "provisional"},
+    {"id": "soft_tree_depth1_linear_leaf", "rollout_backend": "rust", "status": "trusted"},
+    {"id": "soft_tree_depth2_linear_leaf", "rollout_backend": "rust", "status": "trusted"},
+]
+
+
+def _reference(name):
+    ref = invman_rust.lost_sales_reference_costs(name)
+    if ref is None:
+        raise KeyError(f"unknown lost-sales reference instance: {name}")
+    return ref
+
+
+def _instance_params(ref):
+    params = {
+        "problem": "lost_sales",
+        "demand_dist_name": ref["demand_kind"],
+        "demand_rate": ref["demand_rate"],
+        "lead_time": int(ref["lead_time"]),
+        "holding_cost": ref["holding_cost"],
+        "shortage_cost": ref["shortage_cost"],
+        "max_order_size": 20,
+        "horizon": COMMON_BUDGET["horizon_default"],
+        "eval_horizon": COMMON_BUDGET["eval_horizon"],
+        "eval_seeds": COMMON_BUDGET["eval_seeds"],
+        "track_demand": True,
+        "warm_up_periods_ratio": 0.2,
+        "seed": 123,
+    }
+    if ref["demand_kind"] == "MarkovModulatedPoisson2":
+        params.update(
+            demand_lambda_low=ref["demand_lambda_low"],
+            demand_lambda_high=ref["demand_lambda_high"],
+            demand_p00=ref["demand_p00"],
+            demand_p11=ref["demand_p11"],
+        )
+    return params
+
+
+def build_reference_args(name):
+    ref = _reference(name)
+    args = get_config([])
+    for key, value in _instance_params(ref).items():
+        setattr(args, key, value)
+    args.state_normalizer = "quantity_scale"
+    args.state_scale = 20.0
+    return args
+
+
+def get_benchmark_grid(grid_name="xin2020_extended_lost_sales"):
+    instances = []
+    for name in invman_rust.lost_sales_reference_instance_names():
+        if name == "vanilla_l4_p4_poisson5":
+            continue
+        ref = _reference(name)
+        instances.append({
+            "name": name,
+            "description": (
+                f"Lost-sales grid instance: {ref['demand_kind']} demand (mean 5), "
+                f"lead time {ref['lead_time']}, shortage cost {int(ref['shortage_cost'])}, holding cost 1."
+            ),
+            "params": _instance_params(ref),
+            "literature_metadata": {
+                "benchmark_family": "Xin2020TechnicalModels",
+                "reference_cost_source": ref["source"],
+                "reported_values": dict(ref["costs"]),
+            },
+        })
+    return {
+        "name": grid_name,
+        "grid_name": grid_name,
+        "description": (
+            "Vanilla lost-sales paper grid: {Poisson, Geometric, MMPP2+, MMPP2-} demand x "
+            "shortage cost {4, 19} x lead time {4, 6, 8, 10}, mean demand 5, holding cost 1."
+        ),
+        "axes": {"lead_time": [4, 6, 8, 10], "shortage_cost": [4, 19],
+                 "demand_case": ["poisson", "geometric", "mmpp2_pos", "mmpp2_neg"]},
+        "num_instances": len(instances),
+        "instances": instances,
+    }
+
+
+def _cost_summary(value):
+    return {"mean_cost": None if value is None else float(value),
+            "available": value is not None, "source": "reference_config"}
+
+
+def benchmark_reference_instance(name, *, eval_horizon=None, eval_seeds=None, **_ignored):
+    costs = _reference(name)["costs"]
+    return {
+        "reference_instance": name,
+        "evaluation": {
+            "myopic1": _cost_summary(costs["myopic1"]),
+            "myopic2": _cost_summary(costs["myopic2"]),
+            "svbs": _cost_summary(costs["svbs"]),
+        },
+        "optimal_reference": _cost_summary(costs["optimal"]),
+        "capped_base_stock_reference": _cost_summary(costs["capped_base_stock"]),
+    }
+
+
+def resolved_protocol_budget(parsed):
+    return {
+        "training_episodes_default": int(parsed.training_episodes)
+        if getattr(parsed, "training_episodes", None) is not None
+        else COMMON_BUDGET["training_episodes_default"],
+        "horizon_default": int(parsed.training_horizon)
+        if getattr(parsed, "training_horizon", None) is not None
+        else COMMON_BUDGET["horizon_default"],
+    }
+
+
+def configure_run_args(parsed, spec, root, reference_name, *, include_reference_in_experiment_name=True):
+    args = build_reference_args(reference_name)
+    budget = resolved_protocol_budget(parsed)
+    args.problem = "lost_sales"
+    args.reference_instance = reference_name
+    args.seed = parsed.seed
+    args.same_seed = parsed.same_seed
+    args.mp_num_processors = parsed.mp_num_processors
+    args.training_method = "cma"
+    args.training_episodes = budget["training_episodes_default"]
+    args.es_population = COMMON_BUDGET["es_population"]
+    args.horizon = budget["horizon_default"]
+    args.eval_horizon = parsed.eval_horizon
+    args.eval_seeds = parsed.eval_seeds
+    args.sigma_init = COMMON_BUDGET["sigma_init"]
+    args.save_every = COMMON_BUDGET["save_every"]
+    args.max_order_size = 20
+    args.policy_name = spec["id"]
+    apply_policy_name(args)
+    args.rollout_backend = spec["rollout_backend"]
+    args.results_dir = str(root / "results")
+    args.log_dir = str(root / "logs")
+    args.trained_models_dir = str(root / "models")
+    if include_reference_in_experiment_name:
+        args.experiment_name = f"{parsed.run_tag}_{reference_name}_{spec['id']}"
+    else:
+        args.experiment_name = f"{parsed.run_tag}_{spec['id']}"
+    return args
+
+
+def result_path_for(args):
+    return Path(args.results_dir) / f"{args.experiment_name}.json"
+# --- end suite orchestration glue ---
 
 
 def parse_args():
