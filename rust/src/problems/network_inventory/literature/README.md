@@ -8,19 +8,23 @@ Current literature anchors for `network_inventory`:
 
 Current status:
 
-- literature-verified on the exact serial Clark-Scarf optimal costs (exact-theory anchor)
-- single-node newsvendor rows reproduced exactly
-- env-simulation reproduction of the serial costs is the remaining (sim) task
+- the `env.rs` Pirhooshyaran network model is NOT literature-verified
+- single-node newsvendor rows are reproduced analytically (closed form)
+- the serial benchmark optima carried here (Pirhooshyaran Tables 2-3) are the TEXTBOOK Clark-Scarf
+  optima; their env-faithful, literature-verified home is the `serial_clark_scarf` family
 
 Why:
 
-- `SINGLE_NODE_BENCHMARK_ROWS` reproduces the paper's analytical newsvendor rows exactly
-- `SERIAL_BENCHMARK_ROWS` are the classical periodic-review serial multi-echelon optimum. The exact
-  Clark-Scarf decomposition solver `clark_scarf_serial_exact.rs` reproduces every published serial
-  optimal cost within 0.05% relative error, cross-checked against Snyder's `stockpyl.ssm_serial`
-  reference implementation (and to machine precision on discrete Poisson instances)
-- the discrete env-simulation reproduction of those analytical costs could not be recovered tightly
-  from public sources and remains the open (sim) task; it is separate from the exact-theory anchor
+- `SINGLE_NODE_BENCHMARK_ROWS` reproduces the paper's analytical newsvendor rows exactly (closed
+  form, not via the env simulation)
+- `SERIAL_BENCHMARK_ROWS` are the classical periodic-review serial multi-echelon optimum, which is
+  the `serial_clark_scarf` problem. The exact solver there (`serial_clark_scarf::exact`) reproduces
+  every published serial optimal cost within 0.05% relative error, and that family's env simulation
+  reproduces it too. These rows are carried here only because Pirhooshyaran's Tables 2-3 report them
+- the Pirhooshyaran network env in THIS family does NOT reproduce those optima (per-node production
+  + pipeline holding -> longer effective lead time; see `serial_echelon_simulation`), and its own
+  published serial protocol could not be recovered tightly from public sources, so this env remains
+  not literature-verified
 
 Use `literature/references.rs` as the source of truth for:
 
@@ -52,7 +56,7 @@ Serial multi-echelon (Clark-Scarf) exact-theory anchor:
   Example 6.1 = serial benchmark case 3 (3 stages, echelon holding [2,2,3], lead times [2,1,1],
   stockout 37.12, Normal(5,1) demand; optimal cost 47.65).
 - `stockpyl` (Snyder), `stockpyl.ssm_serial.optimize_base_stock_levels` — public reference
-  implementation. The repo solver `clark_scarf_serial_exact.rs` matches it to machine precision on
+  implementation. The repo solver `serial_clark_scarf::exact` matches it to machine precision on
   discrete Poisson instances and within 0.05% relative on every serial Normal-demand row.
   https://stockpyl.readthedocs.io
 

@@ -158,18 +158,23 @@ Current literature-verified package anchors:
     through the Rust analytical verification helper
   - the full Giannoccaro and Pontrandolfo (2010) 8-case truck-dispatch profit table is not carried
     as a verified benchmark because the public demand-signal semantics do not reproduce the rows
-- `network_inventory`
-  - the serial multi-echelon optimal costs are literature-verified on the exact Clark-Scarf
-    decomposition: `clark_scarf_serial_exact.rs` reproduces all ten Pirhooshyaran/Snyder (2021)
-    serial rows (case 3 = Snyder and Shen Example 6.1, optimal cost 47.65) within 0.05% relative
-    error, cross-checked against Snyder's public `stockpyl.ssm_serial` reference implementation
-  - this is an exact-theory anchor on the published serial optimum; the single-node newsvendor
-    rows are also reproduced exactly
-  - the sim investigation (`serial_echelon_simulation.rs`) found that the discrete `env.rs`
-    simulator does NOT reproduce the analytical optimum under the optimal echelon base-stock
-    policy, and the gap is structural: the env adds a per-node production step and pipeline
-    holding, so it is the richer Pirhooshyaran network model rather than the textbook Clark-Scarf
-    system. The optimum is therefore verified by the exact solver, not by env simulation.
+- `serial_clark_scarf`
+  - the textbook serial multi-echelon system (Clark & Scarf 1960). Its `env.rs` is
+    literature-verified BY SIMULATION: driven by the optimal echelon base-stock policy it
+    reproduces Snyder & Shen Example 6.1 optimal cost 47.65 and the discrete Poisson optima
+    (3-stage 72.04, etc.) within Monte-Carlo error
+  - the `exact` solver reproduces the same optima analytically (within 0.05%), cross-checked
+    against Snyder's public `stockpyl.ssm_serial`; exact and simulation agree
+  - this is the clean, training-ready env for the serial problem
+- `network_inventory` (NOT literature-verified)
+  - this family is the richer Pirhooshyaran & Snyder (2021) general supply-network model, NOT the
+    textbook serial system. Its `env.rs` adds per-node production steps and pipeline holding, so
+    it does not reproduce the textbook serial optimum (the `serial_echelon_simulation.rs` test
+    shows the structural gap quantitatively: ~147 / >100 vs 72.04)
+  - the single-node newsvendor rows are reproduced analytically; the serial benchmark rows it
+    carries are the textbook Clark-Scarf optima, verified in the `serial_clark_scarf` family
+  - the Pirhooshyaran env's own published serial protocol could not be recovered from public
+    sources, so this env stays not literature-verified
 
 Everything else should be treated as not literature-verified unless the problem README states
 otherwise explicitly.

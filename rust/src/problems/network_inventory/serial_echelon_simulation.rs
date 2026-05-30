@@ -4,7 +4,7 @@
 //!
 //! OBJECTIVE (the "sim" half of the serial Clark-Scarf verification)
 //! ----------------------------------------------------------------
-//! The exact-theory layer (`clark_scarf_serial_exact`) computes the optimal echelon
+//! The exact-theory layer (`serial_clark_scarf::exact`) computes the optimal echelon
 //! base-stock levels and optimal expected cost for the textbook serial system. This
 //! module drives the discrete `env.rs` network simulator with the optimal ECHELON
 //! base-stock policy to ask whether the env reproduces the analytical optimum.
@@ -32,7 +32,7 @@
 //!     above 72.04, confirming the gap is structural (model), not a tuning artifact.
 //!
 //! Conclusion: the published serial optimum is verified by the EXACT solver
-//! (`clark_scarf_serial_exact`); reproducing it by simulation requires a simulator
+//! (`serial_clark_scarf::exact`); reproducing it by simulation requires a simulator
 //! whose dynamics match the Clark-Scarf assumptions (single processing step, no
 //! pipeline holding in the optimized cost), which the Pirhooshyaran-shaped `env.rs`
 //! deliberately is not. This module's policy + harness remain useful for evaluating

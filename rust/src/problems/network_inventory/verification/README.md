@@ -11,15 +11,15 @@ Current verifier scope:
 - worked-transition accounting checks
 - exact finite-horizon DP comparison against the carried pairwise base-stock heuristic
 
-Literature-verified anchors:
+What is checked here (note: this env is NOT literature-verified):
 
 - single-node newsvendor rows: reproduced exactly by the closed-form newsvendor in
-  `verification/literature_benchmarks.rs`
-- serial Clark-Scarf optimal costs: `serial_rows_reproduced_by_exact_clark_scarf_solver` asserts
-  that `clark_scarf_serial_exact.rs` reproduces every published serial optimal cost
-  (Pirhooshyaran and Snyder 2021, Tables 2-3; case 3 = Snyder and Shen Example 6.1, cost 47.65)
-  within 0.5% relative error. The solver is cross-checked against Snyder's `stockpyl.ssm_serial`
-  reference implementation, and on discrete Poisson instances reproduces it to machine precision.
+  `verification/literature_benchmarks.rs` (analytical, not via the env simulation)
+- serial-row consistency: `serial_rows_reproduced_by_exact_clark_scarf_solver` checks that the
+  serial benchmark rows carried here (Pirhooshyaran and Snyder 2021, Tables 2-3; case 3 = Snyder
+  and Shen Example 6.1, cost 47.65) equal the textbook Clark-Scarf optima, using
+  `serial_clark_scarf::exact`. The serial optimum itself is literature-verified (exact + env
+  simulation) in the `serial_clark_scarf` family, not here.
 
 Simulation (sim) investigation:
 

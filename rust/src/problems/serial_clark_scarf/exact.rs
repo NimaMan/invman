@@ -5,14 +5,12 @@
 //! OBJECTIVE
 //! ---------
 //! Provide a repo-native EXACT solver for the classical periodic-review serial
-//! multi-echelon inventory system so that the serial benchmark rows carried in
-//! `literature::SERIAL_BENCHMARK_ROWS` (Pirhooshyaran and Snyder 2021, Tables 2-3,
-//! which reproduce Snyder and Shen "Fundamentals of Supply Chain Theory" Example 6.1)
-//! can be verified against published optimal costs rather than only cataloged.
-//!
-//! This is the exact-theory verification layer for the serial family. It is
-//! independent of the discrete `env.rs` network simulator: it computes the exact
-//! optimal echelon base-stock levels and optimal expected cost analytically.
+//! multi-echelon inventory system (Clark and Scarf 1960). It is the analytical anchor
+//! for the `serial_clark_scarf` family: it computes the exact optimal echelon
+//! base-stock levels and optimal expected cost. The family's `env.rs` simulation is
+//! verified to reproduce these same optima under the optimal echelon base-stock policy
+//! (see `verification`), and `network_inventory` (the Pirhooshyaran general-network
+//! model) reuses this solver to check the serial benchmark rows it carries.
 //!
 //! MODEL (Clark and Scarf 1960; Federgruen and Zipkin 1984; Chen and Zheng 1994)
 //! ----------------------------------------------------------------------------
@@ -59,9 +57,9 @@
 //! ----------------
 //! For N = 1 the recursion collapses to the single-stage newsvendor:
 //!   S*_1 = F^{-1}(p/(p+h_1)),  cost = h_1 * E[(S-D)^+] + p * E[(D-S)^+],
-//! which is exactly the already-verified single-node convention in
-//! `verification::literature_benchmarks`. The verification tests assert both the
-//! single-stage closed form and reproduction of all ten published serial rows.
+//! which is exactly the classical newsvendor base case. The tests here assert the
+//! single-stage closed form and exact reproduction of the discrete Poisson optima from
+//! Snyder's `stockpyl.ssm_serial` reference implementation.
 
 use statrs::distribution::ContinuousCDF;
 use statrs::distribution::{Discrete, Normal as StatNormal, Poisson};
@@ -388,7 +386,6 @@ pub fn solve_from_local_costs(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::problems::network_inventory::literature::SERIAL_BENCHMARK_ROWS;
 
     fn approx(a: f64, b: f64, tol: f64) -> bool {
         (a - b).abs() <= tol
@@ -457,30 +454,4 @@ mod tests {
         assert!(approx(s3.optimal_cost, 72.043543, 0.02), "3-stage poisson cost={}", s3.optimal_cost);
     }
 
-    #[test]
-    fn reproduces_published_serial_optimal_costs() {
-        // Every Pirhooshyaran/Snyder (2021) serial row is the exact Clark-Scarf
-        // analytical benchmark. Reproduce the published optimal cost within 0.5%
-        // relative tolerance (the published values are rounded; grid discretization
-        // accounts for the remainder).
-        for row in SERIAL_BENCHMARK_ROWS.iter() {
-            let sol = solve_from_local_costs(
-                row.holding_costs,
-                row.lead_times,
-                *row.shortage_costs.last().unwrap(),
-                SerialDemand::Normal { mean: row.demand_mean, std: row.demand_stddev },
-                GridParams::default(),
-            );
-            let rel = (sol.optimal_cost - row.published_average_cost).abs()
-                / row.published_average_cost;
-            assert!(
-                rel < 0.005,
-                "serial case {}: reproduced cost={:.4} published={:.4} rel_err={:.4}",
-                row.case_idx,
-                sol.optimal_cost,
-                row.published_average_cost,
-                rel
-            );
-        }
-    }
 }
