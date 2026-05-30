@@ -121,8 +121,23 @@ def literature_reproduction(args, reference_name, horizon, replications, seed):
     }
 
 
-def train_one(reference_name, depth, budget, parsed, out_dir):
+def best_constant_base_stock_over_operating_region(base_args, budget, seed):
+    """Best constant base-stock over a grid spanning the physical operating region (not the
+    Gijs reduced {50..100} grid, which starves the warehouse). This is the benchmark the
+    learned policy must beat."""
+    warehouse_top = min(int(base_args.warehouse_inventory_cap), 500)
+    retailer_top = min(int(base_args.retailer_inventory_cap), 60)
+    bench_args = _are.build_reference_args(base_args.reference_name)
+    bench_args.warehouse_base_stock_levels = list(range(0, warehouse_top + 1, 25))
+    bench_args.retailer_base_stock_levels = list(range(0, retailer_top + 1, 5))
+    return _are.best_constant_base_stock_baseline(
+        bench_args, horizon=budget["eval_horizon"], replications=budget["eval_seeds"], seed=seed
+    )
+
+
+def train_one(reference_name, design, depth, budget, parsed, out_dir):
     args = _are.build_reference_args(reference_name)
+    args.multi_action_design = design
     args.policy_name = make_soft_tree_policy_name(
         depth=depth, temperature=parsed.temperature, split_type="oblique", leaf_type="linear"
     )
@@ -137,7 +152,7 @@ def train_one(reference_name, depth, budget, parsed, out_dir):
     args.horizon = budget["horizon"]
     args.eval_horizon = budget["eval_horizon"]
     args.eval_seeds = budget["eval_seeds"]
-    args.experiment_name = f"{reference_name}_soft_tree_d{depth}"
+    args.experiment_name = f"{reference_name}_{design}_d{depth}"
     args.results_dir = str(out_dir / "results")
     args.log_dir = str(out_dir / "logs")
     args.trained_models_dir = str(out_dir / "models")
@@ -146,6 +161,7 @@ def train_one(reference_name, depth, budget, parsed, out_dir):
         payload, results_path = run_experiment(args)
     learned = payload["evaluation"]["learned_policy"]
     return {
+        "design": design,
         "depth": depth,
         "policy_name": args.policy_name,
         "policy_architecture": payload["policy_architecture"],
@@ -160,7 +176,9 @@ def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--reference", default="gijsbrechts2022_setting1")
     parser.add_argument("--budget", choices=sorted(BUDGETS), default="full")
-    parser.add_argument("--depths", default="1,2,3", help="comma-separated soft-tree depths to sweep")
+    parser.add_argument("--designs", default="grid,direct_level",
+                        help="comma-separated action designs to sweep (grid, direct_level)")
+    parser.add_argument("--depths", default="2,3", help="comma-separated soft-tree depths to sweep")
     parser.add_argument("--seed", type=int, default=2024)
     parser.add_argument("--mp_num_processors", type=int, default=4)
     parser.add_argument("--sigma_init", type=float, default=2.0)
@@ -189,20 +207,20 @@ def main():
         print("[literature] faithful gijs_2022 instance: no published absolute cost attached here "
               "(it reproduces on the sibling van_roy1997_* instance).")
 
-    baseline = _are.best_constant_base_stock_baseline(
-        base_args, horizon=budget["eval_horizon"], replications=budget["eval_seeds"], seed=parsed.seed
-    )
-    print(f"[benchmark] best constant base-stock (grid search): yw={baseline['warehouse_level']} "
+    baseline = best_constant_base_stock_over_operating_region(base_args, budget, parsed.seed)
+    print(f"[benchmark] best constant base-stock (operating-region grid): yw={baseline['warehouse_level']} "
           f"yr={baseline['retailer_level']} mean_cost={baseline['mean_cost']:.3f} +/- {baseline['std_cost']:.3f}")
 
+    designs = [d.strip() for d in str(parsed.designs).split(",") if d.strip()]
     a3c = published_a3c_savings(reference_name)
     runs = []
-    for depth in depths:
-        run = train_one(reference_name, depth, budget, parsed, out_dir)
-        runs.append(run)
-        gap = 100.0 * (run["mean_cost"] - baseline["mean_cost"]) / baseline["mean_cost"]
-        print(f"[train] soft_tree d{depth} oblique linear -> mean_cost={run['mean_cost']:.3f} "
-              f"+/- {run['std_cost']:.3f}  (vs best base-stock {gap:+.2f}%, {run['train_seconds']}s)")
+    for design in designs:
+        for depth in depths:
+            run = train_one(reference_name, design, depth, budget, parsed, out_dir)
+            runs.append(run)
+            gap = 100.0 * (run["mean_cost"] - baseline["mean_cost"]) / baseline["mean_cost"]
+            print(f"[train] {design:13s} d{depth} -> mean_cost={run['mean_cost']:.3f} "
+                  f"+/- {run['std_cost']:.3f}  (vs best base-stock {gap:+.2f}%, {run['train_seconds']}s)")
 
     best = min(runs, key=lambda r: r["mean_cost"])
     best_savings_pct = 100.0 * (baseline["mean_cost"] - best["mean_cost"]) / baseline["mean_cost"]
@@ -218,7 +236,7 @@ def main():
         "best_learned_savings_vs_constant_base_stock_pct": best_savings_pct,
     }
     (out_dir / "report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
-    print(f"\n[best] {best['policy_name']} mean_cost={best['mean_cost']:.3f} "
+    print(f"\n[best] design={best['design']} depth={best['depth']} mean_cost={best['mean_cost']:.3f} "
           f"-> {best_savings_pct:+.2f}% vs best constant base-stock"
           + (f"  (published A3C savings {a3c}%)" if a3c is not None else ""))
     print(f"       model under {out_dir / 'models'}; report -> {out_dir / 'report.json'}")
