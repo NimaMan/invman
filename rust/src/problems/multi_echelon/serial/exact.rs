@@ -9,7 +9,7 @@
 //! for the `multi_echelon::serial` family: it computes the exact optimal echelon
 //! base-stock levels and optimal expected cost. The family's `env.rs` simulation is
 //! verified to reproduce these same optima under the optimal echelon base-stock policy
-//! (see `verification`), and `network_inventory` (the Pirhooshyaran general-network
+//! (see `verification`), and `general_network` (the Pirhooshyaran general-network
 //! model) reuses this solver to check the serial benchmark rows it carries.
 //!
 //! MODEL (Clark and Scarf 1960; Federgruen and Zipkin 1984; Chen and Zheng 1994)

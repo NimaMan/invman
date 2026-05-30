@@ -1,0 +1,62 @@
+use crate::problems::multi_echelon::general_network::env::{NetworkEdge, NetworkNodeMode};
+
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct WorkedTransitionCase {
+    pub num_nodes: usize,
+    pub source_nodes: &'static [bool],
+    pub node_modes: &'static [NetworkNodeMode],
+    pub external_supplier_lead_times: &'static [usize],
+    pub edges: &'static [NetworkEdge],
+    pub initial_finished_inventory: &'static [usize],
+    pub initial_raw_inventory_by_relation: &'static [usize],
+    pub initial_internal_backlog_by_edge: &'static [usize],
+    pub initial_external_backlog: &'static [usize],
+    pub initial_supply_pipelines: &'static [&'static [usize]],
+    pub action: &'static [usize],
+    pub realized_external_demands: &'static [usize],
+    pub holding_costs: &'static [f64],
+    pub backlog_costs: &'static [f64],
+    pub expected_received_shipments_by_relation: &'static [usize],
+    pub expected_produced_finished_goods: &'static [usize],
+    pub expected_shipped_on_internal_edges: &'static [usize],
+    pub expected_shipped_to_external_customer: &'static [usize],
+    pub expected_next_finished_inventory: &'static [usize],
+    pub expected_next_raw_inventory_by_relation: &'static [usize],
+    pub expected_next_internal_backlog_by_edge: &'static [usize],
+    pub expected_next_external_backlog: &'static [usize],
+    pub expected_next_supply_pipelines: &'static [&'static [usize]],
+    pub expected_period_cost: f64,
+}
+
+pub(crate) const WORKED_TRANSITION_EDGES: &[NetworkEdge] = &[NetworkEdge {
+    from: 0,
+    to: 1,
+    lead_time: 1,
+}];
+
+pub(crate) const WORKED_TRANSITION_CASE: WorkedTransitionCase = WorkedTransitionCase {
+    num_nodes: 2,
+    source_nodes: &[true, false],
+    node_modes: &[NetworkNodeMode::Single, NetworkNodeMode::Single],
+    external_supplier_lead_times: &[1, 0],
+    edges: WORKED_TRANSITION_EDGES,
+    initial_finished_inventory: &[1, 0],
+    initial_raw_inventory_by_relation: &[0, 0],
+    initial_internal_backlog_by_edge: &[0],
+    initial_external_backlog: &[0, 0],
+    initial_supply_pipelines: &[&[0], &[1]],
+    action: &[1, 1],
+    realized_external_demands: &[0, 1],
+    holding_costs: &[1.0, 1.0],
+    backlog_costs: &[0.0, 5.0],
+    expected_received_shipments_by_relation: &[0, 1],
+    expected_produced_finished_goods: &[1, 0],
+    expected_shipped_on_internal_edges: &[1],
+    expected_shipped_to_external_customer: &[0, 0],
+    expected_next_finished_inventory: &[1, 0],
+    expected_next_raw_inventory_by_relation: &[0, 0],
+    expected_next_internal_backlog_by_edge: &[0],
+    expected_next_external_backlog: &[0, 1],
+    expected_next_supply_pipelines: &[&[1], &[1]],
+    expected_period_cost: 7.0,
+};

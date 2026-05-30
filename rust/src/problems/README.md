@@ -32,7 +32,7 @@ Current Rust-first families:
 - `joint_replenishment`
 - `one_warehouse_multi_retailer`
 - `decentralized_inventory_control`
-- `network_inventory`
+- `general_network`
 - `spare_parts_inventory`
 - `ameliorating_inventory`
 - `procurement_removal_inventory`
@@ -166,7 +166,7 @@ Current literature-verified package anchors:
   - the `exact` solver reproduces the same optima analytically (within 0.05%), cross-checked
     against Snyder's public `stockpyl.ssm_serial`; exact and simulation agree
   - this is the clean, training-ready env for the serial problem
-- `network_inventory` (NOT literature-verified)
+- `general_network` (NOT literature-verified)
   - this family is the richer Pirhooshyaran & Snyder (2021) general supply-network model, NOT the
     textbook serial system. Its `env.rs` adds per-node production steps and pipeline holding, so
     it does not reproduce the textbook serial optimum (the `serial_echelon_simulation.rs` test

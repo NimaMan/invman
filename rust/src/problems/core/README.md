@@ -32,7 +32,7 @@ Examples:
   - objective: holding + shortage + procurement
 - `perishable_inventory`
   - adds age buckets and aging / waste mechanics to the physical layer
-- `network_inventory`
+- `general_network`
   - expands the physical layer into a directed stock-flow network with node demand and edge
     pipelines
 - disruption scenarios such as oil logistics with a closed Strait of Hormuz
