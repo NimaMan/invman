@@ -25,9 +25,10 @@ use crate::problems::multi_echelon::references::{
     VAN_ROY_1997_CASE_STUDY, VERIFICATION_PROBLEM_INSTANCE, WORKED_TRANSITION_REFERENCE,
 };
 use crate::problems::multi_echelon::rollout::{
-    parse_demand_distribution, parse_policy_action_mode, parse_policy_feature_mode,
-    parse_rollout_objective, population_rollout as practical_population_rollout,
-    rollout as practical_rollout, MultiEchelonRolloutConfig,
+    build_policy_features_with_mode, parse_demand_distribution, parse_policy_action_mode,
+    parse_policy_feature_mode, parse_rollout_objective, parse_state_normalizer,
+    population_rollout as practical_population_rollout, rollout as practical_rollout,
+    MultiEchelonRolloutConfig,
 };
 use crate::problems::multi_echelon::verification::{
     gijs_relative_verification_summary, van_roy_reproduction_summary, GijsRelativeVerificationRow,
@@ -788,6 +789,8 @@ fn multi_echelon_search_stationary_policy(
     reference_warehouse_levels=None,
     reference_retailer_levels=None,
     allocation_mode="min_shortage",
+    state_normalizer="identity",
+    state_scale=None,
     temperature=0.25,
     split_type="oblique",
     leaf_type="linear",
@@ -829,6 +832,8 @@ fn multi_echelon_soft_tree_rollout(
     reference_warehouse_levels: Option<Vec<usize>>,
     reference_retailer_levels: Option<Vec<usize>>,
     allocation_mode: &str,
+    state_normalizer: &str,
+    state_scale: Option<f64>,
     temperature: f32,
     split_type: &str,
     leaf_type: &str,
@@ -886,6 +891,8 @@ fn multi_echelon_soft_tree_rollout(
         include_period_feature,
         warehouse_base_stock_mode: parse_warehouse_base_stock_mode(warehouse_base_stock_mode)?,
         allocation_mode: parse_allocation_mode(allocation_mode)?,
+        state_normalizer: parse_state_normalizer(state_normalizer)?,
+        state_scale,
         temperature,
         split_type: parse_split_type(split_type)?,
         leaf_type: parse_leaf_type(leaf_type)?,
@@ -936,6 +943,8 @@ fn multi_echelon_soft_tree_rollout(
     reference_warehouse_levels=None,
     reference_retailer_levels=None,
     allocation_mode="min_shortage",
+    state_normalizer="identity",
+    state_scale=None,
     temperature=0.25,
     split_type="oblique",
     leaf_type="linear",
@@ -977,6 +986,8 @@ fn multi_echelon_soft_tree_population_rollout(
     reference_warehouse_levels: Option<Vec<usize>>,
     reference_retailer_levels: Option<Vec<usize>>,
     allocation_mode: &str,
+    state_normalizer: &str,
+    state_scale: Option<f64>,
     temperature: f32,
     split_type: &str,
     leaf_type: &str,
@@ -1034,6 +1045,8 @@ fn multi_echelon_soft_tree_population_rollout(
         include_period_feature,
         warehouse_base_stock_mode: parse_warehouse_base_stock_mode(warehouse_base_stock_mode)?,
         allocation_mode: parse_allocation_mode(allocation_mode)?,
+        state_normalizer: parse_state_normalizer(state_normalizer)?,
+        state_scale,
         temperature,
         split_type: parse_split_type(split_type)?,
         leaf_type: parse_leaf_type(leaf_type)?,
@@ -1347,7 +1360,49 @@ fn multi_echelon_build_raw_state(
     build_raw_state(&state)
 }
 
+/// Report the learned-policy input dimension for this problem, computed by the exact
+/// feature builder the rollout uses. This makes the problem the single source of truth for
+/// its own policy I/O contract, so the Python policy builder no longer has to re-derive the
+/// dimension with a formula that can drift from the Rust decision-state layout.
+#[pyfunction]
+#[pyo3(signature = (
+    num_retailers,
+    warehouse_lead_time,
+    retailer_lead_time,
+    inventory_dynamics_mode,
+    policy_feature_mode="full_decision_state",
+    include_period_feature=false
+))]
+fn multi_echelon_policy_feature_dim(
+    num_retailers: usize,
+    warehouse_lead_time: usize,
+    retailer_lead_time: usize,
+    inventory_dynamics_mode: &str,
+    policy_feature_mode: &str,
+    include_period_feature: bool,
+) -> PyResult<usize> {
+    // A zero state of the correct shape; only the feature-vector LENGTH is needed (the
+    // inventory caps scale the values, not the length), so unit caps are fine.
+    let state = initialize_state(
+        0,
+        &vec![0u32; warehouse_lead_time],
+        &vec![0i32; num_retailers.max(1)],
+        &vec![vec![0u32; retailer_lead_time]; num_retailers.max(1)],
+    )?;
+    let features = build_policy_features_with_mode(
+        &state,
+        1,
+        1,
+        include_period_feature,
+        1,
+        parse_policy_feature_mode(policy_feature_mode)?,
+        parse_inventory_dynamics_mode(inventory_dynamics_mode)?,
+    )?;
+    Ok(features.len())
+}
+
 pub fn register_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add_function(wrap_pyfunction!(multi_echelon_policy_feature_dim, m)?)?;
     m.add_function(wrap_pyfunction!(multi_echelon_benchmark_reference, m)?)?;
     m.add_function(wrap_pyfunction!(multi_echelon_list_reference_instances, m)?)?;
     m.add_function(wrap_pyfunction!(multi_echelon_get_reference_instance, m)?)?;

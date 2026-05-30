@@ -152,7 +152,23 @@ def _build_multi_echelon(args, spec) -> Policy:
             "allowed_values": [[int(v) for v in wbsl], [int(v) for v in rbsl]],
         }
     )
-    input_dim = int(args.warehouse_lead_time) + int(args.num_retailers) * int(args.retailer_lead_time)
+    # The learned-policy input dimension is owned by the problem: ask the Rust module to
+    # report it (it runs the same feature builder the rollout uses), rather than re-deriving
+    # it here with a formula that drifts from the env's decision-state layout (the
+    # `lw + K*lr` formula was only correct for gijs_2022 with lw>=1, lr>=1 and broke on the
+    # lw=0 van_roy_1997 simple problem).
+    import invman_rust
+
+    input_dim = int(
+        invman_rust.multi_echelon_policy_feature_dim(
+            num_retailers=int(args.num_retailers),
+            warehouse_lead_time=int(args.warehouse_lead_time),
+            retailer_lead_time=int(args.retailer_lead_time),
+            inventory_dynamics_mode=str(getattr(args, "inventory_dynamics_mode", "gijs_2022")),
+            policy_feature_mode="raw_decision_state",
+            include_period_feature=bool(getattr(args, "include_period_feature", False)),
+        )
+    )
     return Policy(
         backbone="soft_tree",
         input_dim=input_dim,
@@ -163,6 +179,14 @@ def _build_multi_echelon(args, spec) -> Policy:
         allowed_values=action_spec.get("allowed_values"),
         max_order_size=int(max(wbsl)),
         action_adapter="identity",
+        # lost-sales-style policy interface: the env emits the pure decision state and the
+        # policy normalizes it before acting. The multi-echelon policy owns its own
+        # divide-by-scale normalization (rather than the lost-sales --state_normalizer arg),
+        # scaling by the largest base-stock / order-up-to level across both echelons -- the
+        # action magnitude that bounds the inventory positions the policy steers to, the
+        # multi-echelon analogue of lost_sales' state_scale = max_order_size.
+        state_normalizer="divide_by_scale",
+        state_scale=float(getattr(args, "state_scale", None) or max(max(wbsl), max(rbsl))),
         depth=int(spec.tree_depth),
         temperature=float(spec.tree_temperature),
         split_type=spec.tree_split_type,

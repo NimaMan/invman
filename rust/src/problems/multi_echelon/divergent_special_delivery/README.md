@@ -139,14 +139,30 @@ The environment interface remains raw-state first:
 - feature construction happens in `rollout.rs`
 - normalization belongs in rollout or policy code, not in the environment
 
-For learned policies, the Rust rollout currently supports:
+For learned policies, the Rust rollout currently supports these observation modes:
 
-- `full_decision_state`
+- `raw_decision_state` (default for training) — the **pure** decision-state observation
+  (warehouse on-hand+pipeline, retailer on-hand+pipeline), UNNORMALIZED. This mirrors the
+  lost-sales policy interface: the env emits the raw state and the **policy** normalizes it.
+- `full_decision_state` — the same layout, but pre-normalized by the inventory caps inside
+  the feature builder (normalization baked into feature construction).
 - `symmetric_summary`
 - `compact_summary`
 
-The last feature preset is a 22-feature compact summary. It is not itself a
-literature-verified formulation boundary.
+`compact_summary` is a 22-feature engineered summary; it is not a literature-verified
+formulation boundary.
+
+Observation normalization is a **policy-owned** step (`StateNormalizer`, mirroring
+`lost_sales::env::StateNormalizer`), applied to the observation in the rollout before the
+soft tree acts:
+
+- `identity` — leave the observation as-is (used by the pre-normalized feature modes)
+- `divide_by_scale` — divide the raw observation by a single positive `state_scale`
+
+The Python policy builder sets the multi-echelon policy to `raw_decision_state` +
+`divide_by_scale`, with `state_scale` = the largest base-stock / order-up-to level across
+both echelons (the action magnitude bounding the inventory positions the policy steers to,
+the multi-echelon analogue of lost_sales' `state_scale = max_order_size`).
 
 For action parameterization, the repo currently supports:
 

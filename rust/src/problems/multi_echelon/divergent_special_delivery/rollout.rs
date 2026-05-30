@@ -37,9 +37,21 @@ pub enum PolicyActionMode {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PolicyFeatureMode {
+    /// The pure decision-state observation (warehouse on-hand+pipeline, retailer
+    /// on-hand+pipeline), UNNORMALIZED. Normalization is applied separately by the
+    /// policy-owned StateNormalizer, mirroring the lost-sales policy interface
+    /// (env emits the raw state; the policy scales it and produces an action).
+    RawDecisionState,
     FullDecisionState,
     SymmetricSummary,
     CompactSummary,
+}
+
+/// Policy-owned observation normalization, mirroring lost_sales::env::StateNormalizer.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum StateNormalizer {
+    Identity,
+    DivideByScale,
 }
 
 #[derive(Clone)]
@@ -73,6 +85,11 @@ pub struct MultiEchelonRolloutConfig {
     pub include_period_feature: bool,
     pub warehouse_base_stock_mode: WarehouseBaseStockMode,
     pub allocation_mode: AllocationMode,
+    // Policy-owned observation normalization (see StateNormalizer). For the raw_decision_state
+    // policy this scales the pure state before the soft tree acts; the pre-normalized feature
+    // modes use Identity.
+    pub state_normalizer: StateNormalizer,
+    pub state_scale: Option<f64>,
     pub temperature: f32,
     pub split_type: SoftTreeSplitType,
     pub leaf_type: SoftTreeLeafType,
@@ -119,6 +136,7 @@ pub fn parse_policy_action_mode(value: &str) -> PyResult<PolicyActionMode> {
 
 pub fn parse_policy_feature_mode(value: &str) -> PyResult<PolicyFeatureMode> {
     match value {
+        "raw_decision_state" | "raw" | "raw_state" => Ok(PolicyFeatureMode::RawDecisionState),
         "full_decision_state" | "full" => Ok(PolicyFeatureMode::FullDecisionState),
         "symmetric_summary" | "summary" => Ok(PolicyFeatureMode::SymmetricSummary),
         "compact_summary" => Ok(PolicyFeatureMode::CompactSummary),
@@ -126,6 +144,59 @@ pub fn parse_policy_feature_mode(value: &str) -> PyResult<PolicyFeatureMode> {
             "unsupported policy_feature_mode '{other}'"
         ))),
     }
+}
+
+pub fn parse_state_normalizer(value: &str) -> PyResult<StateNormalizer> {
+    match value {
+        "identity" | "none" | "raw" => Ok(StateNormalizer::Identity),
+        "quantity_scale" | "divide_by_scale" | "scale" | "scalar_divide" => {
+            Ok(StateNormalizer::DivideByScale)
+        }
+        other => Err(PyValueError::new_err(format!(
+            "unsupported state_normalizer '{other}', expected identity or divide_by_scale"
+        ))),
+    }
+}
+
+/// Apply the policy-owned normalization to the raw observation. Identity leaves the
+/// already-engineered/normalized feature modes untouched; DivideByScale scales the pure
+/// decision state by a single positive scale (the lost-sales convention).
+pub fn normalize_policy_state(
+    raw: Vec<f32>,
+    state_normalizer: StateNormalizer,
+    state_scale: Option<f64>,
+) -> PyResult<Vec<f32>> {
+    match state_normalizer {
+        StateNormalizer::Identity => Ok(raw),
+        StateNormalizer::DivideByScale => {
+            let scale = state_scale.ok_or_else(|| {
+                PyValueError::new_err("divide_by_scale state normalization requires state_scale")
+            })?;
+            if scale <= 0.0 {
+                return Err(PyValueError::new_err("state_scale must be positive"));
+            }
+            let scale = scale as f32;
+            Ok(raw.into_iter().map(|value| value / scale).collect())
+        }
+    }
+}
+
+/// The pure decision-state observation, UNNORMALIZED: warehouse on-hand-after-arrival,
+/// outstanding warehouse pipeline, then per-retailer on-hand-after-arrival and outstanding
+/// pipeline. Same layout/length as the full_decision_state features but with the raw integer
+/// magnitudes; the policy-owned StateNormalizer scales it afterwards.
+fn build_raw_decision_state_features(
+    state: &crate::problems::multi_echelon::env::MultiEchelonState,
+    inventory_dynamics_mode: InventoryDynamicsMode,
+) -> PyResult<Vec<f32>> {
+    let decision_state = build_decision_state_with_mode(state, inventory_dynamics_mode)?;
+    let mut features = vec![decision_state.warehouse_available as f32];
+    features.extend(decision_state.warehouse_future.iter().map(|value| *value as f32));
+    features.extend(decision_state.retailer_available.iter().map(|value| *value as f32));
+    for retailer_future in &decision_state.retailer_future {
+        features.extend(retailer_future.iter().map(|value| *value as f32));
+    }
+    Ok(features)
 }
 
 fn build_full_decision_state_features(
@@ -393,6 +464,9 @@ pub fn build_policy_features_with_mode(
     inventory_dynamics_mode: InventoryDynamicsMode,
 ) -> PyResult<Vec<f32>> {
     let mut features = match policy_feature_mode {
+        PolicyFeatureMode::RawDecisionState => {
+            build_raw_decision_state_features(state, inventory_dynamics_mode)?
+        }
         PolicyFeatureMode::FullDecisionState => build_full_decision_state_features(
             state,
             warehouse_inventory_cap,
@@ -497,14 +571,19 @@ pub fn rollout(
     let mut period_costs = Vec::with_capacity(config.horizon);
 
     for _ in 0..config.horizon {
-        let policy_state = build_policy_features_with_mode(
-            &state,
-            config.warehouse_inventory_cap,
-            config.retailer_inventory_cap,
-            config.include_period_feature,
-            config.horizon,
-            config.policy_feature_mode,
-            config.inventory_dynamics_mode,
+        // Pure observation from the env, then policy-owned normalization (lost-sales-style).
+        let policy_state = normalize_policy_state(
+            build_policy_features_with_mode(
+                &state,
+                config.warehouse_inventory_cap,
+                config.retailer_inventory_cap,
+                config.include_period_feature,
+                config.horizon,
+                config.policy_feature_mode,
+                config.inventory_dynamics_mode,
+            )?,
+            config.state_normalizer,
+            config.state_scale,
         )?;
         if policy_state.len() != config.input_dim {
             return Err(PyValueError::new_err(

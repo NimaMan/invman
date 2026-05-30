@@ -255,6 +255,8 @@ def _dual_sourcing_kwargs(policy, args):
 # --- multi_echelon (soft_tree only) ------------------------------------------
 
 def _multi_echelon_kwargs(policy, args):
+    # lost-sales-style policy: feed the pure decision state and let the policy normalize it.
+    state_normalizer, state_scale = _state_normalization(policy)
     return dict(
         input_dim=int(policy.input_dim),
         depth=int(policy.depth),
@@ -264,6 +266,9 @@ def _multi_echelon_kwargs(policy, args):
         split_type=str(policy.split_type),
         leaf_type=str(policy.leaf_type),
         action_mode=str(policy.control_mode),
+        policy_feature_mode="raw_decision_state",
+        state_normalizer=state_normalizer,
+        state_scale=state_scale,
         warehouse_lead_time=int(args.warehouse_lead_time),
         retailer_lead_time=int(args.retailer_lead_time),
         num_retailers=int(args.num_retailers),
