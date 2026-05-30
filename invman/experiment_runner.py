@@ -151,9 +151,12 @@ def run_experiment(args):
 
         tracker.update("evaluating_learned_policy")
         learned_policy_results = evaluate_model(trained_model, args)
-        # Heuristic baselines are computed in Rust now; the Python rollout/heuristics
-        # were removed in the Python-cleanup migration.
-        heuristic_results = {}
+        # Heuristic baselines come from the Rust reference-cost config
+        # (problems::lost_sales::reference_costs) via invman_rust; the Python
+        # rollout/heuristics were removed in the Python-cleanup migration.
+        from invman.lost_sales_reference import heuristic_baselines_for
+
+        heuristic_results = heuristic_baselines_for(args)
         tracker.update("writing_results")
         payload = build_result_payload(
             args,
