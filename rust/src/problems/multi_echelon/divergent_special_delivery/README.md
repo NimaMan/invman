@@ -167,12 +167,39 @@ the multi-echelon analogue of lost_sales' `state_scale = max_order_size`).
 For action parameterization, the repo currently supports:
 
 - `direct_base_stock`
-  - Gijs-aligned reduced action design: state-dependent warehouse and shared retailer order-up-to
-    levels
+  - state-dependent warehouse and shared retailer order-up-to levels
 - `anchor_adjustment`
   - repo-local variant that adjusts around one fixed anchor pair
 - `direct_warehouse_order_store_target`
   - Van Roy NDP-style control parameterization: direct warehouse order plus shared retailer target
+
+## Action-Space Design (and the Gijs `{50..100}` ambiguity)
+
+**We design the action space for the problem (the MDP), not to match Gijs's parameters.** Our
+training is separate from Gijs's training: Gijs's policy, their action grid, and their tuning are
+*their* design choices; we choose ours to suit this problem, and use the published numbers only as a
+benchmark to beat. See `autoresearch/program_multi_echelon.md` for the full discussion.
+
+The base-stock action grids in `references.rs` (`GIJS_SETTING_WAREHOUSE_LEVELS = {50..100}`,
+retailer `{0..40}`/`{0..50}`) are transcribed from Gijs's *reduced* learned-policy grid. **That grid
+is internally inconsistent and unfit as an installation warehouse base-stock grid for these
+settings:** the paper states the learned warehouse base-stock `y^w_St ∈ {50..100}`, yet its own
+constant base-stock benchmark for the same setting uses `yw = 330` (setting 1) / `yw = 460`
+(setting 2). A warehouse base-stock of 100 cannot reach the ~300-330 the problem needs.
+
+Empirically (gijs_2022, setting 1): the best constant base-stock over `{50..100}×{0..40}` is the
+degenerate `(yw=100, yr=0)` → cost ~3090 (warehouse pinned at the grid max; with free expedite,
+`cw=0`, retailers hold nothing and everything is expedited free). Widen the warehouse grid to span
+~300 and the best constant base-stock is `(yw=300, yr=25)` → ~911 — 3.4× better, and matching the
+published `(330, 23)` scale. So **the `{50..100}` warehouse grid is a transcription/parameterization
+artifact, not a faithful action space.** Likely `{50..100}` was an echelon level, an order-quantity
+grid, or a different parameterization in the paper; the audit flagged the Gijs action space as
+unresolved.
+
+**Design rule for this problem:** the warehouse and retailer order-up-to grids must span the
+operating region the costs actually drive the system to (warehouse ~up to 350-400, retailer ~up to
+40-60 for these settings), for *both* the constant-base-stock benchmark and the learned action space.
+The faithful env dynamics (`gijs_2022`) are verified; only the carried action grid needs widening.
 
 ## Gijs Subfamily
 

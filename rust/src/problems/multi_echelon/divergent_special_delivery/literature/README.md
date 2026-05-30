@@ -119,8 +119,9 @@ The current Rust runtime:
 
 - every heuristic rollout starts from the zero state
 - horizon and warm-up are explicit script parameters
-- the audit script `scripts/multi_echelon/audit_literature_protocol.py` sweeps those choices at the
-  published heuristic levels and writes machine-readable output to `outputs/multi_echelon/`
+- the literature-protocol sweep over those choices at the published heuristic levels (warm-up ratio,
+  allocation mode, base-stock mode) is reproducible in Rust via
+  `invman_rust.multi_echelon_van_roy_reproduction_summary(...)` / `multi_echelon_search_stationary_policy(...)`
 
 Systematic sweeps over warm-up ratio (0%, 10%, 20%), allocation mode (min_shortage, proportional),
 and base-stock mode (regular, echelon) produced no combination that closes the gaps beyond what the
@@ -139,17 +140,46 @@ Those are carried as published comparison rows. They are not the primary absolut
 verification reference because Van Roy already provides the stronger absolute constant-base-stock
 and NDP benchmark numbers.
 
-## Other Benchmark Sources
+## Related Literature on the Same / Closely-Related Problem
 
-- Cheng et al. (2023), Winter Simulation Conference
-  - reuses the two 10-retailer Van Roy / Gijs case-study settings
-  - reports relative improvements: NDP `10%`, A3C `9%` and `12%`, RBF-DQN `12%`
-  - does not provide new absolute constant-base-stock benchmark rows
-- Stochastic Optimal Control with Neural Networks and Application to a Retailer Inventory Problem
-  (CDC-ECC 2005)
-  - reuses the first 10-retailer Van Roy case-study parameters
-  - reports learned-controller averages `1176` and `860`
-  - uses a single `5 x 10^5`-step simulation path from random initial states
+This is a **divergent two-echelon** system (one warehouse, K retailers) that is a **hybrid of
+backlogging and lost sales** via same-day special delivery. Comparators on the same or closely
+related problem (record absolute rows in `references.rs` when adding one):
+
+- **Van Roy, Bertsekas, Lee & Tsitsiklis (1997)** — "A neuro-dynamic programming approach to retailer
+  inventory management" (Proc. 36th IEEE CDC). The base model; source of the carried absolute
+  constant base-stock and NDP rows.
+- **Gijsbrechts, Boute, Van Mieghem & Zhang (2022)** — "Can Deep Reinforcement Learning Improve
+  Inventory Management?" (M&SOM 24(3):1349–1368). A3C DRL on the same two Van Roy settings; source of
+  the relative A3C savings (8.95% / 12.09%).
+- **Nahmias & Smith (1994)** — "Optimizing inventory levels in a two-echelon retailer system with
+  partial lost sales" (Management Science 40(5):582–596). Closest classical analogue (divergent,
+  partial lost sales); Gijs cites it as closely related.
+- **Federgruen & Zipkin (1984)** — "Approximations of dynamic, multilocation production and inventory
+  problems" (Management Science 30(1):69–84). Classical divergent multilocation structure.
+- **de Kok, Grob, Laumanns, Minner, Rambau & Schade (2018)** — "A typology and literature review on
+  stochastic multi-echelon inventory models" (EJOR 269(3):955–983). Positions the divergent /
+  lost-sales variants.
+- **Kaynov et al. (2024)** — DRL for the one-warehouse multi-retailer (OWMR) divergent system
+  (IJPE 267:109088). Modern DRL benchmark on the same topology; see the repo's
+  `one_warehouse_multi_retailer` problem.
+- **Cheng et al. (2023)** — Winter Simulation Conference. Reuses the two 10-retailer Van Roy / Gijs
+  settings; reports relative improvements NDP `10%`, A3C `9%`/`12%`, RBF-DQN `12%`. No new absolute
+  constant-base-stock rows.
+- **"Stochastic Optimal Control with Neural Networks ... Retailer Inventory Problem" (CDC-ECC 2005)**
+  — reuses the first 10-retailer Van Roy case-study parameters; reports learned-controller averages
+  `1176` and `860` from a single `5×10^5`-step path from random initial states.
+
+### How we use them (policy-design stance)
+
+We **design our policy for the problem**, not to reproduce any paper's policy, action grid, or tuning
+(full discussion in `autoresearch/program_multi_echelon.md`). The published numbers are **benchmarks**:
+we report our learned policy's improvement over the in-env best constant base-stock against the
+published A3C / NDP savings, and **if we beat the published results we report that**. Only the env
+(MDP transition + cost) must be faithful; the action space and features are ours to choose for the
+problem at hand. In particular, the Gijs reduced warehouse grid `{50..100}` is *not* adopted as our
+action space — it is too low for these settings (the problem needs warehouse base-stock ~300-460); see
+the package README's "Action-Space Design" section.
 
 ## Repo Algorithm Status
 

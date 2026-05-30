@@ -28,8 +28,10 @@
 - The main failure mode we found was benchmark framing, not just tuning:
   - the exploratory soft-tree benchmark is a different algorithm family from the paper's A3C row
   - its reduced-grid repo comparator is not the published Van Roy constant base-stock benchmark row
-- The protocol audit script `scripts/multi_echelon/audit_literature_protocol.py` isolates horizon
-  and warm-up sensitivity while keeping the current zero-state initialization fixed.
+- The protocol sweep (horizon / warm-up / allocation / base-stock mode sensitivity at the published
+  levels, keeping the zero-state initialization fixed) is reproducible in Rust via
+  `invman_rust.multi_echelon_van_roy_reproduction_summary(...)` and
+  `multi_echelon_search_stationary_policy(...)`.
 - Current status:
   - the literature rows are present and checked
   - the strict Van Roy reproduction summary is available through the Python binding
