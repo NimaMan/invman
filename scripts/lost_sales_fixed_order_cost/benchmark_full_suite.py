@@ -10,17 +10,15 @@ if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
 
 from invman.experiment_runner import run_experiment
-from invman.problems.lost_sales_fixed_order_cost.benchmark import benchmark_reference_instance
-from invman.problems.lost_sales_fixed_order_cost.experiment_spec import (
+from invman.lost_sales_fixed_order_cost_benchmark import (
     COMMON_BUDGET,
     EXPERIMENT_SPECS,
+    benchmark_reference_instance,
     configure_run_args,
-    result_path_for,
-    resolved_protocol_budget,
-)
-from invman.problems.lost_sales_fixed_order_cost.reference_instances import (
     get_benchmark_grid,
     get_reference_instance,
+    resolved_protocol_budget,
+    result_path_for,
 )
 from invman.utils import RunStatusTracker
 
@@ -167,8 +165,10 @@ def _render_markdown(summary: dict) -> str:
         "| --- | ---: | ---: | --- |",
     ]
     for policy_id, item in summary["aggregate"]["policies"].items():
+        gap = item["mean_relative_gap_pct_vs_best_heuristic"]
+        gap_str = "n/a" if gap is None else f"{gap:.4f}"
         lines.append(
-            f"| `{policy_id}` | `{item['mean_relative_gap_pct_vs_best_heuristic']:.4f}` | "
+            f"| `{policy_id}` | `{gap_str}` | "
             f"`{item['better_than_best_heuristic_count']}/{summary['num_instances']}` | `{item['status']}` |"
         )
 
@@ -203,16 +203,17 @@ def _summarize_instances(instances: list[dict]) -> dict:
             learned_cost = instance["learned_policies"][policy_id]["evaluation"]["learned_policy"]["mean_cost"]
             best_heuristic = instance["comparative_summary"]["best_heuristic_cost"]
             costs.append(learned_cost)
-            rel_gap = 100.0 * (learned_cost - best_heuristic) / best_heuristic
-            rel_gaps.append(rel_gap)
-            if learned_cost < best_heuristic:
-                better_count += 1
+            if best_heuristic is not None:
+                rel_gaps.append(100.0 * (learned_cost - best_heuristic) / best_heuristic)
+                if learned_cost < best_heuristic:
+                    better_count += 1
         if not costs:
             continue
         policies[policy_id] = {
             "num_instances": len(costs),
             "mean_cost_across_instances": float(sum(costs) / len(costs)),
-            "mean_relative_gap_pct_vs_best_heuristic": float(sum(rel_gaps) / len(rel_gaps)),
+            "mean_relative_gap_pct_vs_best_heuristic": float(sum(rel_gaps) / len(rel_gaps)) if rel_gaps else None,
+            "instances_with_best_heuristic": int(len(rel_gaps)),
             "better_than_best_heuristic_count": int(better_count),
             "status": status,
         }
@@ -260,11 +261,17 @@ def _build_instance_payload(parsed, root: Path, instance: dict, selected_ids: se
         }
 
     heuristic_eval = heuristic_summary["evaluation"]
-    best_heuristic_name, best_heuristic_entry = min(
-        heuristic_eval.items(),
-        key=lambda kv: kv[1]["mean_cost"],
-    )
-    best_heuristic_cost = float(best_heuristic_entry["mean_cost"])
+    available_heuristics = {
+        name: entry for name, entry in heuristic_eval.items() if entry.get("mean_cost") is not None
+    }
+    if available_heuristics:
+        best_heuristic_name, best_heuristic_entry = min(
+            available_heuristics.items(),
+            key=lambda kv: kv[1]["mean_cost"],
+        )
+        best_heuristic_cost = float(best_heuristic_entry["mean_cost"])
+    else:
+        best_heuristic_name, best_heuristic_cost = None, None
 
     comparative = {
         "best_heuristic_name": best_heuristic_name,
@@ -273,10 +280,16 @@ def _build_instance_payload(parsed, root: Path, instance: dict, selected_ids: se
     }
     for policy_id, item in learned_policies.items():
         learned_cost = float(item["evaluation"]["learned_policy"]["mean_cost"])
-        comparative["policy_gaps"][policy_id] = {
-            "gap_vs_best_heuristic": learned_cost - best_heuristic_cost,
-            "relative_gap_pct_vs_best_heuristic": 100.0 * (learned_cost - best_heuristic_cost) / best_heuristic_cost,
-        }
+        if best_heuristic_cost is None:
+            comparative["policy_gaps"][policy_id] = {
+                "gap_vs_best_heuristic": None,
+                "relative_gap_pct_vs_best_heuristic": None,
+            }
+        else:
+            comparative["policy_gaps"][policy_id] = {
+                "gap_vs_best_heuristic": learned_cost - best_heuristic_cost,
+                "relative_gap_pct_vs_best_heuristic": 100.0 * (learned_cost - best_heuristic_cost) / best_heuristic_cost,
+            }
 
     payload = {
         "reference_instance": reference_name,
