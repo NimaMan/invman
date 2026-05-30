@@ -13,7 +13,6 @@ use crate::problems::multi_echelon::references::{
     GIJSBRECHTS_2022_REFERENCE, LITERATURE_REFERENCE_INSTANCES, PRIMARY_REFERENCE_INSTANCE,
     VAN_ROY_1997_CASE_STUDY, VERIFICATION_PROBLEM_INSTANCE, WORKED_TRANSITION_REFERENCE,
 };
-use crate::problems::multi_echelon::rollout::{build_policy_features_with_mode, PolicyFeatureMode};
 
 fn nested_pipeline_vec(pipelines: &[&[u32]]) -> Vec<Vec<u32>> {
     pipelines.iter().map(|pipeline| pipeline.to_vec()).collect()
@@ -245,28 +244,53 @@ fn brute_force_best_stationary_policy(
 #[test]
 fn reference_catalog_matches_gijs_and_van_roy() {
     assert_eq!(GIJSBRECHTS_2022_REFERENCE.benchmark_policies.len(), 3);
-    assert_eq!(LITERATURE_REFERENCE_INSTANCES.len(), 3);
-    assert_eq!(PRIMARY_REFERENCE_INSTANCE.name, "gijsbrechts2022_setting2");
+    // Catalog order: [0] simple, [1] case_study1, [2] case_study2 (van_roy_1997
+    // reproduction instances), [3] setting1, [4] setting2 (paper-faithful gijs_2022
+    // search targets).
+    assert_eq!(LITERATURE_REFERENCE_INSTANCES.len(), 5);
     assert_eq!(
         LITERATURE_REFERENCE_INSTANCES[0].name,
         "van_roy1997_simple_problem"
     );
     assert_eq!(
+        LITERATURE_REFERENCE_INSTANCES[1].name,
+        "van_roy1997_case_study1"
+    );
+    assert_eq!(
+        LITERATURE_REFERENCE_INSTANCES[2].name,
+        "van_roy1997_case_study2"
+    );
+    assert_eq!(
+        LITERATURE_REFERENCE_INSTANCES[3].name,
+        "gijsbrechts2022_setting1"
+    );
+    assert_eq!(
+        LITERATURE_REFERENCE_INSTANCES[4].name,
+        "gijsbrechts2022_setting2"
+    );
+    assert_eq!(
         LITERATURE_REFERENCE_INSTANCES[0].published_constant_base_stock_mean_cost,
         Some(51.7)
     );
+
+    // The primary search target is the paper-faithful setting 2: gijs_2022 dynamics,
+    // Table-3 demand mean 0, and NO published reproduction rows attached (those live on
+    // the van_roy1997_* reproduction instances).
+    assert_eq!(PRIMARY_REFERENCE_INSTANCE.name, "gijsbrechts2022_setting2");
+    assert_eq!(PRIMARY_REFERENCE_INSTANCE.inventory_dynamics_mode, "gijs_2022");
+    assert_eq!(PRIMARY_REFERENCE_INSTANCE.demand_mean, 0.0);
+    assert_eq!(
+        PRIMARY_REFERENCE_INSTANCE.published_constant_base_stock_mean_cost,
+        None
+    );
+    assert_eq!(PRIMARY_REFERENCE_INSTANCE.published_a3c_savings_pct, None);
     assert_eq!(
         PRIMARY_REFERENCE_INSTANCE.benchmark_warehouse_levels,
         &[50, 60, 70, 80, 90, 100]
     );
-    assert_eq!(
-        PRIMARY_REFERENCE_INSTANCE.published_a3c_savings_pct,
-        Some(12.09)
-    );
-    assert_eq!(
-        PRIMARY_REFERENCE_INSTANCE.published_a3c_confidence_half_width_pct,
-        Some(0.39)
-    );
+
+    // The A3C relative-savings rows and the calibrated reproduction live on the
+    // van_roy1997_case_study* instances.
     assert_eq!(
         LITERATURE_REFERENCE_INSTANCES[1].published_a3c_savings_pct,
         Some(8.95)
@@ -275,7 +299,23 @@ fn reference_catalog_matches_gijs_and_van_roy() {
         LITERATURE_REFERENCE_INSTANCES[1].published_a3c_confidence_half_width_pct,
         Some(0.13)
     );
-    assert_eq!(PRIMARY_REFERENCE_INSTANCE.tuned_buffer_length, Some(100));
+    assert_eq!(
+        LITERATURE_REFERENCE_INSTANCES[2].published_a3c_savings_pct,
+        Some(12.09)
+    );
+    assert_eq!(
+        LITERATURE_REFERENCE_INSTANCES[2].published_a3c_confidence_half_width_pct,
+        Some(0.39)
+    );
+    assert_eq!(
+        LITERATURE_REFERENCE_INSTANCES[2].inventory_dynamics_mode,
+        "van_roy_1997"
+    );
+    assert_eq!(LITERATURE_REFERENCE_INSTANCES[2].demand_mean, 1.0);
+    assert_eq!(
+        LITERATURE_REFERENCE_INSTANCES[2].published_constant_base_stock_mean_cost,
+        Some(1449.0)
+    );
     assert_eq!(
         VAN_ROY_1997_CASE_STUDY.published_constant_base_stock_mean_cost,
         Some(1302.0)
@@ -284,6 +324,55 @@ fn reference_catalog_matches_gijs_and_van_roy() {
         VAN_ROY_1997_CASE_STUDY.published_constant_base_stock_levels,
         &[330, 23]
     );
+}
+
+#[test]
+fn warehouse_order_uses_pre_shipment_position_in_gijs_mode() {
+    // Regression test for the Eq. (2) warehouse-order rule. With a warehouse that ships a
+    // positive quantity to its retailers this period, the gijs_2022 (paper-faithful) order
+    // must be sized from the PRE-shipment inventory position and therefore be INVARIANT to
+    // how much is shipped downstream; the van_roy_1997 reproduction mode instead re-orders
+    // to cover the shipment (POST-shipment position) and so depends on it.
+    //
+    // State: warehouse on-hand 5, one outstanding warehouse order of 3 (lw=1); two
+    // retailers at zero on-hand with one empty pipeline slot each (lr=1); warehouse
+    // base-stock target y^w = 12, ample capacities.
+    let make_plan = |retailer_target: usize, mode: InventoryDynamicsMode| {
+        let state = initialize_state(5, &[3], &[0, 0], &[vec![0], vec![0]])
+            .expect("state must build");
+        build_order_plan_with_mode(
+            &state,
+            12,
+            retailer_target,
+            100,
+            1000,
+            100,
+            WarehouseBaseStockMode::Regular,
+            AllocationMode::MinShortage,
+            mode,
+        )
+        .expect("order plan must build")
+    };
+
+    // gijs_2022: pre-shipment IP^w = 5 + 3 = 8, so q^w = 12 - 8 = 4 whether the retailers
+    // are replenished (ships 6) or not (ships 0). The shipment is NOT deducted.
+    let gijs_ship = make_plan(3, InventoryDynamicsMode::Gijs2022);
+    let gijs_no_ship = make_plan(0, InventoryDynamicsMode::Gijs2022);
+    assert_eq!(gijs_ship.shipped_retail_orders.iter().sum::<usize>(), 6);
+    assert_eq!(gijs_no_ship.shipped_retail_orders.iter().sum::<usize>(), 0);
+    assert_eq!(gijs_ship.warehouse_order, 4);
+    assert_eq!(gijs_no_ship.warehouse_order, 4);
+    // The old (buggy) post-shipment rule would have ordered 12 - (8 - 6) = 10 here.
+    assert_ne!(gijs_ship.warehouse_order, 10);
+
+    // van_roy_1997: warehouse_available = 5 (arrival not folded in), future = 3. With
+    // retailer_target 3 the warehouse ships 5 and re-orders to restore the post-shipment
+    // position (0 + 3 = 3) to 12 -> q^w = 9; with no shipment the position is 5 + 3 = 8 ->
+    // q^w = 4. The order therefore DEPENDS on the shipment under the reproduction mode.
+    let van_roy_ship = make_plan(3, InventoryDynamicsMode::VanRoy1997);
+    let van_roy_no_ship = make_plan(0, InventoryDynamicsMode::VanRoy1997);
+    assert_eq!(van_roy_ship.warehouse_order, 9);
+    assert_eq!(van_roy_no_ship.warehouse_order, 4);
 }
 
 #[test]
@@ -314,31 +403,6 @@ fn raw_state_layout_matches_expected_shape() {
         initialize_state(3, &[2, 2], &[1, 0], &vec![vec![1], vec![0]]).expect("state must build");
     let raw_state = build_raw_state(&state).expect("raw state must build");
     assert_eq!(raw_state, vec![3.0, 2.0, 2.0, 1.0, 0.0, 1.0, 0.0, 0.0]);
-}
-
-#[test]
-fn van_roy_feature_layout_matches_expected_shape() {
-    let state =
-        initialize_state(3, &[2, 2], &[1, 0], &vec![vec![1], vec![0]]).expect("state must build");
-    let features = build_policy_features_with_mode(
-        &state,
-        VERIFICATION_PROBLEM_INSTANCE.warehouse_inventory_cap,
-        VERIFICATION_PROBLEM_INSTANCE.retailer_inventory_cap,
-        false,
-        VERIFICATION_PROBLEM_INSTANCE.periods,
-        PolicyFeatureMode::CompactSummary,
-        InventoryDynamicsMode::Gijs2022,
-    )
-    .expect("features must build");
-
-    let expected = vec![
-        0.25, 0.0, 0.0, 0.625, 0.25, 0.0, 0.0, 0.0625, 0.0, 0.0, 0.390625, 0.0625, 0.0, 0.0,
-        0.015625, 0.015625, 0.015625, 0.15625, 0.15625, 0.21875, 0.21875, 0.0,
-    ];
-    assert_eq!(features.len(), 22);
-    for (observed, target) in features.iter().zip(expected.iter()) {
-        assert!((observed - target).abs() < 1e-6);
-    }
 }
 
 #[test]

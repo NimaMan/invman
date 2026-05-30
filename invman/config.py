@@ -179,6 +179,8 @@ def get_config(argv=None):
     parser.add_argument("--retailer_inventory_cap", default=100, type=int, help="Retail inventory-position cap.")
     parser.add_argument("--multi_demand_mean", default=5.0, type=float, help="Mean retailer demand in the multi-echelon model.")
     parser.add_argument("--multi_demand_std", default=14.0, type=float, help="Std. dev. of retailer demand in the multi-echelon model.")
+    parser.add_argument("--inventory_dynamics_mode", default="gijs_2022", choices=["gijs_2022", "van_roy_1997"], help="Multi-echelon timing convention: gijs_2022 (paper-faithful Eq.(2), pre-shipment warehouse order, end-of-period holding) or van_roy_1997 (reproduction).")
+    parser.add_argument("--demand_distribution", default="normal_rounded_clipped", choices=["normal_rounded_clipped", "poisson"], help="Multi-echelon retailer demand distribution.")
     parser.add_argument("--horizon", default=2000, type=int, help="Training rollout horizon.")
     parser.add_argument("--eval_horizon", default=10000, type=int, help="Evaluation rollout horizon.")
     parser.add_argument("--eval_seeds", default=10, type=int, help="Number of evaluation seeds.")

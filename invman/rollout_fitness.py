@@ -275,10 +275,19 @@ def _multi_echelon_kwargs(policy, args):
         warehouse_capacity=int(args.warehouse_capacity),
         warehouse_inventory_cap=int(args.warehouse_inventory_cap),
         retailer_inventory_cap=int(args.retailer_inventory_cap),
+        # Required positional args of multi_echelon_soft_tree_rollout. Default to the
+        # paper-faithful gijs_2022 dynamics and the rounded-clipped-normal demand so the
+        # CMA-ES fitness target constructs even when a caller forgets to set them.
+        inventory_dynamics_mode=str(getattr(args, "inventory_dynamics_mode", "gijs_2022")),
+        demand_distribution=str(getattr(args, "demand_distribution", "normal_rounded_clipped")),
         demand_mean=float(args.multi_demand_mean),
         demand_std=float(args.multi_demand_std),
         horizon=int(args.horizon),
         warm_up_periods_ratio=float(getattr(args, "warm_up_periods_ratio", 0.2)),
+        # Use the long-run average cost after warm-up so the learned-policy fitness is on
+        # the same scale as the constant-base-stock benchmark (and is horizon-stable),
+        # rather than the binding's raw cumulative-cost default.
+        objective=str(getattr(args, "rollout_objective", "average_cost_after_warmup")),
         temperature=float(policy.temperature),
     )
 

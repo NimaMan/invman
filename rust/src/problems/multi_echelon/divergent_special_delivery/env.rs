@@ -408,11 +408,6 @@ pub fn build_order_plan_with_mode(
     let decision_state = build_decision_state_with_mode(state, inventory_dynamics_mode)?;
     let warehouse_target = warehouse_target.min(warehouse_inventory_cap);
     let retailer_target = retailer_target.min(retailer_inventory_cap);
-    let warehouse_future_total = decision_state
-        .warehouse_future
-        .iter()
-        .map(|value| *value as i32)
-        .sum::<i32>();
     let desired_retail_orders = decision_state
         .retailer_inventory_positions
         .iter()
@@ -428,23 +423,49 @@ pub fn build_order_plan_with_mode(
     let shipped_total = shipped_retail_orders.iter().sum::<usize>();
     let remaining_warehouse_inventory_after_regular =
         (decision_state.warehouse_available.max(0) as usize).saturating_sub(shipped_total);
-    let warehouse_regular_inventory_position_after_regular =
-        remaining_warehouse_inventory_after_regular as i32 + warehouse_future_total;
-    let warehouse_echelon_inventory_position_after_regular =
-        warehouse_regular_inventory_position_after_regular
-            + decision_state
-                .retailer_inventory_positions
-                .iter()
-                .zip(shipped_retail_orders.iter())
-                .map(|(inventory_position, shipped)| *inventory_position + *shipped as i32)
-                .sum::<i32>();
-    let warehouse_reference_inventory_position = match warehouse_base_stock_mode {
-        WarehouseBaseStockMode::Regular => warehouse_regular_inventory_position_after_regular,
-        WarehouseBaseStockMode::Echelon => warehouse_echelon_inventory_position_after_regular,
+    let warehouse_future_total = decision_state
+        .warehouse_future
+        .iter()
+        .map(|value| *value as i32)
+        .sum::<i32>();
+    // Warehouse installation inventory position used to size the order. The two
+    // dynamics modes use different — and deliberately distinct — conventions:
+    //
+    // * Gijs2022 (faithful to Gijsbrechts 2022 Eq. (2)): the PRE-shipment position
+    //   IP^w = I^w_{t-1} + sum_{i=1}^{lw} q^w_{t-i} (on-hand after this period's arrival
+    //   plus all outstanding warehouse orders). The warehouse orders BEFORE the retailer
+    //   shipments leave on-hand (event order: warehouse first, retailers second), so the
+    //   retailer shipments are NOT deducted here; they reduce warehouse on-hand only in
+    //   the next-period state evolution (carried via remaining_warehouse_inventory_after_regular).
+    //
+    // * VanRoy1997 (reproduces the published Van Roy / Gijs absolute constant-base-stock
+    //   costs): the warehouse re-orders to restore its POST-shipment installation position
+    //   to y^w, i.e. it covers the units just shipped downstream. This is the convention
+    //   under which the published rows (51.7 / 1302 / 1449) were generated.
+    let warehouse_regular_reference_inventory_position = match inventory_dynamics_mode {
+        InventoryDynamicsMode::Gijs2022 => decision_state.warehouse_regular_inventory_position,
+        InventoryDynamicsMode::VanRoy1997 => {
+            remaining_warehouse_inventory_after_regular as i32 + warehouse_future_total
+        }
     };
+    let warehouse_reference_inventory_position = match warehouse_base_stock_mode {
+        WarehouseBaseStockMode::Regular => warehouse_regular_reference_inventory_position,
+        // The echelon position is invariant to the retailer shipment (the units merely
+        // move from warehouse stock into the downstream retailer pipelines), so it is the
+        // same pre- and post-shipment and needs no mode branch.
+        WarehouseBaseStockMode::Echelon => decision_state.warehouse_echelon_inventory_position,
+    };
+    // Eq. (2) caps the order by the production rate C^m (warehouse_capacity) and by the
+    // warehouse inventory-position cap C^w (warehouse_inventory_cap): the resulting
+    // installation position may not exceed C^w. The cap is taken against the same
+    // installation reference position used to size the order.
+    let warehouse_inventory_position_headroom = (warehouse_inventory_cap as i32
+        - warehouse_regular_reference_inventory_position)
+        .max(0) as usize;
     let warehouse_order = warehouse_target
         .saturating_sub(warehouse_reference_inventory_position.max(0) as usize)
-        .min(warehouse_capacity);
+        .min(warehouse_capacity)
+        .min(warehouse_inventory_position_headroom);
 
     Ok(OrderPlan {
         warehouse_target,
@@ -470,11 +491,6 @@ pub fn build_order_plan_with_explicit_warehouse_order_and_mode(
 ) -> PyResult<OrderPlan> {
     let decision_state = build_decision_state_with_mode(state, inventory_dynamics_mode)?;
     let retailer_target = retailer_target.min(retailer_inventory_cap);
-    let warehouse_future_total = decision_state
-        .warehouse_future
-        .iter()
-        .map(|value| *value as i32)
-        .sum::<i32>();
     let desired_retail_orders = decision_state
         .retailer_inventory_positions
         .iter()
@@ -490,14 +506,29 @@ pub fn build_order_plan_with_explicit_warehouse_order_and_mode(
     let shipped_total = shipped_retail_orders.iter().sum::<usize>();
     let remaining_warehouse_inventory_after_regular =
         (decision_state.warehouse_available.max(0) as usize).saturating_sub(shipped_total);
-    let warehouse_regular_inventory_position_after_regular =
-        remaining_warehouse_inventory_after_regular as i32 + warehouse_future_total;
+    let warehouse_future_total = decision_state
+        .warehouse_future
+        .iter()
+        .map(|value| *value as i32)
+        .sum::<i32>();
+    // Direct-order (Van Roy NDP-style) control: the policy supplies the warehouse order
+    // directly. It is still capped by the production rate C^m and by the warehouse
+    // inventory-position cap C^w against the installation position, using the same
+    // pre-/post-shipment convention as the base-stock path: Gijs2022 caps against the
+    // PRE-shipment position IP^w = I^w_{t-1} + sum q^w_{t-i} (Eq. (2)); van_roy_1997 caps
+    // against the post-shipment position (its historical reproduction convention).
+    let warehouse_regular_reference_inventory_position = match inventory_dynamics_mode {
+        InventoryDynamicsMode::Gijs2022 => decision_state.warehouse_regular_inventory_position,
+        InventoryDynamicsMode::VanRoy1997 => {
+            remaining_warehouse_inventory_after_regular as i32 + warehouse_future_total
+        }
+    };
     let warehouse_order = warehouse_order.min(warehouse_capacity).min(
         warehouse_inventory_cap
-            .saturating_sub(warehouse_regular_inventory_position_after_regular.max(0) as usize),
+            .saturating_sub(warehouse_regular_reference_inventory_position.max(0) as usize),
     );
     Ok(OrderPlan {
-        warehouse_target: warehouse_regular_inventory_position_after_regular.max(0) as usize
+        warehouse_target: warehouse_regular_reference_inventory_position.max(0) as usize
             + warehouse_order,
         retailer_target,
         warehouse_order,

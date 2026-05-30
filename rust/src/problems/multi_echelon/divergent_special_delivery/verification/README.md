@@ -4,7 +4,7 @@
 
 ## Literature Verification
 
-- The executable literature anchor is the original Van Roy formulation.
+- The executable literature reference is the original Van Roy formulation.
 - The carried published absolute rows are:
   - simple problem: constant base-stock `(10, 16) -> 51.7`, best reported NDP `52.6`
   - case study 1: constant base-stock `(330, 23) -> 1302`, reported NDP rows `1179`, `1181`, `1209`
@@ -15,10 +15,16 @@
   - setting 2: `12.09% +/- 0.39%`
 - The current validation script checks repo reproduction of the published Van Roy constant
   base-stock rows directly. Gijs is used later for relative-gain comparison, not as the primary
-  absolute heuristic-verification anchor.
+  absolute heuristic-verification reference.
+- The executable Rust check is
+  `invman_rust.multi_echelon_van_roy_reproduction_summary(...)`. It evaluates the published
+  constant base-stock levels and reports the repo-vs-published gap row by row.
 - The carried Gijs relative rows are now a Rust-side verification artifact via
   `verification::gijs_relative_verification_summary` and the binding
   `invman_rust.multi_echelon_gijs_relative_verification_summary(...)`.
+  This records a literature reference with the published relative metric
+  `published_relative_a3c_savings_vs_constant_base_stock_pct`; it does not mark the implementation
+  as verified.
 - The main failure mode we found was benchmark framing, not just tuning:
   - the exploratory soft-tree benchmark is a different algorithm family from the paper's A3C row
   - its reduced-grid repo comparator is not the published Van Roy constant base-stock benchmark row
@@ -26,6 +32,7 @@
   and warm-up sensitivity while keeping the current zero-state initialization fixed.
 - Current status:
   - the literature rows are present and checked
+  - the strict Van Roy reproduction summary is available through the Python binding
   - the carried Gijs relative rows are frozen and auditable inside the Rust verification module
   - the repo heuristic implementation is still `literature_verified = false`
   - current comparisons do not yet reproduce all published Van Roy rows under one stable protocol

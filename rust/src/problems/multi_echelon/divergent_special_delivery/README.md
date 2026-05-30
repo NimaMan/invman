@@ -102,7 +102,7 @@ Primary references:
 
 How this package treats them:
 
-- Van Roy is the literature anchor for the executable formulation and the published heuristic/NDP
+- Van Roy is the literature reference for the executable formulation and the published heuristic/NDP
   rows we want to reproduce.
 - Gijs supplies later benchmark settings and published relative improvements over constant
   base-stock on the same family.
@@ -129,7 +129,7 @@ Current status:
 - the current reproduction results are recorded in `outputs/multi_echelon/van_roy_validation_2026-04-10.json`
 - the protocol audit is recorded in `outputs/multi_echelon/van_roy_protocol_audit_2026-04-12.json`
 - the exact verifier is `literature_verified = false`; it exists to validate the Rust implementation,
-  not to anchor literature claims
+  not to support literature claims
 
 ## Policy Interface
 
@@ -167,14 +167,20 @@ base-stock benchmark:
 - setting 2 A3C savings: `12.09% +/- 0.39%`
 
 Those rows are comparison targets for later experiments. They are not the primary literature
-verification anchor for the heuristic implementation because the stronger absolute benchmark rows are
+verification reference for the heuristic implementation because the stronger absolute benchmark rows are
 already available from Van Roy.
+They are, however, the Gijs-specific literature-number target for audits:
+the metric is `published_relative_a3c_savings_vs_constant_base_stock_pct`. This is not an
+implementation verification unless a repo policy reproduces the published relative row or the repo
+simulator reproduces the underlying absolute Van Roy heuristic rows.
 
-Use the Rust-side verification summary
-`verification::gijs_relative_verification_summary` or the Python binding
-`invman_rust.multi_echelon_gijs_relative_verification_summary(...)` to inspect the carried
-paper-relative rows directly. The existing soft-tree paper benchmark is exploratory and should not
-be treated as an executable reproduction of the published A3C learner.
+Use `verification::van_roy_reproduction_summary` or the Python binding
+`invman_rust.multi_echelon_van_roy_reproduction_summary(...)` for the strict absolute check against
+the published Van Roy constant base-stock rows. Use
+`verification::gijs_relative_verification_summary` or
+`invman_rust.multi_echelon_gijs_relative_verification_summary(...)` only to inspect the carried
+paper-relative A3C rows. The existing soft-tree paper benchmark is exploratory and should not be
+treated as an executable reproduction of the published A3C learner.
 
 ## Implementation Review
 
