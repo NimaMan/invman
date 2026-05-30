@@ -5,7 +5,7 @@
 // a sweep and check observed mean costs against trusted numbers. The actual
 // heuristic POLICY logic (Myopic-1 / Myopic-2 / SVBS evaluator, demand support,
 // the canonical vanilla instance config, and `evaluate_heuristic_policy`) lives
-// in `crate::problems::lost_sales::heuristics` and is reused here, so there is a
+// in `crate::problems::lost_sales::vanilla::heuristics` and is reused here, so there is a
 // single source of truth for the heuristics.
 //
 // In addition to the heuristic rollouts this module provides thin wrappers to
@@ -16,7 +16,7 @@
 
 use std::collections::HashMap;
 
-use crate::problems::lost_sales::rollout::{
+use crate::problems::lost_sales::vanilla::rollout::{
     linear_rollout, neural_rollout, rollout, LostSalesLinearRolloutConfig,
     LostSalesNeuralRolloutConfig, LostSalesRolloutConfig,
 };
@@ -25,7 +25,7 @@ use crate::problems::lost_sales::rollout::{
 // point, and the canonical vanilla instance from the dedicated `heuristics`
 // module so existing `verification::*` / `flownet::*` consumers keep working
 // unchanged against this single source of truth.
-pub use crate::problems::lost_sales::heuristics::{
+pub use crate::problems::lost_sales::vanilla::heuristics::{
     evaluate_heuristic_policy, measurement_from_observed_mean_cost, LostSalesHeuristicPolicyKind,
     LostSalesHeuristicVerificationConfig, PolicyPerformanceMeasurement,
     VANILLA_L4_P4_POISSON5_VERIFICATION_CONFIG, VANILLA_L4_P4_POISSON5_VERIFICATION_HORIZON,
@@ -302,8 +302,8 @@ mod tests {
         VANILLA_L4_P4_POISSON5_VERIFICATION_CONFIG,
     };
     use crate::core::policies::dense::DensePolicyHead;
-    use crate::problems::lost_sales::env::StateNormalizer;
-    use crate::problems::lost_sales::rollout::LostSalesLinearRolloutConfig;
+    use crate::problems::lost_sales::vanilla::env::StateNormalizer;
+    use crate::problems::lost_sales::vanilla::rollout::LostSalesLinearRolloutConfig;
 
     #[test]
     fn canonical_policy_targets_are_sorted_from_best_to_worst() {

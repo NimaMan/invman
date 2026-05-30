@@ -14,7 +14,7 @@ use crate::core::policies::soft_tree::{
 use crate::problems::lost_sales::demand::{
     build_demand_process, sample_demand, LostSalesDemandConfig,
 };
-use crate::problems::lost_sales::env::{
+use crate::problems::lost_sales::vanilla::env::{
     build_pipeline_state, epoch_cost, initialize_state, normalize_pipeline_state, LostSalesState,
     StateNormalizer,
 };

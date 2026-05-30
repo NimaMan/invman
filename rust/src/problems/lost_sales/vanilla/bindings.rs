@@ -10,13 +10,13 @@ use crate::problems::lost_sales::demand::{
     LostSalesDemandKind, DEFAULT_MMPP2_LAMBDA_HIGH, DEFAULT_MMPP2_LAMBDA_LOW,
     DEFAULT_MMPP2_POSITIVE_P00, DEFAULT_MMPP2_POSITIVE_P11,
 };
-use crate::problems::lost_sales::env::{
+use crate::problems::lost_sales::vanilla::env::{
     epoch_cost, initialize_state, LostSalesState, StateNormalizer,
 };
-use crate::problems::lost_sales::heuristics::{
+use crate::problems::lost_sales::vanilla::heuristics::{
     evaluate_heuristic_policy, LostSalesHeuristicPolicyKind, LostSalesHeuristicVerificationConfig,
 };
-use crate::problems::lost_sales::rollout::{
+use crate::problems::lost_sales::vanilla::rollout::{
     linear_population_rollout as lost_sales_linear_population_rollout_impl,
     linear_rollout as lost_sales_linear_rollout_impl,
     linear_rollout_from_demands as lost_sales_linear_rollout_from_demands_impl,
@@ -1020,7 +1020,7 @@ fn lost_sales_heuristics_all(
 /// Names of all lost-sales benchmark-grid reference instances.
 #[pyfunction]
 fn lost_sales_reference_instance_names() -> Vec<String> {
-    crate::problems::lost_sales::reference_costs::reference_instance_names()
+    crate::problems::lost_sales::vanilla::reference_costs::reference_instance_names()
         .into_iter()
         .map(|name| name.to_string())
         .collect()
@@ -1037,7 +1037,7 @@ fn lost_sales_reference_costs(
 ) -> PyResult<Option<Py<pyo3::types::PyDict>>> {
     use pyo3::types::PyDict;
 
-    let inst = match crate::problems::lost_sales::reference_costs::reference_instance(name) {
+    let inst = match crate::problems::lost_sales::vanilla::reference_costs::reference_instance(name) {
         Some(inst) => inst,
         None => return Ok(None),
     };

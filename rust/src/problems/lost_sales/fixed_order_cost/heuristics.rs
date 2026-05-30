@@ -1,7 +1,7 @@
 use pyo3::exceptions::PyValueError;
 use pyo3::PyResult;
 
-use crate::problems::lost_sales::env::epoch_cost;
+use crate::problems::lost_sales::vanilla::env::epoch_cost;
 
 fn mean_after_warmup(epoch_costs: &[f64], warm_up_periods_ratio: f64) -> PyResult<f64> {
     if !(0.0..=1.0).contains(&warm_up_periods_ratio) {

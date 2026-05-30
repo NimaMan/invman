@@ -3,23 +3,23 @@ use pyo3::prelude::*;
 use pyo3::types::PyDict;
 use pyo3::wrap_pyfunction;
 
-use crate::problems::lost_sales_fixed_order_cost::exact_value_iteration::{
+use crate::problems::lost_sales::fixed_order_cost::exact_value_iteration::{
     evaluate_policy, solve_optimal_policy, ExactPolicyKind,
 };
-use crate::problems::lost_sales_fixed_order_cost::experiments::{
+use crate::problems::lost_sales::fixed_order_cost::experiments::{
     expand_experiment_grid, get_experiment_grid, list_experiment_grids,
     FixedCostExperimentDemandCase, FixedCostExperimentGrid, FixedCostExperimentInstance,
 };
 use crate::problems::lost_sales::demand::{
     build_demand_process, parse_demand_kind, sample_demand, LostSalesDemandConfig,
 };
-use crate::problems::lost_sales_fixed_order_cost::heuristics::{
+use crate::problems::lost_sales::fixed_order_cost::heuristics::{
     fixed_policy_rollout_from_demands, search_modified_s_s_q_from_demands,
     search_s_nq_from_demands, search_s_s_from_demands,
 };
 use rand::rngs::StdRng;
 use rand::SeedableRng;
-use crate::problems::lost_sales_fixed_order_cost::literature::{
+use crate::problems::lost_sales::fixed_order_cost::literature::{
     get_reference_instance, list_reference_instances, FixedCostLostSalesReferenceInstance,
     PublishedHeuristicRow, BIJVANK_2015_REFERENCE, BIJVANK_2015_TABLE1_REFERENCE,
 };

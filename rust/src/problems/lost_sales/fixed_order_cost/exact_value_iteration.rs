@@ -6,10 +6,10 @@ use pyo3::exceptions::PyValueError;
 use pyo3::PyResult;
 use statrs::distribution::{Discrete, DiscreteCDF, Poisson};
 
-use crate::problems::lost_sales_fixed_order_cost::heuristics::{
+use crate::problems::lost_sales::fixed_order_cost::heuristics::{
     modified_s_s_q_order_quantity, s_nq_order_quantity, s_s_order_quantity,
 };
-use crate::problems::lost_sales_fixed_order_cost::literature::FixedCostLostSalesReferenceInstance;
+use crate::problems::lost_sales::fixed_order_cost::literature::FixedCostLostSalesReferenceInstance;
 
 const DEFAULT_EPSILON: f64 = 1e-4;
 const DEFAULT_MAX_ITERATIONS: usize = 20_000;

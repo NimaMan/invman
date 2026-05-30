@@ -21,11 +21,11 @@ use rand::rngs::StdRng;
 use rand::SeedableRng;
 
 use crate::problems::lost_sales::demand::{build_demand_process, sample_demand};
-use crate::problems::lost_sales::env::{epoch_cost, initialize_state};
-use crate::problems::lost_sales::heuristics::evaluator::{
+use crate::problems::lost_sales::vanilla::env::{epoch_cost, initialize_state};
+use crate::problems::lost_sales::vanilla::heuristics::evaluator::{
     validate_heuristic_config, LostSalesHeuristicEvaluator, LostSalesHeuristicVerificationConfig,
 };
-use crate::problems::lost_sales::heuristics::policy_kind::LostSalesHeuristicPolicyKind;
+use crate::problems::lost_sales::vanilla::heuristics::policy_kind::LostSalesHeuristicPolicyKind;
 
 /// An observed mean-cost measurement for a named policy.
 #[derive(Clone, Debug, PartialEq)]

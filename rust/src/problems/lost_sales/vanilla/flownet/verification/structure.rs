@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use crate::problems::core::flownet::{validate_flownet, FlowNetValidationIssue};
-use crate::problems::lost_sales::flownet::formulation::canonical_lost_sales_flownet;
+use crate::problems::lost_sales::vanilla::flownet::formulation::canonical_lost_sales_flownet;
 
 pub fn validate_lost_sales_flownet_structure() -> Result<(), Vec<FlowNetValidationIssue>> {
     validate_flownet(&canonical_lost_sales_flownet())

@@ -29,12 +29,19 @@ min_shortage allocation). Two of three are within 1%.
 | Instance                  | Published | Repo cost | Absolute diff | Gap%   | Within 1%? |
 |---------------------------|-----------|-----------|---------------|--------|------------|
 | van_roy1997_simple_problem | 51.7      | 51.72     | +0.02         | +0.03% | YES        |
-| gijsbrechts2022_setting1  | 1302.0    | 1284.92   | -17.08        | -1.31% | NO (in 2%) |
-| gijsbrechts2022_setting2  | 1449.0    | 1437.55   | -11.45        | -0.79% | YES        |
+| van_roy1997_case_study1   | 1302.0    | 1284.92   | -17.08        | -1.31% | NO (in 2%) |
+| van_roy1997_case_study2   | 1449.0    | 1437.55   | -11.45        | -0.79% | YES        |
 
-The constant base-stock rows are now reproduced within the 2% simulation-protocol tolerance.
-`van_roy_reproduction_summary.implementation_literature_verified = true` (cost rows within tolerance).
-`gijs_relative_verification_summary.implementation_literature_verified = false` (A3C not implemented).
+The constant base-stock rows are now reproduced within the 2% simulation-protocol tolerance. Note
+that "reproduced within tolerance" and `implementation_literature_verified` are two distinct fields:
+
+- `van_roy_reproduction_summary.all_published_constant_base_stock_rows_reproduced_within_tolerance = true`
+  — the published Van Roy constant base-stock costs reproduce within 2% (this is the cost-row check above).
+- `van_roy_reproduction_summary.implementation_literature_verified = false` — the reproduction relies on
+  calibrated demand inputs (simple-problem mean 6.294, case_study2 mean 1.0) and the A3C learned policy is
+  not reproduced, so the family is honestly NOT literature-verified. Every instance also carries
+  `literature_verified = false`. (This matches `verification/mod.rs`.)
+- `gijs_relative_verification_summary.implementation_literature_verified = false` (A3C not implemented).
 
 ## Demand Parameterization Findings
 
@@ -148,8 +155,11 @@ and NDP benchmark numbers.
 
 - `constant_base_stock`
   - target verification rows: the published Van Roy absolute benchmark rows above
-  - current status: `literature_verified = true` (all within 2% tolerance)
-  - remaining gaps: simple +0.03%, setting 1 −1.31%, setting 2 −0.79%
+  - current status: the published constant base-stock costs are reproduced within 2% tolerance, but
+    `literature_verified = false` — the reproduction uses calibrated demand inputs (mean 6.294 / 1.0)
+    and the A3C learned policy is not reproduced. This matches the code: every instance and both
+    verification summaries carry `false`.
+  - remaining gaps: simple +0.03%, case_study1 −1.31%, case_study2 −0.79%
 - repo exact verifier
   - `literature_verified = false`
   - it is a reduced tractable verifier used to validate the Rust implementation

@@ -1,10 +1,10 @@
-use crate::problems::lost_sales_fixed_order_cost::exact_value_iteration::{
+use crate::problems::lost_sales::fixed_order_cost::exact_value_iteration::{
     evaluate_policy, solve_optimal_policy, ExactPolicyKind,
 };
-use crate::problems::lost_sales_fixed_order_cost::experiments::{
+use crate::problems::lost_sales::fixed_order_cost::experiments::{
     expand_experiment_grid, get_experiment_grid, FULL_GRID_NAME,
 };
-use crate::problems::lost_sales_fixed_order_cost::literature::{
+use crate::problems::lost_sales::fixed_order_cost::literature::{
     BIJVANK_2015_REFERENCE, BIJVANK_2015_TABLE1_REFERENCE,
 };
 

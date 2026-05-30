@@ -63,7 +63,7 @@
 use std::collections::HashMap;
 
 use crate::problems::lost_sales::demand::{LostSalesDemandConfig, LostSalesDemandKind};
-use crate::problems::lost_sales::heuristics::demand_support::{
+use crate::problems::lost_sales::vanilla::heuristics::demand_support::{
     cumulative_demand_cdf, iid_demand_support,
 };
 

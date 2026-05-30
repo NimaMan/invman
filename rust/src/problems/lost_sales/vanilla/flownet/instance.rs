@@ -2,8 +2,8 @@
 
 use crate::problems::core::flownet::{FlowNetInstance, FlowNetParameter};
 use crate::problems::lost_sales::demand::{LostSalesDemandConfig, LostSalesDemandKind};
-use crate::problems::lost_sales::flownet::formulation::LOST_SALES_FLOWNET_NAME;
-use crate::problems::lost_sales::rollout::LostSalesRolloutConfig;
+use crate::problems::lost_sales::vanilla::flownet::formulation::LOST_SALES_FLOWNET_NAME;
+use crate::problems::lost_sales::vanilla::rollout::LostSalesRolloutConfig;
 
 pub fn demand_model_description(config: &LostSalesDemandConfig) -> String {
     match config.kind {
