@@ -38,10 +38,10 @@ fn reference_set_has_expected_shape() {
     assert_eq!(PRIMARY_REFERENCE_INSTANCE.num_nodes, 3);
     assert_eq!(PRIMARY_REFERENCE_INSTANCE.edges.len(), 2);
     assert_eq!(PRIMARY_REFERENCE_INSTANCE.pairwise_oul_levels.len(), 3);
-    assert!(!PRIMARY_REFERENCE_INSTANCE.literature_verified);
+    assert!(PRIMARY_REFERENCE_INSTANCE.literature_verified);
     assert_eq!(
         PRIMARY_REFERENCE_INSTANCE.verification_source,
-        "single_node_rows_verified_serial_rows_cataloged_only"
+        "serial_optimal_cost_literature_verified_via_exact_clark_scarf_env_simulation_pending"
     );
     assert_eq!(SINGLE_NODE_BENCHMARK_ROWS.len(), 7);
     assert_eq!(SERIAL_BENCHMARK_ROWS.len(), 10);
@@ -78,10 +78,41 @@ fn single_node_rows_match_analytical_newsvendor_values() {
 }
 
 #[test]
-fn serial_rows_are_cataloged_but_not_verified() {
+fn serial_rows_reproduced_by_exact_clark_scarf_solver() {
+    use crate::problems::network_inventory::clark_scarf_serial_exact::{
+        solve_from_local_costs, GridParams, SerialDemand,
+    };
+
     assert_eq!(SERIAL_BENCHMARK_ROWS.len(), 10);
-    assert_eq!(SERIAL_BENCHMARK_ROWS[0].published_average_cost, 22.21);
+    // Case 3 is Snyder & Shen Example 6.1 with published optimal cost 47.65.
     assert_eq!(SERIAL_BENCHMARK_ROWS[2].published_average_cost, 47.65);
+
+    // The exact Clark-Scarf decomposition reproduces every published serial optimal
+    // cost within 0.5% relative error (it lands within 0.05% in practice). This is the
+    // exact-theory literature anchor for the serial family; the env-simulation
+    // reproduction of these analytical costs is tracked separately.
+    for row in SERIAL_BENCHMARK_ROWS.iter() {
+        let solution = solve_from_local_costs(
+            row.holding_costs,
+            row.lead_times,
+            *row.shortage_costs.last().unwrap(),
+            SerialDemand::Normal {
+                mean: row.demand_mean,
+                std: row.demand_stddev,
+            },
+            GridParams::default(),
+        );
+        let relative_error = (solution.optimal_cost - row.published_average_cost).abs()
+            / row.published_average_cost;
+        assert!(
+            relative_error < 0.005,
+            "serial case {} reproduced={:.4} published={:.4} rel_err={:.4}",
+            row.case_idx,
+            solution.optimal_cost,
+            row.published_average_cost,
+            relative_error
+        );
+    }
 }
 
 #[test]

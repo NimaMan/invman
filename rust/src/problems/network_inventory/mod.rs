@@ -1,4 +1,5 @@
 pub mod bindings;
+pub mod clark_scarf_serial_exact;
 pub mod demand;
 pub mod env;
 pub mod experiments;

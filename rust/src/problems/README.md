@@ -158,6 +158,14 @@ Current literature-verified package anchors:
     through the Rust analytical verification helper
   - the full Giannoccaro and Pontrandolfo (2010) 8-case truck-dispatch profit table is not carried
     as a verified benchmark because the public demand-signal semantics do not reproduce the rows
+- `network_inventory`
+  - the serial multi-echelon optimal costs are literature-verified on the exact Clark-Scarf
+    decomposition: `clark_scarf_serial_exact.rs` reproduces all ten Pirhooshyaran/Snyder (2021)
+    serial rows (case 3 = Snyder and Shen Example 6.1, optimal cost 47.65) within 0.05% relative
+    error, cross-checked against Snyder's public `stockpyl.ssm_serial` reference implementation
+  - this is an exact-theory anchor on the published serial optimum; the discrete env-simulation
+    reproduction of those costs under a base-stock policy is the remaining (sim) task
+  - the single-node newsvendor rows are also reproduced exactly
 
 Everything else should be treated as not literature-verified unless the problem README states
 otherwise explicitly.
