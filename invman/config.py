@@ -1,7 +1,7 @@
 import argparse
 from pathlib import Path
 
-from invman.policies.registry import apply_policy_name, resolve_policy_name
+from invman.policy_registry import apply_policy_name, resolve_policy_name
 
 SUPPORTED_DEMAND_NAMES = ("Poisson", "Geometric", "MarkovModulatedPoisson2")
 DEFAULT_MMPP2_LAMBDA_LOW = 3.0
@@ -56,6 +56,21 @@ def _normalize_state_normalizer(state_normalizer: str) -> str:
     return normalized
 
 
+def _parse_csv_values(raw_value, *, cast, argument_name: str):
+    if raw_value is None:
+        return None
+    if isinstance(raw_value, str):
+        parts = [part.strip() for part in raw_value.split(",") if part.strip()]
+    else:
+        parts = list(raw_value)
+    if not parts:
+        raise ValueError(f"{argument_name} must contain at least one value")
+    try:
+        return [cast(part) for part in parts]
+    except ValueError as exc:
+        raise ValueError(f"{argument_name} must be a comma-separated list of {cast.__name__} values") from exc
+
+
 def get_config(argv=None):
     load_dotenv()
 
@@ -80,6 +95,22 @@ def get_config(argv=None):
     parser.add_argument("--mp_num_processors", default=4, type=int, help="Worker processes for parallel rollouts.")
     parser.add_argument("--sigma_init", default=5.0, type=float, help="Initial search variance.")
     parser.add_argument("--es_population", default=50, type=int, help="Population size per ES iteration.")
+    parser.add_argument(
+        "--es_population_sampling",
+        default="fixed",
+        choices=["fixed", "categorical"],
+        help="Whether to keep the ES population fixed or sample it per iteration from a categorical distribution.",
+    )
+    parser.add_argument(
+        "--es_population_candidates",
+        default=None,
+        help="Comma-separated candidate ES population sizes used when sampling populations per iteration.",
+    )
+    parser.add_argument(
+        "--es_population_probabilities",
+        default=None,
+        help="Comma-separated nonnegative weights aligned with --es_population_candidates.",
+    )
     parser.add_argument("--same_seed", action="store_true", help="Use common random numbers within each ES batch.")
     parser.add_argument("--dynamic_horizon", action="store_true", help="Increase the rollout horizon over training.")
     parser.add_argument("--min_dynamic_horizon", default=100, type=int, help="Lower bound for dynamic horizon.")
@@ -207,6 +238,22 @@ def get_config(argv=None):
         args.state_normalizer = _normalize_state_normalizer(args.state_normalizer)
     except ValueError as exc:
         parser.error(str(exc))
+    try:
+        args.es_population_candidates = _parse_csv_values(
+            args.es_population_candidates,
+            cast=int,
+            argument_name="--es_population_candidates",
+        )
+    except ValueError as exc:
+        parser.error(str(exc))
+    try:
+        args.es_population_probabilities = _parse_csv_values(
+            args.es_population_probabilities,
+            cast=float,
+            argument_name="--es_population_probabilities",
+        )
+    except ValueError as exc:
+        parser.error(str(exc))
     if args.policy_name is not None:
         try:
             resolve_policy_name(args.policy_name)
@@ -217,6 +264,19 @@ def get_config(argv=None):
         parser.error("--fixed_order_cost must be positive when --problem=lost_sales_fixed_order_cost")
     if args.problem == "dual_sourcing" and args.expedited_lead_time > args.regular_lead_time:
         parser.error("--expedited_lead_time must be <= --regular_lead_time for dual_sourcing")
+    if args.es_population_candidates is not None and any(value <= 0 for value in args.es_population_candidates):
+        parser.error("--es_population_candidates must all be positive")
+    if args.es_population_probabilities is not None:
+        if args.es_population_candidates is None:
+            parser.error("--es_population_probabilities requires --es_population_candidates")
+        if len(args.es_population_probabilities) != len(args.es_population_candidates):
+            parser.error("--es_population_probabilities must match --es_population_candidates in length")
+        if any(value < 0 for value in args.es_population_probabilities):
+            parser.error("--es_population_probabilities must be nonnegative")
+        if sum(args.es_population_probabilities) <= 0:
+            parser.error("--es_population_probabilities must sum to a positive value")
+    if args.es_population_sampling == "categorical" and args.es_population_candidates is None:
+        parser.error("--es_population_sampling=categorical requires --es_population_candidates")
     if argv != [] and args.policy_name is None:
         parser.error("--policy_name is required")
     if args.policy_name is not None:

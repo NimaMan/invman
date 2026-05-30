@@ -183,7 +183,7 @@ def normalize_tree_leaf_type(tree_leaf_type: str) -> str:
 
 
 def normalize_tree_action_adapter(tree_action_adapter: str) -> str:
-    from invman.problems.dual_sourcing.policies import normalize_action_adapter as _normalize_tree_action_adapter
+    from invman.dual_sourcing_policy_spec import normalize_action_adapter as _normalize_tree_action_adapter
 
     return _normalize_tree_action_adapter(tree_action_adapter)
 

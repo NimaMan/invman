@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Iterable
 
-from invman.policies.common import normalize_action_spec
+from invman.policy_common import normalize_action_spec
 
 SUPPORTED_POLICY_BACKBONES = ("linear", "nn", "soft_tree")
 
@@ -244,7 +244,7 @@ def apply_action_adapter(action_adapter: str, controls, normalized_state, action
 
 
 def build_policy_context(args, env):
-    from invman.policies.registry import get_policy_spec
+    from invman.policy_registry import get_policy_spec
 
     action_spec = normalize_action_spec(getattr(env, "action_spec", None))
     action_adapter = get_policy_spec(args).action_adapter

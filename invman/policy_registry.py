@@ -4,7 +4,7 @@ import re
 from dataclasses import dataclass
 from typing import Sequence
 
-from invman.policies.common import (
+from invman.policy_common import (
     normalize_policy_head,
     normalize_tree_leaf_type,
     normalize_tree_split_type,

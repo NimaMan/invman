@@ -4,18 +4,16 @@ from pathlib import Path
 
 import numpy as np
 
+from invman import rollout_fitness
 from invman.es_mp import train
-from invman.policies import build_policy
-from invman.policies.registry import apply_policy_name, get_policy_spec
-from invman.problems import get_problem_module
+from invman.policy_build import build_policy
+from invman.policy_registry import apply_policy_name, get_policy_spec
 from invman.utils import RunStatusTracker, experiment_status_path, set_global_seeds
 
 
 def build_model(args):
     apply_policy_name(args)
-    problem_module = get_problem_module(args.problem)
-    env = problem_module.build_env_from_args(args, track_demand=False)
-    return build_policy(args, env)
+    return build_policy(args)
 
 
 def summarize_costs(costs):
@@ -29,25 +27,14 @@ def summarize_costs(costs):
 
 
 def evaluate_model(model, args):
-    problem_module = get_problem_module(args.problem)
     eval_args = copy(args)
     eval_args.horizon = args.eval_horizon
     costs = []
     for seed_offset in range(args.eval_seeds):
         seed = args.seed + seed_offset
-        reward, _ = problem_module.get_model_fitness(
-            model,
-            eval_args,
-            seed=seed,
-            track_demand=getattr(args, "track_demand", False),
-        )
+        reward, _ = rollout_fitness.get_model_fitness(model, eval_args, seed=seed)
         costs.append(-float(reward))
     return summarize_costs(costs)
-
-
-def evaluate_heuristics(args):
-    problem_module = get_problem_module(args.problem)
-    return problem_module.evaluate_default_heuristics(args)
 
 
 def ensure_output_dirs(args):
@@ -56,7 +43,7 @@ def ensure_output_dirs(args):
     Path(args.trained_models_dir).mkdir(parents=True, exist_ok=True)
 
 
-def build_result_payload(args, learned_policy_results, heuristic_results):
+def build_result_payload(args, learned_policy_results, heuristic_results, training_metadata=None):
     policy_spec = get_policy_spec(args)
     policy_architecture = policy_spec.architecture_label(getattr(args, "state_features", "canonical"))
     problem_params = {
@@ -78,6 +65,14 @@ def build_result_payload(args, learned_policy_results, heuristic_results):
         "dual_demand_high": getattr(args, "dual_demand_high", None),
     }
     problem_params = {key: value for key, value in problem_params.items() if value is not None}
+    es_population_protocol = None if training_metadata is None else training_metadata.get("es_population_protocol")
+    if es_population_protocol is None:
+        es_population_protocol = {
+            "base_population": int(args.es_population),
+            "sampling_mode": str(getattr(args, "es_population_sampling", "fixed")),
+            "candidates": getattr(args, "es_population_candidates", None),
+            "probabilities": getattr(args, "es_population_probabilities", None),
+        }
 
     return {
         "experiment_name": args.experiment_name,
@@ -107,6 +102,8 @@ def build_result_payload(args, learned_policy_results, heuristic_results):
         "fixed_order_cost": args.fixed_order_cost,
         "training_method": args.training_method,
         "parameter_optimizer": args.training_method,
+        "es_population": int(args.es_population),
+        "es_population_protocol": es_population_protocol,
         "training_episodes": args.training_episodes,
         "training_horizon": args.horizon,
         "dynamic_horizon": bool(getattr(args, "dynamic_horizon", False)),
@@ -138,26 +135,32 @@ def run_experiment(args):
         tracker.update("seeding")
         set_global_seeds(getattr(args, "seed", 0))
         tracker.update("building_model")
-        problem_module = get_problem_module(args.problem)
         model = build_model(args)
         tracker.update("training")
         trained_model, _ = train(
             model=model,
-            get_model_fitness=problem_module.get_model_fitness,
-            get_population_fitness=problem_module.get_population_fitness,
+            get_model_fitness=rollout_fitness.get_model_fitness,
+            get_population_fitness=rollout_fitness.get_population_fitness,
             args=args,
             same_seed=args.same_seed,
             limit_env_time=args.dynamic_horizon,
             min_steps=args.min_dynamic_horizon,
             max_steps=args.max_dynamic_horizon,
         )
+        training_metadata = getattr(trained_model, "training_run_metadata", None)
 
         tracker.update("evaluating_learned_policy")
         learned_policy_results = evaluate_model(trained_model, args)
-        tracker.update("evaluating_heuristics")
-        heuristic_results = evaluate_heuristics(args)
+        # Heuristic baselines are computed in Rust now; the Python rollout/heuristics
+        # were removed in the Python-cleanup migration.
+        heuristic_results = {}
         tracker.update("writing_results")
-        payload = build_result_payload(args, learned_policy_results, heuristic_results)
+        payload = build_result_payload(
+            args,
+            learned_policy_results,
+            heuristic_results,
+            training_metadata=training_metadata,
+        )
         results_path = save_result_payload(args, payload)
         tracker.mark_completed(results_path=str(results_path))
         return payload, results_path
