@@ -1,3 +1,4 @@
+pub mod assembly;
 pub mod bindings;
 pub mod divergent_special_delivery;
 pub mod general_backorder_fixed_cost;

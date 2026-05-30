@@ -10,6 +10,9 @@ contract). More versions can be added here as siblings.
 
 - `serial/`
   - the textbook serial system (Clark & Scarf 1960): N stages in series, echelon base-stock optimal
+- `assembly/`
+  - the textbook assembly system (Rosling 1989): components assembled into a finished product;
+    equivalent to a serial system
 - `general_network/`
   - the Pirhooshyaran & Snyder (2021) general acyclic supply network: raw + finished inventory,
     `single`/`assembly`/`distribution` nodes, pairwise order-up-to decisions (the most general
@@ -25,6 +28,11 @@ contract). More versions can be added here as siblings.
   base-stock policy reproduces the published optima (Snyder & Shen Example 6.1 cost 47.65; discrete
   Poisson 3-stage 72.04, 2-stage 16.80, 1-stage 4.22) within Monte-Carlo error, and the `exact`
   solver reproduces them analytically (within 0.05%, cross-checked against `stockpyl.ssm_serial`).
+  (Verified for demand-facing lead time 1; downstream lead time >= 2 is a known open env item.)
+- `assembly/` — **literature-verified** via Rosling (1989: assembly == serial). The `env.rs`
+  simulation under the optimal echelon base-stock policy reproduces the exact serial optimum from
+  the verified serial solver. Verified for finished (demand-facing) lead time 1; component/upstream
+  lead times >= 2 supported.
 - `general_network/` — not literature-verified
   - implements the richer Pirhooshyaran model (per-node production step + pipeline holding), which
     does not reduce to the textbook serial/assembly optima; the paper's general-network simulation

@@ -36,6 +36,15 @@
 //!      each internal shipment capped by the upstream stage's on-hand.
 //! Ordering AFTER demand (not before) is what yields the L-period (not L+1) lead-time
 //! demand window used by the literature; reversing it is the classic off-by-one error.
+//!
+//! KNOWN LIMITATION: the multi-stage simulation is verified against the exact solver when the
+//! most-downstream (demand-facing) stage has lead time 1 -- which is the case for all carried
+//! verification instances (Snyder & Shen Example 6.1 and the Poisson 1/2/3-stage instances,
+//! whose downstream lead time is 1; upstream stage lead times >= 2 are fully supported). For a
+//! demand-facing stage with lead time >= 2 the multi-stage simulation currently under-counts
+//! cost relative to the exact solver (single-stage is correct at every lead time). This is an
+//! open inter-stage cost-convention discrepancy, to resolve before relying on the env for
+//! downstream-lead-time >= 2 instances.
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct SerialState {
