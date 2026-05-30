@@ -10,10 +10,15 @@ use crate::problems::lost_sales_fixed_order_cost::experiments::{
     expand_experiment_grid, get_experiment_grid, list_experiment_grids,
     FixedCostExperimentDemandCase, FixedCostExperimentGrid, FixedCostExperimentInstance,
 };
+use crate::problems::lost_sales::demand::{
+    build_demand_process, parse_demand_kind, sample_demand, LostSalesDemandConfig,
+};
 use crate::problems::lost_sales_fixed_order_cost::heuristics::{
     fixed_policy_rollout_from_demands, search_modified_s_s_q_from_demands,
     search_s_nq_from_demands, search_s_s_from_demands,
 };
+use rand::rngs::StdRng;
+use rand::SeedableRng;
 use crate::problems::lost_sales_fixed_order_cost::literature::{
     get_reference_instance, list_reference_instances, FixedCostLostSalesReferenceInstance,
     PublishedHeuristicRow, BIJVANK_2015_REFERENCE, BIJVANK_2015_TABLE1_REFERENCE,
@@ -503,6 +508,114 @@ fn lost_sales_fixed_modified_s_s_q_search_from_demands(
     )
 }
 
+/// Best (s,S), (s,nQ) and modified (s,S,q) mean costs for a fixed-cost instance,
+/// generating the demand sample internally (mirrors the vanilla
+/// `lost_sales_heuristics_all`). Each heuristic searches its best parameters on
+/// the sampled demand and returns the warm-up-trimmed mean cost.
+#[pyfunction]
+#[pyo3(signature = (
+    demand_kind,
+    demand_rate,
+    demand_lambda_low,
+    demand_lambda_high,
+    demand_p00,
+    demand_p11,
+    lead_time,
+    holding_cost,
+    shortage_cost,
+    procurement_cost,
+    fixed_order_cost,
+    max_order_size,
+    position_upper_bound,
+    horizon,
+    seed,
+    warm_up_periods_ratio=0.2,
+    top_k=1
+))]
+fn lost_sales_fixed_heuristics_all(
+    py: Python<'_>,
+    demand_kind: &str,
+    demand_rate: f64,
+    demand_lambda_low: f64,
+    demand_lambda_high: f64,
+    demand_p00: f64,
+    demand_p11: f64,
+    lead_time: usize,
+    holding_cost: f64,
+    shortage_cost: f64,
+    procurement_cost: f64,
+    fixed_order_cost: f64,
+    max_order_size: usize,
+    position_upper_bound: usize,
+    horizon: usize,
+    seed: u64,
+    warm_up_periods_ratio: f64,
+    top_k: usize,
+) -> PyResult<Py<PyDict>> {
+    let kind = parse_demand_kind(demand_kind).map_err(PyValueError::new_err)?;
+    let demand_config = LostSalesDemandConfig {
+        kind,
+        demand_rate,
+        demand_lambda_low,
+        demand_lambda_high,
+        demand_p00,
+        demand_p11,
+    };
+    let mut rng = StdRng::seed_from_u64(seed);
+    let mut process = build_demand_process(demand_config, &mut rng).map_err(PyValueError::new_err)?;
+    let demands: Vec<usize> = (0..horizon)
+        .map(|_| sample_demand(&mut rng, &mut process).max(0) as usize)
+        .collect();
+    let lead_time_orders = vec![0usize; lead_time];
+    let current_inventory: i64 = 0;
+
+    let (s_s_best, _) = search_s_s_from_demands(
+        current_inventory,
+        &lead_time_orders,
+        &demands,
+        max_order_size,
+        position_upper_bound,
+        holding_cost,
+        shortage_cost,
+        procurement_cost,
+        fixed_order_cost,
+        warm_up_periods_ratio,
+        top_k,
+    )?;
+    let (s_nq_best, _) = search_s_nq_from_demands(
+        current_inventory,
+        &lead_time_orders,
+        &demands,
+        max_order_size,
+        position_upper_bound,
+        holding_cost,
+        shortage_cost,
+        procurement_cost,
+        fixed_order_cost,
+        warm_up_periods_ratio,
+        top_k,
+    )?;
+    let (ssq_best, _, _) = search_modified_s_s_q_from_demands(
+        current_inventory,
+        &lead_time_orders,
+        &demands,
+        max_order_size,
+        position_upper_bound,
+        holding_cost,
+        shortage_cost,
+        procurement_cost,
+        fixed_order_cost,
+        warm_up_periods_ratio,
+        top_k,
+    )?;
+
+    let result = PyDict::new_bound(py);
+    result.set_item("s_s", s_s_best.2)?;
+    result.set_item("s_nq", s_nq_best.2)?;
+    result.set_item("modified_s_s_q", ssq_best.3)?;
+    Ok(result.into())
+}
+
 pub fn register_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(
         lost_sales_fixed_order_cost_reference_catalog,
@@ -552,5 +665,6 @@ pub fn register_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
         lost_sales_fixed_modified_s_s_q_search_from_demands,
         m
     )?)?;
+    m.add_function(wrap_pyfunction!(lost_sales_fixed_heuristics_all, m)?)?;
     Ok(())
 }
