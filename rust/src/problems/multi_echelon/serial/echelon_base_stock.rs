@@ -12,11 +12,11 @@ use rand::rngs::StdRng;
 use rand::SeedableRng;
 use rand_distr::{Distribution, Normal as RNormal, Poisson as RPoisson};
 
-use crate::problems::serial_clark_scarf::env::{
+use crate::problems::multi_echelon::serial::env::{
     consume, echelon_inventory_positions, initialize_at_echelon_levels, replenish, SerialConfig,
     SerialState,
 };
-use crate::problems::serial_clark_scarf::exact::SerialDemand;
+use crate::problems::multi_echelon::serial::exact::SerialDemand;
 
 /// Order quantities (downstream -> upstream) that raise each stage's echelon inventory
 /// position up to its echelon base-stock level.

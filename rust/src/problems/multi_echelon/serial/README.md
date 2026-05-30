@@ -1,8 +1,9 @@
-# serial_clark_scarf
+# multi_echelon / serial — textbook serial multi-echelon (Clark & Scarf)
 
 Canonical, literature-faithful home for the **textbook serial multi-echelon inventory
-system** (Clark & Scarf 1960). This is the clean model — named for exactly what it is —
-that we train policies on for this problem family.
+system** (Clark & Scarf 1960). It is the `serial` *version* of the multi-echelon problem;
+siblings under `multi_echelon/` cover other topologies. This is the clean model — named
+for exactly what it is — that we train policies on.
 
 It is deliberately **separate from `network_inventory`**, which implements the richer
 Pirhooshyaran & Snyder (2021) general supply-network model (per-node production steps and

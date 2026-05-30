@@ -1,6 +1,7 @@
 pub mod bindings;
 pub mod divergent_special_delivery;
 pub mod general_backorder_fixed_cost;
+pub mod serial;
 
 pub use divergent_special_delivery::env;
 pub use divergent_special_delivery::exact_rollout;

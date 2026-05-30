@@ -103,8 +103,8 @@ pub const PIRHOOSHYARAN_2021_REFERENCE: PublishedBenchmarkReference =
 /// multi-echelon optimum (Clark and Scarf 1960; Federgruen and Zipkin 1984; Chen and
 /// Zheng 1994). Case 3 is Snyder and Shen "Fundamentals of Supply Chain Theory"
 /// Example 6.1. These rows describe the TEXTBOOK serial system, which has its own
-/// literature-faithful, env-verified home in the `serial_clark_scarf` family; the
-/// solver there (`serial_clark_scarf::exact`) reproduces every published
+/// literature-faithful, env-verified home in the `multi_echelon/serial` family; the
+/// solver there (`multi_echelon/serial::exact`) reproduces every published
 /// `published_average_cost` within 0.05% relative error, cross-checked against Snyder's
 /// public `stockpyl.ssm_serial` reference implementation. The Pirhooshyaran network env
 /// in THIS family is a richer model and does not reproduce these optima (see
@@ -115,7 +115,7 @@ pub const SERIAL_CLARK_SCARF_REFERENCE: PublishedBenchmarkReference =
         source: "Clark & Scarf (1960); Snyder & Shen, Fundamentals of Supply Chain Theory (Example 6.1); stockpyl.ssm_serial reference implementation",
         url: "https://stockpyl.readthedocs.io/en/latest/api/seio/ssm_serial.html",
         benchmark_policies: &["echelon_base_stock_optimal"],
-        notes: "Exact periodic-review serial multi-echelon optimum via Clark-Scarf recursive newsvendor decomposition. Reproduced (exact + env simulation) in the serial_clark_scarf family; carried here as the Pirhooshyaran Tables 2-3 rows.",
+        notes: "Exact periodic-review serial multi-echelon optimum via Clark-Scarf recursive newsvendor decomposition. Reproduced (exact + env simulation) in the multi_echelon/serial family; carried here as the Pirhooshyaran Tables 2-3 rows.",
     };
 
 pub const SINGLE_NODE_BENCHMARK_ROWS: &[SingleNodeBenchmarkRow] = &[
@@ -364,7 +364,7 @@ pub const PRIMARY_REFERENCE_INSTANCE: NetworkInventoryReferenceInstance =
         source: PIRHOOSHYARAN_2021_REFERENCE.source,
         url: PIRHOOSHYARAN_2021_REFERENCE.url,
         literature_verified: false,
-        verification_source: "pirhooshyaran_network_env_not_literature_verified_serial_optimum_lives_in_serial_clark_scarf",
+        verification_source: "pirhooshyaran_network_env_not_literature_verified_serial_optimum_lives_in_multi_echelon_serial",
         periods: 10,
         num_nodes: 3,
         source_nodes: &[true, false, false],
@@ -380,7 +380,7 @@ pub const PRIMARY_REFERENCE_INSTANCE: NetworkInventoryReferenceInstance =
         initial_internal_backlog_by_edge: &[0, 0],
         initial_external_backlog: &[0, 0, 0],
         initial_supply_pipelines: &[&[0], &[0], &[0, 0]],
-        notes: "Paper-shaped three-echelon serial case from Tables 2 and 3, identical to Snyder & Shen 'Fundamentals of Supply Chain Theory' Example 6.1 (echelon holding [2,2,3], lead times [2,1,1], stockout 37.12, Normal(5,1) demand). Local holding costs [2,4,7] (upstream->downstream) and the analytical OULs are carried in the paper's published upstream-to-downstream order. These rows describe the TEXTBOOK serial system; its env-faithful, literature-verified home is the `serial_clark_scarf` family, whose env simulation under the optimal echelon base-stock policy reproduces the published optimum (47.65) and whose `exact` solver reproduces it analytically. The Pirhooshyaran network env in THIS family is a richer model (per-node production + pipeline holding) and does NOT reproduce these optima, so this instance is not env-literature-verified here; see `serial_echelon_simulation` for the quantitative structural gap.",
+        notes: "Paper-shaped three-echelon serial case from Tables 2 and 3, identical to Snyder & Shen 'Fundamentals of Supply Chain Theory' Example 6.1 (echelon holding [2,2,3], lead times [2,1,1], stockout 37.12, Normal(5,1) demand). Local holding costs [2,4,7] (upstream->downstream) and the analytical OULs are carried in the paper's published upstream-to-downstream order. These rows describe the TEXTBOOK serial system; its env-faithful, literature-verified home is the `multi_echelon/serial` family, whose env simulation under the optimal echelon base-stock policy reproduces the published optimum (47.65) and whose `exact` solver reproduces it analytically. The Pirhooshyaran network env in THIS family is a richer model (per-node production + pipeline holding) and does NOT reproduce these optima, so this instance is not env-literature-verified here; see `serial_echelon_simulation` for the quantitative structural gap.",
     };
 
 pub const VERIFICATION_SERIAL_EDGES: &[NetworkEdge] = &[NetworkEdge {

@@ -5,20 +5,29 @@ they do not share the same dynamics or benchmark contract.
 
 ## Subproblems
 
+Each subproblem is a distinct *version* of the multi-echelon problem (different topology and/or
+contract). More versions can be added here as siblings.
+
+- `serial/`
+  - the textbook serial system (Clark & Scarf 1960): N stages in series, echelon base-stock optimal
 - `divergent_special_delivery/`
   - Van Roy / Gijs one-warehouse-multi-retailer family with same-day special delivery
 - `general_backorder_fixed_cost/`
   - Geevers/CardBoard Company general-network family with backorders and unit lead times
 
+(The Pirhooshyaran & Snyder general supply-network model lives separately in `network_inventory`.)
+
 ## Verification Status
 
-At the moment, none of the multi-echelon subproblems in this folder are literature-verified.
-
-- `divergent_special_delivery/`
+- `serial/` — **literature-verified**. The `env.rs` simulation under the optimal echelon
+  base-stock policy reproduces the published optima (Snyder & Shen Example 6.1 cost 47.65; discrete
+  Poisson 3-stage 72.04, 2-stage 16.80, 1-stage 4.22) within Monte-Carlo error, and the `exact`
+  solver reproduces them analytically (within 0.05%, cross-checked against `stockpyl.ssm_serial`).
+- `divergent_special_delivery/` — not literature-verified
   - literature benchmark rows are carried from Van Roy and Gijs
   - the current repo implementation does not reproduce those rows tightly enough to claim
     literature verification
-- `general_backorder_fixed_cost/`
+- `general_backorder_fixed_cost/` — not literature-verified
   - literature benchmark rows are carried from Geevers
   - set 1 is close, but the current repo implementation does not reproduce sets 2 and 3, so this
     formulation is also not literature-verified

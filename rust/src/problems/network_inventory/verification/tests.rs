@@ -41,7 +41,7 @@ fn reference_set_has_expected_shape() {
     assert!(!PRIMARY_REFERENCE_INSTANCE.literature_verified);
     assert_eq!(
         PRIMARY_REFERENCE_INSTANCE.verification_source,
-        "pirhooshyaran_network_env_not_literature_verified_serial_optimum_lives_in_serial_clark_scarf"
+        "pirhooshyaran_network_env_not_literature_verified_serial_optimum_lives_in_multi_echelon_serial"
     );
     assert_eq!(SINGLE_NODE_BENCHMARK_ROWS.len(), 7);
     assert_eq!(SERIAL_BENCHMARK_ROWS.len(), 10);
@@ -79,7 +79,7 @@ fn single_node_rows_match_analytical_newsvendor_values() {
 
 #[test]
 fn serial_rows_reproduced_by_exact_clark_scarf_solver() {
-    use crate::problems::serial_clark_scarf::exact::{
+    use crate::problems::multi_echelon::serial::exact::{
         solve_from_local_costs, GridParams, SerialDemand,
     };
 

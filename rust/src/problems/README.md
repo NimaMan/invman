@@ -158,7 +158,7 @@ Current literature-verified package anchors:
     through the Rust analytical verification helper
   - the full Giannoccaro and Pontrandolfo (2010) 8-case truck-dispatch profit table is not carried
     as a verified benchmark because the public demand-signal semantics do not reproduce the rows
-- `serial_clark_scarf`
+- `multi_echelon/serial`
   - the textbook serial multi-echelon system (Clark & Scarf 1960). Its `env.rs` is
     literature-verified BY SIMULATION: driven by the optimal echelon base-stock policy it
     reproduces Snyder & Shen Example 6.1 optimal cost 47.65 and the discrete Poisson optima
@@ -172,7 +172,7 @@ Current literature-verified package anchors:
     it does not reproduce the textbook serial optimum (the `serial_echelon_simulation.rs` test
     shows the structural gap quantitatively: ~147 / >100 vs 72.04)
   - the single-node newsvendor rows are reproduced analytically; the serial benchmark rows it
-    carries are the textbook Clark-Scarf optima, verified in the `serial_clark_scarf` family
+    carries are the textbook Clark-Scarf optima, verified in the `multi_echelon/serial` family
   - the Pirhooshyaran env's own published serial protocol could not be recovered from public
     sources, so this env stays not literature-verified
 

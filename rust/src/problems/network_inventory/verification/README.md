@@ -18,8 +18,8 @@ What is checked here (note: this env is NOT literature-verified):
 - serial-row consistency: `serial_rows_reproduced_by_exact_clark_scarf_solver` checks that the
   serial benchmark rows carried here (Pirhooshyaran and Snyder 2021, Tables 2-3; case 3 = Snyder
   and Shen Example 6.1, cost 47.65) equal the textbook Clark-Scarf optima, using
-  `serial_clark_scarf::exact`. The serial optimum itself is literature-verified (exact + env
-  simulation) in the `serial_clark_scarf` family, not here.
+  `multi_echelon/serial::exact`. The serial optimum itself is literature-verified (exact + env
+  simulation) in the `multi_echelon/serial` family, not here.
 
 Simulation (sim) investigation:
 

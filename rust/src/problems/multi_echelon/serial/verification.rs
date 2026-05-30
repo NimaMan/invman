@@ -13,9 +13,9 @@
 
 #[cfg(test)]
 mod tests {
-    use crate::problems::serial_clark_scarf::echelon_base_stock::simulate;
-    use crate::problems::serial_clark_scarf::env::SerialConfig;
-    use crate::problems::serial_clark_scarf::exact::{
+    use crate::problems::multi_echelon::serial::echelon_base_stock::simulate;
+    use crate::problems::multi_echelon::serial::env::SerialConfig;
+    use crate::problems::multi_echelon::serial::exact::{
         solve_from_local_costs, solve_serial_clark_scarf, GridParams, SerialDemand, SerialStage,
     };
 

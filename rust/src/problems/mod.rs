@@ -13,6 +13,5 @@ pub mod one_warehouse_multi_retailer;
 pub mod perishable_inventory;
 pub mod procurement_removal_inventory;
 pub mod random_yield_inventory;
-pub mod serial_clark_scarf;
 pub mod spare_parts_inventory;
 pub mod vendor_managed_inventory;

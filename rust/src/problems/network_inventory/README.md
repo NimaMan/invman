@@ -23,14 +23,14 @@ Current Rust interpretation:
 
 This family is the **Pirhooshyaran & Snyder (2021) general supply-network model**, not the
 textbook serial system. The clean textbook serial (Clark-Scarf) model lives in its own
-literature-verified family, `serial_clark_scarf`.
+literature-verified family, `multi_echelon/serial`.
 
 Current status:
 
 - the `env.rs` network model is **not** literature-verified yet
 - single-node newsvendor rows are reproduced analytically (closed form)
 - the serial benchmark optima this family carries (Pirhooshyaran Tables 2-3) are the TEXTBOOK
-  Clark-Scarf optima, verified in the `serial_clark_scarf` family (exact + env simulation), not here
+  Clark-Scarf optima, verified in the `multi_echelon/serial` family (exact + env simulation), not here
 
 Why the env is not literature-verified here:
 
@@ -46,7 +46,7 @@ Why the env is not literature-verified here:
 - the test `env_does_not_reproduce_clark_scarf_optimum_structural_gap` records this quantitatively
 - this is expected: a richer model is not the simple problem. Reproducing it requires either
   Pirhooshyaran's own published numbers for this richer model (their serial simulation protocol
-  could not be recovered from public sources), or using the `serial_clark_scarf` family for the
+  could not be recovered from public sources), or using the `multi_echelon/serial` family for the
   textbook serial problem.
 
 Package layout:

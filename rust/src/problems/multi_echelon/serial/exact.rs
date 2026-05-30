@@ -6,7 +6,7 @@
 //! ---------
 //! Provide a repo-native EXACT solver for the classical periodic-review serial
 //! multi-echelon inventory system (Clark and Scarf 1960). It is the analytical anchor
-//! for the `serial_clark_scarf` family: it computes the exact optimal echelon
+//! for the `multi_echelon::serial` family: it computes the exact optimal echelon
 //! base-stock levels and optimal expected cost. The family's `env.rs` simulation is
 //! verified to reproduce these same optima under the optimal echelon base-stock policy
 //! (see `verification`), and `network_inventory` (the Pirhooshyaran general-network
