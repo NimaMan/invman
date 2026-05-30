@@ -8,10 +8,10 @@ if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
 
 from invman.experiment_runner import run_experiment
-from invman.problems.lost_sales.benchmark import benchmark_reference_instance
-from invman.problems.lost_sales.experiment_spec import (
+from invman.lost_sales_benchmark import (
     COMMON_BUDGET,
     EXPERIMENT_SPECS,
+    benchmark_reference_instance,
     configure_run_args,
     result_path_for,
 )
@@ -57,7 +57,12 @@ def _load_or_run_experiment(args, *, reuse_existing: bool):
 
 def _render_markdown(summary):
     heuristic = summary["heuristics"]["evaluation"]
-    best_heuristic_cost = min(heuristic[name]["mean_cost"] for name in ("myopic1", "myopic2", "svbs"))
+    heuristic_costs = [
+        heuristic[name]["mean_cost"]
+        for name in ("myopic1", "myopic2", "svbs")
+        if heuristic[name]["mean_cost"] is not None
+    ]
+    best_heuristic_cost = min(heuristic_costs) if heuristic_costs else None
     lines = [
         "# Canonical Vanilla Lost-Sales Benchmark Suite",
         "",
