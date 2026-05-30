@@ -13,6 +13,9 @@ use crate::problems::lost_sales::demand::{
 use crate::problems::lost_sales::env::{
     epoch_cost, initialize_state, LostSalesState, StateNormalizer,
 };
+use crate::problems::lost_sales::heuristics::{
+    evaluate_heuristic_policy, LostSalesHeuristicPolicyKind, LostSalesHeuristicVerificationConfig,
+};
 use crate::problems::lost_sales::rollout::{
     linear_population_rollout as lost_sales_linear_population_rollout_impl,
     linear_rollout as lost_sales_linear_rollout_impl,
@@ -821,6 +824,199 @@ fn lost_sales_nn_population_rollout(
     lost_sales_neural_population_rollout_impl(&params_batch, &config, &seeds)
 }
 
+fn parse_lost_sales_heuristic_kind(name: &str) -> PyResult<LostSalesHeuristicPolicyKind> {
+    match name {
+        "myopic1" => Ok(LostSalesHeuristicPolicyKind::Myopic1),
+        "myopic2" => Ok(LostSalesHeuristicPolicyKind::Myopic2),
+        "svbs" => Ok(LostSalesHeuristicPolicyKind::StandardVectorBaseStock),
+        other => Err(pyo3::exceptions::PyValueError::new_err(format!(
+            "unsupported lost-sales heuristic '{other}', expected one of: myopic1, myopic2, svbs"
+        ))),
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn build_lost_sales_heuristic_config(
+    demand_kind: &str,
+    demand_rate: f64,
+    demand_lambda_low: f64,
+    demand_lambda_high: f64,
+    demand_p00: f64,
+    demand_p11: f64,
+    lead_time: usize,
+    holding_cost: f64,
+    shortage_cost: f64,
+    procurement_cost: f64,
+    fixed_order_cost: f64,
+    horizon: usize,
+    seed: u64,
+    warm_up_periods_ratio: f64,
+    order_search_upper_bound: usize,
+    heuristic_discount_factor: f64,
+) -> PyResult<LostSalesHeuristicVerificationConfig> {
+    Ok(LostSalesHeuristicVerificationConfig {
+        reference_name: "python_binding",
+        horizon,
+        seed,
+        warm_up_periods_ratio,
+        order_search_upper_bound,
+        lead_time,
+        holding_cost,
+        shortage_cost,
+        procurement_cost,
+        fixed_order_cost,
+        heuristic_discount_factor,
+        demand_config: build_lost_sales_demand_config(
+            demand_kind,
+            demand_rate,
+            demand_lambda_low,
+            demand_lambda_high,
+            demand_p00,
+            demand_p11,
+        )?,
+    })
+}
+
+/// Evaluate a single lost-sales heuristic (Myopic-1 / Myopic-2 / SVBS) and return
+/// its warm-up-adjusted mean per-period cost. The order quantities are computed
+/// from a closed-form demand law (the stationary marginal for MMPP2), while the
+/// rollout cost is measured on the true demand process.
+#[pyfunction]
+#[pyo3(signature = (
+    heuristic,
+    demand_kind,
+    demand_rate,
+    demand_lambda_low,
+    demand_lambda_high,
+    demand_p00,
+    demand_p11,
+    lead_time,
+    holding_cost,
+    shortage_cost,
+    procurement_cost,
+    fixed_order_cost,
+    horizon,
+    seed,
+    warm_up_periods_ratio,
+    order_search_upper_bound,
+    heuristic_discount_factor,
+))]
+#[allow(clippy::too_many_arguments)]
+fn lost_sales_heuristic_mean_cost(
+    heuristic: &str,
+    demand_kind: &str,
+    demand_rate: f64,
+    demand_lambda_low: f64,
+    demand_lambda_high: f64,
+    demand_p00: f64,
+    demand_p11: f64,
+    lead_time: usize,
+    holding_cost: f64,
+    shortage_cost: f64,
+    procurement_cost: f64,
+    fixed_order_cost: f64,
+    horizon: usize,
+    seed: u64,
+    warm_up_periods_ratio: f64,
+    order_search_upper_bound: usize,
+    heuristic_discount_factor: f64,
+) -> PyResult<f64> {
+    let kind = parse_lost_sales_heuristic_kind(heuristic)?;
+    let config = build_lost_sales_heuristic_config(
+        demand_kind,
+        demand_rate,
+        demand_lambda_low,
+        demand_lambda_high,
+        demand_p00,
+        demand_p11,
+        lead_time,
+        holding_cost,
+        shortage_cost,
+        procurement_cost,
+        fixed_order_cost,
+        horizon,
+        seed,
+        warm_up_periods_ratio,
+        order_search_upper_bound,
+        heuristic_discount_factor,
+    )?;
+    let measurement = evaluate_heuristic_policy(config, kind)
+        .map_err(pyo3::exceptions::PyValueError::new_err)?;
+    Ok(measurement.mean_cost)
+}
+
+/// Run all three lost-sales heuristics on one instance in a single call and
+/// return `{"myopic1": f, "myopic2": f, "svbs": f}` of warm-up-adjusted mean
+/// costs. Convenience wrapper used by the config-fill step.
+#[pyfunction]
+#[pyo3(signature = (
+    demand_kind,
+    demand_rate,
+    demand_lambda_low,
+    demand_lambda_high,
+    demand_p00,
+    demand_p11,
+    lead_time,
+    holding_cost,
+    shortage_cost,
+    procurement_cost,
+    fixed_order_cost,
+    horizon,
+    seed,
+    warm_up_periods_ratio,
+    order_search_upper_bound,
+    heuristic_discount_factor,
+))]
+#[allow(clippy::too_many_arguments)]
+fn lost_sales_heuristics_all(
+    py: Python<'_>,
+    demand_kind: &str,
+    demand_rate: f64,
+    demand_lambda_low: f64,
+    demand_lambda_high: f64,
+    demand_p00: f64,
+    demand_p11: f64,
+    lead_time: usize,
+    holding_cost: f64,
+    shortage_cost: f64,
+    procurement_cost: f64,
+    fixed_order_cost: f64,
+    horizon: usize,
+    seed: u64,
+    warm_up_periods_ratio: f64,
+    order_search_upper_bound: usize,
+    heuristic_discount_factor: f64,
+) -> PyResult<Py<pyo3::types::PyDict>> {
+    use pyo3::types::PyDict;
+
+    let config = build_lost_sales_heuristic_config(
+        demand_kind,
+        demand_rate,
+        demand_lambda_low,
+        demand_lambda_high,
+        demand_p00,
+        demand_p11,
+        lead_time,
+        holding_cost,
+        shortage_cost,
+        procurement_cost,
+        fixed_order_cost,
+        horizon,
+        seed,
+        warm_up_periods_ratio,
+        order_search_upper_bound,
+        heuristic_discount_factor,
+    )?;
+
+    let result = PyDict::new_bound(py);
+    for kind in LostSalesHeuristicPolicyKind::all() {
+        let measurement = evaluate_heuristic_policy(config, kind)
+            .map_err(pyo3::exceptions::PyValueError::new_err)?;
+        result.set_item(kind.policy_name(), measurement.mean_cost)?;
+    }
+    Ok(result.into())
+}
+
 pub fn register_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(lost_sales_constant_action_rollout, m)?)?;
     m.add_function(wrap_pyfunction!(lost_sales_soft_tree_rollout, m)?)?;
@@ -838,5 +1034,7 @@ pub fn register_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
         lost_sales_soft_tree_population_rollout,
         m
     )?)?;
+    m.add_function(wrap_pyfunction!(lost_sales_heuristic_mean_cost, m)?)?;
+    m.add_function(wrap_pyfunction!(lost_sales_heuristics_all, m)?)?;
     Ok(())
 }
