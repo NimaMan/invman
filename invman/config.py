@@ -180,6 +180,7 @@ def get_config(argv=None):
     parser.add_argument("--multi_demand_mean", default=5.0, type=float, help="Mean retailer demand in the multi-echelon model.")
     parser.add_argument("--multi_demand_std", default=14.0, type=float, help="Std. dev. of retailer demand in the multi-echelon model.")
     parser.add_argument("--inventory_dynamics_mode", default="gijs_2022", choices=["gijs_2022", "van_roy_1997"], help="Multi-echelon timing convention: gijs_2022 (paper-faithful Eq.(2), pre-shipment warehouse order, end-of-period holding) or van_roy_1997 (reproduction).")
+    parser.add_argument("--multi_action_design", default="direct_level", choices=["grid", "direct_level"], help="Multi-echelon learned-policy action parameterization (autoresearch search dimension): 'grid' (pick order-up-to levels from the Gijs reduced grid) or 'direct_level' (directly estimate order-up-to levels bounded by the physical caps).")
     parser.add_argument("--demand_distribution", default="normal_rounded_clipped", choices=["normal_rounded_clipped", "poisson"], help="Multi-echelon retailer demand distribution.")
     parser.add_argument("--horizon", default=2000, type=int, help="Training rollout horizon.")
     parser.add_argument("--eval_horizon", default=10000, type=int, help="Evaluation rollout horizon.")

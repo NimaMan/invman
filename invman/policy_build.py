@@ -145,13 +145,43 @@ def _build_multi_echelon(args, spec) -> Policy:
         raise NotImplementedError("multi_echelon supports only the soft_tree backbone")
     wbsl = list(getattr(args, "warehouse_base_stock_levels", _DEFAULT_WAREHOUSE_BSL))
     rbsl = list(getattr(args, "retailer_base_stock_levels", _DEFAULT_RETAILER_BSL))
-    action_spec = normalize_action_spec(
-        {
-            "action_dim": 2,
-            "action_mode": "discrete_grid",
-            "allowed_values": [[int(v) for v in wbsl], [int(v) for v in rbsl]],
-        }
-    )
+    warehouse_cap = int(getattr(args, "warehouse_inventory_cap", max(wbsl)))
+    retailer_cap = int(getattr(args, "retailer_inventory_cap", max(rbsl)))
+    # Action parameterization is a policy-DESIGN choice (an autoresearch search dimension),
+    # not a fixed grid -- the action space is whatever the chosen policy can express:
+    #   "grid"         pick warehouse/retailer order-up-to levels from the discrete Gijs
+    #                  reduced grid (the published reduced action set).
+    #   "direct_level" directly estimate (continuous -> non-negative int) the warehouse and
+    #                  retailer order-up-to LEVELS, bounded only by the physical inventory-
+    #                  position caps (Cw, Cr); mirrors lost_sales' direct quantity estimation
+    #                  and lets the policy reach the operating region (~330) without a
+    #                  hand-set grid.
+    design = str(getattr(args, "multi_action_design", "direct_level"))
+    if design == "grid":
+        action_spec = normalize_action_spec(
+            {
+                "action_dim": 2,
+                "action_mode": "discrete_grid",
+                "allowed_values": [[int(v) for v in wbsl], [int(v) for v in rbsl]],
+            }
+        )
+        state_scale_default = max(max(wbsl), max(rbsl))
+        max_order_size = int(max(wbsl))
+    elif design == "direct_level":
+        action_spec = normalize_action_spec(
+            {
+                "action_dim": 2,
+                "action_mode": "vector_quantity",
+                "min_values": [0, 0],
+                "max_values": [warehouse_cap, retailer_cap],
+            }
+        )
+        state_scale_default = retailer_cap
+        max_order_size = warehouse_cap
+    else:
+        raise ValueError(
+            f"unknown multi_action_design '{design}' (expected 'grid' or 'direct_level')"
+        )
     # The learned-policy input dimension is owned by the problem: ask the Rust module to
     # report it (it runs the same feature builder the rollout uses), rather than re-deriving
     # it here with a formula that drifts from the env's decision-state layout (the
@@ -177,7 +207,7 @@ def _build_multi_echelon(args, spec) -> Policy:
         min_values=tuple(action_spec["min_values"]),
         max_values=tuple(action_spec["max_values"]),
         allowed_values=action_spec.get("allowed_values"),
-        max_order_size=int(max(wbsl)),
+        max_order_size=max_order_size,
         action_adapter="identity",
         # lost-sales-style policy interface: the env emits the pure decision state and the
         # policy normalizes it before acting. The multi-echelon policy owns its own
@@ -186,7 +216,7 @@ def _build_multi_echelon(args, spec) -> Policy:
         # action magnitude that bounds the inventory positions the policy steers to, the
         # multi-echelon analogue of lost_sales' state_scale = max_order_size.
         state_normalizer="divide_by_scale",
-        state_scale=float(getattr(args, "state_scale", None) or max(max(wbsl), max(rbsl))),
+        state_scale=float(getattr(args, "state_scale", None) or state_scale_default),
         depth=int(spec.tree_depth),
         temperature=float(spec.tree_temperature),
         split_type=spec.tree_split_type,

@@ -839,28 +839,21 @@ fn multi_echelon_soft_tree_rollout(
     leaf_type: &str,
     allowed_values: Option<Vec<Vec<usize>>>,
 ) -> PyResult<f64> {
-    let action_warehouse_levels = allowed_values
-        .as_ref()
-        .ok_or_else(|| {
-            pyo3::exceptions::PyValueError::new_err("multi-echelon rollouts require allowed_values")
-        })?
-        .get(0)
-        .cloned()
-        .ok_or_else(|| {
-            pyo3::exceptions::PyValueError::new_err("missing warehouse allowed_values")
-        })?;
-    let action_retailer_levels = allowed_values
-        .as_ref()
-        .unwrap()
-        .get(1)
-        .cloned()
-        .ok_or_else(|| {
-            pyo3::exceptions::PyValueError::new_err("missing retailer allowed_values")
-        })?;
-    let initialization_warehouse_levels =
-        reference_warehouse_levels.unwrap_or_else(|| action_warehouse_levels.clone());
-    let initialization_retailer_levels =
-        reference_retailer_levels.unwrap_or_else(|| action_retailer_levels.clone());
+    // Initialization levels only seed the zero-state shape (their numeric values are unused
+    // by initialize_random_state), so they need not come from a discrete grid. For grid
+    // policies default to the grid; for direct policies (vector_quantity / scalar)
+    // allowed_values is None, so fall back to the reference levels or a placeholder.
+    // build_action_spec validates that allowed_values is present iff the mode is discrete_grid.
+    let initialization_warehouse_levels = reference_warehouse_levels
+        .clone()
+        .or_else(|| allowed_values.as_ref().and_then(|grid| grid.get(0).cloned()))
+        .filter(|levels| !levels.is_empty())
+        .unwrap_or_else(|| vec![0]);
+    let initialization_retailer_levels = reference_retailer_levels
+        .clone()
+        .or_else(|| allowed_values.as_ref().and_then(|grid| grid.get(1).cloned()))
+        .filter(|levels| !levels.is_empty())
+        .unwrap_or_else(|| vec![0]);
     let config = MultiEchelonRolloutConfig {
         input_dim,
         depth,
@@ -993,28 +986,21 @@ fn multi_echelon_soft_tree_population_rollout(
     leaf_type: &str,
     allowed_values: Option<Vec<Vec<usize>>>,
 ) -> PyResult<Vec<f64>> {
-    let action_warehouse_levels = allowed_values
-        .as_ref()
-        .ok_or_else(|| {
-            pyo3::exceptions::PyValueError::new_err("multi-echelon rollouts require allowed_values")
-        })?
-        .get(0)
-        .cloned()
-        .ok_or_else(|| {
-            pyo3::exceptions::PyValueError::new_err("missing warehouse allowed_values")
-        })?;
-    let action_retailer_levels = allowed_values
-        .as_ref()
-        .unwrap()
-        .get(1)
-        .cloned()
-        .ok_or_else(|| {
-            pyo3::exceptions::PyValueError::new_err("missing retailer allowed_values")
-        })?;
-    let initialization_warehouse_levels =
-        reference_warehouse_levels.unwrap_or_else(|| action_warehouse_levels.clone());
-    let initialization_retailer_levels =
-        reference_retailer_levels.unwrap_or_else(|| action_retailer_levels.clone());
+    // Initialization levels only seed the zero-state shape (their numeric values are unused
+    // by initialize_random_state), so they need not come from a discrete grid. For grid
+    // policies default to the grid; for direct policies (vector_quantity / scalar)
+    // allowed_values is None, so fall back to the reference levels or a placeholder.
+    // build_action_spec validates that allowed_values is present iff the mode is discrete_grid.
+    let initialization_warehouse_levels = reference_warehouse_levels
+        .clone()
+        .or_else(|| allowed_values.as_ref().and_then(|grid| grid.get(0).cloned()))
+        .filter(|levels| !levels.is_empty())
+        .unwrap_or_else(|| vec![0]);
+    let initialization_retailer_levels = reference_retailer_levels
+        .clone()
+        .or_else(|| allowed_values.as_ref().and_then(|grid| grid.get(1).cloned()))
+        .filter(|levels| !levels.is_empty())
+        .unwrap_or_else(|| vec![0]);
     let config = MultiEchelonRolloutConfig {
         input_dim,
         depth,
