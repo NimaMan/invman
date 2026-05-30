@@ -25,10 +25,14 @@ flat `invman` package (`invman.config`, `invman.experiment_runner`, `invman.poli
   a results row plus the best constant base-stock baseline (computed in Rust).
   Example: `python autoresearch_multi_echelon.py --reference gijsbrechts2022_setting2 --budget full --description "..."`
 
-- **`train_simple_problem_policy.py`** — end-to-end design + train on the simple Van Roy
-  problem. Reports three numbers in one run: the literature reproduction (published levels vs
-  51.7), the grid-best constant base-stock, and a soft-tree depth sweep trained by CMA-ES.
-  Example: `python train_simple_problem_policy.py --budget full`
+- **`train_multi_echelon_policy.py`** — end-to-end design + train on any reference instance
+  (`--reference`). Reports in one run: the literature reproduction (published levels vs the
+  published cost, for the van_roy_1997 instances), the grid-best constant base-stock, and a
+  soft-tree depth sweep trained by CMA-ES, with the learned-vs-best-base-stock improvement
+  (the comparator to Gijs's published A3C savings on the faithful gijs_2022 settings).
+  Examples:
+  `python train_multi_echelon_policy.py --reference van_roy1997_simple_problem --budget full`
+  `python train_multi_echelon_policy.py --reference gijsbrechts2022_setting1 --budget full`
 
 ## Policy interface
 
