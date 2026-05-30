@@ -100,6 +100,10 @@ def build_reference_args(name: str):
     args.max_order_size = 20
     args.track_demand = True
     args.warm_up_periods_ratio = 0.2
+    # Match the canonical benchmark state representation used by the original runs
+    # so resumed/new results are comparable (quantity-scale normalizer, scale 20).
+    args.state_normalizer = "quantity_scale"
+    args.state_scale = 20.0
     if ref["demand_kind"] == "MarkovModulatedPoisson2":
         args.demand_lambda_low = ref["demand_lambda_low"]
         args.demand_lambda_high = ref["demand_lambda_high"]
