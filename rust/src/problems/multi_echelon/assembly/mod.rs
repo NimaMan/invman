@@ -8,7 +8,7 @@
 //! simulation (`verification.rs`), so policies can be trained on it with confidence.
 //!
 //! Scope: equal component lead time (the clean Rosling reduction to a 2-stage serial). It is
-//! a sibling of `serial` and `general_network` under `multi_echelon/`.
+//! a sibling of `serial` and `production_assembly_distribution_network` under `multi_echelon/`.
 
 pub mod echelon_base_stock;
 pub mod env;

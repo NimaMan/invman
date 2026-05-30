@@ -5,7 +5,7 @@ system** (Clark & Scarf 1960). It is the `serial` *version* of the multi-echelon
 siblings under `multi_echelon/` cover other topologies. This is the clean model — named
 for exactly what it is — that we train policies on.
 
-It is a distinct sibling of **`multi_echelon/general_network`**, which implements the richer
+It is a distinct sibling of **`multi_echelon/production_assembly_distribution_network`**, which implements the richer
 Pirhooshyaran & Snyder (2021) general supply-network model (per-node production steps and
 pipeline holding) and does **not** reduce to this textbook serial system.
 

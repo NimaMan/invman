@@ -167,7 +167,7 @@ pub const VAN_DER_HAAR_2025_REFERENCE: PublishedBenchmarkReference = PublishedBe
     benchmark_policies: &["drl", "distance-based transshipment and expediting heuristics"],
     reported_numbers_available: false,
     numbers_anchor_repo_assertions: false,
-    notes: "The paper shows that large-scale operational spare-parts management relies on proactive transshipments and expediting, which motivates keeping spare_parts_inventory separate from general general_network.",
+    notes: "The paper shows that large-scale operational spare-parts management relies on proactive transshipments and expediting, which motivates keeping spare_parts_inventory separate from general production_assembly_distribution_network.",
 };
 
 pub const KRANENBURG_2006_REFERENCE: PublishedBenchmarkReference = PublishedBenchmarkReference {

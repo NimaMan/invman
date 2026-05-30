@@ -2,7 +2,7 @@ pub mod assembly;
 pub mod bindings;
 pub mod divergent_special_delivery;
 pub mod general_backorder_fixed_cost;
-pub mod general_network;
+pub mod production_assembly_distribution_network;
 pub mod serial;
 
 pub use divergent_special_delivery::env;

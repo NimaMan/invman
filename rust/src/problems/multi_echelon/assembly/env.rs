@@ -12,7 +12,7 @@
 //! env is verified to reproduce that optimum by simulation (see `verification`).
 //!
 //! It is the `assembly` *version* of the multi-echelon problem (sibling to `serial`,
-//! `general_network`, ...). Like `serial`, holding is charged on physical on-hand only and
+//! `production_assembly_distribution_network`, ...). Like `serial`, holding is charged on physical on-hand only and
 //! orders are placed AFTER demand is observed (the lead-time-demand convention).
 //!
 //! SCOPE

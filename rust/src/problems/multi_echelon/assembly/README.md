@@ -2,7 +2,7 @@
 
 The `assembly` *version* of the multi-echelon problem: several components are procured from
 outside suppliers and assembled into one finished product that faces customer demand. Sibling of
-`serial` and `general_network` under `multi_echelon/`.
+`serial` and `production_assembly_distribution_network` under `multi_echelon/`.
 
 ## Problem
 

@@ -13,7 +13,7 @@ contract). More versions can be added here as siblings.
 - `assembly/`
   - the textbook assembly system (Rosling 1989): components assembled into a finished product;
     equivalent to a serial system
-- `general_network/`
+- `production_assembly_distribution_network/`
   - the Pirhooshyaran & Snyder (2021) general acyclic supply network: raw + finished inventory,
     `single`/`assembly`/`distribution` nodes, pairwise order-up-to decisions (the most general
     topology here; was previously the top-level `network_inventory` family)
@@ -33,7 +33,7 @@ contract). More versions can be added here as siblings.
   simulation under the optimal echelon base-stock policy reproduces the exact serial optimum from
   the verified serial solver. Verified for finished (demand-facing) lead time 1; component/upstream
   lead times >= 2 supported.
-- `general_network/` — not literature-verified
+- `production_assembly_distribution_network/` — not literature-verified
   - implements the richer Pirhooshyaran model (per-node production step + pipeline holding), which
     does not reduce to the textbook serial/assembly optima; the paper's general-network simulation
     protocol could not be recovered from public sources. Single-node newsvendor rows are reproduced

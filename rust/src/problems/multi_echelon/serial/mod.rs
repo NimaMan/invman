@@ -7,7 +7,7 @@
 //! exact solver and env simulation, so policies can be trained on `env.rs` with
 //! confidence that the dynamics match the literature.
 //!
-//! It is deliberately separate from `general_network`, which implements the richer
+//! It is deliberately separate from `production_assembly_distribution_network`, which implements the richer
 //! Pirhooshyaran & Snyder (2021) general supply-network model (per-node production
 //! steps and pipeline holding) and does NOT reduce to this textbook serial system.
 

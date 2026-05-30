@@ -7,7 +7,7 @@
 //! A faithful, training-ready environment for the classical serial multi-echelon
 //! inventory system (Clark and Scarf 1960; Snyder and Shen, "Fundamentals of Supply
 //! Chain Theory", Ch. 6). Unlike the richer Pirhooshyaran network model in
-//! `general_network` (which adds per-node production steps and pipeline holding and
+//! `production_assembly_distribution_network` (which adds per-node production steps and pipeline holding and
 //! therefore does NOT reproduce the textbook serial optimum), this env implements
 //! exactly the model that `exact.rs` solves, so simulating the optimal echelon
 //! base-stock policy reproduces the published optimal cost. This is the env we train
