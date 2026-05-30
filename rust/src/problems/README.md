@@ -163,9 +163,13 @@ Current literature-verified package anchors:
     decomposition: `clark_scarf_serial_exact.rs` reproduces all ten Pirhooshyaran/Snyder (2021)
     serial rows (case 3 = Snyder and Shen Example 6.1, optimal cost 47.65) within 0.05% relative
     error, cross-checked against Snyder's public `stockpyl.ssm_serial` reference implementation
-  - this is an exact-theory anchor on the published serial optimum; the discrete env-simulation
-    reproduction of those costs under a base-stock policy is the remaining (sim) task
-  - the single-node newsvendor rows are also reproduced exactly
+  - this is an exact-theory anchor on the published serial optimum; the single-node newsvendor
+    rows are also reproduced exactly
+  - the sim investigation (`serial_echelon_simulation.rs`) found that the discrete `env.rs`
+    simulator does NOT reproduce the analytical optimum under the optimal echelon base-stock
+    policy, and the gap is structural: the env adds a per-node production step and pipeline
+    holding, so it is the richer Pirhooshyaran network model rather than the textbook Clark-Scarf
+    system. The optimum is therefore verified by the exact solver, not by env simulation.
 
 Everything else should be treated as not literature-verified unless the problem README states
 otherwise explicitly.
