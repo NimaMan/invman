@@ -128,6 +128,12 @@ delivery topology**; record absolute rows in `references.rs` and the discussion 
   reproduction +0.50% at the published `(10,16)`; in-env best constant base-stock 47.69 at `(10,22)`;
   learned soft-tree depth-3 = 47.70 (+0.03% vs best base-stock — matches, as expected for a
   single-retailer near-newsvendor system).
-- **gijs_2022 setting 1**: training surfaced the action-grid artifact above. **Next step:** widen the
-  warehouse/retailer grids to the operating region, then retrain and compare to the published 8.95%.
-- **gijs_2022 setting 2**: after setting 1 is sized correctly (μ=0; expect the same grid widening).
+- **gijs_2022 setting 1**: resolved. Autoresearch sweep (`--designs grid,direct_level --depths 2,3`,
+  full budget): operating-region best constant base-stock `(300,25)` = 911.4; `grid` policies stay
+  stuck at ~3090 (+238%, the `{50..100}` trap); **`direct_level` depth-2 = 779.8, a −14.44%
+  improvement over best constant base-stock — exceeding Gijs's published A3C savings of 8.95%.**
+  `direct_level` depth-3 (1226, +34%) underperformed in this budget; the design search picked depth-2.
+  This is the same relative-improvement metric Gijs reports; absolute costs differ (gijs_2022 mode).
+- **gijs_2022 setting 2**: next — run the same sweep (μ=0); expect direct_level to similarly beat the
+  benchmark. Optional refinements: finer benchmark grid, add the direct order-quantity and
+  per-retailer action designs to the sweep, and give depth-3 more training budget / a warm start.
