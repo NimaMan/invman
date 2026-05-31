@@ -77,30 +77,30 @@ pub const EMPTY_F64_SLICE: &[f64] = &[];
 pub const EMPTY_MEAN_CV_PAIR_SLICE: &[(f64, f64)] = &[];
 
 pub const YAN_2026_REFERENCE: PublishedBenchmarkReference = PublishedBenchmarkReference {
-    source: "Yan et al. (2026), Computers & Operations Research 186, 107305",
+    source: "Yan, Y., Chen, F. (Youhua), Fu, Z., and Bi, W. (2026), Heuristics and deep reinforcement learning for the inventory problem with an all-or-nothing yield pattern and non-zero leadtimes, Computers & Operations Research 186, 107305, doi:10.1016/j.cor.2025.107305",
     url: "https://doi.org/10.1016/j.cor.2025.107305",
     benchmark_policies: &["optimal_dp", "linear_inflation", "weighted_newsvendor", "gdsh", "drl"],
     reported_numbers_available: false,
     numbers_anchor_repo_assertions: false,
-    notes: "This paper defines the finite-horizon discounted all-or-nothing random-yield problem with positive lead time and backlogging. The accessible record exposes the model and benchmark policy families, but not a public table of exact per-instance benchmark numbers that the repo can assert against.",
+    notes: "This paper defines the finite-horizon discounted all-or-nothing random-yield problem with positive lead time and backlogging. Metadata VERIFIED 2026-05 via Crossref (doi:10.1016/j.cor.2025.107305): authors Yuting Yan, Frank (Youhua) Chen, Zhe Fu, Wenjie Bi; Computers & Operations Research vol. 186, article 107305, published 2026. The accessible record exposes the model and benchmark policy families, but the full text is paywalled and exposes no public table of exact per-instance benchmark numbers that the repo can assert against.",
 };
 
 pub const INDERFURTH_2015_REFERENCE: PublishedBenchmarkReference = PublishedBenchmarkReference {
-    source: "Inderfurth and Kiesmuller (2015), Exact and heuristic linear-inflation policies for an inventory model with random yield and arbitrary lead times, European Journal of Operational Research 245(1), 109-120",
-    url: "https://www.fww.ovgu.de/fww_media/femm/femm_2013/2013_07.pdf",
+    source: "Inderfurth, K. and Kiesmueller, G. P. (2015), Exact and heuristic linear-inflation policies for an inventory model with random yield and arbitrary lead times, European Journal of Operational Research 245(1), 109-120, doi:10.1016/j.ejor.2015.03.006 [second author is properly spelled Kiesmueller with an u-umlaut: Kiesmueller; ASCII-transliterated here as 'ue']",
+    url: "https://doi.org/10.1016/j.ejor.2015.03.006",
     benchmark_policies: &["linear_inflation"],
     reported_numbers_available: true,
     numbers_anchor_repo_assertions: false,
-    notes: "This paper gives the canonical linear-inflation rule q = F * (S - X)^+ with inflation factor F = 1/E[yield rate] (so F = 1/p for binomial yield). VERIFIED 2026-05 from the open working-paper copy: it is an INFINITE-HORIZON AVERAGE-COST model with PER-UNIT BINOMIAL yield (Y(Q) ~ Binomial(Q,p), each unit independently good) or STOCHASTICALLY PROPORTIONAL yield (Y(Q) = Z*Q). This is a DIFFERENT yield model than the repo's finite-horizon ALL-OR-NOTHING batch yield (whole batch arrives with prob p or not at all), so its published numbers cannot anchor repo assertions; only the F = 1/p inflation factor carries over.",
+    notes: "This paper gives the canonical linear-inflation rule q = F * (S - X)^+ with inflation factor F = 1/E[yield rate] (so F = 1/p for binomial yield, F = 1/mu_Z for proportional yield). VERIFIED 2026-05 directly from the open OVGU working-paper PDF (FEMM Working Paper No. 7/2013, identical content to the published EJOR article; metadata cross-checked at doi:10.1016/j.ejor.2015.03.006 via Crossref/RePEc): it is an INFINITE-HORIZON AVERAGE-COST model (objective minimizes average holding + backorder cost per period) with PER-UNIT BINOMIAL yield (Y(Q) ~ Binomial(Q,p), each unit independently good) or STOCHASTICALLY PROPORTIONAL yield (Y(Q) = Z*Q). This is a DIFFERENT yield model than the repo's finite-horizon ALL-OR-NOTHING batch yield (whole batch arrives with prob p or not at all), so its published numbers cannot anchor repo assertions; only the F = 1/p inflation factor carries over. Working-paper PDF mirror: https://www.fww.ovgu.de/fww_media/femm/femm_2013/2013_07.pdf",
 };
 
 pub const CHEN_2018_REFERENCE: PublishedBenchmarkReference = PublishedBenchmarkReference {
-    source: "Chen et al. (2018), Heuristics and Bounds for an Inventory System with an All-or-Nothing Yield Pattern and Lead-times",
-    url: "https://dblp.org/rec/conf/soli/ChenHYY18",
+    source: "Chen, F. Y., Hu, F., Yano, C. A., and Yuan, Q. (2018), Heuristics and Bounds for an Inventory System with an All-or-Nothing Yield Pattern and Lead-times, 2018 IEEE International Conference on Service Operations and Logistics, and Informatics (SOLI), pp. 180-184, doi:10.1109/SOLI.2018.8476751",
+    url: "https://doi.org/10.1109/SOLI.2018.8476751",
     benchmark_policies: &["weighted_newsvendor"],
     reported_numbers_available: false,
     numbers_anchor_repo_assertions: false,
-    notes: "The later Yan et al. (2026) paper identifies this weighted newsvendor heuristic as the main all-or-nothing benchmark policy and describes it as a sample-path weighted-average gap rule over pipeline-yield realizations. We have not recovered a public table of benchmark numbers from this source.",
+    notes: "Metadata VERIFIED 2026-05 via DBLP (dblp.org/rec/conf/soli/ChenHYY18) and IEEE Xplore (doc 8476751): authors Frank Y. Chen, Fei Hu, Candace Arai Yano, Quan Yuan; SOLI 2018, pp. 180-184. The later Yan et al. (2026) paper identifies this weighted newsvendor heuristic as the main all-or-nothing benchmark policy and describes it as a sample-path weighted-average gap rule over pipeline-yield realizations; the secondary descriptions state the order equals the (positive) target-minus-inventory-position gap multiplied by the reciprocal of the mean yield rate. The full paper is paywalled and we have not recovered a public table of benchmark numbers from it.",
 };
 
 pub const INDERFURTH_2015_DEMAND_MEANS: &[f64] = &[20.0];

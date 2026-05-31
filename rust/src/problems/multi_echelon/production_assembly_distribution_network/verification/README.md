@@ -11,6 +11,12 @@ Current verifier scope:
 - worked-transition accounting checks
 - exact finite-horizon DP comparison against the carried pairwise base-stock heuristic
 
+Accurate status: **faithful-but-no-published-anchor** for this env; the benchmark tables are
+**table-only** (stored, verified-correct against the published Pirhooshyaran Tables 1-3, but not
+re-derived by this env); the serial optimum itself is literature-verified only in
+`multi_echelon/serial`. All cited references re-verified correct 2026-05-31 (see
+`literature/README.md`).
+
 What is checked here (note: this env is NOT literature-verified):
 
 - single-node newsvendor rows: reproduced exactly by the closed-form newsvendor in

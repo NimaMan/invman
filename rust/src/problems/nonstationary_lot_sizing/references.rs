@@ -87,7 +87,7 @@ pub const DEHAYBE_2024_REFERENCE: PublishedBenchmarkReference = PublishedBenchma
     source: "Dehaybe et al. (2024), Tables 3-7 and Section 4.2",
     url: "https://doi.org/10.1016/j.ejor.2023.10.007",
     benchmark_policies: &["rolling_dp_s_s", "simple_s_s", "ppo"],
-    notes: "The paper defines the rolling-forecast single-item lot-sizing setting, gives an exact worked transition in Section 4.2, and reports benchmark aggregates across the Table 3 and Table 4 instance families.",
+    notes: "The paper (PPO is its DRL agent) defines the rolling-forecast single-item lot-sizing setting with fixed ordering cost, lead time, and backorder/lost-sales variants. Citation metadata (EJOR 314(2):433-445, 2024) confirmed via IDEAS/RePEc in the 2026 audit. The worked-transition numbers used by this crate are reproduced via the author's public testbed code (HenriDeh/DRL_MMULS), NOT independently confirmed against a printed Section 4.2 / Table 3-4 in the article during that audit (PDF inaccessible).",
 };
 
 pub const DRL_MMULS_SINGLE_ITEM_REFERENCE: PublishedBenchmarkReference =

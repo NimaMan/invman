@@ -1,6 +1,7 @@
 # General Backorder Fixed Cost
 
-This subproblem carries the general-network CardBoard Company benchmark from Geevers et al. (2023).
+This subproblem carries the general-network CardBoard Company benchmark from Geevers, van Hezewijk &
+Mes (2024) (online first July 2023) and the open MSc thesis Geevers (2020).
 
 Important scope note:
 
@@ -53,10 +54,16 @@ The environment exposes raw state only. Any feature normalization belongs in rol
 
 Published benchmark source:
 
-- Geevers, van Hezewijk & Mes (2024), CEJOR `32(3):653-683` (online first 2023)
-- DOI: `10.1007/s10100-023-00872-2`
-- open MA thesis (more detailed simulator): Geevers (2020), University of Twente,
-  `essay.utwente.nl/85432` — reports only the set-1 benchmark.
+- Geevers, van Hezewijk & Mes (2024), CEJOR `32(3):653-683` (online first 19 July 2023, print
+  Sept 2024); DOI `10.1007/s10100-023-00872-2`. Citation metadata independently verified against
+  Crossref, RePEc and Springer on 2026-05-31 (authors Kevin Geevers; Lotte van Hezewijk; Martijn
+  R. K. Mes -- the Dutch "van" is correct per Crossref/SSRN).
+- open MSc thesis (more detailed simulator; **only open source for any general-case number**):
+  Geevers (2020), University of Twente, `essay.utwente.nl/85432` — reports only the set-1 benchmark.
+
+The published-improvement figure differs between versions and the repo keeps both honestly: the
+gated journal abstract reports general-case PPO ~6.6% over benchmark, while the SSRN preprint
+summary reports ~17.5% for the best runs.
 
 The general case has three experiment sets that differ in the **action space**:
 
@@ -91,11 +98,14 @@ Benchmark results (node-base-stock heuristic at published levels, configured rou
 `scripts/general_backorder_fixed_cost/benchmark_general_backorder_fixed_cost.py`
 (500 replications x 3 seeds for set 1, 500 reps for the sweeps):
 
-| instance | published | repo  | gap%   | status                          |
-|----------|----------:|------:|-------:|---------------------------------|
-| set 1    | 10467     | 10355 | -1.1%  | reproduced within tolerance     |
-| set 2    | 4797      | 15306 | +219%  | NOT reproduced                  |
-| set 3    | 4797      | 15306 | +219%  | NOT reproduced (set-2 mechanic) |
+| instance | published | repo  | gap%   | status                              |
+|----------|----------:|------:|-------:|-------------------------------------|
+| set 1    | 10467     | 10355 | -1.1%  | reproduced within tolerance         |
+| set 2    | 4797      | 15306 | +219%  | NOT reproduced (table-only anchor)  |
+| set 3    | 4797      | 15306 | +219%  | NOT reproduced (set-2 mechanic)     |
+
+(The set-1 published anchor is confirmed verbatim in the open thesis; the set-2/set-3 anchors exist
+only in the gated journal full text and could not be confirmed against an open copy.)
 
 Set 1 also reproduces the paper's fill-rate target (retailer fill 98-99%, warehouse fill ~98%).
 
@@ -130,9 +140,20 @@ No implemented routing mode reproduces 4797 at the published level 30 (see `lite
 
 ### Honest status
 
-- set 1: reproduced within the simulation-protocol tolerance (-1.1%);
-- set 2 / set 3: carried as published rows; the per-edge transition that would reproduce 4797 at the
-  published level 30 is not implemented (its exact spec is in the gated journal). Implementing it is
-  the single change that would flip sets 2/3 to "reproduced"; it is deferred because the correct
-  equation is not yet known and altering the existing inventory-position convention would regress
-  set 1.
+- **citations: literature-verified** — every cited paper is real with correct metadata
+  (checked against Crossref / RePEc / Springer / ScienceDirect / Twente, 2026-05-31);
+- **set 1: faithful + reproduced within tolerance (-1.1%)** — inputs confirmed verbatim against the
+  open thesis Sec. 6.6 (levels `[82,100,64,83,35,35,35,35,35]`, cost 10467, 50-period x 500-rep,
+  Poisson(15), K&T-2011 costs), and the published 10467 is re-derived by the repo solver (~10355);
+- **set 2 / set 3: table-only and NOT independently confirmable** — the numbers (4797, 4175, 3935,
+  averages 314923 / 4481, levels `[37,47,33,63,30,...]`) appear only in the gated journal full text
+  (the open thesis has set 1 only; SSRN returns 403) and are carried as published rows. The per-edge
+  transition that would reproduce 4797 at the published level 30 is not implemented (its exact spec
+  is in the gated journal); implementing it is the single change that would flip sets 2/3 to
+  "reproduced". Deferred because the correct equation is not yet known and altering the existing
+  inventory-position convention would regress set 1.
+
+WINDOW CAVEAT: the repo evaluates the benchmark over periods 50..100 (`benchmark_periods=100`,
+`benchmark_warm_up_periods=50`, a 50-warm-up + 50-eval window). The open thesis instead uses a
+50-period planning horizon with a 25-period warm-up (Sec. 5.6 / 6.6). The 50+50 window is the repo's
+own protocol choice, not a value quoted from the paper; the set-1 reproduction is robust to it.

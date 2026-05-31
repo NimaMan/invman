@@ -19,15 +19,24 @@ Verification and benchmark anchors live in:
 - `practical/`
 - `experiments/`
 
-Current status:
+Current status (accurate scope = PARTIAL; audited 2026-05 against the source PDF):
 
-- literature-verified (environment): yes, against one exact executable anchor. Vanvuchelen et al.
-  (2020) state in prose (Section 6.2, around Figure 3, setting 5) that under the optimal policy, in
-  state `(I1,I2)=(5,0)` only shipper 2 orders, `q=(0,6)` (one full truckload), while both heuristics
-  order `q=(2,4)`. An independent infinite-horizon value-iteration solver that mirrors this env's cost
-  (Eq. 2) and balance (Eq. 4) reproduces the published optimal action `q=(0,6)` exactly. The anchor is
-  carried as `VANVUCHELEN_2020_FIGURE3_ANCHOR` in `literature/references.rs` and exercised by
-  `scripts/joint_replenishment/benchmark_vanvuchelen_settings.py`.
+- model fidelity: literature-verified. The env equations match Vanvuchelen et al. (2020) exactly
+  (Eq. 1 truck constraint, Eq. 2 cost, Eq. 3 state, Eq. 4 balance, order-before-demand, zero lead
+  time, risk period one) -- all confirmed in the paper PDF.
+- setting definitions: literature-verified (verbatim). All 16 Table 2 settings match the paper.
+- published-number reproduction: PARTIAL / mostly external. The paper reports per-setting optimality
+  ONLY as a figure (Figure 2: heuristics 4-25% above optimal), so no absolute optimal-cost number can
+  be reproduced. The one exact quotable result is an OPTIMAL ACTION: Vanvuchelen et al. (2020) state in
+  prose (Section 6.2, around Figure 3, setting 5) that under the optimal policy, in state
+  `(I1,I2)=(5,0)` only shipper 2 orders, `q=(0,6)` (one full truckload), the PPO policy matches it, and
+  both heuristics order `q=(2,4)` (quote verified verbatim). This action is carried as
+  `VANVUCHELEN_2020_FIGURE3_ANCHOR`. The in-crate tests (`verification/tests.rs`) assert the carried
+  anchor's shape AND the env's one-period cost at that stored action (=90 for demand `(2,4)`); they do
+  NOT re-derive that `q=(0,6)` is optimal. The optimality reproduction (infinite-horizon value
+  iteration, gamma=0.99) is performed only by `scripts/joint_replenishment/benchmark_vanvuchelen_settings.py`,
+  which is OUTSIDE this crate and not part of `cargo test`. Treat it as faithful-but-external, not an
+  in-crate literature assertion.
 - repo self-consistency verified: yes on the reduced two-item finite-horizon comparator
   (`finite_horizon_dp.rs`), which confirms the exact DP dominates the carried heuristics on a 4-period
   discounted horizon. This comparator is NOT the paper's infinite-horizon average-cost setting and is
@@ -49,7 +58,9 @@ Reference (cited literature):
 
 - Vanvuchelen, Gijsbrechts & Boute (2020), "Use of Proximal Policy Optimization for the Joint
   Replenishment Problem", Computers in Industry 119, 103239.
-  Author copy: https://lirias.kuleuven.be/retrieve/badd4d5b-5bfc-44e4-84f1-b98fd113143d
+  DOI: https://doi.org/10.1016/j.compind.2020.103239 (citation verified 2026-05 against Crossref,
+  ScienceDirect PII S0166361519308218, and author PDF).
+  Open author copy: https://lirias.kuleuven.be/retrieve/badd4d5b-5bfc-44e4-84f1-b98fd113143d
 - Model match (faithful): state = previous-period end inventories (Eq. 3); action = order quantities
   with `sum_i q_i = M*V` (Eq. 1); cost `c = sum_i[h_i*I+ + b_i*I- + k_i*1{q_i>0}] + M*K` (Eq. 2);
   order-before-demand (risk period 1); zero lead time; inventory balance `I_t = I_{t-1} + q - d`

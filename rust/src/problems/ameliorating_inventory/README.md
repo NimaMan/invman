@@ -3,9 +3,11 @@
 Rust-first problem home for `ameliorating_inventory`.
 
 Source paper: Pahr and Grunow (2025), *The Value of Blending — Managing Ameliorating Inventory
-Using Deep Reinforcement Learning*, Production and Operations Management
+Using Deep Reinforcement Learning*, Production and Operations Management, Vol. 35 No. 5
 (DOI `10.1177/10591478251387795`; companion code
-`github.com/amelioratinginventory/ameliorating_inventory`).
+`github.com/amelioratinginventory/ameliorating_inventory`). Citation metadata (authors, title,
+venue, year, DOI) and the two recorded upper bounds were independently web-verified; see
+`literature/README.md`.
 
 ## Problem in the source paper
 

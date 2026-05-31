@@ -1,19 +1,31 @@
 # Literature Overview
 
-## Verification status: LITERATURE-VERIFIED (exact slice)
+## Verification status: LITERATURE-VERIFIED (exact m=2/L=1 slice only)
 
-The perishable-inventory environment is literature-verified on the two `m = 2`,
-lead-time-1 settings. The repo's exact value-iteration MDP
-(`value_iteration_mdp.rs`) reproduces THREE independent published quantities for
-these instances, cell-for-cell and number-for-number:
+Honest scope statement (both cited papers were independently confirmed REAL and
+metadata-corrected during a librarian audit, 2026-05; see "Primary sources"):
 
-1. De Moor et al. (2022) Figure 3 optimal-policy tables (9x9), both LIFO (exp 1)
-   and FIFO (exp 2) — `matches_published_policy_table = True`.
-2. De Moor et al. (2022) Figure 3 best base-stock levels: `5` (LIFO), `7` (FIFO)
+- LITERATURE-VERIFIED: the four `m = 2`, lead-time-1 instances (121 states each).
+  The repo's exact value-iteration MDP (`value_iteration_mdp.rs`) is RE-DERIVED by
+  the in-repo solver at test time (not merely compared against stored numbers) and
+  reproduces THREE independent published quantities cell-for-cell, asserted in
+  `tests/verification.rs`.
+- TABLE-ONLY (NOT independently re-derived): the remaining 28 Scenario A rows
+  (1331 to ~1.77M states). Their Farrington Table 3 numbers are stored as
+  documented anchors only; the in-repo exact summary caps at 2000 states
+  (`bindings.rs`). Do not read these 28 rows as "verified".
+
+The three re-derived published quantities for the verified slice are:
+
+1. De Moor et al. (2022) optimal-policy tables (9x9), both LIFO (exp 1) and FIFO
+   (exp 2) — `matches_published_policy_table = True`. (Repo labels these "Figure 3";
+   the exact published figure number was not independently confirmed, see below.)
+2. De Moor et al. (2022) best base-stock levels: `5` (LIFO), `7` (FIFO)
    — `matches_published_base_stock_level = True`.
 3. Farrington et al. (2025) Table 3 value-iteration mean returns: `-1553` (LIFO),
    `-1457` (FIFO), reproduced exactly to the rounded integer
-   — `matches_published_value_iteration_mean_return = True`.
+   — `matches_published_value_iteration_mean_return = True`. Confirmed present in
+   the published Table 3 as -1553±61 (LIFO) and -1457±59 (FIFO) (PMC copy).
 
 The FlowNet policy-performance verifier additionally reproduces the published
 best base-stock return for the FIFO instance: published `-1474`, reproduced
@@ -32,16 +44,34 @@ check against the repo's own solver.
 
 ## Primary sources
 
-- De Moor, Gijsbrechts, Boute (2022), "Reward shaping to improve the performance
-  of deep reinforcement learning in perishable inventory management", EJOR.
+- De Moor, Bram J.; Gijsbrechts, Joren; Boute, Robert N. (2022). "Reward shaping
+  to improve the performance of deep reinforcement learning in perishable
+  inventory management". European Journal of Operational Research, 301(2),
+  535-545.
   - DOI: https://doi.org/10.1016/j.ejor.2021.10.045
-  - Provides the Scenario A settings, the Figure 3 optimal-policy tables, and the
-    best base-stock levels.
-- Farrington, Li, Utomo, et al. (2025), value-iteration baselines reproducing the
-  same Scenario A settings.
-  - URL: https://pmc.ncbi.nlm.nih.gov/articles/PMC12350524/
-  - Table 3 reports value-iteration and best base-stock mean returns (±std) for
-    all 32 Scenario A settings.
+  - Provides the Scenario A settings, the m=2 experiment 1/2 optimal-policy tables,
+    and the best base-stock levels (5 LIFO, 7 FIFO). Verified real and metadata-
+    correct via Crossref/RePEc (https://ideas.repec.org/a/eee/ejores/v301y2022i2p535-545.html).
+    The exact published figure NUMBER (the repo labels these tables "Figure 3")
+    was not independently confirmed by the librarian audit because the EJOR full
+    text is paywalled; Farrington et al. (2025) confirm De Moor et al. "fully
+    specified the optimal and heuristic policies for two experiments in their
+    paper", which is the substance the repo relies on.
+- Farrington, Joseph; Wong, Wai Keong; Li, Kezhi; Utley, Martin (2025). "Going
+  faster to see further: graphics processing unit-accelerated value iteration and
+  simulation for perishable inventory control using JAX". Annals of Operations
+  Research, 349(3), 1609-1638.
+  - DOI: https://doi.org/10.1007/s10479-025-06551-6
+  - Open-access copy: https://pmc.ncbi.nlm.nih.gov/articles/PMC12350524/ ;
+    arXiv preprint: https://arxiv.org/abs/2303.10672
+  - Table 3 reports value-iteration and simulation-optimization mean returns
+    (±std) for all 32 Scenario A settings from De Moor et al. (2022). The m=2,
+    lead-time-1 value-iteration returns -1553±61 (LIFO) and -1457±59 (FIFO) are
+    confirmed in the published Table 3 (PMC copy).
+  - CITATION NOTE: an earlier version of this file and references.rs cited this as
+    "Farrington, Li, Utomo, et al." with only a PMC URL. That author list was
+    wrong: there is no author "Utomo" (a corruption of "Utley"), and co-author
+    "Wong" was omitted. The correct author order is Farrington, Wong, Li, Utley.
 
 ## Reference set fidelity (all 32 rows checked against Farrington Table 3)
 

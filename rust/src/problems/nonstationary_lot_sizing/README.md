@@ -3,20 +3,28 @@
 Canonical Rust-first home for the nonstationary single-item lot-sizing family
 (Dehaybe, Catanzaro & Chevalier 2024, EJOR 314(2):433-445).
 
-## Verification status: VERIFIED (yes)
+## Verification status: literature-verified (published author-repo numbers
+## reproduced by the repo solver), with one self-consistent-only fidelity caveat
 
-The environment faithfully matches the cited model and the repo reproduces the
-published author-repo benchmark numbers on all eight forecast instances.
-
-- Model fidelity: `env.rs::step_state` reproduces the paper's Section 4.2 worked
-  transition exactly (period cost 130, reward -130); the `simple_s_s` heuristic
-  matches the author testbed (s,S) formula term-for-term; demand models follow the
-  testbed (CV-Normal for the simple baseline, Poisson for the DP baseline).
-- Published-number reproduction: the eight `references.rs` rows are byte-for-byte
-  the author-repo CSVs, and the repo's simulator reproduces every one of them
-  within the stored 35-cost tolerance (±0.17% relative) at 25,000 replications.
-- See `literature/README.md` for the full evidence table and source pointers, and
-  `verification/README.md` for the executable verifier contract.
+- Published-number reproduction (LITERATURE-VERIFIED): the eight `references.rs`
+  rows are byte-for-byte the author's public testbed CSVs (`HenriDeh/DRL_MMULS`,
+  `single-item` branch), and the repo's own solver+simulator reproduces every one of
+  them within the stored 35-cost tolerance (±0.17% relative) at 25,000 replications.
+  The author CSV values were independently re-confirmed against the GitHub raw files
+  in the 2026 literature audit. The anchors are the author's CODE-REPO baseline CSVs
+  (their `simple` (s,S) and rolling-DP (s,S) heuristics), not a table printed in the
+  EJOR article.
+- Model fidelity: the `simple_s_s` heuristic matches the author testbed (s,S) formula
+  term-for-term; demand models follow the testbed (CV-Normal for the simple baseline,
+  Poisson for the DP baseline).
+- Caveat (SELF-CONSISTENT-ONLY): the Section 4.2 worked transition (period cost 130,
+  reward -130) is validated only against the repo's own `env.rs::step_state`. The
+  attribution of these specific numbers to the paper's printed Section 4.2 could NOT
+  be confirmed against the article during the 2026 audit (PDF inaccessible).
+- Citation metadata (authors, EJOR 314(2):433-445, 2024, DOI 10.1016/j.ejor.2023.10.007)
+  was confirmed exact via IDEAS/RePEc.
+- See `literature/README.md` for the full evidence table, audit trail, and source
+  pointers, and `verification/README.md` for the executable verifier contract.
 
 ## Code
 

@@ -80,17 +80,17 @@ pub const CLASSIC_BEER_GAME_CUSTOMER_DEMANDS: &[usize] = &[
 ];
 
 pub const STERMAN_1989_REFERENCE: PublishedBenchmarkReference = PublishedBenchmarkReference {
-    source: "Sterman (1989), Management Science 35(3)",
+    source: "Sterman, J. D. (1989), Modeling Managerial Behavior: Misperceptions of Feedback in a Dynamic Decision Making Experiment, Management Science 35(3):321-339",
     url: "https://doi.org/10.1287/mnsc.35.3.321",
     benchmark_policies: &["sterman_anchor_adjust"],
-    notes: "Classic four-stage Beer Game benchmark. The paper reports the benchmark costs for the optimized anchor-and-adjust policy; the exact board-game equations are carried and replicated by Edali & Yasarcan (2014). NOTE: the published per-stage [46,50,54,54]/total 204 benchmark is reproduced ONLY by the standalone closed-form board-game simulator (verification/classic_board_game.rs), not by the reusable env.rs transition that the heuristics and learned soft-tree run on.",
+    notes: "Classic four-stage Beer Game benchmark. Citation verified against Crossref (DOI 10.1287/mnsc.35.3.321): Management Science vol 35 iss 3 pp 321-339, March 1989, sole author John D. Sterman (MIT Sloan). The paper proposes the anchor-and-adjust ordering heuristic and reports a benchmark cost for the optimized policy; the exact board-game equations are carried and replicated by Edali & Yasarcan (2014). NOTE: the per-stage [46,50,54,54]/total 204 figures stored here are the values produced by the repo's port of the Edali & Yasarcan equations (verification/classic_board_game.rs) under the published parameters; they were NOT re-confirmed against a freely-quotable line of Sterman (1989) during the 2026-05-31 citation audit (the only open full text is an image-only scan), and they are reproduced ONLY by the closed-form board-game simulator, not by the reusable env.rs transition that the heuristics and learned soft-tree run on.",
 };
 
 pub const OROOJLOYJADID_2021_REFERENCE: PublishedBenchmarkReference = PublishedBenchmarkReference {
-    source: "Oroojlooyjadid et al. (2021), Manufacturing & Service Operations Management 24(1)",
+    source: "Oroojlooyjadid, Nazari, Snyder & Takac, A Deep Q-Network for the Beer Game: Deep Reinforcement Learning for Inventory Optimization, Manufacturing & Service Operations Management 24(1):285-304 (issue year 2022; Articles-in-Advance online 2021)",
     url: "https://doi.org/10.1287/msom.2020.0939",
     benchmark_policies: &["base_stock", "sterman_anchor_adjust", "dqn"],
-    notes: "Background RL paper on decentralized Beer-Game control with local observations only. The paper reports a 100-period uniform-demand benchmark and a Sterman row, but the public paper formula, timing description, and released code do not line up tightly enough for the repo to carry that row as an executable verification anchor.",
+    notes: "Background RL paper on decentralized Beer-Game control with local observations only. Citation verified against Crossref (DOI 10.1287/msom.2020.0939): MSOM vol 24 iss 1 pp 285-304, bound-issue year 2022, posted Articles-in-Advance in 2021 (the constant name keeps the 2021 online-first year). Authors: Afshin Oroojlooyjadid, MohammadReza Nazari, Lawrence V. Snyder, Martin Takac. The paper reports a 100-period uniform-demand benchmark and a Sterman row, but the public paper formula, timing description, and released code do not line up tightly enough for the repo to carry that row as an executable verification anchor.",
 };
 
 // CANER_2014_REFERENCE: historical constant name kept stable for internal references.
@@ -98,17 +98,17 @@ pub const OROOJLOYJADID_2021_REFERENCE: PublishedBenchmarkReference = PublishedB
 // The author attribution that previously read "Caner et al." was wrong; the URL and content
 // (the exact board-game R reconstruction) were always the Edali & Yasarcan paper.
 pub const CANER_2014_REFERENCE: PublishedBenchmarkReference = PublishedBenchmarkReference {
-    source: "Edali & Yasarcan (2014), A Mathematical Model of the Beer Game, JASSS 17(4) 2, DOI 10.18564/jasss.2555",
+    source: "Edali, M. & Yasarcan, H. (2014), A Mathematical Model of the Beer Game, Journal of Artificial Societies and Social Simulation (JASSS) 17(4):2, DOI 10.18564/jasss.2555",
     url: "https://www.jasss.org/17/4/2.html",
     benchmark_policies: &["sterman_anchor_adjust"],
-    notes: "Edali & Yasarcan reconstruct the board-game Beer Game exactly and provide public R code for the verification benchmark. With theta=0, sat=1, wsl=1, S'=[28,28,28,20], h=0.5, p=1.0 they reproduce the benchmark costs from Sterman (1989) exactly. The repo port of that R code (verification/classic_board_game.rs) yields per-stage [46,50,54,54], total 204. (The previous 'Caner et al.' attribution was a citation error; constant name retained to avoid churn.)",
+    notes: "Edali & Yasarcan reconstruct the board-game Beer Game exactly and provide public R code for the verification benchmark. Citation verified against Crossref (DOI 10.18564/jasss.2555, resolves to jasss.org/17/4/2.html): authors Mert Edali & Hakan Yasarcan, JASSS vol 17 iss 4 article 2, 2014. The paper states (sec 5) that with theta=0, sat=1, wsl=1, S'=[28,28,28,20], h=0.5, p=1.0 it obtains 'the exact same benchmark cost values reported by Sterman' (those exact per-stage figures are not quoted in the open text). The repo port of that R code (verification/classic_board_game.rs) yields per-stage [46,50,54,54], total 204. (The previous 'Caner et al.' attribution was a citation error; constant name retained to avoid churn.)",
 };
 
 pub const MOUSA_2024_REFERENCE: PublishedBenchmarkReference = PublishedBenchmarkReference {
-    source: "Mousa et al. (2024), Computers & Chemical Engineering 188, 108783",
+    source: "Mousa, van de Berg, Kotecha, del Rio-Chanona & Mowbray (2024), An analysis of multi-agent reinforcement learning for decentralized inventory control systems, Computers & Chemical Engineering 188, 108783",
     url: "https://doi.org/10.1016/j.compchemeng.2024.108783",
     benchmark_policies: &["marl", "decentralized local-information baselines"],
-    notes: "This paper broadens decentralized inventory control beyond the four-stage Beer Game and motivates local-information policy interfaces for serial and networked supply chains.",
+    notes: "Citation verified against Crossref (DOI 10.1016/j.compchemeng.2024.108783): Computers & Chemical Engineering vol 188 article 108783, 2024; authors Marwan Mousa, Damien van de Berg, Niki Kotecha, Ehecatl Antonio del Rio-Chanona, Max Mowbray. This paper broadens decentralized inventory control beyond the four-stage Beer Game and motivates local-information policy interfaces for serial and networked supply chains. Background context only; no benchmark number is carried as a repo verification anchor.",
 };
 
 pub const STERMAN_1989_CLASSIC_BENCHMARK: PublishedPolicyBenchmark = PublishedPolicyBenchmark {

@@ -144,34 +144,34 @@ pub struct ExactVerificationReference {
 }
 
 pub const SPARE_PARTS_REVIEW_REFERENCE: PublishedBenchmarkReference = PublishedBenchmarkReference {
-    source: "Spare Parts Inventory Management: A Literature Review (2021), Sustainability 13(5), 2460",
+    source: "Zhang, Huang & Yuan (2021), Spare Parts Inventory Management: A Literature Review, Sustainability 13(5), 2460",
     url: "https://www.mdpi.com/2071-1050/13/5/2460",
     benchmark_policies: &["base_stock", "one_for_one_replenishment", "multi-echelon transshipment"],
     reported_numbers_available: false,
     numbers_anchor_repo_assertions: false,
-    notes: "The review highlights that spare-parts systems are often single-echelon, repairable, and continuous-review. It explicitly notes that one-for-one replenishment or base-stock control is widely used for repairable spare parts.",
+    notes: "Citation verified 2026-05-31 via Crossref (DOI 10.3390/su13052460): authors Shuai Zhang, Kai Huang, Yufei Yuan; Sustainability 13(5), article 2460, 2021. Motivational reference only, no benchmark numbers. The review highlights that spare-parts systems are often single-echelon, repairable, and continuous-review, and that one-for-one replenishment or base-stock control is widely used for repairable spare parts.",
 };
 
 pub const ZHOU_2024_REFERENCE: PublishedBenchmarkReference = PublishedBenchmarkReference {
-    source: "Zhou et al. (2024), Applied Mathematical Modelling 125(B), 827-844",
+    source: "Zhou, Guo, Yu & Zhang (2024), Optimization of multi-echelon spare parts inventory systems using multi-agent deep reinforcement learning, Applied Mathematical Modelling 125, 827-844",
     url: "https://doi.org/10.1016/j.apm.2023.10.039",
     benchmark_policies: &["marl", "multi-echelon spare-parts baselines"],
     reported_numbers_available: false,
     numbers_anchor_repo_assertions: false,
-    notes: "This paper motivates spare_parts_inventory as a distinct RL family through a multi-echelon spare-parts setting with recent multi-agent DRL results.",
+    notes: "Citation verified 2026-05-31 via Crossref (DOI 10.1016/j.apm.2023.10.039): authors Yifan Zhou, Kai Guo, Cheng Yu, Zhisheng Zhang; Applied Mathematical Modelling vol. 125, pp. 827-844, 2024. Motivational reference only, no benchmark numbers carried. It motivates spare_parts_inventory as a distinct RL family through a multi-echelon spare-parts setting with recent multi-agent DRL results.",
 };
 
 pub const VAN_DER_HAAR_2025_REFERENCE: PublishedBenchmarkReference = PublishedBenchmarkReference {
-    source: "van der Haar et al. (2025), Industrializing Deep Reinforcement Learning for Operational Spare Parts Inventory Management",
+    source: "van der Haar, van Jaarsveld, Basten & Boute, Industrializing Deep Reinforcement Learning for Operational Spare Parts Inventory Management (SSRN working paper 4999374, posted 2024)",
     url: "https://ssrn.com/abstract=4999374",
     benchmark_policies: &["drl", "distance-based transshipment and expediting heuristics"],
     reported_numbers_available: false,
     numbers_anchor_repo_assertions: false,
-    notes: "The paper shows that large-scale operational spare-parts management relies on proactive transshipments and expediting, which motivates keeping spare_parts_inventory separate from general production_assembly_distribution_network.",
+    notes: "Citation verified 2026-05-31 against SSRN abstract_id=4999374 (authors Joost F. van der Haar, Willem van Jaarsveld, Rob J.I. Basten, Robert N. Boute). The SSRN preprint was posted in 2024; a journal version later appeared in European Journal of Operational Research. The earlier '(2025)' label in code names is the SSRN preprint vintage and is approximate. Motivational reference only: it shows that large-scale operational spare-parts management relies on proactive transshipments and expediting, which motivates keeping spare_parts_inventory separate from general production_assembly_distribution_network. No benchmark numbers are carried from this paper.",
 };
 
 pub const KRANENBURG_2006_REFERENCE: PublishedBenchmarkReference = PublishedBenchmarkReference {
-    source: "Kranenburg (2006), Chapter 5, Tables 5.1-5.3",
+    source: "Kranenburg, A. A. (2006), Spare parts inventory control under system availability constraints, PhD thesis, Technische Universiteit Eindhoven (DOI 10.6100/IR616052), Chapter 5, Tables 5.1-5.3",
     url: "https://pure.tue.nl/ws/files/2461454/200612097.pdf",
     benchmark_policies: &[
         "situation1_separate_stock_points",
@@ -180,16 +180,16 @@ pub const KRANENBURG_2006_REFERENCE: PublishedBenchmarkReference = PublishedBenc
     ],
     reported_numbers_available: true,
     numbers_anchor_repo_assertions: true,
-    notes: "Chapter 5 gives an exact analytical comparison between separate stock points, a joint warehouse, and lateral transshipment for expensive spare parts with low demand rates. Tables 5.1 and 5.2 publish both the benchmark parameters and the optimal randomized-stock and cost numbers, which makes this an executable literature-verification family.",
+    notes: "Citation verified 2026-05-31 against the open-access TU/e thesis PDF (DOI 10.6100/IR616052). Chapter 5 'Lateral transshipment: An exact analysis' gives an exact analytical comparison between separate stock points (Situation 1), a joint warehouse (Situation 2), and lateral transshipment (Situation 3) for expensive spare parts with low demand rates. Table 5.1 (base case) and Table 5.2 (Situations 1 vs 3) were confirmed verbatim against the thesis; all 35 carried Table 5.2 rows (R1*, C1, R3*, C3, ratio) match the printed table exactly. Table 5.3 (all-situations comparison incl. Situation 2) also exists. This is the executable literature-verification family.",
 };
 
 pub const VAN_OERS_2024_REFERENCE: PublishedBenchmarkReference = PublishedBenchmarkReference {
-    source: "van Oers et al. (2024), IFAC PapersOnLine 58(19), 1006-1011",
+    source: "van Oers, Tanil & Basten (2024), Numerical Analysis of A Spare Parts Supply Chain With Additive Manufacturing, IFAC-PapersOnLine 58(19), 1006-1011",
     url: "https://doi.org/10.1016/j.ifacol.2024.09.144",
     benchmark_policies: &["enumeration", "newsvendor", "echelon_separation"],
     reported_numbers_available: true,
     numbers_anchor_repo_assertions: true,
-    notes: "Table 1 is open-access and reports a fully specified N=2 serial spare-parts benchmark with three public scenarios: no AM, upstream AM, and downstream AM. The repo stores the table values exactly as reported. Inference: because the no-AM enumeration row is exactly 100.0 and the paper text describes downstream AM as a 28% cost reduction, the printed cost figures are likely normalized table values rather than literal dollar totals; the repo therefore preserves the table entries without forcing an absolute-dollar interpretation.",
+    notes: "Bibliographic metadata verified 2026-05-31 via Crossref (DOI 10.1016/j.ifacol.2024.09.144): authors Joris van Oers, Ipek Tanil, Rob Basten; IFAC-PapersOnLine 58(19), 1006-1011, 2024. The paper reports a fully specified N=2 serial spare-parts benchmark with three scenarios: no AM, upstream AM, and downstream AM. The repo stores the Table 1 values; the individual Table 1 cell values below were NOT independently re-confirmed against the published table during this audit (full text paywalled) and are recorded-as-transcribed only, NOT reproduced by any repo solver. Inference noted by the original author: because the no-AM enumeration row is exactly 100.0, the printed cost figures are likely normalized table values rather than literal dollar totals; the repo therefore preserves the table entries without forcing an absolute-dollar interpretation.",
 };
 
 pub const VAN_OERS_2024_REVIEW_INTERVALS_HOURS: &[f64] = &[48.0, 96.0];

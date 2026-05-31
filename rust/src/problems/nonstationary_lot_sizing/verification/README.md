@@ -25,9 +25,16 @@ What the verifier asserts:
 
 Verification semantics:
 
-- the worked transition is literature-backed (Section 4.2; period cost 130, reward -130)
+- the worked transition (period cost 130, reward -130) is asserted to come from the
+  paper's Section 4.2, but the attribution was NOT independently confirmed against the
+  published article in the 2026 audit (PDF inaccessible). As implemented, this test
+  checks only self-consistency of `env.rs::step_state`; treat it as an internal
+  mechanics regression check, not a reproduced printed paper example.
 - the benchmark-row assertions use the published author-repo reference CSVs and the tolerances in
-  `VERIFICATION_PROBLEM_INSTANCE`
+  `VERIFICATION_PROBLEM_INSTANCE`. The CSV anchor values were re-confirmed byte-for-byte
+  against the GitHub raw files (`scarf_testbed_simple_lostsales.csv`,
+  `scarf_testbed_DP_lostsales.csv`) in the 2026 literature audit. These are the author's
+  code-repo baseline numbers, not a table printed in the EJOR article.
 
 Cross-check beyond the executable verifier:
 

@@ -25,6 +25,16 @@ This family is the **Pirhooshyaran & Snyder (2021) general supply-network model*
 textbook serial system. The clean textbook serial (Clark-Scarf) model lives in its own
 literature-verified family, `multi_echelon/serial`.
 
+Accurate verifiability status (one line): **faithful-but-no-published-anchor.** The env matches the
+cited Pirhooshyaran & Snyder (2021) MDP equation-by-equation, but no published cost is re-derived BY
+THIS ENV; the carried benchmark tables are **table-only** (stored, verified-correct against the
+paper's published Tables 1-3, not re-simulated here); the serial optimum is **literature-verified
+only in the sibling `multi_echelon/serial` family**, not here. `literature_verified = false` on every
+reference instance, which is the honest setting -- this env is NOT "literature-verified". All cited
+references (Pirhooshyaran & Snyder 2021; Clark & Scarf 1960; Federgruen & Zipkin 1984; Chen & Zheng
+1994; Snyder & Shen 2019; stockpyl) were independently re-verified 2026-05-31 and are correct; see
+`literature/README.md` "Citation verification".
+
 Current status (re-investigated 2026-05; see "Verification status" below):
 
 - the `env.rs` per-period transition and cost are **faithful to the Pirhooshyaran & Snyder (2021)

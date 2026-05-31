@@ -44,19 +44,24 @@ Cost ordering enforced in `env.rs::validate_costs` matches the paper's Assumptio
 
 The cited papers describe a strictly **richer** model than this package:
 
-- **Maggiar & Sadighian (2017)** — *Joint Inventory and Revenue Management with Removal Decisions*.
-  Their MDP also has a **pricing/markdown** decision and is solved under **backlogging** (stockouts
-  satisfied in-period at cost `h- = c + k > c`), with **additive price-dependent Gamma demand**
-  `D_t(p) = d_t(p) + e_t`. Their optimal policy is an **"interval-stock list-PRICES policy"**
-  (Theorem 3.4): two stock levels `(x*, xbar*)` — order up to `x*` below it, remove down to `xbar*`
-  above it, do nothing in between — *plus* a price/demand decision. Their only numerical example
-  (Table 1: p0=90, c=75, s=30, l=5, h+=2, k=15.5, elasticity -2; 40 periods; gamma=0.9984) reports
-  an NPV surface (~84000), inseparable from the pricing dimension.
+- **Maggiar & Sadighian (2017)** — *Joint Inventory and Revenue Management with Removal Decisions*
+  (Amazon.com working paper, SSRN 3018984). Their MDP also has a **pricing/markdown** decision and is
+  solved under **backlogging** (stockouts satisfied in-period at cost `h- = c + k > c`), with
+  **additive price-dependent Gamma demand** `D_t(p) = d_t(p) + e_t`. Their optimal policy is an
+  **"interval-stock list-PRICES policy"** (Theorem 3.4): two stock levels `(x*, xbar*)` — order up to
+  `x*` below it, remove down to `xbar*` above it, do nothing in between — *plus* a price/demand
+  decision. Their only numerical example (Section 7, Table 1: p0=90, c=75, s=30, l=5, h+=2, k=15.5,
+  elasticity -2; 40 periods; gamma=0.9984) reports an NPV surface (axis ~84000), inseparable from the
+  pricing dimension. (Citation independently re-verified against the paper PDF, 2026-05-31.)
 
-- **Maggiar et al. (2025)** — *Structure-Informed Deep RL for Inventory Management*. Lists joint
-  procurement-removal as one DRL benchmark family and reports, **qualitatively only**, that the
-  agent "successfully learns interval-stock policies." It exposes **no published cost row** for the
-  procurement-removal problem.
+- **Maggiar, Andaz, Bagaria, Eisenach, Foster, Gottesman & Perrault-Joncas (2025)** —
+  *Structure-Informed Deep Reinforcement Learning for Inventory Management* (NeurIPS 2025;
+  arXiv:2507.22040; OpenReview `asKybwTGUt`). Section 4.6 lists joint procurement-removal (inventory
+  with returns) as one DRL benchmark family, cites Maggiar & Sadighian (2017), and reports
+  (Section 4.6.4) **qualitatively only** that the agent learns the **interval-stock** structure
+  (Figure 23); it explicitly does **not** report the average expected reward for this family, so it
+  exposes **no published cost row** for the procurement-removal problem. (Citation independently
+  re-verified against the arXiv HTML, 2026-05-31.)
 
 This package keeps the **interval-stock procurement/removal structure** and the returnable-quota
 state but strips away pricing/markdown, uses lost-sales instead of backlog, and Poisson demand. It
@@ -65,14 +70,22 @@ exact cost row to reproduce**.
 
 ## Verification status
 
-- `literature_verified`: **no** (confirmed by reading both cited papers; see `literature/README.md`)
-- repo-exact verified: **yes** on the reduced finite-horizon verifier (`finite_horizon_dp.rs`,
-  `verification/tests.rs`), and the exact DP was **independently reproduced in pure Python to machine
-  precision** (diff `0.00e+00`) as part of this audit
-- root cause of "not verified": structural reduction, not a bug. The model is faithful to the
-  *structure* of Maggiar & Sadighian (2017) (interval-stock, return-before-liquidate, salvage form,
-  cost-ordering assumptions) but omits the pricing dimension that the published numbers depend on, so
-  no published number can anchor it.
+Honest, itemized (no published number is reproduced, so this is **not** literature-verified):
+
+- `literature_verified`: **no**. Both cited papers were independently re-verified during the
+  2026-05-31 audit (paper PDF and arXiv:2507.22040 HTML); the citations are correct and neither paper
+  exposes a public procurement-removal cost row (2017 numbers are pricing-coupled; 2025 reports the
+  returns family qualitatively only). See `literature/README.md`.
+- **self-consistent-only** (no public anchor): the reduced finite-horizon verifier
+  (`finite_horizon_dp.rs`, `verification/tests.rs`) is validated against the repo's own exact DP, and
+  that DP was **independently reproduced in pure Python to machine precision** (optimal discounted
+  cost `31.7802611137`, diff `0.00e+00`) as part of this audit. This proves the env/DP are correctly
+  implemented; it is not a literature claim.
+- **faithful-to-structure**: the env matches the *structure* of Maggiar & Sadighian (2017)
+  (interval-stock policy, return-before-liquidate / Corollary 1, fixed-returnability cap / Section
+  3.2, salvage form / Assumption 4, cost-ordering / Assumption 2) but omits the pricing dimension the
+  published numbers depend on, so no published number can anchor it.
+- root cause of "not verified": structural reduction, not a bug.
 
 ## Instance set and benchmark
 

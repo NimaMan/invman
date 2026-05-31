@@ -58,7 +58,7 @@ pub struct ExactVerificationReference {
 }
 
 pub const PAHR_GRUNOW_2025_REFERENCE: PublishedBenchmarkReference = PublishedBenchmarkReference {
-    source: "Pahr and Grunow (2025), Production and Operations Management",
+    source: "Pahr and Grunow (2025), Production and Operations Management, Vol. 35 No. 5 (DOI 10.1177/10591478251387795)",
     url: "https://journals.sagepub.com/doi/10.1177/10591478251387795",
     benchmark_policies: &[
         "newsvendor_purchase",
@@ -124,7 +124,7 @@ pub const PAHR_GRUNOW_2025_SPIRITS_0001_UPPER_BOUND: PublishedUpperBoundAnchor =
         num_products: 3,
         upper_bound_average_profit: 1991.9344293376805,
         anchors_repo_assertion: false,
-        notes: "Generic default instance: target ages [2,4,6], demand means [10,7,5] (CoV 0.25, Gaussian copula with price), purchase price mean 200 / std 50 truncated, sales-price means [250,350,500] (CoV 0.1), age-dependent beta decay (CoV 0.8) plus 0.03 evaporation, capacity 50, holding 2.5. The paper reports its average-age-blending policy reaching about 3.5% below this upper bound on the generic instance set.",
+        notes: "Generic default instance: target ages [2,4,6], demand means [10,7,5] (CoV 0.25, Gaussian copula with price), purchase price (config price_mean 200, price_std 50, price_truncation 70), sales-price means [250,350,500] (CoV 0.1), age-dependent beta decay (CoV 0.8) plus 0.03 evaporation, capacity 50, holding 2.5. Config fields and the upper bound (max_reward 1991.9344293376805) were read directly from the companion repo's spirits_0001/{config,upper_bound}.json. The paper reports its average-age-blending policy reaching about 3.5% below this upper bound on the generic instance set.",
     };
 
 /// Companion-repo port-wine industry case study.

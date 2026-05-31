@@ -17,7 +17,7 @@ Original literature family:
 Current Rust environment:
 
 - continuous-time, cycle-based multi-retailer truck-dispatch simulator
-- 10 retailers and 2 products in the carried Giannoccaro benchmark family
+- 10 retailers and 2 products in the carried Sui/Gosavi/Lin (2010) benchmark family
 - compound-Poisson retailer demand with discrete-uniform demand sizes
 - random route cycle times and retailer-specific lead times
 - truck-count dispatch action with a newsvendor-based allocation rule
@@ -27,36 +27,62 @@ The older reduced single-retailer finite-horizon slice is still kept only as ver
 
 ## Literature Anchor
 
-Two distinct papers are involved; do not conflate them.
+There is exactly ONE source paper. (A previous version of this README wrongly split it into a
+"Giannoccaro and Pontrandolfo (2010)" headline paper plus a separate Sui/Gosavi/Lin anchor. There is
+no such Giannoccaro 2010 VMI paper — see the citation correction below.)
 
-Headline paper (full truck-dispatch model, NOT reproduced):
+Source paper (supplies BOTH the truck-dispatch model AND the worked newsvendor case):
 
-- Giannoccaro and Pontrandolfo (2010), *A Reinforcement Learning Approach for Inventory Replenishment in Vendor-Managed Inventory Systems With Consignment Inventory*
+- **Sui, Z., Gosavi, A., and Lin, L. (2010)**, *A Reinforcement Learning Approach for Inventory
+  Replenishment in Vendor-Managed Inventory Systems With Consignment Inventory*,
+  *Engineering Management Journal*, **22(4): 44-53**
 - DOI: <https://doi.org/10.1080/10429247.2010.11431878>
+- verified at Crossref (<https://api.crossref.org/works/10.1080/10429247.2010.11431878>) and
+  Taylor & Francis (<https://www.tandfonline.com/doi/abs/10.1080/10429247.2010.11431878>)
+
+CITATION CORRECTION (2026-05-31, librarian audit): the DOI and title above belong to
+**Sui, Gosavi, and Lin (2010)**, not to Giannoccaro & Pontrandolfo. Giannoccaro & Pontrandolfo's RL
+inventory paper is *Inventory management in supply chains: a reinforcement learning approach*,
+*Int. J. Production Economics* **78(2): 153-161 (2002)** (DOI `10.1016/S0925-5273(00)00156-0`) — a
+different, non-VMI serial-supply-chain model that is **not** used here. The Rust constants are still
+named `GIANNOCCARO_2010_*`; renaming them needs a rebuild and is a tracked blocker.
 
 Verified analytical anchor (the newsvendor worked case, REPRODUCED EXACTLY):
 
-- Sui, Gosavi, and Lin (2010), *A reinforcement learning approach for inventory replenishment in
-  vendor-managed inventory systems with consignment inventory*, Engineering Management Journal,
-  22(4): 44-53
-- public worked case study (Gosavi 2020, based on the above): <https://web.mst.edu/_disabled/gosavia/vmi_case_study.pdf>
+- public instructor case study by **Abhijit Gosavi**, *Case Study for Vendor-Managed Inventory (Based
+  on Sui, Gosavi, & Lin, 2010)*, Missouri S&T, dated Sep 7, 2010 (PDF footer 2020):
+  <https://web.mst.edu/_disabled/gosavia/vmi_case_study.pdf> (URL confirmed to load and was read
+  during the 2026-05-31 audit)
 - author MATLAB code for that case: <https://web.mst.edu/_disabled/gosavia/vmi_newsvendor.m>
+  (NOT independently confirmed to load; treat as unverified)
 
 Published paper experiment rows:
 
-- the Giannoccaro headline paper reports an 8-case table with newsvendor and RL profits
-- those profit rows are not carried as benchmark assertions because the public text does not define
+- Sui, Gosavi & Lin (2010) report an 8-case table with newsvendor and RL profits
+- those profit rows are not carried as benchmark assertions because the public material does not define
   the high/low demand-signal process tightly enough to reproduce the rows
 
 ## Current Status
 
-Overall: **literature-verified = partial.**
+Overall: **literature-verified = partial** (one analytical block verified; the env families are
+faithful-but-unreproduced and self-consistent-only respectively).
 
-- literature-verified: **yes (confirmed against the source PDF)** for the public Sui/Gosavi/Lin (2010)
-  worked newsvendor case-study calculation
-- literature-verified: **no** for the full Giannoccaro truck-dispatch 8-case profit table
-- repo-exact verified: **yes** on the reduced single-retailer verifier (exact finite-horizon DP
-  dominates both repo heuristics, `verification/tests.rs::exact_dp_dominates_repo_heuristics`)
+Per block:
+
+- **literature-verified: YES** for the public Sui/Gosavi/Lin (2010) worked newsvendor case-study
+  calculation. Confirmed on 2026-05-31 by fetching and reading the source PDF and matching every
+  displayed quantity (`mu=0.375`, `sigma^2=0.5833`, `mu_C=40`, `sigma_C^2=50`, cycle-demand mean 15,
+  variance 30.36, MDH `S=15`, six-sigma `S=31.53`, newsvendor `S=26.96`). This is a reproduced public
+  number, not merely a stored one.
+- **literature-verified: NO** for the full Sui/Gosavi/Lin (2010) truck-dispatch 8-case profit table.
+  The env (`step_paper_state`) is a faithful structural implementation, but no published profit row is
+  reproduced (status: faithful-but-no-published-anchor). These rows are dropped from the benchmark
+  layer.
+- **self-consistent-only** for the reduced single-retailer slice (`step_state`): its parameters are
+  repo-chosen with **no published anchor**; it is validated only against the repo's own exact
+  finite-horizon DP, which dominates both repo heuristics
+  (`verification/tests.rs::exact_dp_dominates_repo_heuristics`). This is a self-consistency check, not
+  a literature reproduction.
 
 Worked-case verification, line by line (env vs the cited PDF, page 4 of `vmi_case_study.pdf`):
 

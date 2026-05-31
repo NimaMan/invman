@@ -11,9 +11,14 @@ Formulation carried here:
 
 This package currently carries two literature slices:
 
-- classic board-game benchmark from Sterman (1989), reconstructed exactly by Edali & Yasarcan (2014)
-  (JASSS 17(4) 2; earlier text mis-attributed this to "Caner et al.")
-- later RL background paper from Oroojlooyjadid et al. (2021)
+- classic board-game benchmark from Sterman (1989), "Modeling Managerial Behavior: Misperceptions
+  of Feedback in a Dynamic Decision Making Experiment", Management Science 35(3):321-339
+  (DOI 10.1287/mnsc.35.3.321), reconstructed exactly by Edali & Yasarcan (2014)
+  (JASSS 17(4):2, DOI 10.18564/jasss.2555; earlier text mis-attributed this to "Caner et al.")
+- later RL background paper from Oroojlooyjadid, Nazari, Snyder & Takac, "A Deep Q-Network for the
+  Beer Game", MSOM 24(1):285-304, DOI 10.1287/msom.2020.0939 (issue year 2022; online-first 2021)
+
+All four citations were independently re-verified against Crossref / publisher DOIs on 2026-05-31.
 
 Current status (audited 2026-05-31 — corrected from an earlier overstated claim):
 

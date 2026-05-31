@@ -28,7 +28,10 @@ The executable assertions live in:
 
 Paper benchmark audit:
 
-- the full 10-retailer, 2-product Giannoccaro benchmark is now executable via the root env/heuristic/rollout path
+- the full 10-retailer, 2-product Sui/Gosavi/Lin (2010) benchmark is now executable via the root env/heuristic/rollout path
+  (the Rust constants are still named `GIANNOCCARO_2010_*`; that is a mis-naming, see
+  `../literature/README.md` citation correction — the paper is Sui, Gosavi & Lin 2010, NOT
+  Giannoccaro & Pontrandolfo)
 - but the reproduced newsvendor profits still do not match the published table closely enough to use
   those rows as verification anchors
 - those full-table profit rows are therefore dropped from the benchmark layer; only the public worked

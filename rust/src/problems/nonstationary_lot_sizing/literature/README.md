@@ -1,10 +1,45 @@
 # Literature Overview
 
-## Verification status: VERIFIED (yes)
+## Verification status: literature-verified (published author-repo benchmark
+## numbers reproduced by the repo solver+simulator) — with one fidelity caveat
 
-The environment faithfully matches the cited model AND the repo reproduces the
-published author-repo benchmark numbers on all eight forecast instances. Evidence
-is recorded below.
+What is literature-verified vs. self-consistent:
+
+- LITERATURE-VERIFIED (published-number reproduction). The eight reference rows in
+  `references.rs` are byte-for-byte the author's public testbed CSVs
+  (`HenriDeh/DRL_MMULS`, `single-item` branch, slice leadtime=2/shortage=5/setup=10/
+  lostsales/CV=0.2/horizon=32), and the repo's OWN solver + Monte-Carlo simulator
+  reproduces every one of those published numbers to within +/-0.17% (table below).
+  This is a real re-derivation by a solver, not stored numbers. NOTE: the anchors
+  are the author's public CODE-REPO CSVs (the author's `simple` (s,S) and rolling-DP
+  (s,S) heuristic baselines), not a numeric table printed in the peer-reviewed EJOR
+  article; both author baseline values were independently confirmed against the
+  GitHub raw CSVs during the 2026 literature audit (see "Audit trail" below).
+- SELF-CONSISTENT-ONLY (one fidelity claim). The "Section 4.2 worked transition"
+  test (period cost 130, reward -130) is validated only against the repo's own
+  `env.rs::step_state`. The specific worked-example numbers attributed to the paper's
+  Section 4.2 could NOT be confirmed against the published article text during the
+  2026 audit (the open-access UCLouvain PDF is behind a JS landing page and
+  ScienceDirect/ResearchGate returned 403). Treat the worked transition as an
+  internal mechanics regression check whose attribution to a printed Section 4.2
+  example is unconfirmed by an independent reader.
+
+## Audit trail (2026 literature audit)
+
+- Citation metadata confirmed exact via IDEAS/RePEc
+  (https://ideas.repec.org/a/eee/ejores/v314y2024i2p433-445.html): authors Henri
+  Dehaybe, Daniele Catanzaro, Philippe Chevalier; EJOR vol. 314, issue 2, pp.
+  433-445, 2024; DOI 10.1016/j.ejor.2023.10.007.
+- The DRL agent in the paper is PPO (the repo correctly records `ppo` as a
+  literature comparator only; CMA-ES soft trees are the repo's own learned policy).
+- Author CSV anchors confirmed byte-for-byte against the GitHub raw files:
+  - `.../single-item/data/single-item/scarf_testbed_simple_lostsales.csv`
+    (forecast_id 1..8 simple_cost = 1252.4885.., 1832.9142.., 2369.6266.., 1824.9849..,
+    1869.9016.., 1858.1097.., 1754.7651.., 1964.4607.. — all match `references.rs`)
+  - `.../single-item/data/single-item/scarf_testbed_DP_lostsales.csv`
+    (forecast_id 1..5 opt_cost = 1215.264, 1711.741, 2072.164, 1675.81, 1680.512 —
+    all match `references.rs`)
+- Could not verify from source: the Section 4.2 worked-example numbers (see above).
 
 ## Primary sources
 
@@ -24,9 +59,13 @@ is recorded below.
 
 - Order of events per period (env.rs::step_state): place order -> oldest pipeline
   order arrives -> demand realizes -> charge fixed cost K (if an order was placed)
-  + holding*max(end_inventory, 0) + penalty*unmet_demand. This reproduces the
-  paper's Section 4.2 worked transition exactly: with the worked inputs the period
-  cost is 130 and the reward is -130 (verification.rs::worked_example_transition_matches_section_4_2).
+  + holding*max(end_inventory, 0) + penalty*unmet_demand. With the worked inputs the
+  period cost is 130 and the reward is -130
+  (verification.rs::worked_example_transition_matches_section_4_2). The test name and
+  these numbers are attributed to the paper's Section 4.2 worked transition, but that
+  attribution was NOT independently confirmed against the published article during the
+  2026 audit (PDF inaccessible); the test currently verifies only internal
+  self-consistency of `env.rs::step_state`, not a printed paper example.
 - simple_s_s heuristic matches the author testbed formula in
   `sspolicy_test.jl` term-for-term:
   - `LTDmean = sum(forecast[1 .. 1+L])`, `LTDstd = sqrt(sum((forecast_i * CV)^2))`

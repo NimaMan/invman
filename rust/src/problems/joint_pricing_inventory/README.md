@@ -65,10 +65,15 @@ newsvendor**:
 - overage cost `Co = c + h`, underage cost `Cu = p + s − c`
 - optimal order-up-to `= smallest y with F(y) ≥ Cu / (Cu + Co)` (critical fractile)
 
-Classical sources for this formulation: Whitin (1955), Petruzzi & Dada (1999), Federgruen & Heching
-(1999). The multi-period finite-horizon version is the classic joint pricing-inventory control problem,
-also the model class studied (in a data-driven setting) by Qin, Simchi-Levi & Wang (2022). These are
+Classical sources for this formulation: Whitin (1955, Management Science 2(1):61-68,
+doi:10.1287/mnsc.2.1.61), Petruzzi & Dada (1999, Operations Research 47(2):183-194,
+doi:10.1287/opre.47.2.183), Federgruen & Heching (1999, Operations Research 47(3):454-475,
+doi:10.1287/opre.47.3.454). The multi-period finite-horizon version is the classic joint
+pricing-inventory control problem, also the model class studied (in a data-driven setting) by Qin,
+Simchi-Levi & Wang (2022, Management Science 68(9):6591-6609, doi:10.1287/mnsc.2021.4212). These are
 carried in `literature/references.rs` as `PRICE_SETTING_NEWSVENDOR_ANCHOR` and `QIN_2022_REFERENCE`.
+(Note: `PRICE_SETTING_NEWSVENDOR_ANCHOR.url` stores the Petruzzi & Dada DOI; Federgruen & Heching is
+doi:10.1287/opre.47.3.454.)
 
 ### Why it is still `literature_verified = false`
 

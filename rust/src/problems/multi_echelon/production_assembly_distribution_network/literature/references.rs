@@ -95,7 +95,7 @@ pub const PIRHOOSHYARAN_2021_REFERENCE: PublishedBenchmarkReference =
         source: "Pirhooshyaran and Snyder (2021), arXiv:2006.05608",
         url: "https://arxiv.org/abs/2006.05608",
         benchmark_policies: &["pairwise_dnn", "pairwise_base_stock"],
-        notes: "The paper studies finite-horizon stochastic supply-chain networks with pairwise order-up-to decisions, raw-material inventories, finished-goods inventories, and both assembly and distribution structures. Table 1 gives single-node analytical newsvendor rows. Tables 2 and 3 give serial benchmark settings and analytical OUL plus average-cost rows.",
+        notes: "Pirhooshyaran & Snyder, arXiv:2006.05608 v2 (23 Mar 2021), Lehigh University. The paper studies finite-horizon stochastic supply-chain networks with pairwise order-up-to decisions, raw-material inventories, finished-goods inventories, and both assembly and distribution structures. VERIFIED against the paper PDF (2026-05): Table 1 gives single-node newsvendor rows (h=10, p=30, T=2); SINGLE_NODE_BENCHMARK_ROWS = the L=1 analytical (OUL, cost) column of Table 1. Table 2 gives the 10 serial-SCN settings and Table 3 the OUL/cost comparison; SERIAL_BENCHMARK_ROWS = Table 2 settings + the 'Analytical' (OUL, cost) column of Table 3 (case 3 = 47.65). These transcribed numbers are confirmed exact against the published tables.",
     };
 
 /// Exact-theory cross-reference for the serial optimal costs carried in
@@ -117,9 +117,9 @@ pub const PIRHOOSHYARAN_2021_REFERENCE: PublishedBenchmarkReference =
 pub const SERIAL_CLARK_SCARF_REFERENCE: PublishedBenchmarkReference =
     PublishedBenchmarkReference {
         source: "Clark & Scarf (1960); Snyder & Shen, Fundamentals of Supply Chain Theory (Example 6.1); stockpyl.ssm_serial reference implementation",
-        url: "https://stockpyl.readthedocs.io/en/latest/api/seio/ssm_serial.html",
+        url: "https://stockpyl.readthedocs.io/en/latest/api/meio/ssm_serial.html",
         benchmark_policies: &["echelon_base_stock_optimal"],
-        notes: "Exact periodic-review serial multi-echelon optimum via Clark-Scarf recursive newsvendor decomposition. Reproduced (exact + env simulation) in the multi_echelon/serial family; carried here as the Pirhooshyaran Tables 2-3 rows.",
+        notes: "Exact periodic-review serial multi-echelon optimum via Clark-Scarf recursive newsvendor decomposition (Clark & Scarf 1960 DOI 10.1287/mnsc.6.4.475; Federgruen & Zipkin 1984 DOI 10.1287/opre.32.4.818; Chen & Zheng 1994 DOI 10.1287/mnsc.40.11.1426; Snyder & Shen FoSCT 2nd ed 2019 Example 6.1, ISBN 978-1-119-02484-2). PUBLIC ANCHOR: Snyder's stockpyl.ssm_serial.optimize_base_stock_levels returns C*=47.6687 for Example 6.1 (echelon holding [2,2,3], lead times [2,1,1], stockout 37.12, Normal(5,1)), matching Pirhooshyaran Table 3 case 3 (47.65, verified against the paper PDF). Reproduced (exact + env simulation) in the multi_echelon/serial family; carried here only as the Pirhooshyaran Tables 2-3 rows -- it is NOT re-derived by THIS network env.",
     };
 
 pub const SINGLE_NODE_BENCHMARK_ROWS: &[SingleNodeBenchmarkRow] = &[

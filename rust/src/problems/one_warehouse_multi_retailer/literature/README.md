@@ -5,11 +5,13 @@ and the honest current verification status.
 
 ## Canonical Reference
 
-- **Kaynov, van Knippenberg, Menkovski, van Breemen & van Jaarsveld (2024)** —
+- **Kaynov, I., van Knippenberg, M., Menkovski, V., van Breemen, A. & van Jaarsveld, W. (2024)** —
   "Deep Reinforcement Learning for One-Warehouse Multi-Retailer inventory management",
-  International Journal of Production Economics 267, 109088.
+  International Journal of Production Economics, vol. 267 (issue C), article 109088.
   <https://doi.org/10.1016/j.ijpe.2023.109088>
-  (open-access CC BY; also at the TU/e research portal).
+  (open-access CC BY; also at the TU/e research portal). Author names, year, venue, volume,
+  article number and DOI independently confirmed against Crossref, the IDEAS/RePEc record
+  (v267y2024ics0925527323003201), and the TU/e research portal.
 
 Repo interpretation:
 
@@ -58,6 +60,31 @@ compares against `-published_reward`. So published reward `-1406.27` ↔ publish
 
 **`partial`** — faithful, exact-DP-validated env; published rows carried; published numbers
 **approximately** (not bit-) reproduced.
+
+Precise taxonomy for this problem (so the `partial` label is unambiguous):
+
+- The **env transition + cost are FAITHFUL to Kaynov et al. (2024)** and **self-consistent-only
+  verified**: they are validated against a repo-native exact finite-horizon DP on a reduced
+  instance, NOT against any published Kaynov number. The exact-DP anchor
+  (`VERIFICATION_PROBLEM_INSTANCE`) carries `literature_verified = false` precisely because its
+  optimal cost (`8.485`) is a repo-native quantity, not a paper quantity.
+- The **14 Kaynov Table A.3 instances and their published proportional / min-shortage / PPO rows
+  are TABLE-ONLY**: the parameters and published reward/SE/gap values are carried in
+  `references.rs`, and the published costs are reproduced only **approximately** (~1-6%,
+  regime-dependent sign) by the repo's heuristics — they are NOT bit-reproduced by a solver.
+  The struct field `literature_verified = true` on these instances denotes **row provenance**
+  (these are genuine Kaynov instance parameters), NOT tight numerical reproduction; see the main
+  `README.md` for that field's documented semantics.
+- Therefore nothing in this problem is `literature-verified` in the strict sense (env faithful
+  AND a published number reproduced by a solver). The honest aggregate is `partial`.
+
+Citation status: the canonical Kaynov et al. (2024) reference and all five related-literature
+references below have been independently checked against Crossref / publisher pages / the TU/e
+portal and are correct (authors, year, title, venue, volume/issue, pages, DOI). The exact
+per-table numeric values (e.g. the carried `-1406.27` proportional reward) could NOT be
+byte-verified against the source because the full PDF is behind a Cloudflare bot wall; their
+*shape* is corroborated (proportional row normalized to gap 0; PPO gaps in the paper's stated
+1-3% lost-sales / 12-20% partial-backorder bands).
 
 There are two distinct claims, kept separate (as in the sibling `multi_echelon/divergent_special_delivery`):
 
@@ -146,18 +173,24 @@ verification step.
 
 ## Related Literature on the Same / Closely-Related Problem
 
-- **Van Roy, Bertsekas, Lee & Tsitsiklis (1997)** — NDP for retailer inventory management
-  (Proc. 36th IEEE CDC). The classical divergent two-echelon analogue; see the repo's
+- **Van Roy, Bertsekas, Lee & Tsitsiklis (1997)** — "A Neuro-Dynamic Programming Approach to
+  Retailer Inventory Management", Proc. 36th IEEE Conf. on Decision and Control (CDC),
+  San Diego, Dec. 1997, pp. 4052-4057. <https://doi.org/10.1109/CDC.1997.652501>
+  The classical divergent two-echelon analogue; see the repo's
   `multi_echelon/divergent_special_delivery`.
 - **Gijsbrechts, Boute, Van Mieghem & Zhang (2022)** — "Can Deep Reinforcement Learning Improve
-  Inventory Management?" (M&SOM 24(3):1349-1368). A3C DRL on divergent settings.
-- **Nahmias & Smith (1994)** — two-echelon retailer system with partial lost sales
-  (Management Science 40(5):582-596). Closest classical analogue to the partial-backorder regime.
-- **Federgruen & Zipkin (1984)** — approximations of dynamic multilocation inventory problems
-  (Management Science 30(1):69-84). Classical divergent base-stock + allocation structure;
-  the "balance assumption" under which echelon base-stock is optimal.
-- **de Kok et al. (2018)** — typology and literature review on stochastic multi-echelon
-  inventory models (EJOR 269(3):955-983).
+  Inventory Management? Performance on Lost Sales, Dual-Sourcing, and Multi-Echelon Problems"
+  (M&SOM 24(3):1349-1368). <https://doi.org/10.1287/msom.2021.1064> A3C DRL on divergent settings.
+- **Nahmias & Smith (1994)** — "Optimizing Inventory Levels in a Two-Echelon Retailer System
+  with Partial Lost Sales" (Management Science 40(5):582-596).
+  <https://doi.org/10.1287/mnsc.40.5.582> Closest classical analogue to the partial-backorder regime.
+- **Federgruen & Zipkin (1984)** — "Approximations of Dynamic, Multilocation Production and
+  Inventory Problems" (Management Science 30(1):69-84). <https://doi.org/10.1287/mnsc.30.1.69>
+  Classical divergent base-stock + allocation structure; the "balance assumption" under which
+  echelon base-stock is optimal.
+- **de Kok, Grob, Laumanns, Minner, Rambau & Schade (2018)** — "A typology and literature review
+  on stochastic multi-echelon inventory models" (EJOR 269(3):955-983).
+  <https://doi.org/10.1016/j.ejor.2018.02.047>
 
 ### Policy-design stance
 

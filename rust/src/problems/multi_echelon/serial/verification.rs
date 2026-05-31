@@ -5,11 +5,17 @@
 //! optimum matches the published literature value.
 //!
 //! Two complementary checks:
-//! 1. exact: `exact.rs` reproduces the published optimum (Snyder & Shen Example 6.1
-//!    optimal cost 47.65; discrete Poisson optima match the stockpyl reference impl);
-//! 2. sim: `env.rs` + the optimal echelon base-stock policy reproduce that optimum by
-//!    Monte-Carlo simulation, within sampling error. This is the confidence check that
-//!    the training env is correct before any policy is trained on it.
+//! 1. exact: `exact.rs` reproduces (a) the one PUBLISHED anchor, Snyder & Shen Example 6.1
+//!    optimal cost 47.65 (solver 47.6654; stockpyl `example_6_1` reports 47.6687), and
+//!    (b) the discrete Poisson optima, which are repo-CONSTRUCTED instances matched to the
+//!    `stockpyl.ssm_serial` reference implementation (not numbers printed in any paper);
+//! 2. sim: `env.rs` + the optimal echelon base-stock policy reproduce those optima by
+//!    Monte-Carlo simulation. This is a self-consistency check of the training env against
+//!    the in-repo exact solver. NOTE: it holds within sampling error only for downstream
+//!    lead time = 1; the Ex6.1 Normal sim carries a +1.62% demand-rounding bias and passes
+//!    only under the 2% tolerance below (see README Caveats 1 and 2). Accurate status of
+//!    this problem is therefore PARTIAL: exact-vs-Ex6.1 is literature-verified, Poisson is
+//!    reference-implementation-verified, env-sim is self-consistent (L0=1).
 
 #[cfg(test)]
 mod tests {

@@ -51,19 +51,26 @@ pub struct ExactVerificationReference {
 }
 
 pub const VANVUCHELEN_2020_REFERENCE: PublishedBenchmarkReference = PublishedBenchmarkReference {
-    source: "Vanvuchelen, Gijsbrechts & Boute (2020), Computers in Industry 119, 103239",
-    url: "https://lirias.kuleuven.be/retrieve/badd4d5b-5bfc-44e4-84f1-b98fd113143d",
+    source: "Vanvuchelen, Gijsbrechts & Boute (2020), \"Use of Proximal Policy Optimization for the \
+             Joint Replenishment Problem\", Computers in Industry 119, 103239. \
+             DOI 10.1016/j.compind.2020.103239 (verified Crossref + ScienceDirect PII S0166361519308218 + PDF metadata, 2026-05).",
+    url: "https://doi.org/10.1016/j.compind.2020.103239 (open author copy: https://lirias.kuleuven.be/retrieve/badd4d5b-5bfc-44e4-84f1-b98fd113143d)",
     benchmark_policies: &["ppo", "(Q,S|T)_moq", "dyn-out"],
     reported_numbers_available: true,
     numbers_anchor_repo_assertions: true,
-    notes: "The paper exposes all 16 small-scale setting definitions in Table 2 (verbatim here) and \
-            reports per-setting optimality gaps only as a figure (Figure 2): the (Q,S|T) and DYN-OUT \
-            heuristics lie 4-25% above the optimal policy. The one EXACT, executable anchor the paper \
-            states in prose (Section 6.2, around Figure 3, for setting 5) is the optimal-policy action: \
-            in state (I1,I2)=(5,0) the optimal policy ships exactly one full truckload to shipper 2, \
-            q=(0,6), while both heuristics order q=(2,4). That optimal action is carried in \
-            VANVUCHELEN_2020_FIGURE3_ANCHOR and is reproduced by an independent infinite-horizon value \
-            iteration over the repo cost/transition (scripts/joint_replenishment/benchmark_vanvuchelen_settings.py).",
+    notes: "VERIFIED against the paper (Crossref/ScienceDirect + author PDF, 2026-05). The paper exposes \
+            all 16 small-scale setting definitions in Table 2 (carried verbatim here; every h/b/k/K/V/demand \
+            value confirmed against Table 2) and reports per-setting optimality gaps ONLY as a figure \
+            (Figure 2: the (Q,S|T) and DYN-OUT heuristics lie 4-25% above the optimal policy), so NO \
+            per-setting absolute optimal-cost table exists to assert. The one EXACT result the paper states \
+            in prose (Section 6.2, around Figure 3, setting 5) is an OPTIMAL ACTION (not a cost): in state \
+            (I1,I2)=(5,0) the optimal policy ships exactly one full truckload to shipper 2, q=(0,6), while \
+            both heuristics order q=(2,4) (quote confirmed verbatim). That action is carried in \
+            VANVUCHELEN_2020_FIGURE3_ANCHOR. SCOPE OF IN-CRATE VERIFICATION: verification/tests.rs asserts \
+            (a) the carried anchor's shape and (b) the env's one-period cost (Eq. 2/4) at the stored optimal \
+            action, =90 for demand (2,4); it does NOT re-derive optimality. The claim that q=(0,6) is the \
+            value-iteration optimum is reproduced ONLY by an external script \
+            (scripts/joint_replenishment/benchmark_vanvuchelen_settings.py, outside this crate's tests).",
 };
 
 /// Published, executable anchor from Vanvuchelen et al. (2020), Section 6.2 / Figure 3.

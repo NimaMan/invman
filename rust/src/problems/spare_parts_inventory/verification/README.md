@@ -27,7 +27,11 @@ Verification status (re-confirmed 2026-05-31 against the installed `invman_rust`
   `repo_exact_solver_not_verified_against_literature`. The DP only anchors internal
   self-consistency (it must weakly dominate the carried heuristics).
 - van Oers et al. (2024) Table 1 is carried as a table-only catalog (recorded exactly as
-  published); no repo solver re-derives it.
+  published); no repo solver re-derives it. The 2026-05-31 literature audit verified the
+  bibliographic metadata via Crossref (IFAC-PapersOnLine 58(19), 1006-1011,
+  DOI 10.1016/j.ifacol.2024.09.144) but did not re-confirm the individual Table 1 cell
+  values. The scenario structs set `literature_verified: true`, but for this block that
+  flag means only "transcribed from a published table", not "reproduced by a solver".
 
 Reproduce every verification block (without rebuilding Rust) via
 `scripts/spare_parts_inventory/benchmark_spare_parts_inventory.py`. The pre-existing helper

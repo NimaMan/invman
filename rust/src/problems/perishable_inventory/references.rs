@@ -61,17 +61,17 @@ pub struct VerificationProblemInstance {
 pub const BENCHMARK_POLICIES: &[&str] = &["base_stock", "bsp_low_ew", "dqn", "shaped_dqn"];
 
 pub const DE_MOOR_2022_REFERENCE: PublishedBenchmarkReference = PublishedBenchmarkReference {
-    source: "De Moor et al. (2022), Figure 3 and Section 5",
+    source: "De Moor, Gijsbrechts, Boute (2022), \"Reward shaping to improve the performance of deep reinforcement learning in perishable inventory management\", European Journal of Operational Research, 301(2), 535-545",
     url: "https://doi.org/10.1016/j.ejor.2021.10.045",
     benchmark_policies: BENCHMARK_POLICIES,
-    notes: "Figure 3 reports the optimal policy tables and the best base-stock levels for the m=2, experiments 1 and 2 settings.",
+    notes: "De Moor et al. (2022) fully specified the optimal and best base-stock policies for the m=2 experiments 1 (LIFO) and 2 (FIFO); these are the published-policy tables and base-stock levels (5 LIFO, 7 FIFO) re-derived by the exact MDP. The exact figure number in the published EJOR article was not independently confirmed by the librarian audit (paywalled full text).",
 };
 
 pub const FARRINGTON_2025_REFERENCE: PublishedBenchmarkReference = PublishedBenchmarkReference {
-    source: "Farrington et al. (2025), Table 3",
-    url: "https://pmc.ncbi.nlm.nih.gov/articles/PMC12350524/",
+    source: "Farrington, Wong, Li, Utley (2025), \"Going faster to see further: graphics processing unit-accelerated value iteration and simulation for perishable inventory control using JAX\", Annals of Operations Research, 349(3), 1609-1638, Table 3",
+    url: "https://doi.org/10.1007/s10479-025-06551-6",
     benchmark_policies: &["value_iteration", "base_stock"],
-    notes: "Table 3 reports value-iteration and best base-stock mean returns and standard deviations for all 32 Scenario A settings from De Moor et al. (2022).",
+    notes: "Table 3 reports value-iteration and best base-stock mean returns and standard deviations for all 32 Scenario A settings from De Moor et al. (2022). PMC open-access copy: https://pmc.ncbi.nlm.nih.gov/articles/PMC12350524/ ; arXiv preprint: https://arxiv.org/abs/2303.10672 .",
 };
 
 pub const DE_MOOR_M2_EXP1_FIGURE3_POLICY: [[usize; 9]; 9] = [

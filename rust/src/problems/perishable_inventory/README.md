@@ -20,11 +20,16 @@ Artifact folders:
 
 Verification status:
 
-- LITERATURE-VERIFIED on the `m = 2`, lead-time-1 slice. The exact value-iteration
-  MDP reproduces De Moor et al. (2022) Figure 3 optimal-policy tables and best
-  base-stock levels (5 LIFO, 7 FIFO) and the Farrington et al. (2025) Table 3
-  value-iteration returns (-1553 LIFO, -1457 FIFO) exactly. Details and the
-  estimator caveat are in `literature/README.md`.
+- LITERATURE-VERIFIED on the `m = 2`, lead-time-1 slice ONLY (four 121-state
+  instances). The exact value-iteration MDP re-derives, in-repo at test time, the
+  De Moor et al. (2022, EJOR 301(2):535-545) optimal-policy tables and best
+  base-stock levels (5 LIFO, 7 FIFO) and the Farrington, Wong, Li, Utley (2025,
+  Ann. Oper. Res. 349(3):1609-1638) Table 3 value-iteration returns (-1553 LIFO,
+  -1457 FIFO) exactly. The repo labels the De Moor policy tables "Figure 3"; the
+  exact published figure number was not independently confirmed (paywalled EJOR
+  full text). The other 28 Scenario A rows are TABLE-ONLY anchors (stored, not
+  re-derived). Details, citation-correctness notes, and the estimator caveat are
+  in `literature/README.md`.
 
 Current anchors:
 

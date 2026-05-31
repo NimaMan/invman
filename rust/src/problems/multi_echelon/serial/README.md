@@ -36,21 +36,34 @@ pipeline holding) and does **not** reduce to this textbook serial system.
 
 ## Verification (env reproduces the literature)
 
-Status: **literature-verified (yes)** for the carried instance set, with two scoped caveats
-documented below (demand-facing lead time must be 1; the evaluator rounds Normal demand).
+Status: **PARTIAL** — be precise about which block is verified against what:
 
-Two complementary checks, both passing:
-
-1. **Exact** — `exact.rs` reproduces the published optima: Snyder & Shen *Fundamentals of Supply
-   Chain Theory* **Example 6.1** optimal cost **47.65** (solver `47.6654`, within 0.03%); discrete
-   Poisson optima match the `stockpyl.ssm_serial` reference implementation to machine precision
-   (3-stage `C* = 72.043543`, `S* = [9,15,26]`; 2-stage `16.797779`, `S* = [7,13]`; 1-stage
-   `4.220849`, `S* = 8`). See `exact.rs` tests `single_stage_reduces_to_newsvendor_closed_form`
-   and `poisson_instances_match_reference_implementation`.
-2. **Simulation** — `env.rs` driven by the optimal echelon base-stock policy reproduces those
-   same optima by Monte-Carlo simulation within sampling error (Poisson 1/2/3-stage →
-   `4.211`, `16.777`, `72.007`, all ≤0.23%; Example 6.1 Normal → see the rounding note).
-   `exact_and_simulation_agree` cross-checks decomposition vs simulation directly.
+- **Exact solver vs a genuinely published number — literature-verified.** `exact.rs` re-derives
+  the Snyder & Shen *Fundamentals of Supply Chain Theory* **Example 6.1** optimum, the only
+  textbook-PUBLISHED anchor here (3-node, echelon holding `[2,2,3]`, lead times `[2,1,1]`,
+  stockout 37.12, Normal(5,1)): published cost **47.65**, solver `47.6654`. Independently
+  cross-checked against the textbook author's own reference implementation `stockpyl.ssm_serial`
+  (`example_6_1`), which reports `C* = 47.6687`, `S* = {6.514, 12.012, 22.700}` — agreement to
+  ~0.006%. So a published paper/textbook value IS re-derived by a solver (not merely stored).
+- **Exact solver vs the reference implementation (Poisson) — reference-implementation-verified,
+  NOT a published-paper anchor.** The Poisson 1/2/3-stage optima (`C* = 4.220849` / `16.797779`
+  / `72.043543`, `S* = 8` / `[7,13]` / `[9,15,26]`) are repo-CONSTRUCTED instances, not numbers
+  printed in any paper; they match `stockpyl.ssm_serial.optimize_base_stock_levels` to machine
+  precision. This is verification against a public reference implementation (strong), but it is
+  not a published benchmark number — do not call it "literature-verified" without that qualifier.
+  See `exact.rs` tests `single_stage_reduces_to_newsvendor_closed_form` and
+  `poisson_instances_match_reference_implementation`.
+- **Env-simulation vs the exact solver — verified only for downstream lead time = 1, with a
+  documented Normal-demand bias.** `env.rs` driven by the optimal echelon base-stock policy
+  reproduces the exact Poisson optima by Monte-Carlo within sampling error (`4.211`, `16.777`,
+  `72.007`, all ≤0.23%). The Example 6.1 **Normal** simulation does NOT cleanly reproduce 47.65:
+  the evaluator rounds Normal demand and the simulated cost is **≈48.44 (+1.62%)** — the
+  `verification.rs` Ex6.1 test passes only because its tolerance is 2% (see Caveat 1; with the
+  rounding removed it is +0.01%). And for any instance whose demand-facing stage has lead time
+  ≥ 2 the simulation under-counts cost (see Caveat 2). `exact_and_simulation_agree` cross-checks
+  decomposition vs simulation directly. Net: the env is a faithful Clark-Scarf training env on
+  the carried L₀=1 instance set, but its simulation is a self-consistency check against the
+  in-repo exact solver, not an independent reproduction of a published number.
 
 This is the pre-training correctness gate: before any learned policy is trained on `env.rs`, the
 env is shown to reproduce the literature optimum under the known-optimal policy.
@@ -130,12 +143,29 @@ index from `find_nearest`); no installed package files were modified.
 
 ## References
 
+All five references below were independently re-verified against authoritative sources on
+2026-05-31 (DOIs resolved at doi.org; publisher pages at pubsonline.informs.org / wiley.com;
+stockpyl at readthedocs / PyPI / github.com/LarrySnyder).
+
 - Clark, A. J., and H. Scarf (1960). "Optimal Policies for a Multi-Echelon Inventory Problem."
-  *Management Science* 6(4):475-490.
+  *Management Science* 6(4):475-490. DOI 10.1287/mnsc.6.4.475. (Verified at
+  https://pubsonline.informs.org/doi/10.1287/mnsc.6.4.475 — venue/volume/issue/pages confirmed.)
 - Federgruen, A., and P. Zipkin (1984). "Computational Issues in an Infinite-Horizon, Multiechelon
-  Inventory Model." *Operations Research* 32(4):818-836.
+  Inventory Model." *Operations Research* 32(4):818-836. DOI 10.1287/opre.32.4.818. (Verified at
+  https://pubsonline.informs.org/doi/10.1287/opre.32.4.818.)
 - Chen, F., and Y.-S. Zheng (1994). "Lower Bounds for Multi-Echelon Stochastic Inventory Systems."
-  *Management Science* 40(11):1426-1443.
+  *Management Science* 40(11):1426-1443. DOI 10.1287/mnsc.40.11.1426. (Verified at
+  https://pubsonline.informs.org/doi/10.1287/mnsc.40.11.1426. Authors: Fangruo Chen, Yu-Sheng
+  Zheng. stockpyl's exact serial recursion follows Chen & Zheng's reworking of Clark & Scarf.)
 - Snyder, L. V., and Z.-J. M. Shen. *Fundamentals of Supply Chain Theory* (2nd ed., Wiley 2019),
-  Example 6.1.
-- `stockpyl` (Snyder), `stockpyl.ssm_serial.optimize_base_stock_levels`. https://stockpyl.readthedocs.io
+  Example 6.1. ISBN 978-1-119-02484-2; book DOI 10.1002/9781119584445. (Verified at
+  https://www.wiley.com/en-us/Fundamentals+of+Supply+Chain+Theory,+2nd+Edition-p-9781119024842.
+  Example 6.1 published optimal cost ≈47.65 — corroborated by the author's `stockpyl` reference
+  implementation, which loads it as `example_6_1` and reports `C* = 47.6687`; the textbook page
+  itself is paywalled and was not read directly.)
+- `stockpyl` (Snyder), `stockpyl.ssm_serial.optimize_base_stock_levels` — public reference
+  implementation accompanying the textbook. https://stockpyl.readthedocs.io ;
+  https://github.com/LarrySnyder/stockpyl ; PyPI `stockpyl`. Described in Snyder, L. V. (2023),
+  "Stockpyl: A Python Package for Inventory Optimization and Simulation," *INFORMS Tutorials in
+  Operations Research*, pp. 156-197, DOI 10.1287/educ.2023.0256. (Package + `ssm_serial` module +
+  `example_6_1` instance verified present on 2026-05-31.)

@@ -34,12 +34,22 @@ Verification status (honest, verified 2026-05-31 against the installed
 
 - Kranenburg (2006) Table 5.2: LITERATURE-VERIFIED. All 35 rows reproduced within
   worst absolute deviation 0.005 (situation-1 `R*`), 0.005 (situation-3 `R*`/cost),
-  0.005 (ratio), all well under the 0.02 table-rounding tolerance.
+  0.005 (ratio), all well under the 0.02 table-rounding tolerance. The citation and
+  all 35 stored anchor rows were re-confirmed verbatim against the open-access TU/e
+  thesis PDF (DOI 10.6100/IR616052) during the 2026-05-31 literature audit.
 - van Oers et al. (2024) Table 1: recorded-as-published only (table-only catalog),
-  not reproduced by a repo solver.
+  not reproduced by a repo solver. The 2026-05-31 audit verified the bibliographic
+  metadata via Crossref (Numerical Analysis of A Spare Parts Supply Chain With
+  Additive Manufacturing; van Oers, Tanil & Basten; IFAC-PapersOnLine 58(19),
+  1006-1011; DOI 10.1016/j.ifacol.2024.09.144) but did NOT re-confirm the individual
+  Table 1 cell values (full text paywalled). Note: the scenario structs carry
+  `literature_verified: true`, but for this block that flag means only "transcribed
+  from a published table", NOT "reproduced by a solver" — treat it as table-only.
 - Single-echelon repairable MDP (primary + verification instances): repo-native,
   NOT literature-verified; flagged in code as
-  `repo_exact_solver_not_verified_against_literature`.
+  `repo_exact_solver_not_verified_against_literature`. The MDPI review (Zhang, Huang
+  & Yuan 2021), Zhou et al. (2024), and van der Haar et al. (SSRN 2024) frame this
+  family but carry no benchmark numbers.
 
 Benchmark results (block 3, learned policy on the 17-period primary instance,
 discount 0.99, evaluated on a held-out block of 4096 fresh seeds 900000..904096):

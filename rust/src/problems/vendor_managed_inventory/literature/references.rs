@@ -311,10 +311,10 @@ const PAPER_BASELINE_DC_PARAMS: [PaperDcProductParams; 2] = [
 ];
 
 pub const GIANNOCCARO_2010_REFERENCE: PublishedBenchmarkReference = PublishedBenchmarkReference {
-    source: "Giannoccaro and Pontrandolfo (2010), A Reinforcement Learning Approach for Inventory Replenishment in Vendor-Managed Inventory Systems With Consignment Inventory",
+    source: "Sui, Z., Gosavi, A., and Lin, L. (2010), A Reinforcement Learning Approach for Inventory Replenishment in Vendor-Managed Inventory Systems With Consignment Inventory, Engineering Management Journal, 22(4): 44-53",
     url: "https://doi.org/10.1080/10429247.2010.11431878",
     benchmark_policies: &["worked_newsvendor_calculation"],
-    notes: "The paper studies a continuous-time multi-retailer VMI system with consignment inventory, truck-capacity transport decisions, a DC (Q,R) replenishment rule, and a newsvendor-based allocation heuristic. The public worked newsvendor calculation is verified here; the full 8-case paper profit table is not carried as a benchmark because the public text does not specify the demand-signal semantics tightly enough to reproduce the rows.",
+    notes: "CITATION CORRECTION (2026-05-31, librarian audit): this DOI/title belong to Sui, Gosavi, and Lin (2010) in Engineering Management Journal 22(4):44-53, NOT to Giannoccaro and Pontrandolfo. Verified at Crossref (https://api.crossref.org/works/10.1080/10429247.2010.11431878) and Taylor & Francis. Giannoccaro & Pontrandolfo (2002), Int. J. Production Economics 78(2):153-161, is a different (serial supply-chain) RL paper and is NOT the source here. The struct identifier still reads GIANNOCCARO_2010 only because renaming it touches bindings.rs/rollout.rs/tests.rs and needs a rebuild (see README blocker). The paper studies a continuous-time multi-retailer VMI system with consignment inventory, truck-capacity transport decisions, a DC (Q,R) replenishment rule, and a newsvendor-based allocation heuristic. The public worked newsvendor calculation is verified here; the full paper profit table is not carried as a benchmark because the public text does not specify the demand-signal semantics tightly enough to reproduce the rows.",
 };
 
 pub const GIANNOCCARO_2010_NEWSVENDOR_WORKED_CASE: NewsvendorWorkedCaseReference =
@@ -416,6 +416,9 @@ pub fn build_giannoccaro_2010_case(case_id: usize) -> Option<PaperVendorManagedI
     }
 
     Some(PaperVendorManagedInventoryModel {
+        // Identifier name is kept ("giannoccaro2010_*") to avoid a Python/binding break;
+        // the cited source is Sui, Gosavi, and Lin (2010). See GIANNOCCARO_2010_REFERENCE
+        // for the citation correction (this is NOT a Giannoccaro & Pontrandolfo paper).
         name: "giannoccaro2010_truck_dispatch",
         source: GIANNOCCARO_2010_REFERENCE.source,
         url: GIANNOCCARO_2010_REFERENCE.url,
@@ -481,7 +484,7 @@ pub const PRIMARY_REFERENCE_INSTANCE: VendorManagedInventoryReferenceInstance =
         benchmark_retailer_base_stock_level: 4,
         benchmark_dc_reserve_base_stock_level: 5,
         benchmark_dc_reserve_quantity: 2,
-        notes: "Canonical repo interpretation of vendor-managed inventory: a supplier DC chooses shipments into one retailer's consignment stock under a one-period transport lead time, deterministic upstream replenishment at the DC, and retailer lost-sales demand. This is not the full paper model.",
+        notes: "Repo-native reduced single-retailer slice (the `name` keeps the legacy 'giannoccaro2010_style' tag for the Python benchmark script; the actual cited paper is Sui, Gosavi, and Lin 2010). A supplier DC chooses shipments into one retailer's consignment stock under a one-period transport lead time, deterministic upstream replenishment at the DC, and retailer lost-sales demand. These parameter values are a repo-chosen instance, NOT taken from any published table; there is no published benchmark number reproduced on this instance. This is not the full paper model.",
     };
 
 pub const VERIFICATION_PROBLEM_INSTANCE: ExactVerificationReference = ExactVerificationReference {

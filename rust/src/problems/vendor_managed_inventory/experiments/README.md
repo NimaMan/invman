@@ -10,8 +10,9 @@ The intended comparator stack is:
 
 ## Current benchmark (reduced single-retailer slice)
 
-Because the headline Giannoccaro & Pontrandolfo (2010) 8-case profit table is not reproducible from
-the public text (see `../literature/README.md`), the runnable policy benchmark lives on the
+Because the headline Sui, Gosavi & Lin (2010) 8-case profit table is not reproducible from
+the public text (see `../literature/README.md` — note: this paper was previously mis-cited as
+"Giannoccaro & Pontrandolfo (2010)"; that attribution is wrong), the runnable policy benchmark lives on the
 repo-native reduced single-retailer slice (`env::step_state`), which is the env exposed to Python and
 validated by the exact DP regression.
 

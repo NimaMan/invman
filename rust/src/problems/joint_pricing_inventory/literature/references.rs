@@ -93,13 +93,13 @@ pub const QIN_2022_REFERENCE: PublishedBenchmarkReference = PublishedBenchmarkRe
 /// `verification/tests.rs` validates the env transition + cost against the closed form independently of
 /// the repo's own DP.
 pub const PRICE_SETTING_NEWSVENDOR_ANCHOR: PublishedBenchmarkReference = PublishedBenchmarkReference {
-    source: "Price-setting newsvendor / finite-horizon joint pricing-inventory: Whitin (1955); Petruzzi & Dada (1999); Federgruen & Heching (1999)",
+    source: "Price-setting newsvendor / finite-horizon joint pricing-inventory: Whitin (1955) Management Science 2(1):61-68 doi:10.1287/mnsc.2.1.61; Petruzzi & Dada (1999) Operations Research 47(2):183-194 doi:10.1287/opre.47.2.183; Federgruen & Heching (1999) Operations Research 47(3):454-475 doi:10.1287/opre.47.3.454",
     url: "https://doi.org/10.1287/opre.47.2.183",
     benchmark_policies: &[
         "critical_fractile_newsvendor",
         "finite_horizon_exact_dp",
     ],
-    notes: "The single-period reduction of this env is the price-setting newsvendor with overage Co = c + h and underage Cu = p + s - c; the optimal order-up-to is the critical-fractile quantile of price-dependent demand. The finite-horizon multi-period version is the classic joint pricing-and-inventory control problem (Federgruen & Heching 1999). verification/tests.rs checks the env's T=1 optimum equals the closed-form critical fractile for every price on VERIFICATION_PROBLEM_INSTANCE. This is an analytical (classical-literature) anchor for the env transition + cost; it is NOT a reproduction of a published per-instance optimal-profit table, so the package remains literature_verified = false.",
+    notes: "The single-period reduction of this env is the price-setting newsvendor with overage Co = c + h and underage Cu = p + s - c; the optimal order-up-to is the critical-fractile quantile of price-dependent demand. The finite-horizon multi-period version is the classic joint pricing-and-inventory control problem (Federgruen & Heching 1999). The `url` field stores the Petruzzi & Dada (1999) DOI (10.1287/opre.47.2.183); the Federgruen & Heching (1999) DOI is 10.1287/opre.47.3.454 and the Whitin (1955) DOI is 10.1287/mnsc.2.1.61 (all listed in `source`). verification/tests.rs checks the env's T=1 optimum equals the closed-form critical fractile for every price on VERIFICATION_PROBLEM_INSTANCE. This is an analytical (classical-literature) anchor for the env transition + cost; it is NOT a reproduction of a published per-instance optimal-profit table, so the package remains literature_verified = false.",
 };
 
 pub const PRIMARY_PRICE_LEVELS: &[f64] = &[8.0, 10.0, 12.0];

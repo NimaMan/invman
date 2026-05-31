@@ -30,11 +30,30 @@ This is the assembly literature anchor: Rosling's equivalence + the serial Clark
 
 ## Verification status (re-confirmed 2026-05-31, independent reproduction)
 
-**Status: LITERATURE-VERIFIED** for the in-scope case (equal component lead time, finished
-demand-facing lead time 1). The three `verification.rs` instances were independently
-reproduced from scratch — a pure-Python reimplementation of both the Clark–Scarf exact
-solver (`serial/exact.rs`) and the assembly env (`env.rs`), run side-by-side, NOT importing
-the Rust extension (assembly has no Python binding). Independent results:
+**Status: LITERATURE-VERIFIED-BY-EQUIVALENCE** for the in-scope case (equal component lead
+time, finished demand-facing lead time 1). Read this precisely — what is and is not anchored:
+
+- The two **citations** (Rosling 1989; Clark & Scarf 1960) are correct in every metadata field
+  (independently confirmed against RePEc/IDEAS and the INFORMS/ACM DOIs — see References).
+- The structural claim is **literature-verified**: Rosling (1989) proves the assembly system is
+  equivalent to a serial system, and the equal-lead-time reduction in `rosling.rs` is exactly that
+  collapse to a 2-stage `kit → finished` serial system.
+- The env is **verified by reproduction against a literature-verified solver** (the Clark–Scarf
+  exact serial optimizer), NOT against a number published in Rosling (1989) or Clark & Scarf (1960).
+  Those two papers do **not** tabulate the three instance costs below (22.759 / 52.536 / 27.530);
+  those costs are produced by the repo's own exact serial solver and then reproduced by the env
+  simulation. The only number that traces to a **published table** is the serial-family anchor
+  Snyder & Shen Example 6.1 = 47.65 (re-derived in `multi_echelon/serial`, not an assembly instance).
+  The 3-component instance is *constructed* to share Example 6.1's two downstream stages, but its
+  cost 52.536 is solver-derived, not a published value.
+- Net: this is **literature-verified at the structural/equivalence level + self-consistent
+  reproduction of the (literature-verified) serial solver's optima** — strictly stronger than
+  "self-consistent only", but the assembly *instance numbers themselves are not published anchors*.
+
+The three `verification.rs` instances were independently reproduced from scratch — a pure-Python
+reimplementation of both the Clark–Scarf exact solver (`serial/exact.rs`) and the assembly env
+(`env.rs`), run side-by-side, NOT importing the Rust extension (assembly has no Python binding).
+Independent results:
 
 | instance | serial-equivalent (kit→finished) | exact optimum | env-sim cost | rel. error |
 |---|---|---|---|---|
@@ -129,6 +148,13 @@ The assembly module is **not exposed to Python**: it is not registered in
 ## References
 
 - Rosling, K. (1989). "Optimal Inventory Policies for Assembly Systems Under Random Demands."
-  *Operations Research* 37(4):565–579.
+  *Operations Research* 37(4):565–579. DOI 10.1287/opre.37.4.565.
+  (Verified: RePEc/IDEAS and the INFORMS DOI; author "Kaj Rosling", venue/volume/issue/pages/year
+  all confirmed.)
 - Clark, A. J., and H. Scarf (1960). "Optimal Policies for a Multi-Echelon Inventory Problem."
-  *Management Science* 6(4):475–490 (the serial equivalent and its solver).
+  *Management Science* 6(4):475–490. DOI 10.1287/mnsc.6.4.475 (the serial equivalent and its solver).
+  (Verified: INFORMS/ACM DOI and RePEc/IDEAS; venue/volume/issue/pages/year confirmed.)
+- Serial Clark–Scarf anchor numbers used downstream (Snyder & Shen *Fundamentals of Supply Chain
+  Theory*, 2nd ed., Wiley 2019, ISBN 9781119024842, Example 6.1; and `stockpyl.ssm_serial`) live in
+  `multi_echelon/serial/README.md`; this assembly module re-uses the serial solver rather than
+  citing those numbers directly.

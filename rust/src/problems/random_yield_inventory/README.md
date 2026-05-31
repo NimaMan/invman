@@ -28,27 +28,36 @@ Literature and verification anchors:
 - `verification/tests.rs` — executable implementation-correctness assertions
 - `literature/`, `practical/`, `experiments/`, `verification/` — README scope notes
 
-## Verification status: NOT literature-verified (implementation-correct)
+## Verification status: SELF-CONSISTENT-ONLY (not literature-verified)
 
-This is an honest, evidence-backed classification (verified during the 2026-05 review):
+This is an honest, evidence-backed classification (verified during the 2026-05 review). All three
+cited papers were independently confirmed to be **real and correctly cited** (Crossref, DBLP, RePEc,
+publisher / open working-paper PDFs): Yan et al. (2026) C&OR 186:107305, doi:10.1016/j.cor.2025.107305;
+Chen et al. (2018) IEEE SOLI pp. 180–184, doi:10.1109/SOLI.2018.8476751; Inderfurth & Kiesmüller (2015)
+EJOR 245(1):109–120, doi:10.1016/j.ejor.2015.03.006. The status below concerns *verifiability against a
+published number*, not the correctness of the citations.
 
 - The MDP transition + cost (`env.rs`, `finite_horizon_dp.rs`) **faithfully match the structure** of
-  the cited Yan et al. (2026) all-or-nothing / positive-lead-time / discounted / backlog model.
+  the cited Yan et al. (2026) all-or-nothing / positive-lead-time / discounted / backlog model. This is
+  a structural (model-fidelity) match, **not** a reproduced literature number.
 - The exact DP (`finite_horizon_dp.rs`) is **implementation-correct**: it was re-derived from scratch
   in an independent Python DP of the same MDP and reproduces the optimal cost
   `40.0598976099` and first action `4` on `VERIFICATION_PROBLEM_INSTANCE` to full precision. Lifting
   the DP action cap from 8 to 20 changes the optimum only at the 5th significant figure
-  (`40.0598742583`), so the carried cap is effectively non-binding for the optimal policy.
+  (`40.0598742583`), so the carried cap is effectively non-binding for the optimal policy. This is a
+  **repo-native self-consistency** check against the repo's own exact solver.
 - BUT there is **no public per-instance benchmark number** to assert against: Yan et al. (2026) and
   Chen et al. (2018) are paywalled and expose no reusable table; Inderfurth & Kiesmüller (2015)
   publish numbers only for a **different yield model** (per-unit binomial / stochastically
-  proportional, infinite-horizon average cost), not this finite-horizon all-or-nothing batch model.
+  proportional, infinite-horizon average cost), not this finite-horizon all-or-nothing batch model
+  (this was confirmed by reading the open working-paper PDF in the 2026-05 audit).
 
 So the verifier is a repo-native, exact-solver self-consistency check — it confirms the code is
-correct, not that it reproduces a literature number. This matches the standard used by the finished
-problems (e.g. `lost_sales_fixed_order_cost` reproduces a Bijvank 2015 Table 1 number; `dual_sourcing`
-reproduces Gijsbrechts 2022 Figure 9 gap labels) — random_yield_inventory has no equivalent public
-anchor, so it cannot claim that status.
+correct, not that it reproduces a literature number. The accurate taxonomy status is therefore
+**self-consistent-only**: validated against the repo's own exact solver, with no public anchor. This is
+strictly weaker than the finished problems (e.g. `lost_sales_fixed_order_cost` reproduces a Bijvank
+2015 Table 1 number; `dual_sourcing` reproduces Gijsbrechts 2022 Figure 9 gap labels) —
+random_yield_inventory has no equivalent public anchor, so it correctly does not claim that status.
 
 ### Open fidelity question (root cause of the remaining gap)
 

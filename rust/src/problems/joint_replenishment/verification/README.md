@@ -15,13 +15,16 @@ Current verifier scope:
   - `env_reproduces_figure3_anchor_one_period_cost`: the env one-period accounting (Eq. 2 / Eq. 4)
     at the published optimal action `(0,6)` matches the paper's cost convention for a worked demand.
 
-Two notions of verification:
+Two notions of verification (accurate in-crate scope):
 
-- ENVIRONMENT literature-verification: the env reproduces the paper's published optimal action for
-  setting 5, `q=(0,6)` at state `(5,0)`. The full reproduction uses an INFINITE-HORIZON value
-  iteration (the paper's setting), which is run independently in
-  `scripts/joint_replenishment/benchmark_vanvuchelen_settings.py`. The in-crate tests assert the
-  carried anchor and the env's exact one-period cost at the anchor state-action.
+- ENVIRONMENT literature-verification: model fidelity is literature-verified (env Eq. 1-4 match the
+  paper) and the env's one-period cost at the published optimal action `q=(0,6)` for state `(5,0)` is
+  asserted in-crate (= 90 for demand `(2,4)`). IMPORTANT: the in-crate tests assert the CARRIED anchor
+  shape plus this one-period cost identity; they do NOT re-derive that `q=(0,6)` is the optimum. The
+  full optimality reproduction uses an INFINITE-HORIZON value iteration (the paper's setting) run
+  ONLY in `scripts/joint_replenishment/benchmark_vanvuchelen_settings.py`, which is outside this crate
+  and not part of `cargo test`. So the optimal-action reproduction is faithful-but-external, not an
+  in-crate assertion; the in-crate guarantee is env cost-accounting fidelity at the published action.
 - REPO self-consistency: the reduced FINITE-horizon (4-period, discounted) DP comparator confirms the
   exact DP dominates the carried heuristics. This is not the paper's infinite-horizon average-cost
   setting and is not asserted against the published action; optimal and heuristic costs are generated
