@@ -5,16 +5,25 @@ lost-sales paper.
 
 Current scope:
 
-- fixed-order-cost lost sales
+- vanilla / fixed-order-cost lost sales
+- multi-echelon (one-warehouse, K-retailer with special delivery; Van Roy 1997 / Gijsbrechts 2022)
 
 Main files:
 
-- [fixed_order_cost_lost_sales.tex](/Users/nimamanaf/Desktop/code/ML/inventory_management/invman/paper/fixed_order_cost_lost_sales.tex)
-- [references.bib](/Users/nimamanaf/Desktop/code/ML/inventory_management/invman/paper/references.bib)
+- [inventory_control_policy_benchmarks.tex](inventory_control_policy_benchmarks.tex)
+- [references.bib](references.bib)
 
-The fixed-cost manuscript is kept self-contained. The benchmark results tables are now maintained
-directly inside `fixed_order_cost_lost_sales.tex` instead of being generated through separate TeX
-partials.
+The manuscript is kept self-contained. The benchmark results tables are maintained directly inside
+`inventory_control_policy_benchmarks.tex` instead of being generated through separate TeX partials.
+
+The multi-echelon section reports the learned soft-tree policy beating the published A3C savings on
+both Gijs settings (setting 1: 14.4% vs 8.95%; setting 2: 14.4% vs 12.09%); env validation against
+the published Van Roy constant base-stock costs is in the appendix. Reproduce the results with:
+
+```bash
+python scripts/multi_echelon/train_multi_echelon_policy.py --reference gijsbrechts2022_setting1 --budget full
+python scripts/multi_echelon/train_multi_echelon_policy.py --reference gijsbrechts2022_setting2 --budget full
+```
 
 To validate the literature anchor on the known-optimum instance:
 

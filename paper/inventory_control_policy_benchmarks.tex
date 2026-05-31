@@ -667,6 +667,148 @@ It is important to distinguish this validation role from the architecture study 
     parameterizations.
 \end{itemize}
 
+\section{Multi-echelon inventory control: one warehouse, $K$ retailers with special delivery}
+
+\subsection{Problem description}
+
+We study the divergent two-echelon system of \citet{vanroy1997ndp}, also used as a deep-RL
+benchmark by \citet{gijsbrechts2022drl}: a single capacitated warehouse replenishes $K$ identical
+capacitated retailers. The warehouse orders from an external manufacturer with lead time $l_w$ and
+ships to retailers with lead time $l_r$. Each period $t$: (i) the warehouse places an order; (ii)
+each retailer raises its inventory position toward a target, shipped from current warehouse stock
+(allocated to minimize the spread of retailer positions when warehouse stock is short); (iii)
+retailer demand $d_i$ is realized and served from retailer on-hand; (iv) each unmet unit requests a
+same-day \emph{special delivery} from leftover warehouse stock with probability $P_w$ and is
+otherwise lost --- a hybrid of backlogging and lost sales; (v) pipelines advance. The state is the
+warehouse and per-retailer on-hand levels and outstanding-order pipelines. With $I^w_t,I^i_t$ the
+end-of-period on-hand inventories and $E_t$ the number of expedited units, the period cost is
+\[
+c_t = h^w I^w_t + h^r \sum_{i=1}^{K} I^i_t + c^w E_t + p\,(\text{lost units}),
+\]
+with warehouse/retailer holding costs $h^w,h^r$, unit expedite cost $c^w$, and lost-sale penalty
+$p$. Capacities bound the per-period production ($C^m$) and the warehouse and retail inventory
+positions ($C^w,C^r$). This is a member of the broader divergent / partial-lost-sales multi-echelon
+family \citep{nahmias1994partial, federgruen1984multilocation, dekok2018typology, kaynov2024owmr}.
+
+\subsection{Policy functions}
+
+The action space is a property of the policy we design, not a fixed external grid. We train for the
+problem and use the published numbers only as a benchmark; our training is independent of the
+learner in \citet{gijsbrechts2022drl}. The policy is a soft decision tree with oblique splits and
+linear leaves. It consumes the \emph{pure decision state} (the raw, unnormalized warehouse and
+retailer on-hand and pipeline entries) and applies a \emph{policy-owned} divide-by-scale
+normalization before acting, mirroring our lost-sales policy interface (the environment emits the
+raw state; the policy normalizes it). The two leaf outputs map to a state-dependent warehouse
+order-up-to level $y^w_{S_t}$ and a shared retailer order-up-to level $y^r_{S_t}$; the warehouse
+order is $q^w_t = \big[\min(y^w_{S_t},C^w) - \mathrm{IP}^w_t\big]^+$ capped by $C^m$, and each
+retailer order raises its position toward $\min(y^r_{S_t},C^r)$.
+
+We compare two action designs as a search dimension:
+\begin{itemize}
+    \item \textbf{grid}: the levels are chosen from the reduced discrete set used by
+    \citet{gijsbrechts2022drl}, $y^w\in\{50,60,\dots,100\}$ and $y^r\in\{0,5,\dots,40\}$;
+    \item \textbf{direct} (ours): the leaves \emph{directly estimate} the levels as continuous
+    values rounded to non-negative integers, bounded only by the physical caps $y^w\in[0,C^w]$ and
+    $y^r\in[0,C^r]$.
+\end{itemize}
+The reduced grid caps the warehouse level at $100$, but the cost-minimizing warehouse base-stock for
+these settings is $\approx 300$--$525$ (the published constant base-stock uses $y^w=330,460$); the
+grid therefore cannot express the operating region and is a policy artifact, not a problem
+constraint.
+
+\subsection{Experiment setup}
+
+We use the two complex case studies of \citet{vanroy1997ndp}, reused as settings~1 and~2 by
+\citet{gijsbrechts2022drl} (Table~\ref{tab:me-params}). Both have $K=10$, $h^w=h^r=3$, $c^w=0$,
+$p=60$, $P_w=0.8$, $C^m=100$, $C^w=1000$, $C^r=100$; retailer demand is $\mathcal{N}(\mu,\sigma^2)$
+rounded to a non-negative integer.
+
+\begin{table}[t]
+\centering
+\caption{Faithful Gijsbrechts/Van Roy settings (\texttt{gijs\_2022} dynamics).}
+\label{tab:me-params}
+\begin{tabular}{lcccc}
+\toprule
+Setting & $l_w$ & $l_r$ & $\mu$ & $\sigma$ \\
+\midrule
+1 & 2 & 2 & 5 & 14 \\
+2 & 5 & 3 & 0 & 20 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The published benchmarks we compare against are the constant base-stock costs $(330,23)\to 1302$
+and $(460,22)\to 1449$, the best neuro-dynamic-programming costs $1179$ and $1318$, and the A3C
+improvements over constant base-stock of $8.95\%\pm0.13\%$ and $12.09\%\pm0.39\%$
+\citep{vanroy1997ndp, gijsbrechts2022drl}. As the in-environment benchmark we compute the best
+\emph{constant} (state-independent) base-stock by grid search over the physical operating region
+(warehouse up to $\approx C^w$, retailer up to $C^r$), \emph{not} the reduced grid. Policies are
+trained with CMA-ES; we sweep the action design $\times$ tree depth $\in\{2,3\}$ and evaluate the
+long-run average cost over a horizon of $3\times 10^4$ periods and $6$ seeds.
+
+\subsection{Results}
+
+Table~\ref{tab:me-results} reports the best in-environment constant base-stock, the best learned
+policy under each action design, and the learned policy's improvement over the constant base-stock,
+alongside the published A3C improvement. The direct-estimation policy improves on the best constant
+base-stock by $\approx 14.4\%$ on both settings, \emph{exceeding} the published A3C improvements
+($8.95\%$ and $12.09\%$). The grid-action policy, restricted to $y^w\le 100$, stays about $230\%$
+\emph{above} the benchmark --- the action-space trap, not an environment or learning failure. The
+best tree depth is instance-dependent (depth~2 for setting~1, depth~3 for setting~2), which the
+design~$\times$~depth sweep selects automatically.
+
+\begin{table}[t]
+\centering
+\caption{Multi-echelon learned-policy results (\texttt{gijs\_2022} dynamics; mean cost, lower is
+better). ``Improvement'' is the learned policy's cost reduction relative to the best constant
+base-stock; the last column is the published A3C improvement over constant base-stock from
+\citet{gijsbrechts2022drl}.}
+\label{tab:me-results}
+\begin{tabular}{lccccc}
+\toprule
+Setting & Best const.\ base-stock $(y^w,y^r)$ & Grid tree & Direct tree (ours) & Improvement & Pub.\ A3C \\
+\midrule
+1 & $(300,25)\to 911.4$ & $3085.7$ & $\mathbf{779.8}$ & $\mathbf{14.4\%}$ & $8.95\%$ \\
+2 & $(525,25)\to 1137.8$ & $3795.1$ & $\mathbf{973.6}$ & $\mathbf{14.4\%}$ & $12.09\%$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\appendix
+
+\section{Environment validation against published costs}
+
+Before using the multi-echelon environment for learned-policy comparison, we validate it against
+the published \emph{constant base-stock} costs of \citet{vanroy1997ndp} (the simple problem and the
+two complex case studies), evaluated at the published $(y^w,y^r)$ levels under the original
+Van-Roy-style cost convention (\texttt{van\_roy\_1997} dynamics), with $100$ replications of horizon
+$10^5$, no warm-up discard, and the minimum-spread allocation. Table~\ref{tab:me-validation} shows
+all three reproduce within $\sim 1\%$.
+
+\begin{table}[t]
+\centering
+\caption{Reproduction of the published Van Roy constant base-stock costs.}
+\label{tab:me-validation}
+\begin{tabular}{lcccc}
+\toprule
+Instance & Levels $(y^w,y^r)$ & Published & Reproduced & Gap \\
+\midrule
+Simple problem & $(10,16)$ & $51.7$ & $51.72$ & $+0.03\%$ \\
+Case study 1 & $(330,23)$ & $1302$ & $1284.9$ & $-1.31\%$ \\
+Case study 2 & $(460,22)$ & $1449$ & $1437.6$ & $-0.79\%$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Two caveats keep this an implementation-fidelity check rather than a full literature verification.
+First, exact reproduction requires calibrated demand inputs: the simple problem uses a latent mean
+of $6.294$ (the effective mean of Van Roy's $\mathcal{N}(5,8^2)$ after rounding and clipping to
+non-negative integers), and case study~2 a latent mean of $1.0$ rather than the stated $0$. Second,
+we reproduce only the constant base-stock rows, not the A3C learner. The residual $\sim 1\%$ is
+attributed to unspecified details of Van Roy's original simulation protocol. The paper-faithful
+settings used for policy design (Table~\ref{tab:me-params}) instead use the \texttt{gijs\_2022} cost
+convention and the Table-3 demand means.
+
 \bibliographystyle{plainnat}
 \bibliography{references}
 

@@ -86,31 +86,33 @@ This came from two stages:
 
 The next targets are the two additional Gijsbrechts (2022) problem classes:
 
-- dual sourcing: `program_dual_sourcing.md`, `../scripts/dual_sourcing/autoresearch_dual_sourcing.py`
+- dual sourcing: `program_dual_sourcing.md`, `dual_sourcing_policy_search/README.md`, `../scripts/dual_sourcing/autoresearch_dual_sourcing.py`
 - multi echelon: `program_multi_echelon.md`, `../scripts/multi_echelon/autoresearch_multi_echelon.py`
 
 Current smoke results:
 
 - dual sourcing primary instance (`lr=4`, `ce=110`): learned tree `249.84`, best heuristic `220.73`
-- multi-echelon setting 2: learned tree `3776.45`, best constant base-stock benchmark `3776.45`
+- multi-echelon (superseded the old `3776.45` smoke): with the `direct_level` action design the
+  learned soft tree beats the in-env best constant base-stock by ~14.4% on **both** faithful Gijs
+  settings (setting 1: `779.8` vs `911.4`, > published A3C `8.95%`; setting 2: `973.6` vs `1137.8`,
+  > published A3C `12.09%`). The old `3776.45` was an artifact of the Gijs reduced `{50..100}`
+  action grid starving the warehouse. See `program_multi_echelon.md` for the search direction.
 
 ## Dual-Sourcing status
 
-The dual-sourcing smoke result was not the final word. A full-budget rerun on the same primary instance
-now gives:
+The dual-sourcing search has now moved beyond the old single-instance smoke framing.
 
-- learned oblique depth-2 linear-leaf tree: `233.08375`
-- best heuristic baseline, capped dual-index: `221.61`
+The current question is:
 
-That is a real improvement over the smoke run, but still leaves the learned tree about `5.2%` behind the
-best heuristic.
+- across the six Gijs Figure 9 rows, which policy-design factors matter most?
 
-So the current dual-sourcing conclusion is:
+The dedicated workspace is now:
 
-- the dual-sourcing environment, heuristic search, DP benchmark, and Rust rollout path are working;
-- additional CMA-ES budget helps;
-- but the next high-value change is a better policy search space, not just more training.
+- `dual_sourcing_policy_search/README.md`
 
-The most motivated next autoresearch target is a state-dependent target-position policy for dual sourcing,
-because the benchmark heuristics act on expedited and regular inventory positions rather than directly on
-raw `(q_regular, q_expedited)` orders.
+The current working hypothesis is:
+
+- control geometry matters more than raw parameter count
+- factorized dual-index controls are a better search space than raw direct-order outputs
+- small discrete regular-order caps and tighter tree geometry matter most on the harder `l_r=3` and `l_r=4` rows
+- the best current direction is row-dependent: axis-linear capped-delta variants for `l_r=2`, tighter axis-constant small-cap trees for `l_r in {3,4}`
