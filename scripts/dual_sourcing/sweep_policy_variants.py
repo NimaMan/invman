@@ -1,3 +1,23 @@
+"""
+Sweep candidate soft-tree policy variants across dual-sourcing reference instances.
+
+OBJECTIVE
+    Evaluate a roster of named soft-tree policy variants on one or more
+    Gijsbrechts-2022 Figure-9 dual-sourcing instances, ranking each by its
+    optimality gap vs the strongest heuristic (capped_dual_index). Dual sourcing
+    is soft_tree-ONLY after the Rust migration, so the roster is soft-tree
+    structures over the dual-index / capped-dual-index / base-surge control bases
+    (the deleted dense linear/nn variants are dropped).
+
+ALGORITHM
+    For each (reference x policy):
+      1. Build args from the Rust reference instance; train via CMA-ES.
+      2. Evaluate learned mean cost over eval_seeds at eval_horizon.
+      3. Compute the best heuristic cost from the Rust search bindings (once per
+         reference) and the learned-policy gap.
+    Write a JSON summary sorted by (reference, gap).
+"""
+
 import argparse
 import json
 import sys
@@ -6,78 +26,31 @@ from pathlib import Path
 PACKAGE_ROOT = Path(__file__).resolve().parents[2]
 if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import dual_sourcing_benchmark_lib as lib
 
 from invman.experiment_runner import run_experiment
-from invman.policies.registry import apply_policy_name, make_soft_tree_policy_name
-from invman.problems.dual_sourcing.reference_instances import build_reference_args
+from invman.policy_registry import apply_policy_name, make_soft_tree_policy_name
 
 
+# Soft-tree-only roster. Covers the promoted axis-constant small-cap structure,
+# oblique linear/constant leaves, and depth 2/3 over the capped-dual-index and
+# base-surge control bases.
 DEFAULT_POLICIES = [
-    "linear_base_surge_targets",
-    "nn_base_surge_targets",
-    "linear_capped_dual_index_delta_targets",
-    "nn_capped_dual_index_delta_targets",
-    make_soft_tree_policy_name(
-        depth=2,
-        temperature=0.25,
-        split_type="oblique",
-        leaf_type="sigmoid_linear",
-        action_adapter="base_surge_targets",
-    ),
-    make_soft_tree_policy_name(
-        depth=3,
-        temperature=0.25,
-        split_type="oblique",
-        leaf_type="sigmoid_linear",
-        action_adapter="base_surge_targets",
-    ),
-    make_soft_tree_policy_name(
-        depth=2,
-        temperature=0.25,
-        split_type="oblique",
-        leaf_type="sigmoid_linear",
-        action_adapter="capped_dual_index_targets",
-    ),
-    make_soft_tree_policy_name(
-        depth=3,
-        temperature=0.25,
-        split_type="oblique",
-        leaf_type="sigmoid_linear",
-        action_adapter="capped_dual_index_targets",
-    ),
-    make_soft_tree_policy_name(
-        depth=2,
-        temperature=0.25,
-        split_type="oblique",
-        leaf_type="constant",
-        action_adapter="base_surge_targets",
-    ),
-    make_soft_tree_policy_name(
-        depth=3,
-        temperature=0.25,
-        split_type="oblique",
-        leaf_type="constant",
-        action_adapter="base_surge_targets",
-    ),
-    make_soft_tree_policy_name(
-        depth=2,
-        temperature=0.25,
-        split_type="oblique",
-        leaf_type="constant",
-        action_adapter="capped_dual_index_targets",
-    ),
-    make_soft_tree_policy_name(
-        depth=3,
-        temperature=0.25,
-        split_type="oblique",
-        leaf_type="constant",
-        action_adapter="capped_dual_index_targets",
-    ),
+    "soft_tree_axis_constant_capped_dual_index_delta_smallcap_targets",
+    "soft_tree_capped_dual_index_delta_smallcap_targets",
+    make_soft_tree_policy_name(depth=2, temperature=0.25, split_type="oblique", leaf_type="linear", action_adapter="capped_dual_index_targets"),
+    make_soft_tree_policy_name(depth=3, temperature=0.25, split_type="oblique", leaf_type="linear", action_adapter="capped_dual_index_targets"),
+    make_soft_tree_policy_name(depth=2, temperature=0.25, split_type="oblique", leaf_type="constant", action_adapter="capped_dual_index_targets"),
+    make_soft_tree_policy_name(depth=2, temperature=0.25, split_type="oblique", leaf_type="linear", action_adapter="base_surge_targets"),
+    make_soft_tree_policy_name(depth=3, temperature=0.25, split_type="oblique", leaf_type="linear", action_adapter="base_surge_targets"),
+    make_soft_tree_policy_name(depth=2, temperature=0.25, split_type="oblique", leaf_type="constant", action_adapter="base_surge_targets"),
 ]
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Sweep candidate dual-sourcing policy variants on named reference instances.")
+    parser = argparse.ArgumentParser(description="Sweep candidate dual-sourcing soft-tree policy variants on named reference instances.")
     parser.add_argument(
         "--references",
         nargs="+",
@@ -88,7 +61,7 @@ def parse_args():
         "--policies",
         nargs="+",
         default=DEFAULT_POLICIES,
-        help="Policy names to train and compare.",
+        help="Soft-tree policy names to train and compare.",
     )
     parser.add_argument("--run_tag", default="dual_l3_policy_variants")
     parser.add_argument("--seed", type=int, default=123)
@@ -106,7 +79,7 @@ def parse_args():
 
 
 def configure_args(parsed, reference_name: str, policy_name: str, root: Path):
-    args = build_reference_args(reference_name)
+    args = lib.build_reference_args(reference_name)
     args.problem = "dual_sourcing"
     args.reference_instance = reference_name
     args.seed = parsed.seed
@@ -130,23 +103,19 @@ def configure_args(parsed, reference_name: str, policy_name: str, root: Path):
     return args
 
 
-def summarize_payload(payload, results_path: Path):
-    heuristic_results = payload["evaluation"]["heuristics"]
-    best_heuristic_cost = min(
-        result["mean_cost"]
-        for result in heuristic_results.values()
-        if isinstance(result, dict) and "mean_cost" in result
-    )
-    learned_cost = payload["evaluation"]["learned_policy"]["mean_cost"]
+def summarize_payload(payload, results_path: Path, reference_name, best_heuristic_name, best_heuristic_cost):
+    learned_cost = lib.learned_cost_of(payload)
+    gap_pct = None if best_heuristic_cost is None else 100.0 * (learned_cost / best_heuristic_cost - 1.0)
     return {
-        "reference": payload["experiment_name"].split("_soft_tree", 1)[0].split("_linear", 1)[0].split("_nn", 1)[0],
+        "reference": reference_name,
         "experiment_name": payload["experiment_name"],
         "policy_name": payload["policy_name"],
         "policy_architecture": payload["policy_architecture"],
         "action_adapter": payload["action_adapter"],
         "learned_mean_cost": learned_cost,
+        "best_heuristic_name": best_heuristic_name,
         "best_heuristic_cost": best_heuristic_cost,
-        "gap_pct_vs_best_heuristic": 100.0 * (learned_cost / best_heuristic_cost - 1.0),
+        "gap_pct_vs_best_heuristic": gap_pct,
         "results_file": str(results_path),
     }
 
@@ -158,19 +127,23 @@ def main():
 
     summary = []
     for reference_name in parsed.references:
+        probe_args = lib.build_reference_args(reference_name)
+        heuristics = lib.evaluate_default_heuristics(probe_args)
+        best_heuristic_name, best_heuristic_cost = lib.best_heuristic(heuristics)
         for policy_name in parsed.policies:
             args = configure_args(parsed, reference_name, policy_name, root)
             payload, results_path = run_experiment(args)
-            row = summarize_payload(payload, results_path)
+            row = summarize_payload(payload, results_path, reference_name, best_heuristic_name, best_heuristic_cost)
             summary.append(row)
+            gap_str = "n/a" if row["gap_pct_vs_best_heuristic"] is None else f"{row['gap_pct_vs_best_heuristic']:.4f}%"
             print(
                 f"{reference_name} {policy_name} "
                 f"learned={row['learned_mean_cost']:.6f} "
-                f"best_heur={row['best_heuristic_cost']:.6f} "
-                f"gap={row['gap_pct_vs_best_heuristic']:.4f}%"
+                f"best_heur={best_heuristic_name}={best_heuristic_cost:.6f} "
+                f"gap={gap_str}"
             )
 
-    summary.sort(key=lambda row: (row["reference"], row["gap_pct_vs_best_heuristic"]))
+    summary.sort(key=lambda row: (row["reference"], row["gap_pct_vs_best_heuristic"] if row["gap_pct_vs_best_heuristic"] is not None else float("inf")))
     output_path = root / "screening_summary.json"
     output_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
     print(f"\nWrote {output_path}")

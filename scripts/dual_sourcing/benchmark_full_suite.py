@@ -1,3 +1,41 @@
+"""
+Dual-sourcing full benchmark suite over the Gijsbrechts-2022 Figure-9 family.
+
+OBJECTIVE
+    Train the chosen soft-tree CMA-ES policy spec(s) across the six published
+    dual-sourcing rows and write per-instance summaries comparing the learned
+    policy cost to the four Gijsbrechts heuristics (single / dual / capped-dual
+    index, tailored base-surge), the optional bounded-DP optimum, and the
+    published Figure-9 optimality-gap labels (including the A3C DRL baseline).
+    Dual sourcing routes through Rust and is soft_tree-ONLY, so the learned policy
+    roster (EXPERIMENT_SPECS in dual_sourcing_benchmark_lib) is soft-tree
+    structures over the capped-dual-index / dual-index control bases.
+
+WHY (requirements -> objective)
+    * Grid + reference + heuristic + optimal data all come from invman_rust via
+      dual_sourcing_benchmark_lib (the Python problem package was deleted). The
+      experiment payload's heuristics block is EMPTY for dual sourcing, so the
+      suite computes heuristics itself with the Rust search bindings.
+    * Per-instance JSON is None-safe: a missing heuristic / optimal baseline
+      yields null rather than aborting the suite (mirrors the lost-sales suite).
+    * Optimal DP is opt-in (--with_optimal_dp): it is slow on the l_r=3,4 rows and
+      must never block a resumable launch; the best heuristic (capped_dual_index,
+      ~0% published gap) is the optimal proxy when the DP is off.
+
+ALGORITHM (per instance)
+    1. Pull instance params + protocol from the Rust grid expansion.
+    2. Compute the four heuristic costs on a fixed demand path (Rust search).
+    3. (opt-in) Solve the bounded-DP optimum.
+    4. Train each soft-tree spec with CMA-ES (run_experiment) and evaluate cost.
+    5. Record learned cost, gap vs best heuristic, gap vs optimal (when present),
+       and the published Figure-9 gaps. Aggregate across instances at the end.
+
+USAGE
+    python scripts/dual_sourcing/benchmark_full_suite.py \
+        --run_tag dual_sourcing_paper_suite --budget full \
+        --mp_num_processors 4 --instance_jobs 1 --reuse_existing
+"""
+
 import argparse
 import concurrent.futures
 import json
@@ -8,40 +46,32 @@ from pathlib import Path
 PACKAGE_ROOT = Path(__file__).resolve().parents[2]
 if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import dual_sourcing_benchmark_lib as lib
 
 from invman.experiment_runner import run_experiment
-from invman.problems.dual_sourcing.benchmark import evaluate_default_heuristics
-from invman.problems.dual_sourcing.experiment_spec import (
-    COMMON_BUDGET,
-    DEFAULT_BUDGET,
-    EXPERIMENT_SPECS,
-    configure_run_args,
-    get_budget_config,
-    result_path_for,
-)
-from invman.problems.dual_sourcing.reference_instances import (
-    GIJSBRECHTS_2022_FIGURE9_FAMILY_NAME,
-    build_grid_instances,
-    get_benchmark_grid,
-)
 from invman.utils import RunStatusTracker
 
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Run the dual-sourcing literature-aligned benchmark suite over the Gijs Figure 9 instance family."
+        description="Run the dual-sourcing literature-aligned benchmark suite over the Gijsbrechts Figure-9 instance family."
     )
-    parser.add_argument("--grid_name", default=GIJSBRECHTS_2022_FIGURE9_FAMILY_NAME)
-    parser.add_argument("--run_tag", default="dual_sourcing_gijs_structured_screening")
-    parser.add_argument("--budget", choices=sorted(COMMON_BUDGET), default=DEFAULT_BUDGET)
+    parser.add_argument("--grid_name", default=lib.GIJSBRECHTS_2022_FIGURE9_FAMILY_NAME)
+    parser.add_argument("--run_tag", default="dual_sourcing_paper_suite")
+    parser.add_argument("--budget", choices=sorted(lib.COMMON_BUDGET), default=lib.DEFAULT_BUDGET)
     parser.add_argument("--seed", type=int, default=123)
     parser.add_argument("--same_seed", action="store_true")
     parser.add_argument("--mp_num_processors", type=int, default=4)
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--eval_horizon", type=int, default=None)
     parser.add_argument("--eval_seeds", type=int, default=None)
+    parser.add_argument("--training_episodes", type=int, default=None)
+    parser.add_argument("--training_horizon", type=int, default=None)
     parser.add_argument("--references", nargs="+", default=None)
     parser.add_argument("--only", nargs="+", default=None, help="Optional subset of experiment ids to run.")
+    parser.add_argument("--with_optimal_dp", action="store_true", help="Also solve the bounded-DP optimum per instance (slow on l_r=3,4).")
     parser.add_argument("--reuse_existing", action="store_true")
     parser.add_argument("--reuse_existing_instance_summary", action="store_true")
     parser.add_argument(
@@ -59,7 +89,7 @@ def parse_args():
 
 
 def _budget(parsed):
-    return get_budget_config(parsed.budget)
+    return lib.get_budget_config(parsed.budget)
 
 
 def _effective_eval_horizon(parsed) -> int:
@@ -68,6 +98,14 @@ def _effective_eval_horizon(parsed) -> int:
 
 def _effective_eval_seeds(parsed) -> int:
     return int(parsed.eval_seeds if parsed.eval_seeds is not None else _budget(parsed)["eval_seeds"])
+
+
+def _effective_training_episodes(parsed) -> int:
+    return int(parsed.training_episodes if parsed.training_episodes is not None else _budget(parsed)["training_episodes"])
+
+
+def _effective_training_horizon(parsed) -> int:
+    return int(parsed.training_horizon if parsed.training_horizon is not None else _budget(parsed)["horizon"])
 
 
 def _suite_root(run_tag: str) -> Path:
@@ -92,7 +130,7 @@ def _instance_summary_path(root: Path, reference_name: str) -> Path:
 
 
 def _load_or_run_experiment(args, *, reuse_existing: bool):
-    path = result_path_for(args)
+    path = lib.result_path_for(args)
     if reuse_existing and path.exists():
         return json.loads(path.read_text(encoding="utf-8")), path
     return run_experiment(args)
@@ -102,12 +140,12 @@ def _instance_protocol(parsed) -> dict:
     budget = _budget(parsed)
     return {
         "budget": parsed.budget,
-        "training_episodes": budget["training_episodes"],
+        "training_episodes": _effective_training_episodes(parsed),
         "es_population": budget["es_population"],
         "es_population_sampling": budget.get("es_population_sampling", "fixed"),
         "es_population_candidates": budget.get("es_population_candidates"),
         "es_population_probabilities": budget.get("es_population_probabilities"),
-        "training_horizon": budget["horizon"],
+        "training_horizon": _effective_training_horizon(parsed),
         "eval_horizon": _effective_eval_horizon(parsed),
         "eval_seeds": _effective_eval_seeds(parsed),
         "sigma_init": budget["sigma_init"],
@@ -122,6 +160,11 @@ def _render_markdown(summary: dict) -> str:
         f"Instances: `{summary['num_instances']}`",
         f"Budget: `{summary['protocol']['budget']}`",
         "",
+        "Benchmark: Gijsbrechts et al. (2022), Section 6.2 / Figure 9. Heuristics are",
+        "grid-searched in Rust on a fixed demand path; the published per-instance",
+        "optimality-gap labels (single/dual/capped-dual index, tailored base-surge, a3c)",
+        "are carried as literature metadata.",
+        "",
         "## Protocol",
         "",
         f"- training episodes: `{summary['protocol']['training_episodes']}`",
@@ -133,13 +176,18 @@ def _render_markdown(summary: dict) -> str:
         "",
         "## Aggregate Policy Summary",
         "",
-        "| Policy | Mean relative gap vs best heuristic (%) | Better than best heuristic (count) | Status |",
-        "| --- | ---: | ---: | --- |",
+        "| Policy | Mean rel. gap vs best heuristic (%) | Mean rel. gap vs optimal (%) | <= best heuristic (count) | Status |",
+        "| --- | ---: | ---: | ---: | --- |",
     ]
     for policy_id, item in summary["aggregate"]["policies"].items():
+        gap_h = item["mean_relative_gap_pct_vs_best_heuristic"]
+        gap_o = item["mean_relative_gap_pct_vs_optimal"]
         lines.append(
-            f"| `{policy_id}` | `{item['mean_relative_gap_pct_vs_best_heuristic']:.4f}` | "
-            f"`{item['better_than_best_heuristic_count']}/{summary['num_instances']}` | `{item['status']}` |"
+            f"| `{policy_id}` | "
+            f"`{'n/a' if gap_h is None else format(gap_h, '.4f')}` | "
+            f"`{'n/a' if gap_o is None else format(gap_o, '.4f')}` | "
+            f"`{item['better_or_equal_best_heuristic_count']}/{item['instances_with_best_heuristic']}` | "
+            f"`{item['status']}` |"
         )
     lines.extend(
         [
@@ -149,9 +197,10 @@ def _render_markdown(summary: dict) -> str:
             "Each per-instance JSON contains:",
             "",
             "- benchmark parameters and literature metadata",
-            "- heuristic evaluations on the Gijs Figure 9 instance family",
-            "- published Figure 9 optimality-gap labels carried as literature metadata",
-            "- learned-policy evaluations and relative gaps vs the best heuristic",
+            "- Rust heuristic evaluations (single/dual/capped-dual index, tailored base-surge)",
+            "- optional bounded-DP optimum",
+            "- published Figure-9 optimality-gap labels (including a3c)",
+            "- learned-policy evaluations and relative gaps vs the best heuristic and optimal",
         ]
     )
     return "\n".join(lines) + "\n"
@@ -159,21 +208,27 @@ def _render_markdown(summary: dict) -> str:
 
 def _summarize_instances(instances: list[dict]) -> dict:
     policies = {}
-    for spec in EXPERIMENT_SPECS:
+    for spec in lib.EXPERIMENT_SPECS:
         policy_id = spec["id"]
         costs = []
-        rel_gaps = []
+        rel_gaps_h = []
+        rel_gaps_o = []
         better_count = 0
+        instances_with_best = 0
         for instance in instances:
             if policy_id not in instance["learned_policies"]:
                 continue
             learned_cost = instance["learned_policies"][policy_id]["evaluation"]["learned_policy"]["mean_cost"]
-            best_heuristic = instance["comparative_summary"]["best_heuristic_cost"]
             costs.append(learned_cost)
-            rel_gap = 100.0 * (learned_cost - best_heuristic) / best_heuristic
-            rel_gaps.append(rel_gap)
-            if learned_cost < best_heuristic:
-                better_count += 1
+            best_heuristic = instance["comparative_summary"]["best_heuristic_cost"]
+            if best_heuristic is not None:
+                instances_with_best += 1
+                rel_gaps_h.append(100.0 * (learned_cost - best_heuristic) / best_heuristic)
+                if learned_cost <= best_heuristic:
+                    better_count += 1
+            optimal_cost = instance["comparative_summary"].get("optimal_cost")
+            if optimal_cost is not None:
+                rel_gaps_o.append(100.0 * (learned_cost - optimal_cost) / optimal_cost)
         if not costs:
             continue
         policies[policy_id] = {
@@ -181,23 +236,12 @@ def _summarize_instances(instances: list[dict]) -> dict:
             "status": spec.get("status", "candidate"),
             "num_instances": len(costs),
             "mean_cost_across_instances": float(sum(costs) / len(costs)),
-            "mean_relative_gap_pct_vs_best_heuristic": float(sum(rel_gaps) / len(rel_gaps)),
-            "better_than_best_heuristic_count": int(better_count),
+            "mean_relative_gap_pct_vs_best_heuristic": float(sum(rel_gaps_h) / len(rel_gaps_h)) if rel_gaps_h else None,
+            "mean_relative_gap_pct_vs_optimal": float(sum(rel_gaps_o) / len(rel_gaps_o)) if rel_gaps_o else None,
+            "instances_with_best_heuristic": int(instances_with_best),
+            "better_or_equal_best_heuristic_count": int(better_count),
         }
     return {"policies": policies}
-
-
-def _heuristic_gap_check(instance: dict) -> dict:
-    return {
-        "published_optimality_gap_pct": instance["literature_metadata"].get("published_optimality_gap_pct", {}),
-        "repo_optimality_gap_pct": None,
-        "repo_gap_minus_paper_pct": None,
-        "note": (
-            "The full-grid training suite skips bounded-DP reproduction on the heavier l_r=3,4 rows. "
-            "Use scripts/dual_sourcing/validate_reference_grid.py or the Rust verification path "
-            "for explicit literature-gap reproduction against Figure 9."
-        ),
-    }
 
 
 def _build_instance_payload(parsed, root: Path, instance: dict, selected_ids: set[str] | None, tracker=None):
@@ -209,33 +253,29 @@ def _build_instance_payload(parsed, root: Path, instance: dict, selected_ids: se
     if tracker is not None:
         tracker.update("benchmarking_heuristics", reference_name=reference_name)
 
-    benchmark_args = configure_run_args(
-        parsed,
-        {
-            "id": "__benchmark_probe__",
-            "policy_name": EXPERIMENT_SPECS[0]["policy_name"],
-            "rollout_backend": "rust",
-        },
-        root,
-        reference_name,
-    )
-    benchmark_args.horizon = int(instance["search"]["search_horizon"])
-    benchmark_args.eval_horizon = _effective_eval_horizon(parsed)
-    benchmark_args.eval_seeds = _effective_eval_seeds(parsed)
+    # Heuristic baselines (Rust search on a fixed demand path) + optional DP optimum.
+    benchmark_args = lib.build_reference_args(reference_name)
     benchmark_args.seed = int(instance["search"]["search_seed"])
-
-    heuristic_summary = {
-        "heuristics": evaluate_default_heuristics(benchmark_args),
-        "bounded_dp": None,
+    search_horizon = int(instance["search"]["search_horizon"])
+    heuristics = lib.evaluate_default_heuristics(benchmark_args, seed=int(instance["search"]["search_seed"]), horizon=search_horizon)
+    best_heuristic_name, best_heuristic_cost = lib.best_heuristic(heuristics)
+    optimal = lib.bounded_dp_optimal(benchmark_args) if parsed.with_optimal_dp else {
+        "mean_cost": None, "available": False, "source": "skipped (use --with_optimal_dp)"
     }
+    optimal_cost = optimal.get("mean_cost")
 
     learned_policies = {}
-    for spec in EXPERIMENT_SPECS:
+    for spec in lib.EXPERIMENT_SPECS:
         if selected_ids is not None and spec["id"] not in selected_ids:
             continue
         if tracker is not None:
             tracker.update("running_policy", reference_name=reference_name, policy_id=spec["id"])
-        args = configure_run_args(parsed, spec, root, reference_name)
+        args = lib.configure_run_args(parsed, spec, root, reference_name)
+        # Honor suite-level budget overrides on the resumable per-instance args.
+        args.eval_horizon = _effective_eval_horizon(parsed)
+        args.eval_seeds = _effective_eval_seeds(parsed)
+        args.training_episodes = _effective_training_episodes(parsed)
+        args.horizon = _effective_training_horizon(parsed)
         payload, result_path = _load_or_run_experiment(args, reuse_existing=parsed.reuse_existing)
         learned_policies[spec["id"]] = {
             "results_path": str(result_path),
@@ -245,34 +285,36 @@ def _build_instance_payload(parsed, root: Path, instance: dict, selected_ids: se
             "checkpoint_glob": str((root / "models" / f"{args.experiment_name}_*").resolve()),
         }
 
-    heuristic_eval = heuristic_summary["heuristics"]
-    best_heuristic_name, best_heuristic_entry = min(
-        heuristic_eval.items(),
-        key=lambda kv: kv[1]["mean_cost"],
-    )
-    best_heuristic_cost = float(best_heuristic_entry["mean_cost"])
     comparative = {
         "best_heuristic_name": best_heuristic_name,
         "best_heuristic_cost": best_heuristic_cost,
+        "optimal_cost": optimal_cost,
         "policy_gaps": {},
     }
     for policy_id, item in learned_policies.items():
         learned_cost = float(item["evaluation"]["learned_policy"]["mean_cost"])
         comparative["policy_gaps"][policy_id] = {
-            "gap_vs_best_heuristic": learned_cost - best_heuristic_cost,
-            "relative_gap_pct_vs_best_heuristic": 100.0 * (learned_cost - best_heuristic_cost) / best_heuristic_cost,
+            "gap_vs_best_heuristic": None if best_heuristic_cost is None else learned_cost - best_heuristic_cost,
+            "relative_gap_pct_vs_best_heuristic": None if best_heuristic_cost is None else 100.0 * (learned_cost - best_heuristic_cost) / best_heuristic_cost,
+            "gap_vs_optimal": None if optimal_cost is None else learned_cost - optimal_cost,
+            "relative_gap_pct_vs_optimal": None if optimal_cost is None else 100.0 * (learned_cost - optimal_cost) / optimal_cost,
         }
+
+    published = dict(instance["literature_metadata"].get("published_optimality_gap_pct", {}))
+    published.pop("source", None)
+    published.pop("url", None)
 
     payload = {
         "reference_instance": reference_name,
         "reference_description": instance["description"],
         "params": instance["params"],
         "search": instance["search"],
-        "evaluation": instance["evaluation"],
+        "evaluation_protocol": instance["evaluation"],
         "literature_metadata": instance["literature_metadata"],
         "protocol": _instance_protocol(parsed),
-        "heuristics": heuristic_summary,
-        "literature_gap_check": _heuristic_gap_check(instance),
+        "heuristics": heuristics,
+        "optimal": optimal,
+        "published_optimality_gap_pct": published,
         "learned_policies": learned_policies,
         "comparative_summary": comparative,
     }
@@ -308,8 +350,14 @@ def _shared_child_command_args(parsed, *, mp_num_processors: int) -> list[str]:
         command.extend(["--eval_horizon", str(parsed.eval_horizon)])
     if parsed.eval_seeds is not None:
         command.extend(["--eval_seeds", str(parsed.eval_seeds)])
+    if parsed.training_episodes is not None:
+        command.extend(["--training_episodes", str(parsed.training_episodes)])
+    if parsed.training_horizon is not None:
+        command.extend(["--training_horizon", str(parsed.training_horizon)])
     if parsed.same_seed:
         command.append("--same_seed")
+    if parsed.with_optimal_dp:
+        command.append("--with_optimal_dp")
     if parsed.reuse_existing:
         command.append("--reuse_existing")
     if parsed.reuse_existing_instance_summary:
@@ -401,8 +449,8 @@ def main():
     try:
         if tracker is not None:
             tracker.update("loading_grid")
-        grid = get_benchmark_grid(parsed.grid_name)
-        grid_instances = build_grid_instances(parsed.grid_name)
+        grid = lib.get_benchmark_grid(parsed.grid_name)
+        grid_instances = lib.build_grid_instances(parsed.grid_name)
         if parsed.references is not None:
             requested = set(parsed.references)
             grid_instances = [instance for instance in grid_instances if instance["name"] in requested]
@@ -410,7 +458,12 @@ def main():
             grid_instances = grid_instances[: int(parsed.limit)]
 
         selected_ids = set(parsed.only) if parsed.only else None
-        instance_payloads = _collect_instance_payloads(parsed, root, grid_instances, selected_ids, tracker=tracker)
+        instance_payloads = _collect_instance_payloads(
+            parsed, root, grid_instances, selected_ids, tracker=tracker
+        )
+
+        if parsed.skip_suite_summary:
+            return
 
         summary = {
             "run_tag": parsed.run_tag,
@@ -424,15 +477,12 @@ def main():
             "protocol": _instance_protocol(parsed),
             "selected_policies": [
                 spec["id"]
-                for spec in EXPERIMENT_SPECS
+                for spec in lib.EXPERIMENT_SPECS
                 if selected_ids is None or spec["id"] in selected_ids
             ],
             "instances": instance_payloads,
             "aggregate": _summarize_instances(instance_payloads),
         }
-
-        if parsed.skip_suite_summary:
-            return
 
         if tracker is not None:
             tracker.update("writing_suite_summary", num_instances=len(instance_payloads))
