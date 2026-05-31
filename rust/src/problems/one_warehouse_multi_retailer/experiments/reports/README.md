@@ -1,14 +1,69 @@
 # one_warehouse_multi_retailer Paper Benchmark
 
-> **Status (2026-05-31): the soft-tree rows below are STALE / not regenerable on the current
-> install.** They were produced by `scripts/.../run_paper_benchmark.py`, which imports
-> `invman.policies.soft_tree.SoftTreePolicy` — a module path removed by the repo's policy
-> refactor (no `SoftTreePolicy` exists anywhere under `invman/` today). The cached numbers are
-> kept for historical reference only. For numbers reproducible against the installed
-> `invman_rust`, use `scripts/.../run_heuristic_published_benchmark.py` (heuristics vs published
-> + exact-DP self-consistency); see `../../literature/README.md` for the cost-row table and the
-> honest `partial` verification status. The Rust rollout bindings themselves are present and
-> working; only the Python policy wrapper import is stale.
+> **Status (2026-05-31): learned soft-tree path REGENERATED on the current install.**
+> The `common.py` migration to `invman.policy.Policy` is complete and the learned rollout
+> bindings (`one_warehouse_multi_retailer_soft_tree_rollout` /
+> `..._soft_tree_population_rollout` / `..._soft_tree_rollout_from_paths`) work. A fresh
+> learned-vs-heuristic-vs-published benchmark on a representative 3-instance subset (one per
+> customer-behavior regime: instance 1 backorder, 6 lost_sales, 11 partial_backorder) is in
+> **"Learned soft-tree (held-out CRN, 2026-05-31)"** below, produced by
+> `scripts/.../benchmark_learned_vs_heuristic.py` and saved to
+> `outputs/one_warehouse_multi_retailer/learned_benchmark/learned_vs_heuristic_results.json`.
+>
+> The depth-1 14-instance soft-tree rows in **"Per Instance"** further down are the OLD
+> `run_paper_benchmark.py` cache (in-sample heuristic search vs separate-seed soft-tree eval);
+> kept for historical reference. The new block is the authoritative learned comparison: both
+> the heuristic argmin and the learned policy are scored on the SAME held-out demand paths
+> (Common Random Numbers via the `*_from_paths` bindings), removing the in-sample bias.
+
+## Learned soft-tree (held-out CRN, 2026-05-31)
+
+- script: `scripts/one_warehouse_multi_retailer/benchmark_learned_vs_heuristic.py`
+- policy family: depth `2` `axis_aligned` soft tree, `linear` leaves, `symmetric_echelon_targets`
+  action mode (the K=3 symmetric Poisson(3) instances)
+- optimizer: CMA-ES (`invman.es_mp.train` + `..._soft_tree_population_rollout`), popsize `32`,
+  `600` generations, `train_seed_batch=12`, `sigma_init=1.5`, train allocation `proportional`
+- CPU cap: `RAYON_NUM_THREADS=2` / `OMP_NUM_THREADS=2`, `mp_num_processors=1` (no Python pool;
+  parallelism is rayon inside Rust, bounded to 2 threads)
+- evaluation: heuristic echelon base-stock grid-searched on a 256-path search block, then BOTH
+  the learned policy and the heuristic argmin re-scored on the SAME 4096-path held-out block
+  (disjoint seeds; CRN-paired via `*_from_paths`); 100-period undiscounted cost
+  (`discount_factor = 1.0`), mean-filled warm-start initial state. Both allocation rules
+  reported; the column shows the better one per policy.
+
+| Instance | CB | Learned (alloc) | Best Heuristic (alloc) | Published Prop / Min / PPO | Learned vs Best Heuristic | Winner |
+| --- | --- | ---: | ---: | --- | ---: | --- |
+| `kaynov2024_instance_1` | `backorder` | `1584.45` (min_shortage) | `1558.12` (min_shortage) | `1655.51 / 1609.47 / 1637.20` | `-1.69%` | heuristic |
+| `kaynov2024_instance_6` | `lost_sales` | `1370.50` (proportional) | `1348.05` (proportional) | `1373.91 / 1366.51 / 1347.34` | `-1.67%` | heuristic |
+| `kaynov2024_instance_11` | `partial_backorder` | `1189.51` (proportional) | `1184.46` (proportional) | `1111.76 / 1109.96 / 971.86` | `-0.43%` | heuristic |
+
+Findings:
+
+- The tuned echelon base-stock + allocation heuristic wins on all three representative
+  instances, but the held-out gap is small (`0.4%`–`1.7%`); the depth-2 learned soft-tree is
+  competitive, not dominant. This is consistent with the literature: for these symmetric
+  Poisson(3) OWMR instances a well-chosen base-stock policy with proportional / min-shortage
+  rationing is near-optimal, so a learned policy has little structure to exploit.
+- Versus published PPO (lower cost = better; JSON `learned_vs_published_ppo_pct` is
+  `(PPO − learned)/PPO`, so positive = learned is below/better-than PPO):
+  - `instance_1` (backorder): learned `1584.45` < PPO `1637.20` → learned **beats** published
+    PPO by `+3.22%` (the backorder PPO row underperforms the base-stock heuristics, so both the
+    repo heuristic and the learned tree are below it).
+  - `instance_6` (lost_sales): learned `1370.50` > PPO `1347.34` → learned is `1.72%` worse.
+  - `instance_11` (partial_backorder): learned `1189.51` > PPO `971.86` → learned is `22.4%`
+    worse; the repo's partial-backorder warm-start residual (both heuristic and learned land
+    ~6–7% above the published base-stock too) is the dominant cause of this PPO gap, not the
+    learned policy itself.
+- `instance_11` (partial_backorder): both repo heuristic (`1184.5`) and learned (`1189.5`) land
+  ~`6–7%` ABOVE the published proportional (`1111.8`), the same regime-dependent warm-start
+  residual documented in `../../literature/README.md` (this is a protocol/initial-condition
+  residual, not a transition bug; the exact-DP self-consistency still holds: optimal `8.485`
+  dominates both heuristics `9.2225`).
+- Coverage: 3 of 14 Kaynov instances trained+evaluated at full budget (one per regime; all K=3
+  symmetric). Instances 2–5, 7–10, 12 (and the K=10 instances 13–14) were NOT re-run in this
+  pass; the historical depth-1 rows for them remain in the table below.
+
+## Historical depth-1 14-instance cache (run_paper_benchmark.py)
 
 - source: Kaynov et al. (2024), International Journal of Production Economics 267, 109088
 - url: https://doi.org/10.1016/j.ijpe.2023.109088

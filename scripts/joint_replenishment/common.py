@@ -6,7 +6,7 @@ from typing import Iterable
 
 import numpy as np
 
-from invman.policies.soft_tree import SoftTreePolicy
+from invman.policy import Policy
 
 import invman_rust
 
@@ -31,6 +31,32 @@ def get_exact_dp_summary() -> dict:
     return dict(invman_rust.joint_replenishment_exact_dp_summary())
 
 
+def newsvendor_item_targets(reference: dict) -> list[int]:
+    # Order-up-to S_i per item from the single-period newsvendor critical ratio
+    # cr_i = b_i / (b_i + h_i) over the uniform per-period demand U[low, high].
+    # This is the target both carried heuristics (MOQ, DYN-OUT) are evaluated at,
+    # matching scripts/joint_replenishment/benchmark_vanvuchelen_settings.py.
+    targets: list[int] = []
+    for high, low, holding, shortage in zip(
+        reference["demand_highs"],
+        reference["demand_lows"],
+        reference["holding_costs"],
+        reference["shortage_costs"],
+    ):
+        cr = float(shortage) / (float(shortage) + float(holding))
+        support = int(high) - int(low) + 1
+        target = next(
+            (
+                int(low) + offset
+                for offset in range(0, support)
+                if (offset + 1) / support >= cr - 1e-12
+            ),
+            int(high),
+        )
+        targets.append(int(target))
+    return targets
+
+
 def evaluate_heuristic_policy(
     reference: dict,
     policy_name: str,
@@ -42,7 +68,12 @@ def evaluate_heuristic_policy(
     mean_cost, cost_std = invman_rust.joint_replenishment_simulate_policy(
         policy_name=str(policy_name),
         params=[float(value) for value in params],
-        initial_inventory_levels=[int(value) for value in reference["initial_inventory_levels"]],
+        initial_inventory_levels=[
+            int(value)
+            for value in reference.get(
+                "initial_inventory_levels", [0] * len(reference["demand_highs"])
+            )
+        ],
         periods=int(reference["periods"]),
         replications=int(replications),
         seed=int(seed),
@@ -53,7 +84,7 @@ def evaluate_heuristic_policy(
         major_order_cost=float(reference["major_order_cost"]),
         holding_costs=[float(value) for value in reference["holding_costs"]],
         shortage_costs=[float(value) for value in reference["shortage_costs"]],
-        discount_factor=float(reference["discount_factor"]),
+        discount_factor=float(reference.get("discount_factor", 0.99)),
     )
     return {
         "mean_cost": float(mean_cost),
@@ -63,6 +94,17 @@ def evaluate_heuristic_policy(
     }
 
 
+def _max_order_quantities(reference: dict) -> list[int]:
+    # The 16 Table-2 reference instances carry only the cost/demand structure; the
+    # exact-verification reference additionally carries explicit caps. When absent,
+    # derive a per-item cap of two truckloads (>= any sensible base-stock order),
+    # which keeps the soft-tree action box generous without inflating the action map.
+    if reference.get("max_order_quantities") is not None:
+        return [int(value) for value in reference["max_order_quantities"]]
+    cap = 2 * int(reference["truck_capacity"])
+    return [cap for _ in range(int(reference.get("num_items", len(reference["demand_highs"]))))]
+
+
 def build_soft_tree_model(
     reference: dict,
     *,
@@ -70,16 +112,17 @@ def build_soft_tree_model(
     temperature: float,
     split_type: str,
     leaf_type: str,
-) -> SoftTreePolicy:
-    return SoftTreePolicy(
-        input_dim=4,
-        action_spec={
-            "action_dim": 2,
-            "action_mode": "vector_quantity",
-            "min_values": [0, 0],
-            "max_values": [int(reference["max_order_quantities"][0]), int(reference["max_order_quantities"][1])],
-            "allowed_values": None,
-        },
+) -> Policy:
+    caps = _max_order_quantities(reference)
+    num_items = len(caps)
+    return Policy(
+        backbone="soft_tree",
+        input_dim=num_items + 2,
+        control_dim=num_items,
+        control_mode="vector_quantity",
+        min_values=tuple(0 for _ in range(num_items)),
+        max_values=tuple(int(value) for value in caps),
+        allowed_values=None,
         depth=int(depth),
         temperature=float(temperature),
         split_type=str(split_type),
@@ -89,15 +132,20 @@ def build_soft_tree_model(
     )
 
 
-def soft_tree_rollout_kwargs(reference: dict, model: SoftTreePolicy, *, flat_params) -> dict:
+def soft_tree_rollout_kwargs(reference: dict, model: Policy, *, flat_params) -> dict:
     return {
         "flat_params": np.asarray(flat_params, dtype=np.float32).tolist(),
         "input_dim": int(model.input_dim),
         "depth": int(model.depth),
-        "min_values": [int(value) for value in model.action_spec["min_values"]],
-        "max_values": [int(value) for value in model.action_spec["max_values"]],
-        "action_mode": str(model.action_spec["action_mode"]),
-        "initial_inventory_levels": [int(value) for value in reference["initial_inventory_levels"]],
+        "min_values": [int(value) for value in model.min_values],
+        "max_values": [int(value) for value in model.max_values],
+        "action_mode": str(model.control_mode),
+        "initial_inventory_levels": [
+            int(value)
+            for value in reference.get(
+                "initial_inventory_levels", [0] * len(reference["demand_highs"])
+            )
+        ],
         "demand_lows": [int(value) for value in reference["demand_lows"]],
         "demand_highs": [int(value) for value in reference["demand_highs"]],
         "truck_capacity": int(reference["truck_capacity"]),
@@ -106,17 +154,17 @@ def soft_tree_rollout_kwargs(reference: dict, model: SoftTreePolicy, *, flat_par
         "holding_costs": [float(value) for value in reference["holding_costs"]],
         "shortage_costs": [float(value) for value in reference["shortage_costs"]],
         "periods": int(reference["periods"]),
-        "discount_factor": float(reference["discount_factor"]),
+        "discount_factor": float(reference.get("discount_factor", 0.99)),
         "temperature": float(model.temperature),
         "split_type": str(model.split_type),
         "leaf_type": str(model.leaf_type),
-        "allowed_values": model.action_spec.get("allowed_values"),
+        "allowed_values": model.allowed_values,
     }
 
 
 def evaluate_soft_tree_policy(
     reference: dict,
-    model: SoftTreePolicy,
+    model: Policy,
     seeds: Iterable[int],
     *,
     flat_params=None,

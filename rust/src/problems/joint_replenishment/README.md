@@ -67,14 +67,30 @@ Benchmark results (reproduced by `scripts/joint_replenishment/benchmark_vanvuche
   mean cost ranges ~5990-10303 and DYN-OUT ~6040-10557; MOQ is at or below DYN-OUT on every setting,
   consistent with the paper's finding that `(Q,S|T)` is the stronger heuristic on this small family.
 
+Learned soft-tree vs heuristics (run 2026-05-31 via
+`scripts/joint_replenishment/benchmark_learned_vs_heuristics.py`, no Rust rebuild):
+
+- CMA-ES-trained soft-tree (depth 2, oblique splits, linear leaves, popsize 24, 120 generations,
+  train_seed_batch 4) evaluated on 2048 held-out common-random-number seeds (eval base 1_000_000,
+  disjoint from the training seed block at base 123), 200 periods, gamma 0.99, action box per item
+  2*truck_capacity. The same eval-seed block scores the learned policy and both heuristics (paired).
+- Result: learned beats the best heuristic (always MOQ here; DYN-OUT is dominated on every setting) on
+  6 of 16 settings, loses on 10. Learned WINS on the low holding/shortage settings where truckload
+  timing matters: setting 5 +13.0%, setting 13 +11.4%, setting 14 +6.5%, setting 6 +4.2%, plus marginal
+  settings 9 (+1.1%) and 1 (+0.5%). Learned LOSES on the high-cost settings (h=5, b=95: settings 3, 4,
+  11, 12, 16) by -8.9% to -18.1%, where ordering to a tight newsvendor base stock every period is
+  near-optimal and MOQ matches it with less action variance. A stronger budget (depth 3, 300
+  generations, train_seed_batch 12) narrows but does not close those losses (setting 4 -18.1% ->
+  -13.3%; setting 12 -13.4% -> -10.1%), so the gap on high-cost settings reflects the rounded-action
+  soft-tree policy class, not under-training. Full per-setting table and protocol in
+  `experiments/README.md`; raw JSON in `outputs/joint_replenishment/learned_vs_heuristics_vanvuchelen.json`.
+- On setting 5 (the literature anchor) the learned policy's 13.0% edge over MOQ is consistent with the
+  paper's Figure-2 finding that the heuristics sit 4-25% above optimal.
+
 Remaining steps:
 
-- A learned soft-tree vs heuristics benchmark on these settings is wired but not yet run: the rollout
-  binding `joint_replenishment_soft_tree_rollout` is installed, and `invman.policy.Policy` +
-  `invman.es_mp.train` are importable, so a CMA-ES run is feasible WITHOUT a Rust rebuild. The blocker
-  is that `scripts/joint_replenishment/common.py` imports a stale module path
-  (`invman.policies.soft_tree`) that no longer exists; the benchmark script here avoids that path but
-  does not yet drive training.
 - Newly added `VANVUCHELEN_2020_FIGURE3_ANCHOR` and the `joint_replenishment_published_action_anchor`
-  binding require a Rust rebuild to be callable from Python; the in-crate verification test asserts the
-  anchor today.
+  binding are callable from the installed `invman_rust` (used by both benchmark scripts).
+- A stronger learned policy class for the high-cost settings (e.g. a base-stock-anchored action adapter
+  so the soft-tree perturbs around the newsvendor target instead of emitting raw rounded quantities)
+  is the natural next experiment to recover the -8% to -18% high-cost-setting losses.

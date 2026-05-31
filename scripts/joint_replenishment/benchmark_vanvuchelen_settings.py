@@ -33,10 +33,13 @@ WHAT THIS SCRIPT DOES
    Monte-Carlo simulates the two carried heuristics across the 16 Table-2 settings,
    reporting mean discounted cost per setting.
 
-NOT DONE HERE (blocker, see README): a learned soft-tree benchmark would require a
-CMA-ES training run; the rollout binding is available but the helper module
-scripts/joint_replenishment/common.py imports a stale `invman.policies.soft_tree`
-path that no longer exists in the package. See README "Remaining steps".
+LEARNED LEG (now run, separate script): the learned soft-tree vs heuristics benchmark
+lives in scripts/joint_replenishment/benchmark_learned_vs_heuristics.py. It trains a
+CMA-ES soft-tree per Table-2 setting and compares it (held-out CRN seeds) against
+MOQ / DYN-OUT. The previous blocker -- scripts/joint_replenishment/common.py importing
+a stale `invman.policies.soft_tree` path -- has been fixed: common.py now uses the
+current `invman.policy.Policy` API. See the problem README / experiments README for
+the learned-vs-heuristic table.
 
 USAGE
 -----
