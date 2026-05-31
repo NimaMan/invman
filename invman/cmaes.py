@@ -1,4 +1,21 @@
-"""CMA-ES optimizer wrapper used by the training loop."""
+"""CMA-ES optimizer wrapper used by the training loop.
+
+Algorithm:
+  Thin wrapper around ``cma.CMAEvolutionStrategy``. The optimizer searches in a
+  param-scale-normalized coordinate system: ``ask()`` samples candidates from the
+  CMA distribution and multiplies by ``param_scales`` to return raw parameters;
+  ``tell()`` divides the evaluated solutions back by ``param_scales`` before
+  updating the distribution.
+
+  Initialization of the CMA mean:
+    - default: a random vector ``rng.randn(num_params)`` (unchanged behavior).
+    - optional warm start: pass ``x0`` (raw parameter units) to seed the mean at
+      a known-good solution; it is divided by ``param_scales`` to enter the
+      normalized search space. Combined with a small ``sigma_init`` this confines
+      the search to a neighborhood of x0 -- used to seed dual-sourcing soft-tree
+      policies at the encoded capped-dual-index (CDI) optimum so CMA-ES refines
+      around the verified static optimum instead of risking a worse basin.
+"""
 
 from __future__ import annotations
 
@@ -21,10 +38,12 @@ class CMAES:
         weight_decay: float = 0.00,
         param_scales=None,
         seed: int | None = None,
+        x0=None,
     ) -> None:
         self.num_params = num_params
         self.sigma_init = sigma_init
-        self.popsize = popsize
+        self.base_popsize = int(popsize)
+        self.popsize = self.base_popsize
         self.weight_decay = weight_decay
         self.solutions = None
         self.seed = None if seed is None else int(seed)
@@ -37,8 +56,16 @@ class CMAES:
         import cma
 
         rng = np.random.RandomState(self.seed)
+        # Optional warm start: seed the CMA mean at a known-good solution (e.g. an
+        # encoded heuristic control) instead of a random vector. CMA optimizes in
+        # the param_scales-normalized space, so the supplied x0 (in raw parameter
+        # units) is divided by param_scales before being handed to the library.
+        if x0 is None:
+            initial = rng.randn(self.num_params)
+        else:
+            initial = np.asarray(x0, dtype=np.float64) / self.param_scales
         self.es = cma.CMAEvolutionStrategy(
-            rng.randn(self.num_params),
+            initial,
             self.sigma_init,
             {"popsize": self.popsize, "seed": self.seed},
         )
@@ -47,9 +74,18 @@ class CMAES:
         sigma = self.es.result[6]
         return float(np.sqrt(np.mean(sigma * sigma)))
 
-    def ask(self) -> np.ndarray:
+    def ask(self, popsize: int | None = None) -> np.ndarray:
         """Return a population of candidate parameters."""
-        self.solutions = np.asarray(self.es.ask(), dtype=np.float64)
+        active_popsize = self.popsize if popsize is None else int(popsize)
+        if active_popsize <= 0:
+            raise ValueError(f"Population size must be positive; got {active_popsize}")
+        if active_popsize != self.es.sp.popsize:
+            # Recompute the CMA strategy weights for the requested population size
+            # before sampling. This avoids per-iteration warnings from the library
+            # and keeps the internal recombination weights aligned with the batch.
+            self.es.sp.set(self.es.opts, active_popsize, verbose=False)
+        self.popsize = active_popsize
+        self.solutions = np.asarray(self.es.ask(number=active_popsize), dtype=np.float64)
         self.solutions *= self.param_scales[None, :]
         return self.solutions
 
