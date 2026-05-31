@@ -122,6 +122,31 @@ delivery topology**; record absolute rows in `references.rs` and the discussion 
   action grids (`rust/src/problems/multi_echelon/divergent_special_delivery/rollout.rs`,
   `references.rs`), and the CMA-ES driver (`invman/`).
 
+## Search direction (learnings → priors for the next runs)
+
+Established by the runs so far — treat these as priors; do not re-litigate them:
+
+1. **Action design: `direct_level` ≫ `grid`.** Direct estimation (continuous → non-negative int,
+   bounded only by the physical caps) beats the discrete Gijs `{50..100}` grid by a huge margin
+   (setting 1: 779.8 vs ~3090). **Default to `direct_level`;** keep `grid` only as an ablation baseline.
+2. **Tree depth ≈ 2 is the sweet spot at the current budget.** Depth-2 won; depth-3 underperformed
+   *and* costs ~2.5× more to train, so it needs more episodes / a warm start to pay off. Prior:
+   depth 2; only push deeper with a larger budget or warm start.
+3. **Benchmark over the operating region, never the reduced grid.** Constant base-stock must be
+   searched over the physical region (warehouse up to ~500), not `{50..100}`.
+4. **Observation = raw decision-state + divide-by-scale** works; `scale = Cr` is a reasonable default.
+
+Next dimensions to add to the sweep (not yet explored), in rough priority order:
+
+- direct **order-quantity** action design (estimate `q^w` bounded by `Cm`) vs direct level;
+- **per-retailer** action heads vs the single shared retailer target;
+- finer benchmark grid; **depth-3 with warm start / larger budget**; normalizer-scale sweep;
+  temperature / split-type.
+
+Objective per faithful setting: maximize the learned policy's improvement over the operating-region
+best constant base-stock, and compare to the published A3C savings
+(setting 1: 8.95% → **achieved 14.4%**; setting 2: 12.09% → to run).
+
 ## Current status
 
 - **Simple problem** (`van_roy1997_simple_problem`): pipeline validated end-to-end. Literature
