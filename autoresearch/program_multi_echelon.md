@@ -129,9 +129,9 @@ Established by the runs so far — treat these as priors; do not re-litigate the
 1. **Action design: `direct_level` ≫ `grid`.** Direct estimation (continuous → non-negative int,
    bounded only by the physical caps) beats the discrete Gijs `{50..100}` grid by a huge margin
    (setting 1: 779.8 vs ~3090). **Default to `direct_level`;** keep `grid` only as an ablation baseline.
-2. **Tree depth ≈ 2 is the sweet spot at the current budget.** Depth-2 won; depth-3 underperformed
-   *and* costs ~2.5× more to train, so it needs more episodes / a warm start to pay off. Prior:
-   depth 2; only push deeper with a larger budget or warm start.
+2. **Tree depth is instance-dependent — sweep {2,3}.** Setting 1's best was depth-2; setting 2's best
+   was depth-3. Depth-3 is ~2.5× more expensive to train, so keep depth-2 as a cheap prior but always
+   include depth-3 in the sweep (and give it a warm start / larger budget for harder instances).
 3. **Benchmark over the operating region, never the reduced grid.** Constant base-stock must be
    searched over the physical region (warehouse up to ~500), not `{50..100}`.
 4. **Observation = raw decision-state + divide-by-scale** works; `scale = Cr` is a reasonable default.
@@ -144,8 +144,14 @@ Next dimensions to add to the sweep (not yet explored), in rough priority order:
   temperature / split-type.
 
 Objective per faithful setting: maximize the learned policy's improvement over the operating-region
-best constant base-stock, and compare to the published A3C savings
-(setting 1: 8.95% → **achieved 14.4%**; setting 2: 12.09% → to run).
+best constant base-stock, and compare to the published A3C savings. **Both settings beat the published
+A3C savings** with the direct-estimation policy: setting 1: 8.95% → **achieved 14.4%** (direct_level d2);
+setting 2: 12.09% → **achieved 14.4%** (direct_level d3).
+
+Caveat learned on setting 2: the benchmark grid initially bound at its warehouse ceiling (`yw=500`),
+slightly understating the benchmark; extending the grid gave the true best constant base-stock
+`(525,25)=1137.8` (vs the learned 973.6). The benchmark grid ceiling is now raised (to ~700) so it does
+not bind — always check the best `(yw,yr)` is interior to the benchmark grid.
 
 ## Current status
 
@@ -159,6 +165,11 @@ best constant base-stock, and compare to the published A3C savings
   improvement over best constant base-stock — exceeding Gijs's published A3C savings of 8.95%.**
   `direct_level` depth-3 (1226, +34%) underperformed in this budget; the design search picked depth-2.
   This is the same relative-improvement metric Gijs reports; absolute costs differ (gijs_2022 mode).
-- **gijs_2022 setting 2**: next — run the same sweep (μ=0); expect direct_level to similarly beat the
-  benchmark. Optional refinements: finer benchmark grid, add the direct order-quantity and
-  per-retailer action designs to the sweep, and give depth-3 more training budget / a warm start.
+- **gijs_2022 setting 2**: done. Sweep result: `grid` stuck at ~3795 (+231%, the trap);
+  **`direct_level` depth-3 = 973.6, a −14.43% improvement over the (corrected) operating-region best
+  constant base-stock `(525,25)=1137.8` — exceeding Gijs's published A3C savings of 12.09%.** Here
+  depth-3 beat depth-2 (1023.8), unlike setting 1 — depth is instance-dependent. (The initial
+  benchmark grid bound at `yw=500`; extending it gave the firm `(525,25)` benchmark above.)
+- **Both faithful settings beat the published A3C savings** with the problem-appropriate
+  direct-estimation policy. Next: broaden the sweep (direct order-quantity, per-retailer heads, finer
+  grid, depth-3 warm start) to push the margins further and stress-test robustness.

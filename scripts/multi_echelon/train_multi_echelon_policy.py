@@ -125,7 +125,10 @@ def best_constant_base_stock_over_operating_region(base_args, budget, seed):
     """Best constant base-stock over a grid spanning the physical operating region (not the
     Gijs reduced {50..100} grid, which starves the warehouse). This is the benchmark the
     learned policy must beat."""
-    warehouse_top = min(int(base_args.warehouse_inventory_cap), 500)
+    # Ceilings chosen to comfortably exceed the operating region for these settings (published
+    # Van Roy levels ~330/460; in-env optima ~300/525) so the benchmark grid does not bind at
+    # its top edge. Raise these if the best (yw, yr) lands at a ceiling.
+    warehouse_top = min(int(base_args.warehouse_inventory_cap), 700)
     retailer_top = min(int(base_args.retailer_inventory_cap), 60)
     bench_args = _are.build_reference_args(base_args.reference_name)
     bench_args.warehouse_base_stock_levels = list(range(0, warehouse_top + 1, 25))
