@@ -163,6 +163,34 @@ low_demand) but does not consistently beat it. With a smaller training budget (8
 temperature 0.25) the tree underfits and the gap widens to ~3-8%, so the residual gap is a
 training-budget/temperature artifact, not a structural failure of the policy class.
 
+### Autoresearch
+
+Because the learned soft tree LOSES (or marginally ties) to the tuned base-stock heuristic on 4/5
+instances above, there is a dedicated autoresearch policy-search loop for this problem (the same
+keep/discard pattern as dual-sourcing and multi-echelon). It trains ONE soft tree with a CLI-selected
+structure on a NAMED losing instance, scores it on the held-out CRN block, and appends a ledger row
+(`mean_cost`, `best_heuristic`, `heuristic_gap`, `heuristic_gap_pct`) — keeping a configuration only if
+it BEATS the strongest base-stock heuristic. The editable levers are tree depth/temperature/split/leaf,
+the shipment action bounds, and a CMA-ES warm-start at the tuned base-stock control. It REUSES the
+helpers in `benchmark_reduced_single_retailer.py` (instance set, heuristic tuning, CRN protocol) and
+adds structure-aware rollout wrappers so the CLI flags flow through to
+`vendor_managed_inventory_soft_tree_population_rollout` (no Rust rebuild).
+
+- program file: [autoresearch/program_vendor_managed_inventory.md](/home/nima/code/ml/invman/autoresearch/program_vendor_managed_inventory.md)
+- runner: [scripts/vendor_managed_inventory/autoresearch_vendor_managed_inventory.py](/home/nima/code/ml/invman/scripts/vendor_managed_inventory/autoresearch_vendor_managed_inventory.py)
+
+Run (mind the hard CPU cap — the bindings otherwise grab ~27 cores):
+
+```
+RAYON_NUM_THREADS=2 OMP_NUM_THREADS=2 python \
+  scripts/vendor_managed_inventory/autoresearch_vendor_managed_inventory.py \
+  --description "linear-leaf base-stock warm-start" --budget full \
+  --instance high_penalty --tree_leaf_type linear --warm_start base_stock
+```
+
+The ledger lands in `outputs/autoresearch/<run_tag>/results.tsv`. The default instance is
+`high_penalty` (the widest current loss, -2.40%).
+
 ## Next steps
 
 - Expose `vendor_managed_inventory_solve_optimal_policy` (and a heuristic-evaluator binding) from

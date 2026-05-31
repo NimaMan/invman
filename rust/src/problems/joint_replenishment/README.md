@@ -98,6 +98,35 @@ Learned soft-tree vs heuristics (run 2026-05-31 via
 - On setting 5 (the literature anchor) the learned policy's 13.0% edge over MOQ is consistent with the
   paper's Figure-2 finding that the heuristics sit 4-25% above optimal.
 
+Autoresearch (single-policy policy-search loop, mirrors dual_sourcing / multi_echelon):
+
+- The learned soft-tree LOSES to MOQ on 10 of the 16 settings (the high-cost `h=5, b=95`
+  family: settings 2,3,4,8,11,12,15,16, plus marginal 7,10). The autoresearch loop searches the
+  soft-tree policy design for one that BEATS MOQ on those losers. The program file is
+  `autoresearch/program_joint_replenishment.md` (trusted benchmark = the 16 Table-2 settings;
+  strongest heuristic = MOQ, DYN-OUT dominated; published anchor = the Fig-3 optimal action
+  `q=(0,6)` at state `(5,0)`; editable levers = tree depth/temperature/split/leaf, the action box /
+  base-stock-anchored action adapter, CMA-ES warm-start at MOQ, and a deeper depth-3 budget targeting
+  the high-cost settings; keep-rule = beat MOQ on a currently-losing setting without regressing the
+  6 wins).
+- The runner is `scripts/joint_replenishment/autoresearch_joint_replenishment.py`. It REUSES the
+  learned-benchmark helpers in `scripts/joint_replenishment/common.py` (binding
+  `joint_replenishment_soft_tree_rollout` / `..._population_rollout`): it trains ONE soft-tree with
+  CLI-selected structure on a NAMED instance (default `vanvuchelen2020_small_scale_setting_4`, the
+  -18.13% worst loser), evaluates held-out common-random-number cost + gap vs MOQ (paired eval block
+  from base 1_000_000), and APPENDS a TSV ledger row (cost, MOQ, gap, gap%, winner) under
+  `outputs/autoresearch/<run_tag>/results.tsv`. Budgets: `smoke` / `screening` / `full` (full =
+  depth-3, the high-cost-setting recovery budget). Run under a hard 2-core cap (sibling agents run in
+  parallel; the script sets `RAYON_NUM_THREADS`/`OMP_NUM_THREADS` defaults to 2 and forces
+  `mp_num_processors=1`):
+
+  ```
+  RAYON_NUM_THREADS=2 OMP_NUM_THREADS=2 python scripts/joint_replenishment/autoresearch_joint_replenishment.py \
+      --budget screening --warm_start_moq --depth 3 \
+      --reference vanvuchelen2020_small_scale_setting_12 \
+      --description "screening: depth3 + MOQ warm-start on high-cost loser"
+  ```
+
 Remaining steps:
 
 - Newly added `VANVUCHELEN_2020_FIGURE3_ANCHOR` and the `joint_replenishment_published_action_anchor`

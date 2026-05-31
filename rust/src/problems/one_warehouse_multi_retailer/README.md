@@ -78,6 +78,36 @@ Full cost-row table, corroboration of the carried PPO bands, and root-cause disc
   `experiments/reports/latest_report.json` is kept for historical reference. Instances 2–5,
   7–10, 12–14 were not re-run in this pass (see coverage note in `experiments/reports/README.md`).
 
+## Autoresearch
+
+Because the learned soft-tree currently *loses* to the tuned heuristic by 0.4%-1.7% on the three
+instances above, there is a single-policy autoresearch loop to search the policy/control surface and
+try to flip the sign. The program file
+`autoresearch/program_one_warehouse_multi_retailer.md` states the trusted benchmark (the Kaynov
+instances + the grid-searched echelon base-stock heuristic under the better of
+`{min_shortage, proportional}` allocation), the editable search surface (tree depth / temperature /
+split `{oblique, axis_aligned}` / leaf `{constant, linear}`; action design
+`{symmetric_echelon_targets, direct_orders}`; allocation policy; CMA-ES warm-start at the best
+base-stock levels), the screening vs full budgets, and the keep/discard goal (beat the strongest
+heuristic out-of-sample on a losing instance).
+
+The runner `scripts/one_warehouse_multi_retailer/autoresearch_one_warehouse_multi_retailer.py` trains
+ONE soft-tree with a CLI-selected structure on a named instance (REUSING `common.py` +
+`benchmark_learned_vs_heuristic.py` helpers — same env, same heuristic grid search, same paired
+held-out CRN evaluation), then appends a TSV ledger row (learned cost, best heuristic, gap, gap%,
+structure flags) to `outputs/autoresearch/<run_tag>/results.tsv`. Run it capped at 2 cores:
+
+```
+RAYON_NUM_THREADS=2 OMP_NUM_THREADS=2 \
+python scripts/one_warehouse_multi_retailer/autoresearch_one_warehouse_multi_retailer.py \
+    --description "warm-start at best base-stock, partial_backorder" \
+    --budget screening --reference kaynov2024_instance_11 \
+    --leaf_type constant --warm_start_at_best_base_stock
+```
+
+`--budget smoke` is an end-to-end validation preset only (popsize 8, 8 generations); use `screening`
+to rank levers and `full` (popsize 32, 600 generations, 4096 held-out paths) to certify a flip.
+
 ## Code layout
 
 - `env.rs` — raw state + `step_state` transition/cost (raw state quantities only; no

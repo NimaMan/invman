@@ -135,10 +135,10 @@ pub const PAHR_GRUNOW_2025_PORT_WINE_UPPER_BOUND: PublishedUpperBoundAnchor =
         source: PAHR_GRUNOW_2025_REPOSITORY_REFERENCE.source,
         url: "https://github.com/amelioratinginventory/ameliorating_inventory/blob/main/problem_configurations/port_wine/upper_bound.json",
         num_ages: 25,
-        num_products: 3,
+        num_products: 2,
         upper_bound_average_profit: 2444.80,
         anchors_repo_assertion: false,
-        notes: "Port-wine industry case study (25 age classes). The paper reports a gap to this upper bound of about 2.8% for the learned policy.",
+        notes: "Port-wine industry case study (25 age classes, 2 products: target ages [9,19], demand means [10,7] per the companion port_wine/config.json). The paper reports a gap to this upper bound of about 2.8% for the learned policy.",
     };
 
 /// Headline performance figures reported in Pahr and Grunow (2025), recorded for

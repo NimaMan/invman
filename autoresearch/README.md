@@ -116,3 +116,28 @@ The current working hypothesis is:
 - factorized dual-index controls are a better search space than raw direct-order outputs
 - small discrete regular-order caps and tighter tree geometry matter most on the harder `l_r=3` and `l_r=4` rows
 - the best current direction is row-dependent: axis-linear capped-delta variants for `l_r=2`, tighter axis-constant small-cap trees for `l_r in {3,4}`
+
+## Losing-case autoresearch targets
+
+After benchmarking learned soft-tree policies against the heuristics on the verified problems,
+three problems where the learned policy does **not** yet beat the strongest heuristic each get a
+dedicated single-policy autoresearch loop (program file + runner + TSV ledger), mirroring the
+lost-sales / dual-sourcing / multi-echelon setup. Each runner trains one CLI-selected soft-tree on
+a currently-losing instance and logs cost + gap vs the strongest heuristic on a held-out
+common-random-number block; the keep/discard gate is the in-repo tuned heuristic.
+
+- **one-warehouse multi-retailer** — `program_one_warehouse_multi_retailer.md`,
+  `../scripts/one_warehouse_multi_retailer/autoresearch_one_warehouse_multi_retailer.py`. Losing the
+  Kaynov (2024) instances to the tuned echelon base-stock + allocation by 0.43–1.69% (closest:
+  partial-backorder `instance_11`, −0.43%). Levers: tree depth/temperature/split/leaf, action
+  design (`symmetric_echelon_targets` vs `direct_orders`/`vector_quantity`), allocation policy,
+  CMA-ES warm-start at the best base-stock.
+- **joint replenishment** — `program_joint_replenishment.md`,
+  `../scripts/joint_replenishment/autoresearch_joint_replenishment.py`. Losing MOQ on the 10
+  high-cost van Vuchelen (2020) settings (worst: setting 4, −18.13%). Levers: tree structure, a
+  base-stock-anchored action adapter, CMA-ES warm-start at MOQ, deeper budget on the high-cost
+  losers.
+- **vendor-managed inventory** — `program_vendor_managed_inventory.md`,
+  `../scripts/vendor_managed_inventory/autoresearch_vendor_managed_inventory.py`. Losing/tying the
+  tuned base-stock on ~4/5 reduced single-retailer instances (self-consistent env, no published
+  anchor). Levers: tree structure, action design, CMA-ES warm-start at the base-stock control.
