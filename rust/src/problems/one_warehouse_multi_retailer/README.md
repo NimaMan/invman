@@ -108,6 +108,51 @@ python scripts/one_warehouse_multi_retailer/autoresearch_one_warehouse_multi_ret
 `--budget smoke` is an end-to-end validation preset only (popsize 8, 8 generations); use `screening`
 to rank levers and `full` (popsize 32, 600 generations, 4096 held-out paths) to certify a flip.
 
+### Autoresearch outcome (2026-05-31, full-budget sweep)
+
+A focused warm-start-centric sweep (8 screening + 10 full-budget configs, CPU-capped at
+`RAYON_NUM_THREADS=2 OMP_NUM_THREADS=2`, `mp_num_processors=1`) closed the held-out gap to the
+strongest heuristic to **exactly 0.0%** on all three losing instances — a tie, not a strict win.
+Best config (per instance, all three): **depth-2 `axis_aligned` `constant` leaf, temperature 0.05,
+`symmetric_echelon_targets`, CMA-ES warm-started at the best echelon base-stock (W, R)**:
+
+| Instance | CB | Best learned (alloc) | Best heuristic (alloc) | gap% (full budget) | Prior gap% | Winner |
+| --- | --- | ---: | ---: | ---: | ---: | --- |
+| `kaynov2024_instance_1` | `backorder` | `1558.12` (min_shortage) | `1558.12` (min_shortage) | `0.0000%` (tie) | `-1.69%` | tie (heuristic-equal) |
+| `kaynov2024_instance_6` | `lost_sales` | `1348.05` (proportional) | `1348.05` (proportional) | `0.0000%` (tie) | `-1.67%` | tie (heuristic-equal) |
+| `kaynov2024_instance_11` | `partial_backorder` | `1184.46` (proportional) | `1184.46` (proportional) | `0.0000%` (tie) | `-0.43%` | tie (heuristic-equal) |
+
+The learned cost equals the heuristic cost to six decimals: the warm-started constant-leaf tree
+reproduces the heuristic action at generation 0 and CMA-ES (600 generations, sigma 1.5) finds **no
+profitable state-dependent deviation**. This confirms the program's prior — on these symmetric
+Poisson(3) K=3 instances the tuned echelon base-stock + allocation heuristic is at/near the optimum,
+so there is no exploitable state structure for a learned policy to win on. No config produced a
+robust strict flip (`learned < heuristic` beyond the held-out stderr `~1.4–2.4`).
+
+Search coverage / what moved the needle:
+
+- **Warm-start is decisive and was previously broken.** The original
+  `_warm_start_flat_params` wrote the raw base-stock target into the leaf block, but the soft-tree
+  passes leaf outputs through a per-leaf-type transform before grid-snapping
+  (`rust/src/core/policies/soft_tree.rs`): a `constant` leaf is `min + sigmoid(param)*(max-min)`,
+  a `linear` leaf is `min + softplus(bias + w·state)`. Writing the raw target sigmoid-saturated the
+  constant leaf to the grid max (gen-0 holdout ≈ 1879 vs heuristic ≈ 1180 on instance 11), so the
+  warm-start started from a badly over-stocked policy, not the heuristic. The fix inverts the
+  transform (logit for the constant leaf; zeroed leaf weights + softplus-inverse bias for the linear
+  leaf) so gen-0 reproduces the heuristic exactly. After the fix, warm-started constant beats both
+  the no-warm control (`-0.20%`/`-0.04%` full budget) and every linear/oblique/depth-3 variant.
+- **Levers swept** (per instance, prioritized as the program flags): leaf `{constant, linear}`,
+  depth `{2, 3}`, temperature `{0.05, 0.10, 0.20}`, split `{axis_aligned, oblique}`, warm-start
+  `{on, off}`. Constant + axis-aligned + warm-start was best everywhere; `linear` leaves and
+  `depth-3` only added parameters CMA-ES could not exploit (depth-3 ties at full budget but adds no
+  value; linear is strictly worse, `-0.32%` to `-1.84%`). Temperature was immaterial under the
+  warm-started constant leaf (gen-0 already at the heuristic).
+- **Not run** (bounded sweep): `direct_orders` / `vector_quantity` action design (an expressiveness
+  ablation; the symmetric geometry already reproduces the heuristic exactly, so a raw order vector
+  can only match-or-lose), `random_sequential` train allocation, sigma schedules, and instances
+  other than the three losing ones. Full per-run rows are in the TSV ledger
+  `outputs/autoresearch/one_warehouse_multi_retailer_autoresearch/results.tsv` (33 rows).
+
 ## Code layout
 
 - `env.rs` — raw state + `step_state` transition/cost (raw state quantities only; no

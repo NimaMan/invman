@@ -117,6 +117,39 @@ Next dimensions to sweep, in rough priority: warm-start-at-best-base-stock (on/o
 the partial-backorder row; axis_aligned vs oblique with a linear leaf; temperature; then
 `direct_orders` as an expressiveness ablation.
 
+## Autoresearch outcome (2026-05-31 full-budget sweep)
+
+A focused warm-start-centric sweep (8 screening + 10 full configs, CPU-capped at 2 cores) closed the
+held-out gap to **exactly 0.0%** on all three losing instances — a **tie, not a strict flip**. Best
+config on all three: **depth-2 `axis_aligned` `constant` leaf, temperature 0.05,
+`symmetric_echelon_targets`, warm-started at the best base-stock (W, R)**.
+
+| Instance | CB | Best learned | Best heuristic | gap% | Prior |
+| --- | --- | ---: | ---: | ---: | ---: |
+| `kaynov2024_instance_1` | `backorder` | `1558.12` | `1558.12` | `0.0000%` | `-1.69%` |
+| `kaynov2024_instance_6` | `lost_sales` | `1348.05` | `1348.05` | `0.0000%` | `-1.67%` |
+| `kaynov2024_instance_11` | `partial_backorder` | `1184.46` | `1184.46` | `0.0000%` | `-0.43%` |
+
+The learned cost equals the heuristic cost to six decimals: the warm-started constant-leaf tree
+reproduces the heuristic at generation 0 and CMA-ES finds no profitable state-dependent deviation at
+600 generations. This confirms prior (1): the tuned base-stock + allocation heuristic is at/near the
+optimum on these symmetric Poisson(3) instances, so there is no exploitable structure for a learned
+policy to *strictly* win. No config produced a robust strict flip (held-out stderr ~1.4–2.4).
+
+**Load-bearing fix**: the runner's `_warm_start_flat_params` previously wrote the raw base-stock
+target into the leaf block, but the soft-tree applies a per-leaf-type transform before grid-snapping
+(constant: `min + sigmoid(p)·span`; linear: `min + softplus(bias + w·state)`; see
+`rust/src/core/policies/soft_tree.rs`). The raw target sigmoid-saturated the constant leaf to the
+grid maximum, so generation 0 started from an over-stocked policy (instance-11 holdout ≈ 1879 vs
+heuristic ≈ 1180), NOT the heuristic. The fix inverts the transform (logit for constant; zeroed leaf
+weights + softplus-inverse bias for linear). With the fix, warm-started constant beats the no-warm
+control (`-0.20%`/`-0.04%`) and every linear/oblique/depth-3 variant.
+
+Lever ranking (full budget): constant ≫ linear (`-0.32%`…`-1.84%`); axis_aligned ≈ oblique; depth-2 ≈
+depth-3 (no value added); temperature immaterial under the warm-started constant leaf; warm-start
+`on` ≫ `off`. Not run (bounded): `direct_orders`/`vector_quantity` action design, `random_sequential`
+train allocation, sigma schedules, the 11 non-losing instances.
+
 ## Canonical workspace
 
 - Program file: this file.

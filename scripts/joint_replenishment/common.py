@@ -94,15 +94,31 @@ def evaluate_heuristic_policy(
     }
 
 
-def _max_order_quantities(reference: dict) -> list[int]:
+def _max_order_quantities(reference: dict, *, action_box: str = "wide", cap_slack: int = 1) -> list[int]:
     # The 16 Table-2 reference instances carry only the cost/demand structure; the
     # exact-verification reference additionally carries explicit caps. When absent,
-    # derive a per-item cap of two truckloads (>= any sensible base-stock order),
-    # which keeps the soft-tree action box generous without inflating the action map.
+    # derive the per-item soft-tree action box.
+    #
+    # ACTION-BOX DESIGN (the high-cost-setting recovery lever, see
+    # autoresearch/program_joint_replenishment.md). The `vector_quantity` action mode
+    # decodes a tree output into an integer order in [0, max_value_i]. With the default
+    # "wide" box (2*truck_capacity = 12 per item) the decode resolution is coarse exactly
+    # in the region the optimal base-stock policy operates (orders rarely exceed the
+    # per-item newsvendor target = demand_high_i for the high-cost h=5,b=95 family). The
+    # "basestock" box CAPS each item at its newsvendor target + cap_slack, so the same
+    # tree-output range maps onto a tight band around the base-stock order -- a
+    # base-stock-anchored action adapter implemented at the Python action-box layer (the
+    # Rust decoder is read-only here). This both finens the decode resolution around the
+    # optimal order and makes the zero/MOQ warm-start anchor land near sane orders instead
+    # of saturating the box.
     if reference.get("max_order_quantities") is not None:
         return [int(value) for value in reference["max_order_quantities"]]
+    num_items = int(reference.get("num_items", len(reference["demand_highs"])))
+    if str(action_box) == "basestock":
+        targets = newsvendor_item_targets(reference)
+        return [int(targets[i]) + int(cap_slack) for i in range(num_items)]
     cap = 2 * int(reference["truck_capacity"])
-    return [cap for _ in range(int(reference.get("num_items", len(reference["demand_highs"]))))]
+    return [cap for _ in range(num_items)]
 
 
 def build_soft_tree_model(
@@ -112,8 +128,10 @@ def build_soft_tree_model(
     temperature: float,
     split_type: str,
     leaf_type: str,
+    action_box: str = "wide",
+    cap_slack: int = 1,
 ) -> Policy:
-    caps = _max_order_quantities(reference)
+    caps = _max_order_quantities(reference, action_box=str(action_box), cap_slack=int(cap_slack))
     num_items = len(caps)
     return Policy(
         backbone="soft_tree",

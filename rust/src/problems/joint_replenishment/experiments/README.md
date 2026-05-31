@@ -72,3 +72,28 @@ Learned soft-tree vs heuristics (run 2026-05-31, no Rust rebuild):
   per-setting. The learned policy's 13.0% improvement over MOQ on setting 5 is consistent with that
   4-25% heuristic optimality gap being partially recoverable by a learned policy.
 - Raw JSON: `outputs/joint_replenishment/learned_vs_heuristics_vanvuchelen.json`.
+
+Autoresearch policy search on the closest-to-flipping losers (run 2026-05-31, no Rust rebuild):
+
+- Driver: `scripts/joint_replenishment/autoresearch_joint_replenishment.py` (full budget: popsize 24,
+  300 CMA-ES generations, train_seed_batch 12, depth 3, 2048 held-out CRN eval seeds, MOQ warm-start,
+  2-core cap). New lever (Python action-box layer, Rust decoder read-only): a base-stock-anchored action
+  box `--action_box basestock --cap_slack S` capping each item at `newsvendor_target_i + S`.
+- ~25 configs over the three marginal losers (settings 7, 10, 15), sweeping action box (wide /
+  basestock slack 0/1/2), depth (2,3), split (oblique/axis), temperature (0.1/0.25), sigma (1.5/2.5),
+  and a 7-seed ensemble. The deep high-cost losers (4, 11, 12, 16) were not re-searched (policy-class
+  limit, see main README). Ledger: `outputs/autoresearch/joint_replenishment_autoresearch/results.tsv`.
+- Outcome vs MOQ (held-out, 2048 CRN seeds):
+
+| Setting | Benchmark gap% | Best autoresearch config | Learned | MOQ | New gap% | Flip? |
+| --- | ---: | --- | ---: | ---: | ---: | --- |
+| setting_10 | -0.60% (MOQ) | d3 oblique linear basestock slack1 + MOQ warm-start | 6998.6 | 7058.8 | **-0.85%** | **WIN (flipped)** |
+| setting_7 | -1.52% (MOQ) | d3 oblique linear wide + MOQ warm-start (seed 202) | 9050.7 | 9042.9 | +0.09% | near-tie, not flipped |
+| setting_15 | -2.97% (MOQ) | d3 oblique linear wide + MOQ warm-start | 9495.7 | 9268.8 | +2.45% | not flipped |
+
+  (gap% = 100*(learned/MOQ - 1); negative = learned cheaper. "Benchmark gap%" is the prior wide-box
+  120-generation result reported above.) Setting 10's flip is robust across two seeds (-0.79% / -0.85%);
+  the base-stock-anchored slack1 box is the decisive lever (wide stays +2.9%). Setting 7 closed to a
+  noise-floor tie. Setting 15 (high minor cost 40 on item 1, asymmetric h/b) favours MOQ's batching and
+  the basestock box regresses it; wide is its best. The basestock box is a promotable opt-in lever, not
+  the default.

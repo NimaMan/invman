@@ -63,6 +63,52 @@ Findings:
   symmetric). Instances 2–5, 7–10, 12 (and the K=10 instances 13–14) were NOT re-run in this
   pass; the historical depth-1 rows for them remain in the table below.
 
+## Autoresearch policy search (2026-05-31, full-budget sweep)
+
+- runner: `scripts/one_warehouse_multi_retailer/autoresearch_one_warehouse_multi_retailer.py`
+- program: `autoresearch/program_one_warehouse_multi_retailer.md`
+- ledger: `outputs/autoresearch/one_warehouse_multi_retailer_autoresearch/results.tsv` (33 rows:
+  2 smoke + 20 screening + 11 full, including a standalone full timing probe)
+- CPU cap: `RAYON_NUM_THREADS=2 OMP_NUM_THREADS=2`, `mp_num_processors=1` (two sibling agents)
+
+Goal: flip the sign on the three losing instances above (`-0.43%` / `-1.67%` / `-1.69%`). The
+sweep concentrated on the program's leading lever (CMA-ES warm-start at the best base-stock) and
+ranked leaf `{constant, linear}` × depth `{2,3}` × temperature `{0.05,0.10,0.20}` ×
+split `{axis_aligned, oblique}` × warm-start `{on,off}` at screening, then promoted the decisive
+configs to full budget (popsize 32, 600 generations, 4096 held-out CRN paths).
+
+Best config on ALL THREE instances: **depth-2 `axis_aligned` `constant` leaf, temperature 0.05,
+`symmetric_echelon_targets`, warm-started at the best echelon base-stock (W, R)**.
+
+| Instance | CB | Best learned (alloc) | Best heuristic (alloc) | gap% (full) | Prior gap% | Outcome |
+| --- | --- | ---: | ---: | ---: | ---: | --- |
+| `kaynov2024_instance_1` | `backorder` | `1558.12` (min_shortage) | `1558.12` (min_shortage) | `0.0000%` | `-1.69%` | tie (matched) |
+| `kaynov2024_instance_6` | `lost_sales` | `1348.05` (proportional) | `1348.05` (proportional) | `0.0000%` | `-1.67%` | tie (matched) |
+| `kaynov2024_instance_11` | `partial_backorder` | `1184.46` (proportional) | `1184.46` (proportional) | `0.0000%` | `-0.43%` | tie (matched) |
+
+Findings:
+
+- The gap closed from `-0.43%…-1.69%` to **exactly `0.0%`** (learned cost equals the heuristic cost
+  to six decimals) on all three. This is a **tie, not a strict flip**: the warm-started constant-leaf
+  tree reproduces the heuristic action at generation 0 and CMA-ES finds no profitable
+  state-dependent deviation, even at 600 generations. Consistent with the literature/exact-DP prior:
+  the tuned echelon base-stock + allocation heuristic is at/near the optimum on these symmetric
+  Poisson(3) K=3 instances, so a learned policy has no exploitable state structure to win on.
+- **The warm-start was previously broken** and is the load-bearing fix. The runner's
+  `_warm_start_flat_params` wrote the raw base-stock target into the soft-tree leaf block, but the
+  tree applies a per-leaf-type transform before grid-snapping (constant leaf: `min + sigmoid(p)·span`;
+  linear leaf: `min + softplus(bias + w·state)` — see `rust/src/core/policies/soft_tree.rs`). The
+  raw target sigmoid-saturated the constant leaf to the grid maximum, so generation 0 began at a
+  badly over-stocked policy (instance-11 holdout ≈ 1879 vs heuristic ≈ 1180), not the heuristic. The
+  fix inverts the transform (logit for constant; zeroed leaf weights + softplus-inverse bias for
+  linear) so generation 0 reproduces the heuristic exactly; warm-started constant then beats the
+  no-warm control (`-0.20%`/`-0.04%`) and all linear/oblique/depth-3 variants.
+- Lever ranking (full budget): constant ≫ linear (linear `-0.32%`…`-1.84%`); axis_aligned ≈ oblique
+  (oblique slightly worse on instance 11); depth-2 ≈ depth-3 (depth-3 ties but adds no value);
+  temperature immaterial under the warm-started constant leaf; warm-start `on` ≫ `off`.
+- Not run (bounded sweep, logged): `direct_orders`/`vector_quantity` action design,
+  `random_sequential` train allocation, sigma schedules, and the 11 non-losing instances.
+
 ## Historical depth-1 14-instance cache (run_paper_benchmark.py)
 
 - source: Kaynov et al. (2024), International Journal of Production Economics 267, 109088

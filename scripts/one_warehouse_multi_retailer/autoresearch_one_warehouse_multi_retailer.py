@@ -64,6 +64,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import math
 import subprocess
 import sys
 import time
@@ -186,26 +187,78 @@ def _resolve_policy_action_mode(parsed, reference) -> str:
 
 
 def _warm_start_flat_params(model, warehouse_level: int, retailer_level: int):
-    """Build a flat-param vector whose trailing leaf bias/constant block is set to the
-    best base-stock target (W, R) so a discrete_grid soft-tree snaps every leaf to the
-    heuristic action at generation 0. Layout-independent: only the trailing
-    num_leaves * control_dim block (leaf constants for constant leaves, leaf biases for
-    linear leaves) is overwritten; split params stay at their initialized values.
+    """Build a flat-param vector whose leaf block makes a discrete_grid soft-tree emit the
+    best base-stock target (W, R) at every leaf, so generation 0 reproduces the strongest
+    heuristic exactly. CRITICAL: the soft-tree does NOT output the raw leaf parameter; it
+    passes the leaf output through a per-leaf-type transform before grid-snapping
+    (`rust/src/core/policies/soft_tree.rs::action_vector_from_flat_params`):
+
+      - constant leaf:  scaled = min + sigmoid(leaf_param) * (max - min)
+                        => to emit target T, leaf_param = logit((T - min) / (max - min)).
+      - linear  leaf:   scaled = min + softplus(leaf_bias + leaf_weights . state)
+                        => zero the leaf weights and set leaf_bias = softplus_inv(T - min)
+                           so the leaf is state-independent and emits exactly T at gen 0.
+
+    Writing the raw target T directly (the previous behavior) sigmoid-saturated the
+    constant leaf to the grid max and offset the linear leaf by `min`, so gen 0 was a
+    badly over-stocked policy, NOT the heuristic. With this inversion, gen-0 holdout cost
+    matches the heuristic to the rounding of (W, R) and CMA-ES searches outward from a
+    known-good point.
 
     Only meaningful for symmetric_echelon_targets (control_dim == 2, target = [W, R]).
+    Layout (see validate_soft_tree_flat_params): split weights, split bias, then either the
+    num_leaves*action_dim constant block (constant leaf) or the
+    num_leaves*action_dim*input_dim leaf-weight block followed by the num_leaves*action_dim
+    leaf-bias block (linear leaf). Split params stay at their initialized values.
+
     Returns the flat params as a python list.
     """
     flat = np.asarray(model.get_model_flat_params(), dtype=np.float32).copy()
     num_leaves = 2 ** int(model.depth)
     action_dim = int(model.control_dim)
-    leaf_block = num_leaves * action_dim
-    if leaf_block > flat.size or action_dim != 2:
+    if action_dim != 2:
         # Unsupported geometry for a (W, R) seed; fall back to the model's own init.
         return flat.tolist()
-    target = np.array([float(warehouse_level), float(retailer_level)], dtype=np.float32)
-    tail = flat[flat.size - leaf_block:].reshape(num_leaves, action_dim)
-    tail[:, :] = target
-    flat[flat.size - leaf_block:] = tail.reshape(-1)
+
+    min_values = [float(v) for v in model.min_values]
+    max_values = [float(v) for v in model.max_values]
+    targets = [float(warehouse_level), float(retailer_level)]
+    leaf_type = str(model.leaf_type)
+    bias_block = num_leaves * action_dim
+
+    if leaf_type == "constant":
+        if bias_block > flat.size:
+            return flat.tolist()
+        leaf_param = np.empty(action_dim, dtype=np.float32)
+        for dim in range(action_dim):
+            span = max_values[dim] - min_values[dim]
+            if span <= 0.0:
+                leaf_param[dim] = 0.0
+                continue
+            p = (targets[dim] - min_values[dim]) / span
+            p = float(min(max(p, 1e-4), 1.0 - 1e-4))
+            leaf_param[dim] = math.log(p / (1.0 - p))  # logit
+        tail = flat[flat.size - bias_block:].reshape(num_leaves, action_dim)
+        tail[:, :] = leaf_param
+        flat[flat.size - bias_block:] = tail.reshape(-1)
+        return flat.tolist()
+
+    # linear / sigmoid_linear: zero the leaf weights so the leaf is state-independent, then
+    # set the leaf bias to the softplus-inverse so softplus(bias) == target - min.
+    input_dim = int(model.input_dim)
+    weights_block = num_leaves * action_dim * input_dim
+    if weights_block + bias_block > flat.size:
+        return flat.tolist()
+    weights_start = flat.size - weights_block - bias_block
+    bias_start = flat.size - bias_block
+    flat[weights_start:weights_start + weights_block] = 0.0
+    leaf_bias = np.empty(action_dim, dtype=np.float32)
+    for dim in range(action_dim):
+        delta = max(targets[dim] - min_values[dim], 1e-6)
+        leaf_bias[dim] = math.log(math.expm1(delta))  # softplus_inv
+    bias = flat[bias_start:].reshape(num_leaves, action_dim)
+    bias[:, :] = leaf_bias
+    flat[bias_start:] = bias.reshape(-1)
     return flat.tolist()
 
 

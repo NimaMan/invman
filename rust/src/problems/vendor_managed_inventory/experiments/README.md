@@ -37,6 +37,27 @@ lost-sales slice with no extra structure to exploit.
 
 The headline numbers and the exact per-instance table are printed by the script; re-run to refresh.
 
+### Autoresearch policy-search outcome (full budget, 2026-05-31)
+
+A dedicated autoresearch loop
+(`scripts/vendor_managed_inventory/autoresearch_vendor_managed_inventory.py`, program
+`autoresearch/program_vendor_managed_inventory.md`) searches soft-tree structure + a CMA-ES
+warm-start at the tuned base-stock control to try to flip the losing instances. A focused
+full-budget sweep (29 configs, ledger `outputs/autoresearch/vmi_autoresearch/results.tsv`, CPU capped
+at 2 rayon/OMP threads) found that the **linear leaf + base-stock warm-start** is the decisive lever:
+
+- `low_penalty`: flipped from the README's -0.16% loss to a clean **-0.31% WIN** (learned 102.69 vs
+  heuristic 103.01; best config `linear / oblique / d3 / t0.1 / warm_start base_stock`; margin > SEM).
+- `primary`: closed from -1.76% to **+0.05%** (statistical tie, within SEM).
+- `high_penalty` (widest loss): closed ~8x, from -2.40% to **+0.30%** (gap ~ SEM; does not cleanly flip).
+- `high_demand`: searched lightly, best observed +1.12% (not flipped).
+
+Failure modes that pin the mechanism: constant-leaf warm-start and `sigma_init <= 0.15` both blow up
+to +50-62% gaps (degenerate CMA start the tight sigma cannot escape). So the win comes specifically
+from the linear leaf (which can express an exact order-up-to map) plus a moderate `sigma_init`
+(0.3-0.8) around the base-stock anchor. See the main problem README "Autoresearch outcome" table for
+per-instance detail.
+
 ### Missing ceiling (blocker)
 
 The exact finite-horizon DP optimal (`finite_horizon_dp::solve_optimal_policy`) is the correct ceiling

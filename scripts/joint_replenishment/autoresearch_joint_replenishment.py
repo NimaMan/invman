@@ -131,6 +131,12 @@ def parse_args():
     parser.add_argument("--leaf_type", choices=["constant", "linear", "sigmoid_linear"], default="linear")
     parser.add_argument("--sigma_init", type=float, default=1.5)
     parser.add_argument("--seed", type=int, default=123)
+    # Action design (the high-cost-setting recovery lever). "wide" = 2*truck_capacity per
+    # item (the default rounded-action box); "basestock" = newsvendor target + cap_slack
+    # per item, a base-stock-anchored action box that finens decode resolution around the
+    # optimal order for the high-cost h=5,b=95 family. See common._max_order_quantities.
+    parser.add_argument("--action_box", choices=["wide", "basestock"], default="wide")
+    parser.add_argument("--cap_slack", type=int, default=1)
     # Budget overrides (otherwise taken from the --budget preset).
     parser.add_argument("--es_population", type=int, default=None)
     parser.add_argument("--training_episodes", type=int, default=None)
@@ -247,9 +253,12 @@ def main():
         temperature=float(parsed.temperature),
         split_type=str(parsed.split_type),
         leaf_type=str(parsed.leaf_type),
+        action_box=str(parsed.action_box),
+        cap_slack=int(parsed.cap_slack),
     )
 
-    structure = f"d{depth}_{parsed.split_type}_{parsed.leaf_type}_t{parsed.temperature}"
+    box_tag = "wide" if parsed.action_box == "wide" else f"bs{parsed.cap_slack}"
+    structure = f"d{depth}_{parsed.split_type}_{parsed.leaf_type}_t{parsed.temperature}_{box_tag}"
     experiment_name = (
         f"{parsed.run_tag}_{parsed.budget}_{parsed.reference}_{structure}"
         f"{'_moqws' if parsed.warm_start_moq else ''}_s{parsed.seed}"

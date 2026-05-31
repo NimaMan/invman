@@ -127,10 +127,47 @@ Autoresearch (single-policy policy-search loop, mirrors dual_sourcing / multi_ec
       --description "screening: depth3 + MOQ warm-start on high-cost loser"
   ```
 
+Autoresearch outcome (focused full-budget policy search, run 2026-05-31; no Rust rebuild):
+
+- Lever implemented at the Python action-box layer (the Rust `vector_quantity` decoder is read-only):
+  a **base-stock-anchored action box** (`--action_box basestock --cap_slack S`) that caps each item's
+  order box at `newsvendor_target_i + S` instead of the wide `2*truck_capacity` box. This is the
+  flagged "base-stock-anchored action adapter": for the high-cost family the newsvendor target equals
+  `demand_high_i`, so the same tree-output range maps onto a tight band around the optimal base-stock
+  order, finening decode resolution. Implemented in `common._max_order_quantities` /
+  `build_soft_tree_model` and wired through the runner CLI (`--action_box`, `--cap_slack`); the box tag
+  (`wide` / `bsN`) is recorded in the ledger `policy_architecture` column. All runs warm-started at MOQ.
+- Search coverage: ~25 configurations on the three closest-to-flipping losers (settings 7, 10, 15),
+  full budget (popsize 24, 300 generations, train_seed_batch 12, depth 3 default), 2048 held-out CRN
+  eval seeds, 2-core cap. Levers swept: action box (wide / basestock slack 0,1,2), depth (2,3),
+  split (oblique / axis_aligned), temperature (0.1, 0.25), sigma_init (1.5, 2.5), and a seed ensemble
+  (123, 202, 314, 42, 777, 909, 1234) on the best class. The larger high-cost losers (4, 11, 12) were
+  NOT re-searched: the learned-benchmark phase already showed those reflect the rounded-action policy
+  class limit (-13% to -18% even at full budget), so the promotable targets are the marginal losers.
+  Best config + every run are in the ledger `outputs/autoresearch/joint_replenishment_autoresearch/results.tsv`.
+- Results vs MOQ (held-out, 2048 CRN seeds; gap% = 100*(learned/MOQ - 1), negative = learned cheaper):
+  - **setting 10: FLIPPED to a WIN.** `d3 oblique linear basestock slack1` -> learned 6998.6 vs MOQ
+    7058.8, gap **-0.85%** (robust: seed 123 -0.79%, seed 777 -0.85%). The base-stock-anchored box is
+    the decisive lever here (wide box stays at +2.9%; slack0 too tight at +4.1%; slack2 regresses to
+    +2.2%, so slack1 is the sweet spot). Benchmark was -0.60% (MOQ ahead); now learned ahead.
+  - setting 7: closed from -1.52% to **+0.09%** (essentially tied at MOQ), best = `d3 oblique linear
+    wide` seed 202 -> learned 9050.7 vs MOQ 9042.9. Across 8 seeds the gap ranged +0.09% to +1.85%; the
+    best basin sits within evaluation noise of MOQ but never strictly flips. The basestock box did not
+    beat the wide box here (best basestock +0.61%).
+  - setting 15: closed from -2.97% to **+2.45%** (best = `d3 oblique linear wide`), not flipped. This
+    setting has a high minor-order cost (40) on item 1 with asymmetric `h=(5,1) b=(95,19)`, which
+    favours MOQ's low-action-variance batching; the basestock box hurts here (+4.1% to +10.9%).
+- Keep / discard gate (beat MOQ on a loser without regressing the 6 wins): setting 10's
+  `d3 oblique linear basestock slack1 + MOQ warm-start` PASSES (a clean flip). Settings 7 and 15 remain
+  losses (7 a near-tie, 15 a structural MOQ-favouring instance). The base-stock-anchored action box is
+  a promotable, opt-in lever (it flips the marginal high-cost-near-symmetric loser, but regresses the
+  high-minor-cost asymmetric loser, so it is not made the default).
+
 Remaining steps:
 
 - Newly added `VANVUCHELEN_2020_FIGURE3_ANCHOR` and the `joint_replenishment_published_action_anchor`
   binding are callable from the installed `invman_rust` (used by both benchmark scripts).
-- A stronger learned policy class for the high-cost settings (e.g. a base-stock-anchored action adapter
-  so the soft-tree perturbs around the newsvendor target instead of emitting raw rounded quantities)
-  is the natural next experiment to recover the -8% to -18% high-cost-setting losses.
+- The deepest high-cost losses (settings 4, 11, 12, 16: -13% to -18%) still reflect the rounded-action
+  soft-tree policy class. A native (Rust-side) base-stock-residual action head -- order = clip(S_i - I_i
+  + tree_delta) rather than a clipped raw box -- is the next lever to recover those; the Python action
+  box only narrows the decode range, it cannot remove the integer-rounding floor on the residual.
