@@ -6,7 +6,7 @@ from typing import Iterable
 
 import numpy as np
 
-from invman.policies.soft_tree import SoftTreePolicy
+from invman.policy import Policy
 
 import invman_rust
 
@@ -116,21 +116,21 @@ def build_soft_tree_model(
     split_type: str,
     leaf_type: str,
     action_cap: int | None = None,
-) -> SoftTreePolicy:
+) -> Policy:
     input_dim = (
         len(reference["initial_procurement_pipeline"])
         + len(reference["initial_repair_pipeline"])
         + 7
     )
-    return SoftTreePolicy(
+    cap = default_action_cap(reference) if action_cap is None else int(action_cap)
+    return Policy(
+        backbone="soft_tree",
         input_dim=int(input_dim),
-        action_spec={
-            "action_dim": 1,
-            "action_mode": "scalar_quantity",
-            "min_values": [0],
-            "max_values": [default_action_cap(reference) if action_cap is None else int(action_cap)],
-            "allowed_values": None,
-        },
+        control_dim=1,
+        control_mode="scalar_quantity",
+        min_values=(0,),
+        max_values=(int(cap),),
+        allowed_values=None,
         depth=int(depth),
         temperature=float(temperature),
         split_type=str(split_type),
@@ -140,14 +140,14 @@ def build_soft_tree_model(
     )
 
 
-def soft_tree_rollout_kwargs(reference: dict, model: SoftTreePolicy, *, flat_params) -> dict:
+def soft_tree_rollout_kwargs(reference: dict, model: Policy, *, flat_params) -> dict:
     return {
         "flat_params": np.asarray(flat_params, dtype=np.float32).tolist(),
         "input_dim": int(model.input_dim),
         "depth": int(model.depth),
-        "min_values": [int(value) for value in model.action_spec["min_values"]],
-        "max_values": [int(value) for value in model.action_spec["max_values"]],
-        "action_mode": str(model.action_spec["action_mode"]),
+        "min_values": [int(value) for value in model.min_values],
+        "max_values": [int(value) for value in model.max_values],
+        "action_mode": str(model.control_mode),
         "on_hand_inventory": int(reference["initial_on_hand_inventory"]),
         "backlog": int(reference["initial_backlog"]),
         "procurement_pipeline": [
@@ -164,13 +164,13 @@ def soft_tree_rollout_kwargs(reference: dict, model: SoftTreePolicy, *, flat_par
         "temperature": float(model.temperature),
         "split_type": str(model.split_type),
         "leaf_type": str(model.leaf_type),
-        "allowed_values": model.action_spec.get("allowed_values"),
+        "allowed_values": model.allowed_values,
     }
 
 
 def evaluate_soft_tree_policy(
     reference: dict,
-    model: SoftTreePolicy,
+    model: Policy,
     seeds: Iterable[int],
     *,
     flat_params=None,

@@ -4,8 +4,13 @@ This package has two verification scopes.
 
 Literature-backed analytical verification:
 
-- the public worked newsvendor case study posted by the paper’s author
+- the public worked newsvendor case study posted by the paper’s author (Sui, Gosavi & Lin 2010 /
+  Gosavi 2020 `vmi_case_study.pdf`)
 - exact reproduction of the displayed mean/variance calculations and order-up-to levels
+- confirmed on 2026-05-31 by fetching the source PDF and matching every displayed quantity to
+  `newsvendor_case.rs` (see the line-by-line table in the root README; the only deviation is the
+  newsvendor `S = 26.96` published vs `26.99` env, caused solely by the PDF truncating
+  `k = Phi^-1(0.98) = 2.17`, which the `0.05` test tolerance absorbs)
 
 Repo-native executable verification:
 

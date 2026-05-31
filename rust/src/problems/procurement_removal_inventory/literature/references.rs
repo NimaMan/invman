@@ -104,6 +104,50 @@ pub const PRIMARY_REFERENCE_INSTANCE: ProcurementRemovalReferenceInstance =
         notes: "Canonical repo interpretation of procurement-removal inventory: a single-item finite-horizon system with a fixed per-period cap on returnable purchases, explicit return and liquidation credits, and shortage penalties. This strips away pricing while keeping the procurement-removal structure highlighted by the literature; it is therefore a repo-native instance, not a literature-verified benchmark row.",
     };
 
+/// Repo-native benchmark instance on which the REMOVAL channel actually binds.
+///
+/// Why this exists: the `PRIMARY_REFERENCE_INSTANCE` runs a Poisson demand of mean 4 over 16
+/// periods starting from only 5 units. Demand drains inventory faster than it can accumulate, so
+/// the system almost never overstocks and the `remove_down_to` threshold is essentially never
+/// triggered — the interval-stock policy degenerates to a pure order-up-to policy there (verified
+/// empirically: the best constant interval-stock is `(order_up_to=6, remove_down_to=6)`, i.e. the
+/// removal level collapses onto the order level). That makes the primary instance a poor benchmark
+/// for the distinguishing feature of THIS problem (procurement vs removal).
+///
+/// This instance starts overstocked (high initial inventory, lower demand, nontrivial holding
+/// cost), so carrying excess hurts and returning/liquidating becomes worthwhile. Empirically the
+/// best constant interval-stock is `(order_up_to=4, remove_down_to=9)` and it beats both the
+/// never-remove and aggressive-remove extremes, confirming the removal lever is active.
+///
+/// It is NOT a literature-verified row; like the primary instance it is a repo-native instance of
+/// the control-only procurement-removal slice. It is used by
+/// `scripts/procurement_removal_inventory/benchmark_procurement_removal.py` (which passes the
+/// fields directly to the simulator, so no binding rebuild is required). It is recorded here as the
+/// source of truth so a future rebuild can expose it through a binding.
+pub const REMOVAL_ACTIVE_REFERENCE_INSTANCE: ProcurementRemovalReferenceInstance =
+    ProcurementRemovalReferenceInstance {
+        name: "removal_active_returnability",
+        source: "repo_native_removal_active_instance",
+        url: MAGGIAR_2017_REFERENCE.url,
+        periods: 16,
+        demand_distribution_kind: "poisson",
+        demand_mean: 3.0,
+        initial_inventory_level: 12,
+        initial_returnable_inventory: 8,
+        returnable_purchase_cap: 2,
+        purchase_cost_per_unit: 6.0,
+        return_value_per_unit: 4.0,
+        liquidation_value_per_unit: 1.0,
+        holding_cost_per_unit: 1.0,
+        shortage_cost_per_unit: 9.0,
+        max_purchase_quantity: 6,
+        max_removal_quantity: 8,
+        benchmark_order_up_to: 4,
+        benchmark_remove_down_to: 9,
+        benchmark_returnable_buffer: 0,
+        notes: "Repo-native procurement-removal instance with an active removal channel: high initial inventory and lower demand make overstock occur, so the remove-down-to threshold binds and the procurement-versus-removal tradeoff is observable. Best constant interval-stock is (4, 9). Not a literature-verified benchmark row.",
+    };
+
 pub const VERIFICATION_PROBLEM_INSTANCE: ExactVerificationReference = ExactVerificationReference {
     source: MAGGIAR_2017_REFERENCE.source,
     url: MAGGIAR_2017_REFERENCE.url,

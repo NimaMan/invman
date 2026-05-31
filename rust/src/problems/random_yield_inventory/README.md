@@ -4,41 +4,97 @@ Rust-first problem home for `random_yield_inventory`.
 
 ## Formulation
 
-Repo interpretation:
+Single-item, periodic-review inventory with **all-or-nothing supply yield** and a positive
+deterministic lead time, finite horizon, discounted cost, full backlogging.
 
-- single-item inventory with stochastic supply yield
-- positive lead time
-- heuristic and exact reduced benchmark support on discrete instances
-- all-or-nothing arrival success in the repo-native executable model
+State (`env.rs`): `(period, inventory_level, pipeline_orders[L])`. Action: the order quantity placed
+this period. Order of events per period (`env.rs::step_state`):
 
-The state consists of current inventory, the outstanding pipeline, and period index. The action is
-the order quantity. Demand is stochastic, supply arrivals are stochastic through the yield-success
-process, and the objective is discounted procurement plus holding and shortage cost.
+1. the oldest pipeline order arrives in full with probability `p` (success) or not at all with
+   probability `1-p` (all-or-nothing yield): `realized_arrival = pipeline[0]` if success else `0`;
+2. demand is realized; `ending = inventory + realized_arrival - demand`;
+3. period cost `= procurement_cost * order + holding_cost * ending^+ + shortage_cost * ending^-`;
+4. the pipeline shifts and the new order is appended: `next_pipeline = pipeline[1..] ++ [order]`.
+
+An order placed now therefore arrives after exactly `L` periods (clean lead-time-`L` pipeline).
 
 Code lives under `rust/src/problems/random_yield_inventory/`.
 
-Literature and verification anchors live in:
+Literature and verification anchors:
 
-- `literature/references.rs`
-- `verification/tests.rs`
-- `literature/`
-- `practical/`
-- `experiments/`
-- `verification/`
+- `literature/references.rs` — cited papers, reference instances, literature benchmark families
+- `finite_horizon_dp.rs` — exact reduced finite-horizon DP (optimal + heuristic evaluation)
+- `heuristics/` — LIR (linear inflation) and WNH (weighted newsvendor)
+- `verification/tests.rs` — executable implementation-correctness assertions
+- `literature/`, `practical/`, `experiments/`, `verification/` — README scope notes
 
-Current status: not literature-verified.
+## Verification status: NOT literature-verified (implementation-correct)
 
-Reason:
+This is an honest, evidence-backed classification (verified during the 2026-05 review):
 
-- Yan et al. (2026) is the closest exact model match, but the accessible record does not expose a
-  public row-level benchmark table that the repo can assert against.
-- Chen et al. (2018) is the main weighted-newsvendor anchor, but we have not recovered public
-  benchmark numbers from that source.
-- Inderfurth and Kiesmuller (2015) do publish numeric results, but for related general random-yield
-  models rather than the repo's executable all-or-nothing environment.
+- The MDP transition + cost (`env.rs`, `finite_horizon_dp.rs`) **faithfully match the structure** of
+  the cited Yan et al. (2026) all-or-nothing / positive-lead-time / discounted / backlog model.
+- The exact DP (`finite_horizon_dp.rs`) is **implementation-correct**: it was re-derived from scratch
+  in an independent Python DP of the same MDP and reproduces the optimal cost
+  `40.0598976099` and first action `4` on `VERIFICATION_PROBLEM_INSTANCE` to full precision. Lifting
+  the DP action cap from 8 to 20 changes the optimum only at the 5th significant figure
+  (`40.0598742583`), so the carried cap is effectively non-binding for the optimal policy.
+- BUT there is **no public per-instance benchmark number** to assert against: Yan et al. (2026) and
+  Chen et al. (2018) are paywalled and expose no reusable table; Inderfurth & Kiesmüller (2015)
+  publish numbers only for a **different yield model** (per-unit binomial / stochastically
+  proportional, infinite-horizon average cost), not this finite-horizon all-or-nothing batch model.
 
-State interface:
+So the verifier is a repo-native, exact-solver self-consistency check — it confirms the code is
+correct, not that it reproduces a literature number. This matches the standard used by the finished
+problems (e.g. `lost_sales_fixed_order_cost` reproduces a Bijvank 2015 Table 1 number; `dual_sourcing`
+reproduces Gijsbrechts 2022 Figure 9 gap labels) — random_yield_inventory has no equivalent public
+anchor, so it cannot claim that status.
 
-- `env.rs` exposes raw state quantities only
-- the current soft-tree benchmark keeps its derived feature map in `rollout.rs`
-- any normalization or expectation-based encoding must stay outside the environment layer
+### Open fidelity question (root cause of the remaining gap)
+
+The **WNH (weighted newsvendor) order rule** in `heuristics/weighted_newsvendor.rs` computes the
+yield-weighted expected gap `E_pipeline_scenarios E_demand[(S - projected_inventory)^+]` but does
+**not** multiply that gap by the reciprocal of the mean yield rate `1/p`. Two independent secondary
+descriptions of the all-or-nothing heuristics (the Yan 2026 abstract record and the Chen 2018 record)
+state the order is "the gap ... multiplied by the reciprocal of the mean yield rate", which would
+inflate the WNH order by `1/p` (as the LIR already does in `heuristics/linear_inflation.rs`). The
+exact published WNH formula is paywalled and could not be recovered, so this was **not changed** —
+inflating the WNH would only push its already-overshooting order (8 vs optimal 4 on the verification
+instance) further up. This is recorded as a precise next step rather than a guess.
+
+The LIR is faithful: `q = (1/p) * (S - X)^+` with inventory position `X = inv + p * sum(pipeline)` and
+order-up-to target `S = Poisson((L+1) * mean).invcdf(b/(h+b))` (textbook protection interval `L+1`).
+
+## Benchmark (2026-05)
+
+Run with `scripts/random_yield_inventory/benchmark_policies_vs_exact_and_heuristics.py`.
+
+**Exact-DP slice** (`VERIFICATION_PROBLEM_INSTANCE`, capped, discrete demand, L=2, implementation-
+verified optimum):
+
+| Policy | Discounted Cost | First Action | Gap to Optimal |
+| --- | ---: | ---: | ---: |
+| `exact_optimal_dp` | 40.0599 | 4 | 0.0000 |
+| `linear_inflation` (LIR) | 47.7138 | 4 | 7.6539 |
+| `weighted_newsvendor` (WNH) | 60.3936 | 8 | 20.3337 |
+
+LIR is the stronger heuristic here (19.1% above optimum); WNH overshoots (50.8% above optimum).
+
+**Simulation slice** (`PRIMARY_REFERENCE_INSTANCE` = `yan2026_style_lt2_p075_discounted`, Poisson
+demand, horizon 12, 2000 held-out evaluation seeds, uncapped env). The soft-tree was CMA-ES-trained
+(depth 3, 600 episodes, population 32) on disjoint training seeds:
+
+| Policy | Mean Discounted Cost | Std | Gap to Best |
+| --- | ---: | ---: | ---: |
+| `soft_tree(d=3, linear)` | 196.661 | 114.290 | 0.000 |
+| `linear_inflation` (LIR) | 203.619 | 123.769 | 6.959 |
+| `weighted_newsvendor` (WNH) | 222.436 | 66.918 | 25.776 |
+
+The learned soft-tree beats LIR by 3.4% and WNH by 11.6% in mean discounted cost out-of-sample (note
+WNH trades higher mean cost for markedly lower variance).
+
+## State interface
+
+- `env.rs` exposes raw state quantities only.
+- The soft-tree benchmark keeps its derived/normalized feature map in `rollout.rs`.
+- Any normalization or expectation-based encoding stays outside the environment layer.

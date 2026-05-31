@@ -53,71 +53,86 @@ The environment exposes raw state only. Any feature normalization belongs in rol
 
 Published benchmark source:
 
-- Geevers et al. (2023), CEJOR 32:157-187
+- Geevers, van Hezewijk & Mes (2024), CEJOR `32(3):653-683` (online first 2023)
 - DOI: `10.1007/s10100-023-00872-2`
+- open MA thesis (more detailed simulator): Geevers (2020), University of Twente,
+  `essay.utwente.nl/85432` — reports only the set-1 benchmark.
 
-Published benchmark rows from Table 7:
+The general case has three experiment sets that differ in the **action space**:
 
-- set 1:
-  - benchmark cost `10,467`
-  - base-stock levels `[82, 100, 64, 83, 35, 35, 35, 35, 35]`
-  - PPO best `8,714`
-  - PPO average `630,401`
-- set 2:
-  - benchmark cost `4,797`
-  - base-stock levels `[37, 47, 33, 63, 30, 30, 30, 30, 30]`
-  - PPO best `4,175`
-  - PPO average `314,923`
-- set 3:
-  - benchmark cost `4,797`
-  - base-stock levels `[37, 47, 33, 63, 30, 30, 30, 30, 30]`
-  - PPO best `3,935`
-  - PPO average `4,481`
+- set 1 — one **order per stock point** (relative-rationing routing to a single upstream edge);
+- set 2 — one **order per edge**;
+- set 3 — one **order per edge with a restricted transition function** (training-side change only;
+  same benchmark base-stock policy as set 2).
 
-Additional published benchmark information from the open TU/e dissertation PDF:
+Published rows (the constant base-stock "benchmark", plus PPO best/average over 10 runs):
 
-- Figure 3.6 reports benchmark stock-point fill rates of about `98-99%` at all four warehouses and all
-  five retailers for the general-network benchmark.
+- set 1: benchmark `10,467`, levels `[82, 100, 64, 83, 35, 35, 35, 35, 35]`, PPO best `8,714`,
+  PPO average `630,401`
+- set 2: benchmark `4,797`, levels `[37, 47, 33, 63, 30, 30, 30, 30, 30]`, PPO best `4,175`,
+  PPO average `314,923`
+- set 3: benchmark `4,797`, levels `[37, 47, 33, 63, 30, 30, 30, 30, 30]`, PPO best `3,935`,
+  PPO average `4,481`
+
+(First 4 levels = warehouses, last 5 = retailers.) The benchmark levels are tuned to a 98%
+fill-rate target on the corrugated-plant / retailer connections. Note: the thesis Figure 6.6 shows
+the benchmark deliberately holds the **warehouse (paper-mill) fill rate lower** (about 53-74% at the
+paper mills) while keeping the **retailer (corrugated-plant) fill at ~97-99%** — only the
+customer-facing stock points are held to 98%. (A previous version of this README claimed ~98-99% at
+all warehouses; that was incorrect.)
+
+See `literature/README.md` for the full literature audit and the verification target.
 
 ## Current Verification Status
 
-This subproblem is **not literature-verified** yet.
+This subproblem is **not literature-verified**.
 
-Current Rust-side audit status:
+Benchmark results (node-base-stock heuristic at published levels, configured routing mode), from
+`scripts/general_backorder_fixed_cost/benchmark_general_backorder_fixed_cost.py`
+(500 replications x 3 seeds for set 1, 500 reps for the sweeps):
 
-- set 1 is near-reproduced under the current Rust simulator
-  - repo reproduced mean cost: about `10381.47`
-  - published benchmark cost: `10467`
-  - average warehouse-to-retailer fill is about `98.81%`
-  - average retailer-customer fill is about `98.28%`
-- set 2 and set 3 are still unresolved
-  - literal weighted split across all incoming edges gives about `15271.29`
-  - even split across all incoming edges gives about `11899.01`
-  - duplicating the retailer target on every incoming edge gives about `8786.83`
-  - published benchmark cost is `4797`
+| instance | published | repo  | gap%   | status                          |
+|----------|----------:|------:|-------:|---------------------------------|
+| set 1    | 10467     | 10355 | -1.1%  | reproduced within tolerance     |
+| set 2    | 4797      | 15306 | +219%  | NOT reproduced                  |
+| set 3    | 4797      | 15306 | +219%  | NOT reproduced (set-2 mechanic) |
 
-The important audit outcome is that the set 2/3 mismatch is not just one bad cost number:
+Set 1 also reproduces the paper's fill-rate target (retailer fill 98-99%, warehouse fill ~98%).
 
-- the literal weighted split interpretation misses both warehouse and retailer service badly
-  - warehouse fill ranges from about `84.5%` to `100%`
-  - retailer fill ranges from about `87.9%` to `91.2%`
-- the even split interpretation gets the warehouse stock points into the published `98-99%` band, but
-  still leaves retailer fill at only about `92.5%`
-- the duplicated-target interpretation gets retailer fill to about `99%`, but warehouse fill drops to
-  about `81.6%` to `86.9%`
+### Root cause of the set 2 / set 3 gap (precise)
 
-So none of the plausible stock-point-to-edge benchmark conversions currently matches both:
+Sets 2/3 use an **order-per-edge** action space (one order per `(warehouse, retailer)` connection),
+but the published benchmark base-stock is still a 9-value per-stock-point target. The open papers
+state only that orders are placed "per edge"; the exact per-edge inventory-position / order-up-to
+transition (and the set-3 "restricted transition function") is given only in the **gated journal full
+text**, which could not be recovered from open sources.
 
-- the published cost row from Table 7
-- the published `98-99%` benchmark stock-point fill rates from Figure 3.6
+A routing-mode + level sweep localises the gap to a **consistent ~6-7 unit offset in the retailer
+order-up-to level**. Under evenly-split per-edge ordering (set 2, 500 reps):
 
-The likely source of the remaining gap is the open-paper ambiguity around how the set 2/3 benchmark
-translates a 9-parameter base-stock policy into the paper's order-per-edge action setting. The CEJOR
-paper says only that orders are "split across all upstream connections"; it does not specify the exact
-benchmark conversion rule beyond that sentence.
+| retailer order-up-to | repo cost | customer fill | warehouse fill (min) |
+|---------------------:|----------:|--------------:|---------------------:|
+| 30 (published)       | 11946     | 0.925         | 0.995                |
+| 36                   | 4568      | 0.979         | 0.995                |
+| 37                   | 4207      | 0.984         | 0.995                |
+| 40                   | 3918      | 0.994         | 0.995                |
 
-So the honest benchmark status is:
+Retailer level **~36-37** reproduces BOTH the published cost (~4797) AND the paper's ~98% retailer
+fill, while the **published level 30** gives only ~92.5% fill / cost ~12000 in the repo's convention.
+With Poisson(15) demand and lead time 1, a per-edge order-up-to of 30 cannot reach 98% fill in a
+standard S-policy under any implemented routing mode — so the gap is structural (the per-edge
+transition convention), not a tuning artefact. The repo's `retailer_total_inventory_positions`
+(env.rs) nets the in-transit pipeline and customer backorders into the order-up-to gap (standard); a
+nominal target of 30 behaves as ~36-37 if the journal's order-per-edge transition does not net the
+per-edge pipeline the same way.
 
-- set 1: near-reproduced
-- set 2 and set 3: carried as published rows, but not yet reproduced closely enough to claim
-  literature verification
+No implemented routing mode reproduces 4797 at the published level 30 (see `literature/README.md`).
+
+### Honest status
+
+- set 1: reproduced within the simulation-protocol tolerance (-1.1%);
+- set 2 / set 3: carried as published rows; the per-edge transition that would reproduce 4797 at the
+  published level 30 is not implemented (its exact spec is in the gated journal). Implementing it is
+  the single change that would flip sets 2/3 to "reproduced"; it is deferred because the correct
+  equation is not yet known and altering the existing inventory-position convention would regress
+  set 1.

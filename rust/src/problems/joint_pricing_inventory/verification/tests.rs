@@ -154,6 +154,84 @@ fn heuristic_first_actions_match_named_heuristic_evaluators() {
     assert_eq!(inventory_sensitive, inventory_sensitive_eval.first_action);
 }
 
+// Independent analytical anchor: the single-period (T=1) reduction of this environment is the
+// textbook price-setting newsvendor (Whitin 1955; Petruzzi & Dada 1999; Federgruen & Heching 1999).
+// For a fixed price p with zero starting inventory, the per-period profit is
+//   profit(q, D) = p*min(q, D) - c*q - h*(q - D)^+ - s*(D - q)^+,
+// which is a newsvendor with overage cost Co = c + h and underage cost Cu = p + s - c. The optimal
+// order quantity is the smallest y with F(y) >= Cu / (Cu + Co). This test confirms that brute-force
+// maximization of expected profit *through the env's `step_state`* selects exactly that critical-
+// fractile quantity for every price on the discrete verification instance. This validates the env
+// transition and cost accounting against an independent closed-form result, not just self-consistency.
+fn newsvendor_critical_fractile_order_up_to(
+    reference: &crate::problems::joint_pricing_inventory::literature::ExactVerificationReference,
+    price_index: usize,
+) -> usize {
+    let price = reference.price_levels[price_index];
+    let underage = price + reference.stockout_cost_per_unit - reference.procurement_cost_per_unit;
+    let overage = reference.procurement_cost_per_unit + reference.holding_cost_per_unit;
+    let critical_fractile = underage / (underage + overage);
+    let support = reference.price_demand_supports[price_index];
+    let probabilities = reference.price_demand_probabilities[price_index];
+    let mut cumulative = 0.0;
+    let mut order_up_to = support[support.len() - 1] as usize;
+    for (demand, probability) in support.iter().zip(probabilities.iter()) {
+        cumulative += probability;
+        if cumulative + 1e-12 >= critical_fractile {
+            order_up_to = *demand as usize;
+            break;
+        }
+    }
+    order_up_to.min(reference.max_order_quantity)
+}
+
+fn brute_force_single_period_best_order(
+    reference: &crate::problems::joint_pricing_inventory::literature::ExactVerificationReference,
+    price_index: usize,
+) -> usize {
+    let support = reference.price_demand_supports[price_index];
+    let probabilities = reference.price_demand_probabilities[price_index];
+    let zero_inventory = initialize_state(0).expect("state must build");
+    let mut best_quantity = 0usize;
+    let mut best_profit = f64::NEG_INFINITY;
+    for order_quantity in 0..=reference.max_order_quantity {
+        let mut expected_profit = 0.0;
+        for (demand, probability) in support.iter().zip(probabilities.iter()) {
+            let outcome = step_state(
+                &zero_inventory,
+                order_quantity,
+                price_index,
+                *demand as usize,
+                reference.price_levels,
+                reference.procurement_cost_per_unit,
+                reference.holding_cost_per_unit,
+                reference.stockout_cost_per_unit,
+            )
+            .expect("step must succeed");
+            // profit = -period_cost (no salvage in the single-period newsvendor reduction)
+            expected_profit += probability * (-outcome.period_cost);
+        }
+        if expected_profit > best_profit + 1e-12 {
+            best_profit = expected_profit;
+            best_quantity = order_quantity;
+        }
+    }
+    best_quantity
+}
+
+#[test]
+fn single_period_env_matches_price_setting_newsvendor_critical_fractile() {
+    let reference = &VERIFICATION_PROBLEM_INSTANCE;
+    for price_index in 0..reference.price_levels.len() {
+        let analytical = newsvendor_critical_fractile_order_up_to(reference, price_index);
+        let brute_force = brute_force_single_period_best_order(reference, price_index);
+        assert_eq!(
+            analytical, brute_force,
+            "price_index={price_index}: critical-fractile y*={analytical} but env brute force chose q={brute_force}"
+        );
+    }
+}
+
 #[test]
 fn exact_dp_dominates_repo_heuristics() {
     let optimal =

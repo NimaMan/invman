@@ -50,21 +50,85 @@ Core executable code remains at the package root:
 
 ## Verification Status
 
-Current status: `joint_pricing_inventory` is not literature-verified.
+Current status: `joint_pricing_inventory` is **not literature-verified** (no published per-instance
+optimal-profit row is reproduced). It **is** validated against an independent analytical benchmark and
+against an independent DP, so the env transition + cost are implementation-correct.
 
-Reason:
+### What the env actually implements (formulation anchor)
 
-- Zhou et al. (2022) study an infinite-horizon joint pricing-and-inventory problem with reference
-  price effects. That is not the same executable formulation as this repo package.
-- Qin, Simchi-Levi, and Wang (2022) study a data-driven version of the classic joint
-  pricing-inventory problem, but the publicly accessible article metadata does not provide a clean
-  instance-level benchmark table for this repo package, and the replication files are not openly
-  accessible from this environment without the separate INFORMS download flow.
+The env in `env.rs` is a faithful, classical **finite-horizon joint pricing-and-inventory** model with
+zero lead time, price-dependent stochastic demand, lost sales, holding cost on ending inventory, and a
+profit objective. Its single-period (`T = 1`) reduction is exactly the textbook **price-setting
+newsvendor**:
 
-So this package currently uses:
+- per-period profit `= p·min(q, D) − c·q − h·(q − D)⁺ − s·(D − q)⁺`
+- overage cost `Co = c + h`, underage cost `Cu = p + s − c`
+- optimal order-up-to `= smallest y with F(y) ≥ Cu / (Cu + Co)` (critical fractile)
 
-- literature references as formulation anchors
-- a repo-native reduced exact verifier for implementation correctness
+Classical sources for this formulation: Whitin (1955), Petruzzi & Dada (1999), Federgruen & Heching
+(1999). The multi-period finite-horizon version is the classic joint pricing-inventory control problem,
+also the model class studied (in a data-driven setting) by Qin, Simchi-Levi & Wang (2022). These are
+carried in `literature/references.rs` as `PRICE_SETTING_NEWSVENDOR_ANCHOR` and `QIN_2022_REFERENCE`.
+
+### Why it is still `literature_verified = false`
+
+Pinned root cause (this is a no-published-anchor case, not a model bug):
+
+1. Zhou et al. (2022) use an **infinite-horizon MDP with a reference-price state** (adaptation-level
+   theory). The repo deliberately omits the reference-price state, so it is a different MDP.
+2. Qin, Simchi-Levi & Wang (2022) match the repo's *model class* (finite-horizon, profit, price-
+   dependent demand), but their result is a **sample-complexity theorem for a data-driven SAA scheme**;
+   the article does not expose a clean reproducible per-instance optimal-profit table to anchor to.
+3. The benchmark-policy names carried in `references.rs` for both papers
+   (`ddqn_joint_price_inventory`, `value_iteration_baseline`, `q_learning_baseline`,
+   `data_driven_approximation`, `deterministic_baseline`, `random_baseline`) are **labels only — none
+   are implemented in this package**. They are not reproduced numbers.
+
+So verification rests on two independent, correct anchors instead of a published number:
+
+- an **analytical** anchor: `verification/tests.rs ::
+  single_period_env_matches_price_setting_newsvendor_critical_fractile` confirms the env's `T = 1`
+  optimum equals the closed-form critical fractile for every price on the verification instance.
+  (Confirmed numerically against the installed bindings: y* = 3, 2, 2 for prices 7, 9, 11.)
+- a **reduced exact DP** anchor: the repo finite-horizon DP (`finite_horizon_dp.rs`) is checked to
+  dominate both heuristics and was cross-checked exactly against an independent Python DP
+  (optimal cost −33.1781, first action `(2, 1)`).
+
+## Benchmark Results
+
+Run with `scripts/joint_pricing_inventory/benchmark_policies_against_exact_and_learned.py`
+(no rebuild, no retrain; uses installed bindings + stored trained params). Profit = −cost.
+
+### Exact-DP-anchored (verifier instance: 5 periods, discrete price-dependent demand)
+
+| Policy | First action (q, price idx) | Discounted cost | Profit | Profit optimality gap |
+| --- | --- | ---: | ---: | ---: |
+| exact DP optimal | (2, 1) | −33.178 | 33.178 | 0.00% |
+| `static_price_base_stock` | (2, 1) | −32.508 | 32.508 | 2.02% |
+| `inventory_sensitive_base_stock` | (2, 2) | −27.594 | 27.594 | 16.83% |
+
+### Learned-vs-heuristic (primary instance: 18 periods, Poisson demand; no exact optimum exists)
+
+4096 fresh held-out seeds (base 777000); trained depth-2 oblique/linear soft-tree from
+`outputs/joint_pricing_inventory/tree_primary_d2_linear_b8_s123_e120_eval2048.json`.
+
+| Policy | Mean discounted cost | Profit | Std |
+| --- | ---: | ---: | ---: |
+| soft tree (depth 2) | −216.060 | 216.060 | 32.10 |
+| `static_price_base_stock` | −172.635 | 172.635 | 23.84 |
+| `inventory_sensitive_base_stock` | −171.513 | 171.513 | 36.62 |
+
+Learned-policy profit improvement over the best heuristic: **+25.15%**.
+
+## Remaining steps
+
+- A TRUE learned-policy optimality gap on the verifier instance (soft tree trained on the verifier
+  instance, compared to its exact DP) is not produced here because the Python `SoftTreePolicy` class
+  referenced by `scripts/joint_pricing_inventory/common.py` is missing (it was moved into Rust), and a
+  fresh CMA-ES pass would contend with parallel builds. The new benchmark script avoids retraining.
+- Optional literature upgrade: if a citeable paper with a reproducible finite-horizon
+  joint-pricing-inventory optimal-profit instance is located (e.g. a Federgruen–Heching worked
+  example), carry that row in `references.rs` and reproduce it to flip `literature_verified = true`.
 
 State interface:
 

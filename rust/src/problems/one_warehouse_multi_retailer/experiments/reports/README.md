@@ -1,5 +1,15 @@
 # one_warehouse_multi_retailer Paper Benchmark
 
+> **Status (2026-05-31): the soft-tree rows below are STALE / not regenerable on the current
+> install.** They were produced by `scripts/.../run_paper_benchmark.py`, which imports
+> `invman.policies.soft_tree.SoftTreePolicy` — a module path removed by the repo's policy
+> refactor (no `SoftTreePolicy` exists anywhere under `invman/` today). The cached numbers are
+> kept for historical reference only. For numbers reproducible against the installed
+> `invman_rust`, use `scripts/.../run_heuristic_published_benchmark.py` (heuristics vs published
+> + exact-DP self-consistency); see `../../literature/README.md` for the cost-row table and the
+> honest `partial` verification status. The Rust rollout bindings themselves are present and
+> working; only the Python policy wrapper import is stale.
+
 - source: Kaynov et al. (2024), International Journal of Production Economics 267, 109088
 - url: https://doi.org/10.1016/j.ijpe.2023.109088
 - instances: `14`

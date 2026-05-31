@@ -27,31 +27,60 @@ The older reduced single-retailer finite-horizon slice is still kept only as ver
 
 ## Literature Anchor
 
-Primary paper:
+Two distinct papers are involved; do not conflate them.
+
+Headline paper (full truck-dispatch model, NOT reproduced):
 
 - Giannoccaro and Pontrandolfo (2010), *A Reinforcement Learning Approach for Inventory Replenishment in Vendor-Managed Inventory Systems With Consignment Inventory*
 - DOI: <https://doi.org/10.1080/10429247.2010.11431878>
 
-Public companion material:
+Verified analytical anchor (the newsvendor worked case, REPRODUCED EXACTLY):
 
-- worked newsvendor case study: <https://web.mst.edu/_disabled/gosavia/vmi_case_study.pdf>
+- Sui, Gosavi, and Lin (2010), *A reinforcement learning approach for inventory replenishment in
+  vendor-managed inventory systems with consignment inventory*, Engineering Management Journal,
+  22(4): 44-53
+- public worked case study (Gosavi 2020, based on the above): <https://web.mst.edu/_disabled/gosavia/vmi_case_study.pdf>
 - author MATLAB code for that case: <https://web.mst.edu/_disabled/gosavia/vmi_newsvendor.m>
 
 Published paper experiment rows:
 
-- the paper reports an 8-case table with newsvendor and RL profits
+- the Giannoccaro headline paper reports an 8-case table with newsvendor and RL profits
 - those profit rows are not carried as benchmark assertions because the public text does not define
   the high/low demand-signal process tightly enough to reproduce the rows
 
 ## Current Status
 
-- literature-verified: yes for the public worked newsvendor case-study calculation only
-- literature-verified: no for the full Giannoccaro truck-dispatch benchmark
-- repo-exact verified: yes on the reduced single-retailer verifier
+Overall: **literature-verified = partial.**
 
-Current benchmark status on the paper-facing simulator:
+- literature-verified: **yes (confirmed against the source PDF)** for the public Sui/Gosavi/Lin (2010)
+  worked newsvendor case-study calculation
+- literature-verified: **no** for the full Giannoccaro truck-dispatch 8-case profit table
+- repo-exact verified: **yes** on the reduced single-retailer verifier (exact finite-horizon DP
+  dominates both repo heuristics, `verification/tests.rs::exact_dp_dominates_repo_heuristics`)
 
-- the public analytical newsvendor worked case is reproduced exactly enough
+Worked-case verification, line by line (env vs the cited PDF, page 4 of `vmi_case_study.pdf`):
+
+| quantity                  | published (Gosavi/Sui/Gosavi/Lin) | env (`newsvendor_case.rs`) |
+| ------------------------- | --------------------------------- | -------------------------- |
+| mean demand rate `mu`     | 0.375                             | 0.375                      |
+| demand variance `sigma^2` | 0.5833                            | 0.58333                    |
+| cycle time mean `mu_C`    | 40                                | 40.0                       |
+| cycle time var `sigma_C^2`| 50                                | 50.0                       |
+| cycle demand mean         | 15                                | 15.0                       |
+| cycle demand var          | 30.36 (= 23.33 + 7.03)            | 30.3646                    |
+| mean-demand heuristic `S` | 15                                | 15.0                       |
+| six-sigma `S`             | 31.53                             | 31.531                     |
+| newsvendor `S`            | 26.96                             | 26.99                      |
+
+The only deviation is the newsvendor `S`: the PDF prints `k = Phi^-1(0.98) = 2.17` (a hand-rounded
+critical ratio and a truncated `k`), giving `15 + 2.17*sqrt(30.36) = 26.96`. The env uses the
+full-precision critical ratio `0.9852` and `k = 2.176`, giving `26.99`. The verification test allows
+a `0.05` tolerance, which this 0.03 rounding gap satisfies. The math derivation (Wald's equation for
+the compound-Poisson demand moments, random-sum cycle-demand variance, classical newsvendor critical
+ratio) matches the paper exactly.
+
+Truck-dispatch (headline) benchmark status:
+
 - the 8-case truck-dispatch case definitions are executable in Rust, but their published profit
   rows are dropped from the benchmark layer
 - the paper timing audit favors same-cycle dispatch with same-cycle retailer arrival for the current
@@ -63,6 +92,61 @@ Current benchmark status on the paper-facing simulator:
 - the remaining gap is still statistically meaningful, so the full paper table is not used for
   verification or paper comparisons
 
+## Benchmark
+
+Because the headline paper table is not a valid anchor, the policy benchmark runs on the
+**repo-native reduced single-retailer slice** (`env::step_state`), which is the env exposed to Python
+and validated by the exact DP regression. The benchmark compares, on a held-out common-random-number
+seed bank:
+
+- tuned `retailer_base_stock` (best base-stock level on a grid)
+- tuned `dc_reserve_base_stock` (best level x reserve on a grid)
+- a CMA-ES-trained soft decision tree (depth 2, scalar shipment action), trained through the
+  installed `vendor_managed_inventory_soft_tree_population_rollout` binding (no Rust rebuild)
+
+over an instance set: `PRIMARY_REFERENCE_INSTANCE` plus four perturbations (low/high stockout penalty,
+low/high demand). Script:
+
+- [scripts/vendor_managed_inventory/benchmark_reduced_single_retailer.py](/home/nima/code/ml/invman/scripts/vendor_managed_inventory/benchmark_reduced_single_retailer.py)
+
+The exact finite-horizon DP optimal (`finite_horizon_dp::solve_optimal_policy`) is the correct
+ceiling for this benchmark but is **not exposed as a Python binding**; running it from Python needs a
+Rust rebuild plus a `bindings.rs` edit, which is out of scope here. Adding that binding is the top
+next step (see below).
+
+### Benchmark results (held-out discounted cost, lower is better)
+
+Run on 2026-05-31 via the script above (`invman_rust` + pycma, no Rust rebuild). Heuristics are tuned
+on a grid and scored as 32 held-out seeds x 1500 internal reps; the soft tree is trained with CMA-ES
+(depth 2, 28 params, temperature 0.1, 64 train seeds, 200 iters) and scored on 4000 held-out
+single-path seeds. SEMs are below 0.4 for every cell, so the ranking is statistically meaningful.
+
+| instance      | retailer_base_stock | dc_reserve_base_stock | soft_tree (d2) | soft_tree vs best heuristic |
+| ------------- | ------------------- | --------------------- | -------------- | --------------------------- |
+| primary       | 115.75              | 115.75                | 117.80         | -1.76% (worse)              |
+| low_penalty   | 103.01              | 103.01                | 103.18         | -0.16% (worse)              |
+| high_penalty  | 124.34              | 124.34                | 127.33         | -2.40% (worse)              |
+| low_demand    | 101.63              | 101.61                | 101.50         | +0.10% (better)             |
+| high_demand   | 119.54              | 119.54                | 120.63         | -0.91% (worse)              |
+
+Reading: on this single-stage lost-sales slice the cost is convex in the base-stock level with a clean
+single optimum, so the tuned base-stock heuristic is essentially optimal and there is little extra
+structure for the tree to exploit. The CMA-ES soft tree learns an approximately base-stock-like policy
+and lands within ~2.4% of the tuned heuristic on every instance (ties/marginally beats it on
+low_demand) but does not consistently beat it. With a smaller training budget (8 train seeds,
+temperature 0.25) the tree underfits and the gap widens to ~3-8%, so the residual gap is a
+training-budget/temperature artifact, not a structural failure of the policy class.
+
+## Next steps
+
+- Expose `vendor_managed_inventory_solve_optimal_policy` (and a heuristic-evaluator binding) from
+  `finite_horizon_dp.rs` so the benchmark can report the exact-DP optimality gap, not just the
+  heuristic-vs-tree gap. This needs a Rust rebuild + a `bindings.rs` edit (out of scope for this
+  pass).
+- If the headline truck-dispatch table is ever to be a benchmark anchor, obtain the original Sui,
+  Gosavi & Lin (2010) dataset / appendix to pin down the high/low demand-signal transition law; until
+  then keep it out of the benchmark layer.
+
 ## Structure
 
 - [literature/README.md](/home/nima/code/ml/invman/rust/src/problems/vendor_managed_inventory/literature/README.md)
@@ -72,7 +156,13 @@ Current benchmark status on the paper-facing simulator:
 
 Code layout:
 
-- root env / rollout / heuristics: paper-first continuous-time VMI truck-dispatch environment
+- `env.rs`: holds BOTH env families — the reduced single-retailer finite-horizon slice
+  (`step_state`, the Python-exposed and DP-verified env used for the benchmark) and the
+  continuous-time multi-retailer truck-dispatch model (`step_paper_state`, the headline-paper env)
+- `finite_horizon_dp.rs`: exact DP + named-heuristic evaluator on the reduced slice (Rust-only)
+- `heuristics/`: `retailer_base_stock`, `dc_reserve_base_stock` (reduced slice), plus
+  `paper_newsvendor` / `paper_mean_demand` allocation rules (truck-dispatch model)
 - [references.rs](/home/nima/code/ml/invman/rust/src/problems/vendor_managed_inventory/literature/references.rs): literature rows and problem instances
 - [newsvendor_case.rs](/home/nima/code/ml/invman/rust/src/problems/vendor_managed_inventory/verification/newsvendor_case.rs): literature-backed analytical verification helper
 - [tests.rs](/home/nima/code/ml/invman/rust/src/problems/vendor_managed_inventory/verification/tests.rs): executable verification assertions
+- [scripts/vendor_managed_inventory/benchmark_reduced_single_retailer.py](/home/nima/code/ml/invman/scripts/vendor_managed_inventory/benchmark_reduced_single_retailer.py): the policy benchmark runner

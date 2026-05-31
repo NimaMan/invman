@@ -3,10 +3,15 @@
 Current literature anchors for `spare_parts_inventory`:
 
 - Kranenburg (2006), Chapter 5 exact lateral-transshipment benchmark
-- the spare-parts review carried in `references.rs`
-- Zhou et al. 2024
-- van der Haar et al. 2025
-- van Oers et al. 2024 table-only benchmark catalog
+  — LITERATURE-VERIFIED: `kranenburg_lateral_transshipment.rs` reproduces all 35
+  published Table 5.2 rows (worst absolute deviation 0.005 vs the 0.02 table-rounding
+  tolerance). This is the only block whose published numbers are recomputed by a repo
+  solver rather than stored.
+- the spare-parts review carried in `references.rs` — motivational only, no numbers
+- Zhou et al. 2024 — motivational only, no numbers
+- van der Haar et al. 2025 — motivational only, no numbers
+- van Oers et al. 2024 — table-only benchmark catalog: Table 1 rows stored exactly as
+  published; no repo solver re-derives them yet
 
 Repo interpretation:
 

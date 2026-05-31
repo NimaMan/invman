@@ -83,7 +83,7 @@ pub const STERMAN_1989_REFERENCE: PublishedBenchmarkReference = PublishedBenchma
     source: "Sterman (1989), Management Science 35(3)",
     url: "https://doi.org/10.1287/mnsc.35.3.321",
     benchmark_policies: &["sterman_anchor_adjust"],
-    notes: "Classic four-stage Beer Game benchmark. The paper reports the benchmark costs for the optimized anchor-and-adjust policy; the exact board-game equations are carried and replicated by Caner et al. (2014).",
+    notes: "Classic four-stage Beer Game benchmark. The paper reports the benchmark costs for the optimized anchor-and-adjust policy; the exact board-game equations are carried and replicated by Edali & Yasarcan (2014). NOTE: the published per-stage [46,50,54,54]/total 204 benchmark is reproduced ONLY by the standalone closed-form board-game simulator (verification/classic_board_game.rs), not by the reusable env.rs transition that the heuristics and learned soft-tree run on.",
 };
 
 pub const OROOJLOYJADID_2021_REFERENCE: PublishedBenchmarkReference = PublishedBenchmarkReference {
@@ -93,11 +93,15 @@ pub const OROOJLOYJADID_2021_REFERENCE: PublishedBenchmarkReference = PublishedB
     notes: "Background RL paper on decentralized Beer-Game control with local observations only. The paper reports a 100-period uniform-demand benchmark and a Sterman row, but the public paper formula, timing description, and released code do not line up tightly enough for the repo to carry that row as an executable verification anchor.",
 };
 
+// CANER_2014_REFERENCE: historical constant name kept stable for internal references.
+// CITATION CORRECTION: the actual JASSS 2014 paper is by Edali & Yasarcan, not "Caner et al.".
+// The author attribution that previously read "Caner et al." was wrong; the URL and content
+// (the exact board-game R reconstruction) were always the Edali & Yasarcan paper.
 pub const CANER_2014_REFERENCE: PublishedBenchmarkReference = PublishedBenchmarkReference {
-    source: "Caner et al. (2014), A Mathematical Model of the Beer Game",
+    source: "Edali & Yasarcan (2014), A Mathematical Model of the Beer Game, JASSS 17(4) 2, DOI 10.18564/jasss.2555",
     url: "https://www.jasss.org/17/4/2.html",
     benchmark_policies: &["sterman_anchor_adjust"],
-    notes: "This paper reconstructs the board-game Beer Game exactly and provides public R code for the verification benchmark. It reports that the modified code reproduces the benchmark costs from Sterman (1989) exactly.",
+    notes: "Edali & Yasarcan reconstruct the board-game Beer Game exactly and provide public R code for the verification benchmark. With theta=0, sat=1, wsl=1, S'=[28,28,28,20], h=0.5, p=1.0 they reproduce the benchmark costs from Sterman (1989) exactly. The repo port of that R code (verification/classic_board_game.rs) yields per-stage [46,50,54,54], total 204. (The previous 'Caner et al.' attribution was a citation error; constant name retained to avoid churn.)",
 };
 
 pub const MOUSA_2024_REFERENCE: PublishedBenchmarkReference = PublishedBenchmarkReference {
@@ -113,7 +117,7 @@ pub const STERMAN_1989_CLASSIC_BENCHMARK: PublishedPolicyBenchmark = PublishedPo
     policy_name: "sterman_anchor_adjust",
     per_agent_mean_costs: &[46.0, 50.0, 54.0, 54.0],
     total_mean_cost: 204.0,
-    notes: "Classic 36-week Beer Game benchmark costs for the optimized anchor-and-adjust policy. Caner et al. (2014) state that their exact board-game reconstruction reproduces these Sterman (1989) benchmark values exactly.",
+    notes: "Classic 36-week Beer Game benchmark costs for the optimized anchor-and-adjust policy. Edali & Yasarcan (2014) state that their exact board-game reconstruction reproduces these Sterman (1989) benchmark values exactly, and the repo port verification/classic_board_game.rs confirms [46,50,54,54]/204. IMPORTANT: this 204 is a property of the closed-form board-game bookkeeping ONLY. Running the repo's reusable env.rs anchor-and-adjust heuristic with these same parameters on PRIMARY_REFERENCE_INSTANCE yields 378 (measured via decentralized_inventory_control_policy_rollout_from_paths), so env.rs is NOT calibrated to this published anchor.",
 };
 
 pub const PRIMARY_REFERENCE_INSTANCE: DecentralizedInventoryReferenceInstance =
@@ -140,7 +144,7 @@ pub const PRIMARY_REFERENCE_INSTANCE: DecentralizedInventoryReferenceInstance =
         sterman_adjustment_times: &[1.0, 1.0, 1.0, 1.0],
         sterman_supply_line_weights: &[1.0, 1.0, 1.0, 1.0],
         published_sterman_benchmark: Some(STERMAN_1989_CLASSIC_BENCHMARK),
-        notes: "Classic four-stage Beer Game state with the canonical 36-week demand path 4,4,4,4,8,...,8. The state and Sterman parameter values follow the exact board-game reconstruction reported by Caner et al. (2014), which in turn reproduces the benchmark costs from Sterman (1989).",
+        notes: "Classic four-stage Beer Game state with the canonical 36-week demand path 4,4,4,4,8,...,8. The state and Sterman parameter values follow the exact board-game reconstruction reported by Edali & Yasarcan (2014), which in turn reproduces the benchmark costs from Sterman (1989). These parameters reproduce 204 ONLY inside verification/classic_board_game.rs; the reusable env.rs transition is a different (also-valid) decentralized serial MDP whose pipeline/supply-line bookkeeping differs, and it does NOT reproduce 204 under these parameters (anchor-and-adjust -> 378; best simple base-stock S=24 -> 278). Treat this instance as the literature anchor for the closed-form simulator, NOT as a verification target for env.rs.",
     };
 
 pub const VERIFICATION_CUSTOMER_DEMAND_SUPPORT: &[u32] = &[0, 1];

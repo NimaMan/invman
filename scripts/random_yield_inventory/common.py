@@ -7,7 +7,17 @@ from typing import Iterable
 
 import numpy as np
 
-from invman.policies.soft_tree import SoftTreePolicy
+# NOTE (2026-05): the soft-tree descriptor moved from the removed `invman.policies.soft_tree`
+# module to `invman.policy.Policy(backbone="soft_tree", ...)`. The exact-DP / heuristic validation
+# and literature-summary scripts in this folder do NOT need a soft-tree class, so this import is made
+# lazy: importing common.py no longer fails, and the soft-tree helpers below resolve the class only
+# if/when they are actually called. New work should prefer
+# scripts/random_yield_inventory/benchmark_policies_vs_exact_and_heuristics.py, which uses the
+# current Policy interface directly.
+try:  # pragma: no cover - legacy path, kept for backward compatibility only
+    from invman.policies.soft_tree import SoftTreePolicy  # type: ignore
+except Exception:  # ModuleNotFoundError on current package layout
+    SoftTreePolicy = None  # type: ignore
 
 import invman_rust
 

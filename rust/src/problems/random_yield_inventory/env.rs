@@ -1,3 +1,24 @@
+// env.rs
+// ======
+// Executable MDP for the single-item, periodic-review, all-or-nothing random-yield inventory problem
+// with positive deterministic lead time, finite horizon, discounted cost, full backlogging
+// (structural match to Yan et al. 2026). Raw state only; no normalization/expectation features here.
+//
+// STATE: (period, inventory_level f64, pipeline_orders[L] f64). pipeline_orders[0] is the oldest
+// outstanding order (placed L periods ago); a freshly placed order is appended to the back.
+//
+// step_state(state, order, demand, arrival_succeeds, h, b, c):  ORDER OF EVENTS per period
+//   1. arrival:  realized_arrival = pipeline[0] if arrival_succeeds else 0   (all-or-nothing batch)
+//   2. demand:   ending = inventory + realized_arrival - demand
+//   3. cost:     period_cost = c*round(order)^+ + h*max(ending,0) + b*max(-ending,0)
+//   4. shift:    next_pipeline = pipeline[1..] ++ [round(order)^+]; period += 1
+//   reward = -period_cost. Orders are rounded to the nearest non-negative integer (round_order_quantity).
+// An order placed now thus arrives after exactly L periods. There is NO physical order cap here
+// (the DP cap lives only in finite_horizon_dp.rs for tractability).
+//
+// expected_inventory_position(state, p) = inventory + p * sum(pipeline): the yield-adjusted inventory
+// position used by the LIR/WNH heuristics.
+
 use pyo3::exceptions::PyValueError;
 use pyo3::PyResult;
 

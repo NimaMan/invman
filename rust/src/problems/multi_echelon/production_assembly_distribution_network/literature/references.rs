@@ -107,9 +107,13 @@ pub const PIRHOOSHYARAN_2021_REFERENCE: PublishedBenchmarkReference =
 /// solver there (`multi_echelon/serial::exact`) reproduces every published
 /// `published_average_cost` within 0.05% relative error, cross-checked against Snyder's
 /// public `stockpyl.ssm_serial` reference implementation. The Pirhooshyaran network env
-/// in THIS family is a richer model and does not reproduce these optima (see
-/// `serial_echelon_simulation`); the rows are carried here because Pirhooshyaran's
-/// Tables 2-3 report them, not because this env reproduces them.
+/// in THIS family is FAITHFUL to the paper's MDP and cost (re-verified equation-by-equation
+/// 2026-05) but does not yet reproduce these optima when driven with the carried ECHELON
+/// OUL levels, because Pirhooshyaran's pairwise policy targets the LOCAL raw-material
+/// inventory position (eq. 5) rather than echelon positions -- a level-interpretation
+/// mismatch, NOT the per-node production delay the prior notes claimed (processing time is
+/// zero in both the paper and the env). See `serial_echelon_simulation`; the rows are
+/// carried here because Pirhooshyaran's Tables 2-3 report them.
 pub const SERIAL_CLARK_SCARF_REFERENCE: PublishedBenchmarkReference =
     PublishedBenchmarkReference {
         source: "Clark & Scarf (1960); Snyder & Shen, Fundamentals of Supply Chain Theory (Example 6.1); stockpyl.ssm_serial reference implementation",
@@ -380,7 +384,7 @@ pub const PRIMARY_REFERENCE_INSTANCE: NetworkInventoryReferenceInstance =
         initial_internal_backlog_by_edge: &[0, 0],
         initial_external_backlog: &[0, 0, 0],
         initial_supply_pipelines: &[&[0], &[0], &[0, 0]],
-        notes: "Paper-shaped three-echelon serial case from Tables 2 and 3, identical to Snyder & Shen 'Fundamentals of Supply Chain Theory' Example 6.1 (echelon holding [2,2,3], lead times [2,1,1], stockout 37.12, Normal(5,1) demand). Local holding costs [2,4,7] (upstream->downstream) and the analytical OULs are carried in the paper's published upstream-to-downstream order. These rows describe the TEXTBOOK serial system; its env-faithful, literature-verified home is the `multi_echelon/serial` family, whose env simulation under the optimal echelon base-stock policy reproduces the published optimum (47.65) and whose `exact` solver reproduces it analytically. The Pirhooshyaran network env in THIS family is a richer model (per-node production + pipeline holding) and does NOT reproduce these optima, so this instance is not env-literature-verified here; see `serial_echelon_simulation` for the quantitative structural gap.",
+        notes: "Paper-shaped three-echelon serial case from Tables 2 and 3, identical to Snyder & Shen 'Fundamentals of Supply Chain Theory' Example 6.1 (echelon holding [2,2,3], lead times [2,1,1], stockout 37.12, Normal(5,1) demand). Local holding costs [2,4,7] (upstream->downstream). These rows describe the TEXTBOOK serial system; its env-faithful, literature-verified home is the `multi_echelon/serial` family, whose `exact` solver reproduces the published optimum (47.65) analytically. Pirhooshyaran Table 3 reports that simulating THEIR finite-horizon pairwise env with the analytical OULs (10.69, 5.53, 6.49) also yields 47.65. The Pirhooshyaran env in THIS family is FAITHFUL to the paper's MDP (eq. 1-13) and cost (eq. 3) -- there is NO extra per-node production delay (processing time is zero; verified) and holding-on-in-transit is faithful (eq. 3). It does not yet reproduce 47.65 when driven with these levels because they are ECHELON base-stock levels applied to a LOCAL raw-position pairwise policy (eq. 5, which excludes finished goods), a level-interpretation mismatch, not a model deviation. literature_verified stays false until a published cost is reproduced by env simulation; see `serial_echelon_simulation` and `verification/README.md` for the corrected analysis and next steps. (The pairwise_oul_levels field order here is edge-then-external; the per-node mapping is documented in the reproduction script.)",
     };
 
 pub const VERIFICATION_SERIAL_EDGES: &[NetworkEdge] = &[NetworkEdge {

@@ -8,8 +8,8 @@ use crate::problems::joint_replenishment::heuristics::{
     dynamic_order_up_to_order_quantities, minimum_order_quantity_order_quantities,
 };
 use crate::problems::joint_replenishment::literature::references::{
-    PRIMARY_REFERENCE_INSTANCE, SMALL_SCALE_SETTINGS, VANVUCHELEN_2020_REFERENCE,
-    VERIFICATION_PROBLEM_INSTANCE,
+    PRIMARY_REFERENCE_INSTANCE, SMALL_SCALE_SETTINGS, VANVUCHELEN_2020_FIGURE3_ANCHOR,
+    VANVUCHELEN_2020_REFERENCE, VERIFICATION_PROBLEM_INSTANCE,
 };
 
 #[derive(Clone, Copy)]
@@ -51,7 +51,9 @@ const WORKED_TRANSITION_CASE: WorkedTransitionCase = WorkedTransitionCase {
 fn reference_set_has_expected_shape() {
     assert_eq!(VANVUCHELEN_2020_REFERENCE.benchmark_policies.len(), 3);
     assert!(VANVUCHELEN_2020_REFERENCE.reported_numbers_available);
-    assert!(!VANVUCHELEN_2020_REFERENCE.numbers_anchor_repo_assertions);
+    // The paper exposes one exact, executable anchor (Figure 3 optimal action for setting 5),
+    // so the reference is now treated as anchoring a repo assertion.
+    assert!(VANVUCHELEN_2020_REFERENCE.numbers_anchor_repo_assertions);
     assert_eq!(SMALL_SCALE_SETTINGS.len(), 16);
     assert_eq!(PRIMARY_REFERENCE_INSTANCE.num_items, 2);
     assert_eq!(PRIMARY_REFERENCE_INSTANCE.truck_capacity, 6);
@@ -62,7 +64,7 @@ fn reference_set_has_expected_shape() {
     assert!(!VERIFICATION_PROBLEM_INSTANCE.literature_verified);
     assert_eq!(
         VERIFICATION_PROBLEM_INSTANCE.verification_source,
-        "repo_exact_solver_not_verified_against_literature"
+        "repo_finite_horizon_self_consistency_comparator"
     );
 }
 
@@ -173,4 +175,66 @@ fn exact_dp_dominates_repo_heuristics() {
         optimal.discounted_cost,
         dynout.discounted_cost
     );
+}
+
+#[test]
+fn published_figure3_anchor_has_expected_shape() {
+    // The carried anchor must point at setting 5 (the family Figure 3/4 visualise) and at the
+    // exact state/action the paper states in prose: state (5,0), optimal q=(0,6), heuristic q=(2,4).
+    let anchor = VANVUCHELEN_2020_FIGURE3_ANCHOR;
+    assert_eq!(anchor.setting_name, "vanvuchelen2020_small_scale_setting_5");
+    assert_eq!(anchor.setting_name, PRIMARY_REFERENCE_INSTANCE.name);
+    assert_eq!(anchor.state_inventory_levels, &[5, 0]);
+    assert_eq!(anchor.optimal_action, &[0, 6]);
+    assert_eq!(anchor.heuristic_action, &[2, 4]);
+    assert_eq!(anchor.discount_factor, 0.99);
+
+    // Both the published optimal action and the published heuristic action ship exactly one full
+    // truckload (aggregate = V = 6), consistent with the setting-5 truck capacity.
+    let truck_capacity = PRIMARY_REFERENCE_INSTANCE.truck_capacity;
+    let optimal_total: usize = anchor.optimal_action.iter().sum();
+    let heuristic_total: usize = anchor.heuristic_action.iter().sum();
+    assert_eq!(optimal_total % truck_capacity, 0);
+    assert_eq!(heuristic_total % truck_capacity, 0);
+    assert_eq!(optimal_total / truck_capacity, 1);
+    assert_eq!(heuristic_total / truck_capacity, 1);
+}
+
+#[test]
+fn env_reproduces_figure3_anchor_one_period_cost() {
+    // Numerically verify the env one-period accounting (paper Eq. 2 / Eq. 4) at the published
+    // anchor state-action for setting 5. We do NOT re-derive the optimal action here (that needs an
+    // infinite-horizon solver, exercised independently in the benchmark script); we confirm that the
+    // env evaluates the published optimal action with the paper's cost convention.
+    //
+    // Setting 5: K=75, k=[40,10], h=[1,1], b=[19,19], V=6.
+    // State (5,0), optimal action q=(0,6): only shipper 2 orders one FTL.
+    //   trucks = 1  -> major cost = 75
+    //   minor  = k2 = 10 (only item 2 ordered)            -> order cost = 85
+    // Take a worked demand d=(2,4):
+    //   I1 = 5 + 0 - 2 = 3  (holding 1*3 = 3)
+    //   I2 = 0 + 6 - 4 = 2  (holding 1*2 = 2)              -> holding cost = 5, shortage = 0
+    //   period cost = 85 + 5 = 90
+    let setting = PRIMARY_REFERENCE_INSTANCE;
+    let anchor = VANVUCHELEN_2020_FIGURE3_ANCHOR;
+    let state = initialize_state(anchor.state_inventory_levels).expect("state must build");
+    let demand = [2usize, 4usize];
+    let outcome = step_state(
+        &state,
+        anchor.optimal_action,
+        &demand,
+        setting.truck_capacity,
+        setting.minor_order_costs,
+        setting.major_order_cost,
+        setting.holding_costs,
+        setting.shortage_costs,
+    )
+    .expect("step must succeed");
+
+    assert_eq!(outcome.trucks_used, 1);
+    assert_eq!(outcome.order_cost, 85.0);
+    assert_eq!(outcome.next_state.inventory_levels, vec![3, 2]);
+    assert_eq!(outcome.holding_cost, 5.0);
+    assert_eq!(outcome.shortage_cost, 0.0);
+    assert_eq!(outcome.period_cost, 90.0);
 }

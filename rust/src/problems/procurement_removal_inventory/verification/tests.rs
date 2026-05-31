@@ -9,7 +9,7 @@ use crate::problems::procurement_removal_inventory::heuristics::{
 };
 use crate::problems::procurement_removal_inventory::literature::references::{
     MAGGIAR_2017_REFERENCE, MAGGIAR_2025_REFERENCE, PRIMARY_REFERENCE_INSTANCE,
-    VERIFICATION_PROBLEM_INSTANCE,
+    REMOVAL_ACTIVE_REFERENCE_INSTANCE, VERIFICATION_PROBLEM_INSTANCE,
 };
 
 #[derive(Clone, Copy)]
@@ -187,6 +187,51 @@ fn heuristic_first_actions_match_named_heuristic_evaluators() {
 
     assert_eq!(interval, interval_eval.first_action);
     assert_eq!(buffer, buffer_eval.first_action);
+}
+
+#[test]
+fn removal_active_instance_is_well_formed() {
+    // The removal-active benchmark instance must (a) be a valid env state and (b) respect the
+    // Maggiar & Sadighian (2017) cost ordering used throughout this package: Assumption 2(ii)
+    // c > s (purchase cost above return value) and 2(iii) l <= s (liquidation no greater than
+    // return value). It must also start overstocked relative to demand so the removal channel can
+    // bind, and its carried benchmark levels must form a valid interval (order_up_to <=
+    // remove_down_to) where the removal level is strictly above the order level (removal lever is
+    // exercised), unlike the primary instance where they collapse together.
+    let instance = REMOVAL_ACTIVE_REFERENCE_INSTANCE;
+    let state = initialize_state(
+        instance.initial_inventory_level,
+        instance.initial_returnable_inventory,
+    )
+    .expect("removal-active initial state must build");
+    assert!(state.returnable_inventory <= state.inventory_level);
+
+    assert!(instance.purchase_cost_per_unit > instance.return_value_per_unit);
+    assert!(instance.return_value_per_unit >= instance.liquidation_value_per_unit);
+
+    assert!(instance.benchmark_order_up_to <= instance.benchmark_remove_down_to);
+    assert!(instance.benchmark_remove_down_to > instance.benchmark_order_up_to);
+    assert!((instance.initial_inventory_level as f64) > instance.demand_mean);
+
+    // A worked step that exercises the removal channel: from the overstocked start, removing units
+    // returns from the returnable pool first (Corollary 1: never liquidate what can be returned),
+    // and any excess beyond the returnable pool is liquidated.
+    let outcome = step_state(
+        &state,
+        0,  // no purchase
+        10, // remove 10 of 12 on hand: 8 returnable + 2 liquidated
+        0,  // zero demand to isolate the removal accounting
+        instance.returnable_purchase_cap,
+        instance.purchase_cost_per_unit,
+        instance.return_value_per_unit,
+        instance.liquidation_value_per_unit,
+        instance.holding_cost_per_unit,
+        instance.shortage_cost_per_unit,
+    )
+    .expect("removal-active worked step must succeed");
+    assert_eq!(outcome.returned_units, 8);
+    assert_eq!(outcome.liquidated_units, 2);
+    assert_eq!(outcome.next_state.inventory_level, 2);
 }
 
 #[test]

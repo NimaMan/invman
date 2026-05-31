@@ -28,6 +28,50 @@ levels reproduces the exact serial optimum (within Monte-Carlo error), for:
 
 This is the assembly literature anchor: Rosling's equivalence + the serial Clark–Scarf anchor.
 
+## Verification status (re-confirmed 2026-05-31, independent reproduction)
+
+**Status: LITERATURE-VERIFIED** for the in-scope case (equal component lead time, finished
+demand-facing lead time 1). The three `verification.rs` instances were independently
+reproduced from scratch — a pure-Python reimplementation of both the Clark–Scarf exact
+solver (`serial/exact.rs`) and the assembly env (`env.rs`), run side-by-side, NOT importing
+the Rust extension (assembly has no Python binding). Independent results:
+
+| instance | serial-equivalent (kit→finished) | exact optimum | env-sim cost | rel. error |
+|---|---|---|---|---|
+| 2-comp, `L_c=1`, `h_fin=3`, `p=10`, Poisson(5)        | local `[2,3]`, lead `[1,1]` | 22.759 | 22.80  | 0.18% |
+| 3-comp, `L_c=2`, `h_fin=7`, `p=37.12`, Poisson(5)     | local `[3,7]`, lead `[2,1]` | 52.536 | 52.49  | 0.08% |
+| heterogeneous `[0.5,1.5]`, `L_c=2`, `h_fin=4`, `p=20`, Poisson(4) | local `[2,4]`, lead `[2,1]` | 27.530 | 27.66  | 0.46% |
+
+The Clark–Scarf anchor itself reproduces the published numbers independently: Snyder & Shen
+Example 6.1 → 47.665 (vs 47.65); stockpyl Poisson optima 4.2211 / 16.7983 / 72.0467 with
+`S* = [8] / [7,13] / [9,15,26]`. So the assembly verification chain holds independently of
+the Rust unit tests (which this agent could not run: `cargo test` is out of scope and there
+is no assembly Python binding). Reproduce with
+`scripts/assembly/verify_assembly_rosling_independent.py`.
+
+## Policy benchmark (in-scope: finished lead time 1)
+
+For this problem the OPTIMAL policy is known analytically (echelon base-stock at the
+Rosling/Clark–Scarf levels), so the benchmark measures how far natural heuristics fall short
+of that optimum. `scripts/assembly/benchmark_assembly_policies.py` runs, on the three anchor
+instances plus two extra in-scope instances, the optimal echelon base-stock policy vs two
+base-stock heuristics. Gap vs the analytic optimum (200k-period MC; lower is better):
+
+| instance | OPTIMAL (echelon base-stock) | myopic-newsvendor | mean-cover (no safety stock) |
+|---|---|---|---|
+| V1 2-comp Poisson(5)            | +0.01% | +53.0% | +12.2% |
+| V2 3-comp `L_c=2` Poisson(5)    | −0.06% | +63.3% | +4.2%  |
+| V3 heterogeneous Poisson(4)     | +0.07% | +59.2% | +1.7%  |
+| E1 4-comp Poisson(8)            | +0.05% | +82.9% | +19.9% |
+| E2 2-comp `L_c=3` Poisson(3)    | +0.21% | +36.9% | +6.0%  |
+
+The optimal echelon base-stock recovers the analytic optimum to within MC noise on every
+instance; the decentralized myopic-newsvendor heuristic (which double-counts safety stock by
+treating stages independently) is 37–83% worse, confirming the optimal policy is the
+meaningful target. A LEARNED soft-tree benchmark is **not runnable today**: assembly is not
+registered in `multi_echelon/bindings.rs`, so the installed `invman_rust` exposes no
+`assembly_*` rollout (see "Training / binding status" below).
+
 ## Scope and known limitation
 
 - **Equal component lead time** (the clean Rosling reduction). Distinct component lead times need
@@ -38,12 +82,49 @@ This is the assembly literature anchor: Rosling's equivalence + the serial Clark
   component/upstream lead times ≥ 2 are fine). Must be resolved before training on
   finished-lead-time ≥ 2 instances. See the `env.rs` module docs.
 
+  Independently re-measured (2026-05-31, same 2-comp instance, varying only `L_a`):
+  `L_a=1` → 0.28% error (correct); `L_a=2` → **27.9% under-count**; `L_a=3` → **41.4%
+  under-count**. By contrast, varying only the component lead time with `L_a=1` stays at
+  ~0.29% for `L_c∈{1,2,3}` — confirming component/upstream lead times ≥ 2 are fine.
+
+  Root cause (mechanism): cost is `finished_holding * max(finished_on_hand,0)` on PHYSICAL
+  on-hand only, with the in-transit finished pipeline uncharged. The Clark–Scarf optimum is
+  defined on ECHELON inventory. For `L_a=1` the physical on-hand at cost-assessment time
+  coincides with the echelon quantity the optimal cost is charged on, so the conventions
+  agree; for `L_a≥2` the finished units already assembled and in transit carry real value
+  the cost function ignores, so the simulated cost under-counts. The fix is NOT a one-line
+  "charge the full finished pipeline" — that over-counts (tested: `L_a=2` then over-counts
+  to +14.3%, `L_a=3` to +21.1%). A correct fix needs the echelon-holding accounting
+  re-derived for `L_a≥2` (charge the echelon holding increment on in-transit echelon
+  inventory weighted by remaining lead time), validated against the exact solver. Deferred
+  as a next step; the verified scope (`L_a=1`) is unaffected and is what the anchor instances
+  and the benchmark use.
+
+## Training / binding status
+
+The assembly module is **not exposed to Python**: it is not registered in
+`rust/src/problems/multi_echelon/bindings.rs`, and `env.rs`/`echelon_base_stock.rs` carry no
+`#[pyfunction]` rollout entry point. The installed `invman_rust` therefore exposes no
+`assembly_*` symbol (verified: `dir(invman_rust)` has none). Consequences:
+
+- The repo's learned soft-tree / population rollout cannot be trained or benchmarked on this
+  env without a Rust rebuild plus new bindings (out of scope for the verification pass here).
+- The "training-ready" claim is true at the Rust API level (`consume`/`replenish`/
+  `raw_state_vector` exist) but the Python wiring is missing. See the repo report's blockers
+  for the exact bindings/registration diff that would expose an `assembly_soft_tree_*` rollout
+  in the pattern of the sibling `multi_echelon_*` / `one_warehouse_multi_retailer_*` families.
+
 ## Package layout
 
-- `env.rs` — clean assembly environment (training-ready; `consume`/`replenish` two-phase API).
+- `env.rs` — clean assembly environment (training-ready Rust API; `consume`/`replenish`
+  two-phase; no Python binding yet).
 - `rosling.rs` — Rosling reduction of the assembly instance to its equivalent serial instance.
 - `echelon_base_stock.rs` — optimal echelon base-stock policy + Monte-Carlo evaluator.
-- `verification.rs` — env simulation reproduces the Rosling serial optimum.
+- `verification.rs` — env simulation reproduces the Rosling serial optimum (Rust unit tests,
+  `L_a=1`). Independently re-confirmed by `scripts/assembly/verify_assembly_rosling_independent.py`.
+- `scripts/assembly/` (repo-level, outside this dir) — `verify_assembly_rosling_independent.py`
+  (independent reproduction of verification.rs) and `benchmark_assembly_policies.py`
+  (optimal-vs-heuristic benchmark).
 
 ## References
 

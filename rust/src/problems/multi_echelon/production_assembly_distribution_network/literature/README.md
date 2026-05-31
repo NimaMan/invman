@@ -6,25 +6,32 @@ Current literature anchors for `production_assembly_distribution_network`:
 - Clark and Scarf 1960 / Snyder and Shen "Fundamentals of Supply Chain Theory" Example 6.1 /
   `stockpyl.ssm_serial` (exact serial multi-echelon optimum; `SERIAL_CLARK_SCARF_REFERENCE`)
 
-Current status:
+Current status (re-investigated 2026-05):
 
-- the `env.rs` Pirhooshyaran network model is NOT literature-verified
-- single-node newsvendor rows are reproduced analytically (closed form)
+- the `env.rs` per-period transition and cost are FAITHFUL to the Pirhooshyaran & Snyder (2021) MDP
+  (eq. 1-13 sequence of events; eq. 3 cost), checked equation-by-equation against the paper PDF
+- the env is NOT yet anchored to a published benchmark NUMBER, so literature_verified = no
+- single-node newsvendor rows are reproduced analytically (closed form) and approximately by env
+  simulation (L=1 case ~13 vs published 12.71; residual = integer rounding)
 - the serial benchmark optima carried here (Pirhooshyaran Tables 2-3) are the TEXTBOOK Clark-Scarf
   optima; their env-faithful, literature-verified home is the `multi_echelon/serial` family
 
 Why:
 
-- `SINGLE_NODE_BENCHMARK_ROWS` reproduces the paper's analytical newsvendor rows exactly (closed
-  form, not via the env simulation)
-- `SERIAL_BENCHMARK_ROWS` are the classical periodic-review serial multi-echelon optimum, which is
-  the `multi_echelon/serial` problem. The exact solver there (`multi_echelon/serial::exact`) reproduces
-  every published serial optimal cost within 0.05% relative error, and that family's env simulation
-  reproduces it too. These rows are carried here only because Pirhooshyaran's Tables 2-3 report them
-- the Pirhooshyaran network env in THIS family does NOT reproduce those optima (per-node production
-  + pipeline holding -> longer effective lead time; see `serial_echelon_simulation`), and its own
-  published serial protocol could not be recovered tightly from public sources, so this env remains
-  not literature-verified
+- `SINGLE_NODE_BENCHMARK_ROWS` reproduces the paper's Table 1 analytical newsvendor rows exactly
+  (closed form)
+- `SERIAL_BENCHMARK_ROWS` are the classical periodic-review serial multi-echelon optimum
+  (`multi_echelon/serial` problem). The exact solver there reproduces every published serial optimal
+  cost within 0.05% relative error. Pirhooshyaran's Table 3 reports that simulating THEIR
+  finite-horizon environment with these analytical OULs yields the same cost (case 3: 47.65)
+- the Pirhooshyaran network env in THIS family does NOT reproduce those optima when driven with the
+  carried OUL levels, but NOT because of a longer effective lead time. CORRECTION: the paper sets
+  processing time to zero, and env.rs matches it (effective serial lead time = 2+1+1 = 4, verified);
+  holding on in-transit inventory is faithful to eq. 3. The actual cause is a local-vs-echelon
+  POLICY/LEVEL-INTERPRETATION mismatch: the carried levels are ECHELON base-stock levels, while
+  Pirhooshyaran's pairwise policy (eq. 5) targets the LOCAL raw-material position (excludes finished
+  goods), so the levels are the wrong local targets. See `serial_echelon_simulation` and
+  `verification/README.md` for the corrected analysis and remaining steps
 
 Use `literature/references.rs` as the source of truth for:
 

@@ -85,6 +85,97 @@ pub const PAHR_GRUNOW_2025_REPOSITORY_REFERENCE: PublishedBenchmarkReference =
         notes: "The public companion repository defaults to ten age classes, three products, stochastic sales prices, stochastic beta decay processes, and LP-based issuance machinery. Those settings are not the executable model used by the current Rust package.",
     };
 
+/// Exact title of the source paper, recorded for provenance.
+pub const PAHR_GRUNOW_2025_TITLE: &str =
+    "The Value of Blending - Managing Ameliorating Inventory Using Deep Reinforcement Learning";
+
+/// A published perfect-information upper bound recorded from the companion repository's
+/// `problem_configurations/<instance>/upper_bound.json`. The paper reports policy
+/// performance as the gap to this upper bound under long-run average profit.
+///
+/// IMPORTANT: these numbers are recorded for provenance only. They do NOT anchor any
+/// executable assertion in this package, because the current Rust env optimizes a
+/// finite-horizon discounted COST with a purchase-only action and fixed price/decay
+/// processes, whereas the upper bound is the long-run average PROFIT of the paper's full
+/// model (three-part action of purchasing + production + issuance, stochastic purchase
+/// price, stochastic beta decay, processing capacity, and Gaussian-copula demand/price).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PublishedUpperBoundAnchor {
+    pub instance: &'static str,
+    pub source: &'static str,
+    pub url: &'static str,
+    pub num_ages: usize,
+    pub num_products: usize,
+    /// Perfect-information LP upper bound on long-run average profit (`max_reward`).
+    pub upper_bound_average_profit: f64,
+    /// Whether this number can currently anchor a repo executable assertion.
+    pub anchors_repo_assertion: bool,
+    pub notes: &'static str,
+}
+
+/// Companion-repo default generic instance `spirits_0001`.
+/// Source: problem_configurations/spirits_0001/{config,upper_bound}.json.
+pub const PAHR_GRUNOW_2025_SPIRITS_0001_UPPER_BOUND: PublishedUpperBoundAnchor =
+    PublishedUpperBoundAnchor {
+        instance: "spirits_0001",
+        source: PAHR_GRUNOW_2025_REPOSITORY_REFERENCE.source,
+        url: "https://github.com/amelioratinginventory/ameliorating_inventory/blob/main/problem_configurations/spirits_0001/upper_bound.json",
+        num_ages: 10,
+        num_products: 3,
+        upper_bound_average_profit: 1991.9344293376805,
+        anchors_repo_assertion: false,
+        notes: "Generic default instance: target ages [2,4,6], demand means [10,7,5] (CoV 0.25, Gaussian copula with price), purchase price mean 200 / std 50 truncated, sales-price means [250,350,500] (CoV 0.1), age-dependent beta decay (CoV 0.8) plus 0.03 evaporation, capacity 50, holding 2.5. The paper reports its average-age-blending policy reaching about 3.5% below this upper bound on the generic instance set.",
+    };
+
+/// Companion-repo port-wine industry case study.
+/// Source: problem_configurations/port_wine/upper_bound.json.
+pub const PAHR_GRUNOW_2025_PORT_WINE_UPPER_BOUND: PublishedUpperBoundAnchor =
+    PublishedUpperBoundAnchor {
+        instance: "port_wine",
+        source: PAHR_GRUNOW_2025_REPOSITORY_REFERENCE.source,
+        url: "https://github.com/amelioratinginventory/ameliorating_inventory/blob/main/problem_configurations/port_wine/upper_bound.json",
+        num_ages: 25,
+        num_products: 3,
+        upper_bound_average_profit: 2444.80,
+        anchors_repo_assertion: false,
+        notes: "Port-wine industry case study (25 age classes). The paper reports a gap to this upper bound of about 2.8% for the learned policy.",
+    };
+
+/// Headline performance figures reported in Pahr and Grunow (2025), recorded for
+/// provenance. These are reductions/gaps relative to baselines, not absolute costs, and
+/// do NOT anchor executable assertions in this reduced package.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PublishedPerformanceFigures {
+    pub source: &'static str,
+    /// DRL reduces the rolling-horizon LP (RLP) gap to the upper bound by this fraction.
+    pub drl_vs_rlp_gap_reduction: f64,
+    /// DRL improvement over the industry-practice heuristic (NVP+VOL).
+    pub drl_vs_industry_heuristic: f64,
+    /// Average-profit increase from full average-age blending vs. no blending.
+    pub value_of_average_age_blending: f64,
+    /// Average-profit increase from minimum-age blending vs. no blending.
+    pub value_of_minimum_age_blending: f64,
+    /// Generic-instance learned-policy gap to the perfect-information upper bound.
+    pub generic_gap_to_upper_bound: f64,
+    /// Port-wine case-study gap to the perfect-information upper bound.
+    pub port_wine_gap_to_upper_bound: f64,
+    pub anchors_repo_assertion: bool,
+    pub notes: &'static str,
+}
+
+pub const PAHR_GRUNOW_2025_PERFORMANCE: PublishedPerformanceFigures =
+    PublishedPerformanceFigures {
+        source: PAHR_GRUNOW_2025_REFERENCE.source,
+        drl_vs_rlp_gap_reduction: 0.169,
+        drl_vs_industry_heuristic: 0.277,
+        value_of_average_age_blending: 0.181,
+        value_of_minimum_age_blending: 0.086,
+        generic_gap_to_upper_bound: 0.035,
+        port_wine_gap_to_upper_bound: 0.028,
+        anchors_repo_assertion: false,
+        notes: "Reported in the paper text. Recorded for provenance only; the reduced Rust env (purchase-only action, fixed price/decay, discounted-cost objective) cannot reproduce these numbers.",
+    };
+
 pub const PRIMARY_DEMAND_MODELS: &[DemandModel] = &[
     DemandModel {
         kind: DemandDistributionKind::Poisson,
@@ -113,7 +204,7 @@ pub const PRIMARY_REFERENCE_INSTANCE: AmelioratingInventoryReferenceInstance =
         benchmark_two_dimensional_total_target: 24,
         benchmark_two_dimensional_young_target: 8,
         benchmark_young_age_cutoff: 1,
-        notes: "Repo-native five-age, two-product discrete reduction inspired by the paper's default spirits setting. This instance is benchmark-shaped but not literature-verified.",
+        notes: "Repo-native five-age, two-product discrete reduction loosely inspired by the paper's default spirits family. It is NOT the companion default (which is ten ages, three products, target ages [2,4,6], stochastic purchase/sales prices, stochastic beta decay, evaporation, capacity 50; see PAHR_GRUNOW_2025_SPIRITS_0001_UPPER_BOUND). The numeric targets here are repo-chosen, not published. This instance is benchmark-shaped but not literature-verified.",
     };
 
 pub const VERIFICATION_DEMAND_SCENARIOS: &[&[u32]] =

@@ -58,7 +58,14 @@ fn zero_state_has_expected_dimensions() {
     assert_eq!(state.warehouse_inventory.len(), network.num_warehouses);
     assert_eq!(state.retailer_inventory.len(), network.num_retailers);
     assert_eq!(state.retailer_orders_due.len(), network.retail_edges.len());
-    assert_eq!(raw.len(), 68);
+    // raw layout (build_raw_state): 4*W (inventory, supplier_orders_due, supplier_deliveries_due,
+    // supplier_in_transit) + 2*R (inventory, customer_backorders) + 4*E (retailer orders_due,
+    // deliveries_due, in_transit, backorders). The benchmark network's audit-metric fields make
+    // this 82 for the CardBoard Company instance; assert the layout formula so it cannot go stale.
+    assert_eq!(
+        raw.len(),
+        4 * network.num_warehouses + 2 * network.num_retailers + 4 * network.retail_edges.len()
+    );
 }
 
 #[test]

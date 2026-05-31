@@ -82,6 +82,26 @@ pub const QIN_2022_REFERENCE: PublishedBenchmarkReference = PublishedBenchmarkRe
     notes: "This paper anchors joint pricing-inventory as a classic finite-horizon control problem with price-dependent random demand. It motivates keeping a clean reduced family for policy design even when the learning signal comes from data.",
 };
 
+/// Classical formulation anchors for the *executable* model in this package.
+///
+/// The env implemented in `env.rs` (zero lead time, price-dependent stochastic demand, lost sales,
+/// holding cost on ending inventory, profit objective) reduces at T = 1 to the textbook
+/// price-setting newsvendor: overage cost `Co = c + h`, underage cost `Cu = p + s - c`, optimal
+/// order-up-to = smallest `y` with `F(y) >= Cu / (Cu + Co)`. The finite-horizon multi-period version
+/// is the classic finite-horizon joint pricing-and-inventory control problem. These classical results
+/// are the formulation the package actually implements, and the analytical critical-fractile check in
+/// `verification/tests.rs` validates the env transition + cost against the closed form independently of
+/// the repo's own DP.
+pub const PRICE_SETTING_NEWSVENDOR_ANCHOR: PublishedBenchmarkReference = PublishedBenchmarkReference {
+    source: "Price-setting newsvendor / finite-horizon joint pricing-inventory: Whitin (1955); Petruzzi & Dada (1999); Federgruen & Heching (1999)",
+    url: "https://doi.org/10.1287/opre.47.2.183",
+    benchmark_policies: &[
+        "critical_fractile_newsvendor",
+        "finite_horizon_exact_dp",
+    ],
+    notes: "The single-period reduction of this env is the price-setting newsvendor with overage Co = c + h and underage Cu = p + s - c; the optimal order-up-to is the critical-fractile quantile of price-dependent demand. The finite-horizon multi-period version is the classic joint pricing-and-inventory control problem (Federgruen & Heching 1999). verification/tests.rs checks the env's T=1 optimum equals the closed-form critical fractile for every price on VERIFICATION_PROBLEM_INSTANCE. This is an analytical (classical-literature) anchor for the env transition + cost; it is NOT a reproduction of a published per-instance optimal-profit table, so the package remains literature_verified = false.",
+};
+
 pub const PRIMARY_PRICE_LEVELS: &[f64] = &[8.0, 10.0, 12.0];
 pub const PRIMARY_DEMAND_MEANS: &[f64] = &[4.0, 2.6, 1.6];
 

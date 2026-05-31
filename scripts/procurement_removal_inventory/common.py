@@ -6,7 +6,12 @@ from typing import Iterable
 
 import numpy as np
 
-from invman.policies.soft_tree import SoftTreePolicy
+# NOTE: `invman.policies.soft_tree.SoftTreePolicy` was removed in the Python-cleanup migration
+# (the repo is now Rust-only for problem dynamics; policies route through `invman.policy`). The
+# soft-tree helpers below are LEGACY and will raise ImportError if called. The heuristic / exact-DP
+# helpers do not need it, so the import is deferred into the soft-tree helpers to keep this module
+# importable. For a working, self-contained learned-policy + heuristic + exact-DP benchmark that does
+# not depend on the removed class, use `benchmark_procurement_removal.py` in this directory.
 
 import invman_rust
 
@@ -82,7 +87,9 @@ def build_soft_tree_model(
     temperature: float,
     split_type: str,
     leaf_type: str,
-) -> SoftTreePolicy:
+):
+    from invman.policies.soft_tree import SoftTreePolicy  # legacy; removed in migration
+
     return SoftTreePolicy(
         input_dim=7,
         action_spec={

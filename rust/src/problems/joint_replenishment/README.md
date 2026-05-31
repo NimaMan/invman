@@ -21,10 +21,20 @@ Verification and benchmark anchors live in:
 
 Current status:
 
-- literature-verified: no
-- repo-exact verified: yes on the reduced two-item finite-horizon verifier
-- the 16 Vanvuchelen small-scale settings are carried as public problem definitions, but the paper
-  does not provide exact per-setting benchmark rows suitable for repo assertions
+- literature-verified (environment): yes, against one exact executable anchor. Vanvuchelen et al.
+  (2020) state in prose (Section 6.2, around Figure 3, setting 5) that under the optimal policy, in
+  state `(I1,I2)=(5,0)` only shipper 2 orders, `q=(0,6)` (one full truckload), while both heuristics
+  order `q=(2,4)`. An independent infinite-horizon value-iteration solver that mirrors this env's cost
+  (Eq. 2) and balance (Eq. 4) reproduces the published optimal action `q=(0,6)` exactly. The anchor is
+  carried as `VANVUCHELEN_2020_FIGURE3_ANCHOR` in `literature/references.rs` and exercised by
+  `scripts/joint_replenishment/benchmark_vanvuchelen_settings.py`.
+- repo self-consistency verified: yes on the reduced two-item finite-horizon comparator
+  (`finite_horizon_dp.rs`), which confirms the exact DP dominates the carried heuristics on a 4-period
+  discounted horizon. This comparator is NOT the paper's infinite-horizon average-cost setting and is
+  not asserted against the published action.
+- the 16 Vanvuchelen small-scale settings (Table 2) are carried verbatim as public problem
+  definitions. The paper reports per-setting optimality gaps only as a figure (Figure 2: the heuristics
+  lie 4-25% above optimal), so no full per-setting absolute-cost table is asserted.
 
 State interface:
 
@@ -34,3 +44,37 @@ State interface:
 - learned-policy actions are converted to feasible full-truckload quantities in `rollout.rs` before
   entering the environment
 - environment code must not hide learned-policy preprocessing
+
+Reference (cited literature):
+
+- Vanvuchelen, Gijsbrechts & Boute (2020), "Use of Proximal Policy Optimization for the Joint
+  Replenishment Problem", Computers in Industry 119, 103239.
+  Author copy: https://lirias.kuleuven.be/retrieve/badd4d5b-5bfc-44e4-84f1-b98fd113143d
+- Model match (faithful): state = previous-period end inventories (Eq. 3); action = order quantities
+  with `sum_i q_i = M*V` (Eq. 1); cost `c = sum_i[h_i*I+ + b_i*I- + k_i*1{q_i>0}] + M*K` (Eq. 2);
+  order-before-demand (risk period 1); zero lead time; inventory balance `I_t = I_{t-1} + q - d`
+  (Eq. 4). All of this is implemented exactly in `env.rs::step_state`.
+
+Benchmark results (reproduced by `scripts/joint_replenishment/benchmark_vanvuchelen_settings.py`):
+
+- Literature anchor (setting 5, infinite-horizon value iteration, gamma=0.99): env-derived optimal
+  action at state `(5,0)` is `q=(0,6)`, matching the paper. Confirms env fidelity.
+- Repo reduced finite-horizon DP comparator (`VERIFICATION_PROBLEM_INSTANCE`, setting-1 family,
+  4 periods, discounted): optimal first action `(6,6)` cost `266.39`; carried MOQ `(7,5)` cost
+  `386.10` (gap `+119.71`); carried DYN-OUT `(6,6)` cost `383.96` (gap `+117.57`). Self-consistency
+  only.
+- Heuristic Monte-Carlo sweep over the 16 Table-2 settings (200 periods, 256 reps, discounted): MOQ
+  mean cost ranges ~5990-10303 and DYN-OUT ~6040-10557; MOQ is at or below DYN-OUT on every setting,
+  consistent with the paper's finding that `(Q,S|T)` is the stronger heuristic on this small family.
+
+Remaining steps:
+
+- A learned soft-tree vs heuristics benchmark on these settings is wired but not yet run: the rollout
+  binding `joint_replenishment_soft_tree_rollout` is installed, and `invman.policy.Policy` +
+  `invman.es_mp.train` are importable, so a CMA-ES run is feasible WITHOUT a Rust rebuild. The blocker
+  is that `scripts/joint_replenishment/common.py` imports a stale module path
+  (`invman.policies.soft_tree`) that no longer exists; the benchmark script here avoids that path but
+  does not yet drive training.
+- Newly added `VANVUCHELEN_2020_FIGURE3_ANCHOR` and the `joint_replenishment_published_action_anchor`
+  binding require a Rust rebuild to be callable from Python; the in-crate verification test asserts the
+  anchor today.

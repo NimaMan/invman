@@ -17,26 +17,39 @@
 //!
 //! FINDING (documented, with the test below as evidence)
 //! -----------------------------------------------------
-//! `env.rs` is a STRUCTURALLY DIFFERENT model from the textbook Clark-Scarf serial
-//! system, so it does NOT reproduce the analytical optimum (72.04 for the Poisson
-//! 3-stage instance):
-//!   - Driven with the analytical echelon levels [15, 9, 26], the env averages ~147
-//!     with a large backorder component (~75): its effective lead time is longer than
-//!     Clark-Scarf assumes, because each node has a raw->finished PRODUCTION step in
-//!     addition to the inter-stage shipping lead time, adding ~1 period of delay per
-//!     node. A unit thus traverses external(2) + produce + ship(1) + produce + ship(1)
-//!     + produce ~ 7 effective periods vs the 4 transit periods Clark-Scarf models.
-//!   - The env also charges holding on outgoing in-transit pipeline inventory, which
-//!     the optimized Clark-Scarf cost treats as a policy-independent constant.
-//!   - Even at the env's own best echelon levels the simulated optimum is >100, well
-//!     above 72.04, confirming the gap is structural (model), not a tuning artifact.
+//! Driven with the Clark-Scarf ECHELON base-stock levels [15, 9, 26] (the textbook
+//! optima for the Poisson 3-stage instance, C* = 72.04), the env averages ~147 with a
+//! large backorder component (~75). The gap is NOT caused by an extra per-node
+//! production delay -- the paper (Pirhooshyaran & Snyder 2021, Sec. 3.1, line "The
+//! processing time to convert raw materials to finished goods at a given node is
+//! assumed to be zero") and env.rs both apply ZERO processing time: an impulse order
+//! placed at the source arrives exactly L periods later and is converted to finished
+//! goods within the same period (verified). The effective source->customer lead time
+//! is exactly 2+1+1 = 4 periods, matching Clark-Scarf, not ~7.
+//!
+//! The real cause is a POLICY/LEVEL-INTERPRETATION mismatch, not env model dynamics:
+//!   - Clark-Scarf optimality is for an ECHELON system whose echelon holding costs and
+//!     base-stock levels live on echelon inventory positions. Pirhooshyaran's pairwise
+//!     base-stock policy (eq. 5) targets the LOCAL raw-material inventory position of
+//!     each supply relation, which EXCLUDES the node's finished-goods inventory.
+//!   - Because each node "processes as much raw material as possible" (eq. 2) the moment
+//!     it arrives, raw inventory is ~0 right after production, and the over-produced
+//!     finished goods that a node cannot ship downstream accumulate INVISIBLY to the
+//!     local position. This drives oscillatory over-ordering and a growing finished
+//!     stockpile at downstream nodes, which inflates both holding and (transient)
+//!     backorder cost relative to the echelon optimum.
+//!   - The env also charges holding on outgoing in-transit pipeline inventory; this is
+//!     FAITHFUL to the paper (eq. 3 explicitly counts in-transit inventory in h_ij), but
+//!     the optimized Clark-Scarf echelon cost treats it as a policy-independent constant,
+//!     so the two cost bases are not directly comparable.
 //!
 //! Conclusion: the published serial optimum is verified by the EXACT solver
-//! (`multi_echelon::serial::exact`); reproducing it by simulation requires a simulator
-//! whose dynamics match the Clark-Scarf assumptions (single processing step, no
-//! pipeline holding in the optimized cost), which the Pirhooshyaran-shaped `env.rs`
-//! deliberately is not. This module's policy + harness remain useful for evaluating
-//! echelon base-stock behavior inside the env's own (richer) dynamics.
+//! (`multi_echelon::serial::exact`). Reproducing 72.04 (or the paper's own finite-horizon
+//! 47.65 for the Normal(5,1) case) by simulating env.rs is a question of finding the
+//! correct LOCAL base-stock levels / position definition for the pairwise policy, not of
+//! changing the env dynamics; the Clark-Scarf ECHELON levels are simply not the matching
+//! local targets. This module's policy + harness remain useful for evaluating echelon
+//! base-stock behavior inside the env's (faithful) Pirhooshyaran dynamics.
 
 use rand::rngs::StdRng;
 use rand::SeedableRng;
@@ -202,21 +215,24 @@ mod tests {
             &graph, &init, &demand, &holding, &backlog, &echelon_levels, 40_000, 1_000, 7,
         );
 
-        // The env's optimal-policy cost is far above the analytical optimum and carries
-        // a large backorder component, evidencing the structural model difference
-        // (per-node production delay + pipeline holding). This is the documented "sim"
-        // finding: the exact solver verifies the optimum; env.rs models a different,
-        // richer system and is not the vehicle for reproducing the textbook optimum.
+        // Driving the env with the Clark-Scarf ECHELON base-stock levels yields a cost
+        // far above the echelon optimum with a large backorder component. This is NOT a
+        // per-node production delay (processing time is zero; the env's effective lead
+        // time matches Clark-Scarf): it is the local-vs-echelon policy/level-interpretation
+        // mismatch documented in the module header (the pairwise local raw-position policy
+        // excludes finished goods, so echelon levels are the wrong local targets). The
+        // exact solver verifies the optimum; this test records that ECHELON levels applied
+        // to the LOCAL pairwise policy do not reproduce it.
         const CLARK_SCARF_OPTIMUM: f64 = 72.04;
         assert!(
             result.average_cost > 1.5 * CLARK_SCARF_OPTIMUM,
-            "expected env cost to exceed the Clark-Scarf optimum by a structural margin, got {:.3} vs C*={}",
+            "expected env cost under ECHELON levels to exceed the Clark-Scarf optimum (level-interpretation mismatch), got {:.3} vs C*={}",
             result.average_cost,
             CLARK_SCARF_OPTIMUM
         );
         assert!(
             result.average_backlog_cost > 20.0,
-            "expected substantial backorder cost from the env's longer effective lead time, got {:.3}",
+            "expected substantial backorder cost from echelon levels over-/under-shooting the local raw position, got {:.3}",
             result.average_backlog_cost
         );
     }

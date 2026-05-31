@@ -13,8 +13,9 @@ use crate::problems::joint_replenishment::heuristics::{
     policy_rollout_from_paths, simulate_policy,
 };
 use crate::problems::joint_replenishment::literature::references::{
-    ExactVerificationReference, JointReplenishmentReferenceInstance, PRIMARY_REFERENCE_INSTANCE,
-    SMALL_SCALE_SETTINGS, VERIFICATION_PROBLEM_INSTANCE,
+    ExactVerificationReference, JointReplenishmentReferenceInstance, PublishedActionAnchor,
+    PRIMARY_REFERENCE_INSTANCE, SMALL_SCALE_SETTINGS, VANVUCHELEN_2020_FIGURE3_ANCHOR,
+    VERIFICATION_PROBLEM_INSTANCE,
 };
 use crate::problems::joint_replenishment::rollout::{
     build_initial_state, population_rollout, rollout, rollout_from_paths,
@@ -122,9 +123,34 @@ fn verification_reference_to_py(
     Ok(dict.into_any().unbind().into())
 }
 
+fn published_action_anchor_to_py(
+    py: Python<'_>,
+    anchor: &PublishedActionAnchor,
+) -> PyResult<PyObject> {
+    let dict = PyDict::new_bound(py);
+    dict.set_item("source", anchor.source)?;
+    dict.set_item("url", anchor.url)?;
+    dict.set_item("setting_name", anchor.setting_name)?;
+    dict.set_item(
+        "state_inventory_levels",
+        anchor.state_inventory_levels.to_vec(),
+    )?;
+    dict.set_item("optimal_action", anchor.optimal_action.to_vec())?;
+    dict.set_item("heuristic_action", anchor.heuristic_action.to_vec())?;
+    dict.set_item("discount_factor", anchor.discount_factor)?;
+    dict.set_item("horizon", anchor.horizon)?;
+    dict.set_item("notes", anchor.notes)?;
+    Ok(dict.into_any().unbind().into())
+}
+
 #[pyfunction]
 fn joint_replenishment_primary_reference_instance(py: Python<'_>) -> PyResult<PyObject> {
     reference_instance_to_py(py, &PRIMARY_REFERENCE_INSTANCE)
+}
+
+#[pyfunction]
+fn joint_replenishment_published_action_anchor(py: Python<'_>) -> PyResult<PyObject> {
+    published_action_anchor_to_py(py, &VANVUCHELEN_2020_FIGURE3_ANCHOR)
 }
 
 #[pyfunction]
@@ -546,6 +572,10 @@ fn joint_replenishment_dynout_order_quantities(
 pub fn register_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(
         joint_replenishment_primary_reference_instance,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        joint_replenishment_published_action_anchor,
         m
     )?)?;
     m.add_function(wrap_pyfunction!(

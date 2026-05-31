@@ -25,6 +25,18 @@ What the verifier asserts:
 
 Verification semantics:
 
-- the worked transition is literature-backed
+- the worked transition is literature-backed (Section 4.2; period cost 130, reward -130)
 - the benchmark-row assertions use the published author-repo reference CSVs and the tolerances in
   `VERIFICATION_PROBLEM_INSTANCE`
+
+Cross-check beyond the executable verifier:
+
+- the eight `references.rs` rows are byte-for-byte the author-repo CSVs
+  (`scarf_testbed_simple_lostsales.csv` and `scarf_testbed_DP_lostsales.csv`,
+  slice leadtime=2/shortage=5/setup=10/lostsales/CV=0.2/horizon=32)
+- the repo simulator reproduces ALL eight rows (not only constant_10) within the
+  stored 35-cost tolerance and within +/-0.17% relatively; see the table in
+  `literature/README.md` and run
+  `scripts/nonstationary_lot_sizing/run_literature_benchmark.py --replications 25000`
+- the author simple-policy formula (LTDmean/LTDstd, critical-ratio quantile,
+  EOQ-based S) matches `heuristics/lead_time_base_stock.rs` + `heuristics/simple_ss.rs`

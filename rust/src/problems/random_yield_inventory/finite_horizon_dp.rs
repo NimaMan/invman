@@ -1,3 +1,31 @@
+// finite_horizon_dp.rs
+// =====================
+// Exact reduced finite-horizon discounted DP for the all-or-nothing random-yield MDP, plus
+// fixed-policy evaluation of the carried heuristics under the SAME exact expectation. This is the
+// repo's implementation-correctness anchor (NOT a literature anchor: no public Yan/Chen number
+// exists to assert against).
+//
+// MODEL (must mirror env.rs::step_state exactly):
+//   state = (period, inventory_level i32, pipeline [pipe0, pipe1])   // lead_time == 2 only
+//   per period, given action `q`, demand `d`, yield success `s`:
+//     realized_arrival = pipe0 if s else 0          // all-or-nothing batch yield, P(s) = p
+//     ending           = inventory + realized_arrival - d
+//     next_pipeline    = [pipe1, q]                 // new order enters the back of the pipeline
+//     period_cost      = c*q + h*max(ending,0) + b*max(-ending,0)
+//
+// VALUE RECURSION (expected total discounted cost, terminal value 0 at period == periods):
+//   V(state) = min_{q in 0..=max_order_quantity}  sum_{d,s} P(d) P(s) * [ period_cost
+//                                                       + gamma * V(next_state) ]
+//   solve_optimal_from_state    -> minimizes over q (memoized; strict-improve tie-break, eps 1e-12).
+//   evaluate_heuristic_from_state -> fixes q = clamp(round(heuristic_order), 0, max_order_quantity)
+//                                    and evaluates the same expectation (memoized).
+//
+// NOTE on the cap: `max_order_quantity` bounds the DP action enumeration for tractability; it is NOT
+// a physical order cap (env.rs is uncapped). For the verification instance the cap is effectively
+// non-binding for the optimal policy (optimum changes only at the 5th sig fig when raised 8 -> 20),
+// but the WNH can want to order above it, so the env Monte-Carlo of WNH reads slightly higher than
+// this capped DP value. The `optimal <= heuristic` assertions hold regardless.
+
 use std::collections::HashMap;
 
 use pyo3::exceptions::PyValueError;

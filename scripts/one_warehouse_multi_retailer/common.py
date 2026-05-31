@@ -8,7 +8,7 @@ from typing import Iterable
 
 import numpy as np
 
-from invman.policies.soft_tree import SoftTreePolicy
+from invman.policy import Policy
 
 import invman_rust
 
@@ -92,6 +92,49 @@ def is_exact_reference(reference: dict) -> bool:
     return "max_action_levels" in reference
 
 
+def _normal_cdf(x: float, mean: float, std: float) -> float:
+    if std <= 0.0:
+        return 1.0 if x >= mean else 0.0
+    z = (x - mean) / (std * math.sqrt(2.0))
+    return 0.5 * (1.0 + math.erf(z))
+
+
+def _rounded_clipped_normal_moments(mean: float, std: float) -> tuple[float, float]:
+    if std <= 0.0:
+        clipped = max(int(round(mean)), 0)
+        return float(clipped), 0.0
+
+    probabilities: list[float] = []
+    support: list[int] = []
+
+    # All draws below 0.5 round or clip to zero.
+    p_zero = _normal_cdf(0.5, mean, std)
+    probabilities.append(max(0.0, min(1.0, p_zero)))
+    support.append(0)
+
+    k = 1
+    cumulative = probabilities[0]
+    while cumulative < 1.0 - 1e-12 and k < 10_000:
+        upper = k + 0.5
+        lower = k - 0.5
+        prob = _normal_cdf(upper, mean, std) - _normal_cdf(lower, mean, std)
+        prob = max(0.0, prob)
+        if prob > 1e-15:
+            probabilities.append(prob)
+            support.append(k)
+            cumulative += prob
+        k += 1
+
+    if cumulative < 1.0:
+        probabilities[-1] += 1.0 - cumulative
+
+    support_arr = np.asarray(support, dtype=np.float64)
+    prob_arr = np.asarray(probabilities, dtype=np.float64)
+    mean_value = float(np.sum(support_arr * prob_arr))
+    variance = float(np.sum(((support_arr - mean_value) ** 2) * prob_arr))
+    return mean_value, math.sqrt(max(variance, 0.0))
+
+
 def one_period_demand_moments(reference: dict) -> tuple[list[float], list[float]]:
     if is_exact_reference(reference):
         means: list[float] = []
@@ -125,8 +168,12 @@ def one_period_demand_moments(reference: dict) -> tuple[list[float], list[float]
             means.append(0.5 * (low + high))
             stds.append(math.sqrt((n**2 - 1) / 12.0))
         elif kind == "rounded_normal":
-            means.append(float(param1))
-            stds.append(float(param2))
+            clipped_mean, clipped_std = _rounded_clipped_normal_moments(
+                float(param1),
+                float(param2),
+            )
+            means.append(clipped_mean)
+            stds.append(clipped_std)
         elif kind == "deterministic":
             means.append(float(param1))
             stds.append(0.0)
@@ -236,6 +283,53 @@ def echelon_base_stock_search_bounds(reference: dict) -> dict:
     }
 
 
+def uses_kaynov_k_search(reference: dict) -> bool:
+    return (not is_exact_reference(reference)) and str(reference.get("name")) == "kaynov2024_instance_14"
+
+
+def _retailer_targets_from_k(reference: dict, k_value: float) -> list[int]:
+    means, stds = one_period_demand_moments(reference)
+    targets: list[int] = []
+    for mean, std, lead_time in zip(means, stds, reference["retailer_lead_times"]):
+        lead_periods = int(lead_time) + 1
+        level = mean * lead_periods + k_value * std * math.sqrt(lead_periods)
+        targets.append(max(0, int(round(level))))
+    return targets
+
+
+def kaynov_instance14_k_candidates(reference: dict) -> list[float]:
+    if not uses_kaynov_k_search(reference):
+        raise ValueError("k-candidate generation is only defined for Kaynov instance 14")
+
+    means, stds = one_period_demand_moments(reference)
+    breakpoints = {0.0, 3.0}
+    for mean, std, lead_time in zip(means, stds, reference["retailer_lead_times"]):
+        lead_periods = int(lead_time) + 1
+        intercept = mean * lead_periods
+        slope = std * math.sqrt(lead_periods)
+        if slope <= 1e-12:
+            continue
+        lower_level = int(math.floor(intercept))
+        upper_level = int(math.ceil(intercept + 3.0 * slope))
+        for level in range(lower_level - 1, upper_level + 2):
+            cutoff = (level + 0.5 - intercept) / slope
+            if 0.0 <= cutoff <= 3.0:
+                breakpoints.add(float(cutoff))
+
+    ordered = sorted(breakpoints)
+    candidates = {0.0, 3.0}
+    for left, right in zip(ordered[:-1], ordered[1:]):
+        midpoint = 0.5 * (left + right)
+        if 0.0 <= midpoint <= 3.0:
+            candidates.add(midpoint)
+
+    candidates_with_vectors: dict[tuple[int, ...], float] = {}
+    for candidate in sorted(candidates):
+        vector = tuple(_retailer_targets_from_k(reference, candidate))
+        candidates_with_vectors.setdefault(vector, candidate)
+    return sorted(candidates_with_vectors.values())
+
+
 def evaluate_echelon_base_stock_policy(
     reference: dict,
     *,
@@ -323,10 +417,20 @@ def search_best_echelon_base_stock(
 ) -> dict:
     bounds = echelon_base_stock_search_bounds(reference)
     warehouse_levels = range(bounds["warehouse"][0], bounds["warehouse"][1] + 1)
-    if bounds["symmetric_retailers"]:
+    if uses_kaynov_k_search(reference):
+        candidates = (
+            (warehouse_level, _retailer_targets_from_k(reference, k_value), k_value)
+            for warehouse_level in warehouse_levels
+            for k_value in kaynov_instance14_k_candidates(reference)
+        )
+    elif bounds["symmetric_retailers"]:
         common_bounds = bounds["retailers"][0]
         candidates = (
-            (warehouse_level, [retailer_level] * len(reference["retailer_lead_times"]))
+            (
+                warehouse_level,
+                [retailer_level] * len(reference["retailer_lead_times"]),
+                None,
+            )
             for warehouse_level in warehouse_levels
             for retailer_level in range(common_bounds[0], common_bounds[1] + 1)
         )
@@ -335,13 +439,13 @@ def search_best_echelon_base_stock(
             range(lower, upper + 1) for lower, upper in bounds["retailers"]
         ]
         candidates = (
-            (warehouse_level, list(retailer_levels))
+            (warehouse_level, list(retailer_levels), None)
             for warehouse_level in warehouse_levels
             for retailer_levels in product(*retailer_grids)
         )
 
     best = None
-    for warehouse_level, retailer_levels in candidates:
+    for warehouse_level, retailer_levels, k_value in candidates:
         evaluation = evaluate_echelon_base_stock_policy(
             reference,
             warehouse_base_stock_level=warehouse_level,
@@ -358,9 +462,29 @@ def search_best_echelon_base_stock(
 
     best["search_bounds"] = bounds
     best["search_seed"] = int(seed)
+    best["search_protocol"] = (
+        "kaynov_instance14_z0_k"
+        if uses_kaynov_k_search(reference)
+        else "full_cartesian_symmetric_reduction"
+    )
+    if uses_kaynov_k_search(reference):
+        matching_k_values = [
+            k_value
+            for k_value in kaynov_instance14_k_candidates(reference)
+            if _retailer_targets_from_k(reference, k_value) == best["retailer_base_stock_levels"]
+        ]
+        best["k_value_candidates"] = [float(value) for value in matching_k_values]
     if replications is not None:
         best["search_replications"] = int(replications)
     return best
+
+
+def policy_action_mode_for_reference(reference: dict) -> str:
+    return (
+        "symmetric_echelon_targets"
+        if is_symmetric_retailer_case(reference)
+        else "echelon_targets"
+    )
 
 
 def _exact_support_to_rollout_models(reference: dict) -> tuple[list[str], list[float], list[float]]:
@@ -390,7 +514,7 @@ def build_soft_tree_model(
     split_type: str,
     leaf_type: str,
     policy_action_mode: str = "direct_orders",
-) -> SoftTreePolicy:
+) -> Policy:
     if policy_action_mode == "symmetric_echelon_targets":
         if not is_symmetric_retailer_case(reference):
             raise ValueError("symmetric_echelon_targets requires a symmetric retailer reference")
@@ -404,19 +528,18 @@ def build_soft_tree_model(
             )
             retailer_lower, retailer_upper = bounds["retailers"][0]
             retailer_levels = list(range(int(retailer_lower), int(retailer_upper) + 1))
-        return SoftTreePolicy(
+        return Policy(
+            backbone="soft_tree",
             input_dim=1
             + int(reference["warehouse_lead_time"])
             + len(reference["retailer_lead_times"])
             + sum(int(value) for value in reference["retailer_lead_times"])
             + 2,
-            action_spec={
-                "action_dim": 2,
-                "action_mode": "discrete_grid",
-                "min_values": [int(warehouse_levels[0]), int(retailer_levels[0])],
-                "max_values": [int(warehouse_levels[-1]), int(retailer_levels[-1])],
-                "allowed_values": [warehouse_levels, retailer_levels],
-            },
+            control_dim=2,
+            control_mode="discrete_grid",
+            min_values=[int(warehouse_levels[0]), int(retailer_levels[0])],
+            max_values=[int(warehouse_levels[-1]), int(retailer_levels[-1])],
+            allowed_values=[warehouse_levels, retailer_levels],
             depth=int(depth),
             temperature=float(temperature),
             split_type=str(split_type),
@@ -432,19 +555,18 @@ def build_soft_tree_model(
         max_values = [int(bounds["warehouse"][1])] + [
             int(upper) for _, upper in bounds["retailers"]
         ]
-    return SoftTreePolicy(
+    return Policy(
+        backbone="soft_tree",
         input_dim=1
         + int(reference["warehouse_lead_time"])
         + len(reference["retailer_lead_times"])
         + sum(int(value) for value in reference["retailer_lead_times"])
         + 2,
-        action_spec={
-            "action_dim": len(reference["retailer_lead_times"]) + 1,
-            "action_mode": "vector_quantity",
-            "min_values": [0] * (len(reference["retailer_lead_times"]) + 1),
-            "max_values": max_values,
-            "allowed_values": None,
-        },
+        control_dim=len(reference["retailer_lead_times"]) + 1,
+        control_mode="vector_quantity",
+        min_values=[0] * (len(reference["retailer_lead_times"]) + 1),
+        max_values=max_values,
+        allowed_values=None,
         depth=int(depth),
         temperature=float(temperature),
         split_type=str(split_type),
@@ -456,7 +578,7 @@ def build_soft_tree_model(
 
 def soft_tree_rollout_kwargs(
     reference: dict,
-    model: SoftTreePolicy,
+    model: Policy,
     *,
     flat_params,
     allocation_policy: str,
@@ -474,9 +596,9 @@ def soft_tree_rollout_kwargs(
         "flat_params": np.asarray(flat_params, dtype=np.float32).tolist(),
         "input_dim": int(model.input_dim),
         "depth": int(model.depth),
-        "min_values": [int(value) for value in model.action_spec["min_values"]],
-        "max_values": [int(value) for value in model.action_spec["max_values"]],
-        "action_mode": str(model.action_spec["action_mode"]),
+        "min_values": [int(value) for value in model.min_values],
+        "max_values": [int(value) for value in model.max_values],
+        "action_mode": str(model.control_mode),
         "initial_warehouse_inventory": int(initial_state["initial_warehouse_inventory"]),
         "initial_warehouse_pipeline": initial_state["initial_warehouse_pipeline"],
         "initial_retailer_inventory": initial_state["initial_retailer_inventory"],
@@ -501,13 +623,13 @@ def soft_tree_rollout_kwargs(
         "temperature": float(model.temperature),
         "split_type": str(model.split_type),
         "leaf_type": str(model.leaf_type),
-        "allowed_values": model.action_spec.get("allowed_values"),
+        "allowed_values": model.allowed_values,
     }
 
 
 def evaluate_soft_tree_policy(
     reference: dict,
-    model: SoftTreePolicy,
+    model: Policy,
     seeds: Iterable[int],
     *,
     allocation_policy: str,

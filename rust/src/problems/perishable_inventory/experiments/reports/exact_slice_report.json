@@ -1,0 +1,468 @@
+{
+  "family": "perishable_inventory",
+  "benchmark": "exact_slice_benchmark",
+  "gamma": 0.99,
+  "search_seeds": 48,
+  "eval_seeds": 256,
+  "tree_family": {
+    "policy_family": "soft_tree",
+    "depth": 2,
+    "temperature": 0.25,
+    "split_type": "oblique",
+    "leaf_types": [
+      "linear",
+      "sigmoid_linear"
+    ],
+    "iterations": 150,
+    "popsize": 16,
+    "sigma_init": 1.5,
+    "seed": 123
+  },
+  "instances": [
+    {
+      "reference_instance_name": "de_moor2022_m2_exp1_l1_cp7_lifo",
+      "issuing_policy": "lifo",
+      "shelf_life": 2,
+      "lead_time": 1,
+      "exact_mdp": {
+        "reference_instance_name": "de_moor2022_m2_exp1_l1_cp7_lifo",
+        "state_count": 121,
+        "best_base_stock_level": 5,
+        "value_iteration_mean_return": -1552.9907529265774,
+        "value_iteration_mean_return_rounded": -1553,
+        "policy_table_9x9": [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          [
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3
+          ],
+          [
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3
+          ],
+          [
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3
+          ]
+        ],
+        "matches_published_policy_table": true,
+        "matches_published_base_stock_level": true,
+        "matches_published_value_iteration_mean_return": true,
+        "published_value_iteration_mean_return": -1553
+      },
+      "best_heuristic_mean_return": -1557.9355580054755,
+      "rows": [
+        {
+          "policy": "exact_value_iteration",
+          "params": "-",
+          "mean_return": -1552.9907529265774,
+          "std_return": 0.0,
+          "gap_to_exact_optimum": 0.0,
+          "gap_to_best_heuristic": -4.944805078898071,
+          "note": "exact tabular MDP optimum (reproduces Farrington 2025 Table 3)"
+        },
+        {
+          "policy": "base_stock",
+          "params": "[5]",
+          "mean_return": -1558.3442508991034,
+          "std_return": 66.70317847841943,
+          "sem_return": 4.1689486549012145,
+          "gap_to_exact_optimum": 5.353497972525929,
+          "gap_to_best_heuristic": 0.4086928936278582,
+          "note": "best base-stock level from stochastic search (Monte-Carlo estimator)",
+          "evaluation": {
+            "params": [
+              5
+            ],
+            "mean_return": -1558.3442508991034,
+            "std_return": 66.70317847841943,
+            "min_return": -1782.9230629337478,
+            "max_return": -1386.0977274200513,
+            "num_seeds": 256
+          }
+        },
+        {
+          "policy": "bsp_low_ew",
+          "params": "[5, 4, 10]",
+          "mean_return": -1557.9355580054755,
+          "std_return": 66.70864587027022,
+          "sem_return": 4.169290366891889,
+          "gap_to_exact_optimum": 4.944805078898071,
+          "gap_to_best_heuristic": 0.0,
+          "note": "best BSP-low-EW params from stochastic search (Monte-Carlo estimator)",
+          "evaluation": {
+            "params": [
+              5,
+              4,
+              10
+            ],
+            "mean_return": -1557.9355580054755,
+            "std_return": 66.70864587027022,
+            "min_return": -1782.9230629337478,
+            "max_return": -1385.1690721644336,
+            "num_seeds": 256
+          }
+        },
+        {
+          "policy": "soft_tree_linear",
+          "params": "d=2, leaf=linear",
+          "mean_return": -1605.2523381821654,
+          "std_return": 70.96504967958519,
+          "sem_return": 4.4353156049740745,
+          "gap_to_exact_optimum": 52.26158525558799,
+          "gap_to_best_heuristic": 47.31678017668992,
+          "note": "CMA-ES soft tree, seed=772255, 150 gens, 2.7s",
+          "evaluation": {
+            "mean_return": -1605.2523381821654,
+            "std_return": 70.96504967958519,
+            "sem_return": 4.4353156049740745,
+            "min_return": -1860.9830225166515,
+            "max_return": -1439.181274828916,
+            "num_seeds": 256
+          },
+          "training": {
+            "iterations": 150,
+            "popsize": 16,
+            "sigma_init": 1.5,
+            "seed": 772255,
+            "final_gen_best_train_return": -1416.4648049133918
+          }
+        },
+        {
+          "policy": "soft_tree_sigmoid_linear",
+          "params": "d=2, leaf=sigmoid_linear",
+          "mean_return": -1543.801155398257,
+          "std_return": 66.21973701075726,
+          "sem_return": 4.1387335631723285,
+          "gap_to_exact_optimum": -9.189597528320519,
+          "gap_to_best_heuristic": -14.13440260721859,
+          "note": "CMA-ES soft tree, seed=454826, 150 gens, 0.7s",
+          "evaluation": {
+            "mean_return": -1543.801155398257,
+            "std_return": 66.21973701075726,
+            "sem_return": 4.1387335631723285,
+            "min_return": -1764.6669021101504,
+            "max_return": -1377.8284651523356,
+            "num_seeds": 256
+          },
+          "training": {
+            "iterations": 150,
+            "popsize": 16,
+            "sigma_init": 1.5,
+            "seed": 454826,
+            "final_gen_best_train_return": -1496.025694435901
+          }
+        }
+      ]
+    },
+    {
+      "reference_instance_name": "de_moor2022_m2_exp2_l1_cp7_fifo",
+      "issuing_policy": "fifo",
+      "shelf_life": 2,
+      "lead_time": 1,
+      "exact_mdp": {
+        "reference_instance_name": "de_moor2022_m2_exp2_l1_cp7_fifo",
+        "state_count": 121,
+        "best_base_stock_level": 7,
+        "value_iteration_mean_return": -1457.281304782201,
+        "value_iteration_mean_return_rounded": -1457,
+        "policy_table_9x9": [
+          [
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            1,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            1,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            2,
+            2,
+            1,
+            1,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            3,
+            2,
+            2,
+            1,
+            1,
+            1,
+            1,
+            0,
+            0
+          ],
+          [
+            3,
+            3,
+            2,
+            2,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            4,
+            3,
+            3,
+            3,
+            2,
+            2,
+            2,
+            2,
+            2
+          ],
+          [
+            4,
+            4,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3
+          ],
+          [
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4,
+            4
+          ]
+        ],
+        "matches_published_policy_table": true,
+        "matches_published_base_stock_level": true,
+        "matches_published_value_iteration_mean_return": true,
+        "published_value_iteration_mean_return": -1457
+      },
+      "best_heuristic_mean_return": -1467.9003308221286,
+      "rows": [
+        {
+          "policy": "exact_value_iteration",
+          "params": "-",
+          "mean_return": -1457.281304782201,
+          "std_return": 0.0,
+          "gap_to_exact_optimum": 0.0,
+          "gap_to_best_heuristic": -10.619026039927576,
+          "note": "exact tabular MDP optimum (reproduces Farrington 2025 Table 3)"
+        },
+        {
+          "policy": "base_stock",
+          "params": "[7]",
+          "mean_return": -1468.3633552584702,
+          "std_return": 57.91354944024189,
+          "sem_return": 3.619596840015118,
+          "gap_to_exact_optimum": 11.08205047626916,
+          "gap_to_best_heuristic": 0.4630244363415841,
+          "note": "best base-stock level from stochastic search (Monte-Carlo estimator)",
+          "evaluation": {
+            "params": [
+              7
+            ],
+            "mean_return": -1468.3633552584702,
+            "std_return": 57.91354944024189,
+            "min_return": -1672.13649162138,
+            "max_return": -1325.1233499743357,
+            "num_seeds": 256
+          }
+        },
+        {
+          "policy": "bsp_low_ew",
+          "params": "[7, 7, 0]",
+          "mean_return": -1467.9003308221286,
+          "std_return": 57.79798323710023,
+          "sem_return": 3.6123739523187646,
+          "gap_to_exact_optimum": 10.619026039927576,
+          "gap_to_best_heuristic": 0.0,
+          "note": "best BSP-low-EW params from stochastic search (Monte-Carlo estimator)",
+          "evaluation": {
+            "params": [
+              7,
+              7,
+              0
+            ],
+            "mean_return": -1467.9003308221286,
+            "std_return": 57.79798323710023,
+            "min_return": -1670.95180233886,
+            "max_return": -1325.1233499743357,
+            "num_seeds": 256
+          }
+        },
+        {
+          "policy": "soft_tree_linear",
+          "params": "d=2, leaf=linear",
+          "mean_return": -1455.8498545645189,
+          "std_return": 57.86969460282233,
+          "sem_return": 3.6168559126763955,
+          "gap_to_exact_optimum": -1.4314502176821406,
+          "gap_to_best_heuristic": -12.050476257609716,
+          "note": "CMA-ES soft tree, seed=429914, 150 gens, 1.1s",
+          "evaluation": {
+            "mean_return": -1455.8498545645189,
+            "std_return": 57.86969460282233,
+            "sem_return": 3.6168559126763955,
+            "min_return": -1661.8092690209075,
+            "max_return": -1305.0440070280763,
+            "num_seeds": 256
+          },
+          "training": {
+            "iterations": 150,
+            "popsize": 16,
+            "sigma_init": 1.5,
+            "seed": 429914,
+            "final_gen_best_train_return": -1368.0902978493896
+          }
+        },
+        {
+          "policy": "soft_tree_sigmoid_linear",
+          "params": "d=2, leaf=sigmoid_linear",
+          "mean_return": -1452.3080213032258,
+          "std_return": 62.92269117620848,
+          "sem_return": 3.93266819851303,
+          "gap_to_exact_optimum": -4.9732834789751905,
+          "gap_to_best_heuristic": -15.592309518902766,
+          "note": "CMA-ES soft tree, seed=491045, 150 gens, 0.9s",
+          "evaluation": {
+            "mean_return": -1452.3080213032258,
+            "std_return": 62.92269117620848,
+            "sem_return": 3.93266819851303,
+            "min_return": -1680.2157053186306,
+            "max_return": -1271.4745776498169,
+            "num_seeds": 256
+          },
+          "training": {
+            "iterations": 150,
+            "popsize": 16,
+            "sigma_init": 1.5,
+            "seed": 491045,
+            "final_gen_best_train_return": -1371.0265658369317
+          }
+        }
+      ]
+    }
+  ],
+  "markdown": "# perishable_inventory Exact-Slice Benchmark\n\n- objective: compare exact optimum, tuned heuristics, and CMA-ES soft-tree policies on the literature-verified m=2/L=1 slice\n- discounting: gamma=`0.99`, warmup = instance `warm_up_periods_ratio`\n- tree_depth: `2`, split_type: `oblique`, leaf_types: `['linear', 'sigmoid_linear']`\n- CMA-ES: `150` generations, popsize `16`, sigma_init `1.5`\n- search_seeds: `48`, eval_seeds: `256`\n\nEstimator note: two distinct estimators of the discounted return appear here.\n`exact_value_iteration` is the analytic expected discounted return under the\nmidpoint-binned gamma demand (the value the repo reproduces from Farrington 2025).\nAll other rows are Monte-Carlo means over sampled-and-rounded gamma demand rollouts,\nwhich sit ~10-15 units (~1%) below the analytic value on the same instance because they\nare a different (sampled, finite-horizon, zero-start) estimator. The `gap_to_exact_optimum`\ncolumn therefore mixes estimators; the apples-to-apples comparison is the\n`gap_to_best_heuristic` column, where every row uses the same Monte-Carlo estimator and\neval seeds. SEM is the standard error of the Monte-Carlo mean; a soft tree at -1455 vs the\nbest heuristic at -1468 (FIFO) is a real, multi-SEM win.\n\n## `de_moor2022_m2_exp1_l1_cp7_lifo` (m=2, L=1, lifo)\n\n- exact_value_iteration_return: `-1552.991` (rounded `-1553`, published `-1553`)\n- matches_published_value_iteration_return: `True`\n- best_base_stock_level: `5` (matches_published: `True`)\n- matches_published_policy_table: `True`\n- best_heuristic_mean_return: `-1557.936`\n\n| Policy | Params | Mean Return | SEM | Gap to Exact | Gap to Best Heuristic | Note |\n| --- | --- | ---: | ---: | ---: | ---: | --- |\n| `exact_value_iteration` | `-` | `-1552.991` | `0.000` | `0.000` | `-4.945` | exact tabular MDP optimum (reproduces Farrington 2025 Table 3) |\n| `base_stock` | `[5]` | `-1558.344` | `4.169` | `5.353` | `0.409` | best base-stock level from stochastic search (Monte-Carlo estimator) |\n| `bsp_low_ew` | `[5, 4, 10]` | `-1557.936` | `4.169` | `4.945` | `0.000` | best BSP-low-EW params from stochastic search (Monte-Carlo estimator) |\n| `soft_tree_linear` | `d=2, leaf=linear` | `-1605.252` | `4.435` | `52.262` | `47.317` | CMA-ES soft tree, seed=772255, 150 gens, 2.7s |\n| `soft_tree_sigmoid_linear` | `d=2, leaf=sigmoid_linear` | `-1543.801` | `4.139` | `-9.190` | `-14.134` | CMA-ES soft tree, seed=454826, 150 gens, 0.7s |\n\n## `de_moor2022_m2_exp2_l1_cp7_fifo` (m=2, L=1, fifo)\n\n- exact_value_iteration_return: `-1457.281` (rounded `-1457`, published `-1457`)\n- matches_published_value_iteration_return: `True`\n- best_base_stock_level: `7` (matches_published: `True`)\n- matches_published_policy_table: `True`\n- best_heuristic_mean_return: `-1467.900`\n\n| Policy | Params | Mean Return | SEM | Gap to Exact | Gap to Best Heuristic | Note |\n| --- | --- | ---: | ---: | ---: | ---: | --- |\n| `exact_value_iteration` | `-` | `-1457.281` | `0.000` | `0.000` | `-10.619` | exact tabular MDP optimum (reproduces Farrington 2025 Table 3) |\n| `base_stock` | `[7]` | `-1468.363` | `3.620` | `11.082` | `0.463` | best base-stock level from stochastic search (Monte-Carlo estimator) |\n| `bsp_low_ew` | `[7, 7, 0]` | `-1467.900` | `3.612` | `10.619` | `0.000` | best BSP-low-EW params from stochastic search (Monte-Carlo estimator) |\n| `soft_tree_linear` | `d=2, leaf=linear` | `-1455.850` | `3.617` | `-1.431` | `-12.050` | CMA-ES soft tree, seed=429914, 150 gens, 1.1s |\n| `soft_tree_sigmoid_linear` | `d=2, leaf=sigmoid_linear` | `-1452.308` | `3.933` | `-4.973` | `-15.592` | CMA-ES soft tree, seed=491045, 150 gens, 0.9s |\n"
+}

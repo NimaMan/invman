@@ -86,12 +86,12 @@ pub const YAN_2026_REFERENCE: PublishedBenchmarkReference = PublishedBenchmarkRe
 };
 
 pub const INDERFURTH_2015_REFERENCE: PublishedBenchmarkReference = PublishedBenchmarkReference {
-    source: "Inderfurth and Kiesmuller (2015), linear-inflation policies under random yield",
+    source: "Inderfurth and Kiesmuller (2015), Exact and heuristic linear-inflation policies for an inventory model with random yield and arbitrary lead times, European Journal of Operational Research 245(1), 109-120",
     url: "https://www.fww.ovgu.de/fww_media/femm/femm_2013/2013_07.pdf",
     benchmark_policies: &["linear_inflation"],
     reported_numbers_available: true,
     numbers_anchor_repo_assertions: false,
-    notes: "This paper gives the canonical linear-inflation rule q = F * (S - X)^+ and the standard choice F = 1/p for binomial yield. It reports public numeric benchmark summaries, but they are for related random-yield models rather than exact all-or-nothing repo instances.",
+    notes: "This paper gives the canonical linear-inflation rule q = F * (S - X)^+ with inflation factor F = 1/E[yield rate] (so F = 1/p for binomial yield). VERIFIED 2026-05 from the open working-paper copy: it is an INFINITE-HORIZON AVERAGE-COST model with PER-UNIT BINOMIAL yield (Y(Q) ~ Binomial(Q,p), each unit independently good) or STOCHASTICALLY PROPORTIONAL yield (Y(Q) = Z*Q). This is a DIFFERENT yield model than the repo's finite-horizon ALL-OR-NOTHING batch yield (whole batch arrives with prob p or not at all), so its published numbers cannot anchor repo assertions; only the F = 1/p inflation factor carries over.",
 };
 
 pub const CHEN_2018_REFERENCE: PublishedBenchmarkReference = PublishedBenchmarkReference {
