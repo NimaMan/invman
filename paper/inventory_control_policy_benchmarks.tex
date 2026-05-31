@@ -890,7 +890,56 @@ widening the bounds to remove the truncation is computationally prohibitive at $
 dual-index proxy is exact to within its published gap and is evaluated on the identical
 common-random-number rollout as the learned policies.
 
-\bibliographystyle{plainnat}
-\bibliography{references}
+% Bibliography embedded inline (natbib-compatible \bibitem labels) so the manuscript is
+% self-contained and renders with a single pdflatex pass -- no bibtex step required. The
+% same entries are also kept in references.bib for tooling that prefers a .bib database.
+\begin{thebibliography}{9}
+
+\bibitem[Bijvank et al.(2015)]{Bijvank2015ParametricPolicies}
+M.~Bijvank, S.~Bhulai, and W.~T. Huh.
+Parametric replenishment policies for inventory systems with lost sales and fixed order cost.
+\emph{European Journal of Operational Research}, 241(2):381--390, 2015.
+
+\bibitem[Van Roy et al.(1997)]{vanroy1997ndp}
+B.~Van Roy, D.~P. Bertsekas, Y.~Lee, and J.~N. Tsitsiklis.
+A neuro-dynamic programming approach to retailer inventory management.
+In \emph{Proceedings of the 36th IEEE Conference on Decision and Control}, volume~4, pages 4052--4057, 1997.
+
+\bibitem[Gijsbrechts et al.(2022)]{gijsbrechts2022drl}
+J.~Gijsbrechts, R.~N. Boute, J.~A. Van Mieghem, and D.~J. Zhang.
+Can deep reinforcement learning improve inventory management? Performance on lost sales, dual-sourcing, and multi-echelon problems.
+\emph{Manufacturing \& Service Operations Management}, 24(3):1349--1368, 2022.
+
+\bibitem[Nahmias and Smith(1994)]{nahmias1994partial}
+S.~Nahmias and S.~A. Smith.
+Optimizing inventory levels in a two-echelon retailer system with partial lost sales.
+\emph{Management Science}, 40(5):582--596, 1994.
+
+\bibitem[Federgruen and Zipkin(1984)]{federgruen1984multilocation}
+A.~Federgruen and P.~Zipkin.
+Approximations of dynamic, multilocation production and inventory problems.
+\emph{Management Science}, 30(1):69--84, 1984.
+
+\bibitem[de Kok et al.(2018)]{dekok2018typology}
+T.~de Kok, C.~Grob, M.~Laumanns, S.~Minner, J.~Rambau, and K.~Schade.
+A typology and literature review on stochastic multi-echelon inventory models.
+\emph{European Journal of Operational Research}, 269(3):955--983, 2018.
+
+\bibitem[Kaynov et al.(2024)]{kaynov2024owmr}
+I.~Kaynov, M.~van Knippenberg, V.~Menkovski, A.~van Breemen, and W.~van Jaarsveld.
+Deep reinforcement learning for one-warehouse multi-retailer inventory management.
+\emph{International Journal of Production Economics}, 267:109088, 2024.
+
+\bibitem[Veeraraghavan and Scheller-Wolf(2008)]{veeraraghavan2008dualindex}
+S.~Veeraraghavan and A.~Scheller-Wolf.
+Now or later: A simple policy for effective dual sourcing in capacitated systems.
+\emph{Operations Research}, 56(4):850--864, 2008.
+
+\bibitem[Sheopuri et al.(2010)]{sheopuri2010dualsourcing}
+A.~Sheopuri, G.~Janakiraman, and S.~Seshadri.
+New policies for the stochastic inventory control problem with two supply sources.
+\emph{Operations Research}, 58(3):734--745, 2010.
+
+\end{thebibliography}
 
 \end{document}
