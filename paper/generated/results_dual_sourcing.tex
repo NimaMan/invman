@@ -1,0 +1,21 @@
+\begin{table}[!htbp]
+\centering
+\small
+\caption{Dual-sourcing: best learned soft-tree policy vs.\ the capped dual-index (CDI) optimal proxy, common-random-number evaluation ($70$ seeds, horizon $6\times10^4$). $\Delta\%$ is the learned policy's cost relative to CDI (negative is better); the A3C row reports the published optimality gap from \citet{gijsbrechts2022drl}.}
+\label{tab:ds-results}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lcccccc}
+\toprule
+ & \multicolumn{2}{c}{Regular lead time $l_r=2$} & \multicolumn{2}{c}{Regular lead time $l_r=3$} & \multicolumn{2}{c}{Regular lead time $l_r=4$} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+Policy / metric & $c_e=105$ & $c_e=110$ & $c_e=105$ & $c_e=110$ & $c_e=105$ & $c_e=110$ \\
+\midrule
+CDI proxy & 216.806 & 219.821 & 216.900 & 220.483 & 216.914 & 220.879 \\
+Learned soft tree & 216.806 & \textbf{219.800} & 216.906 & 220.483 & 216.918 & \textbf{220.789} \\
+Learned vs.\ CDI (\%) & $+0.000$ (match) & $\mathbf{-0.009}$ (beats) & $+0.003$ (match) & $+0.000$ (match) & $+0.002$ (match) & $\mathbf{-0.041}$ (beats) \\
+Published A3C gap & 0.52\% & 0.80\% & 0.82\% & 0.51\% & 1.85\% & 1.33\% \\
+\bottomrule
+\end{tabular}}
+\par\medskip\footnotesize Bold learned costs are strictly below CDI under the paired CRN comparison; ``beats'' marks those significant negative paired margins.
+\end{table}
+\FloatBarrier

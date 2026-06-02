@@ -6,6 +6,7 @@
 \usepackage{booktabs}
 \usepackage{graphicx}
 \usepackage{hyperref}
+\usepackage[section]{placeins}
 \usepackage[numbers]{natbib}
 
 \title{Inventory Control Policy Benchmarks for Selected Inventory Problems}
@@ -43,16 +44,16 @@ precisely on this decision that the action parameterizations below differ most.
 
 \subsection{Policy functions}
 
-The action space is a property of the policy, not of the environment. Every policy maps the state
-feature vector $x_t\in\mathbb{R}^d$ to a nonnegative integer order $a_t\in\mathbb{Z}_{\ge 0}$, and
-some decoders introduce a policy-side cap $\bar q$ (a design choice, not an environment
-restriction); for the pipeline state the feature dimension is $d=L$. The environment emits the raw
-state and the policy applies its own divide-by-scale normalization before acting. We write $\sigma$
-for the logistic function, $\mathrm{softplus}(z)=\ln(1+e^{z})$, and $\Pi$ for
-nearest-nonnegative-integer rounding. Each policy composes a \emph{backbone} that produces latent
+The action parameterization is part of the policy, not a separate environment restriction. Every
+policy maps the state feature vector $x_t\in\mathbb{R}^d$ to a nonnegative integer order
+$a_t\in\mathbb{Z}_{\ge 0}$; for the pipeline state the feature dimension is $d=L$. The environment
+emits the raw state and the policy applies its own divide-by-scale normalization before acting. We
+write $\sigma$ for the logistic function, $\mathrm{softplus}(z)=\ln(1+e^{z})$, and $\Pi$ for
+nearest-nonnegative-integer rounding. Each learned policy composes a \emph{backbone} that produces latent
 outputs with a \emph{decoder} that turns them into the order. We use two backbones --- a linear map
 $u_\theta(x)=Wx+b$ and a one-hidden-layer network $u_\theta(x)=V\phi(Ux+c)+e$ of width $H=8$ with
-SELU activation $\phi$ --- and the reported benchmark surface pairs them with three decoders.
+SELU activation $\phi$ --- and the reported benchmark surface pairs them with three policy-owned
+decoders.
 
 \paragraph{Soft-gated direct quantity (L-SGD, NN-SGD).}
 The backbone emits a gate score $g(x)$ and a quantity score $q(x)$, and the order is the gated
@@ -62,13 +63,13 @@ a_t = \Pi\!\big(\sigma(g(x_t))\,\mathrm{softplus}(q(x_t))\big).
 \]
 
 \paragraph{Soft-gated ordinal quantity (L-SGO, NN-SGO).}
-The backbone emits a gate score $g(x)$ and $\bar q$ ordinal threshold scores
-$o_1(x),\dots,o_{\bar q}(x)$, and the order gates a sum of threshold probabilities,
+The backbone emits a gate score $g(x)$ and $M$ ordinal threshold scores
+$o_1(x),\dots,o_M(x)$, and the order gates a sum of threshold probabilities,
 \[
-a_t = \Pi\!\Big(\sigma(g(x_t))\sum_{k=1}^{\bar q}\sigma(o_k(x_t))\Big),
+a_t = \Pi\!\Big(\sigma(g(x_t))\sum_{k=1}^{M}\sigma(o_k(x_t))\Big),
 \]
-so the head can express any quantity in $\{0,\dots,\bar q\}$ but, unlike the direct head, its
-output dimension (and parameter count) grows with $\bar q$.
+so the policy's threshold count $M$ determines both the largest ordinal quantity the decoder can
+represent and the decoder's parameter count.
 
 \paragraph{Soft trees with linear leaves (Tree-1, Tree-2).}
 A soft decision tree with oblique splits computes leaf path-probabilities $\pi_\ell(x)$; each leaf
@@ -79,196 +80,180 @@ a_t = \Pi\!\Big(\sum_\ell \pi_\ell(x_t)\,q_\ell(x_t)\Big).
 \]
 We report depth-1 (Tree-1) and depth-2 (Tree-2) trees.
 
-For the active $L=4$ pipeline state ($d=4$, $d+1=5$) the trainable parameter counts are compact and,
-for the direct and tree heads, independent of the cap: the linear and network direct heads carry
-$2(d+1)=10$ and $H(d+1)+2(H+1)=58$ parameters respectively, and the depth-1 and depth-2 trees carry
-$3(d+1)=15$ and $7(d+1)=35$. Only the ordinal heads scale with the cap, at $(\bar q+1)(d+1)$ for
-L-SGO and $H(d+1)+(\bar q+1)(H+1)$ for NN-SGO, which evaluates to $105$ and $229$ at the vanilla cap
-$\bar q=20$ and to $255$ and $499$ at the fixed-cost cap $\bar q=50$.
+The vanilla heuristic columns are Myopic-1 (M1), Myopic-2 (M2), and the standard vector base-stock
+policy (SVBS). M1 minimizes the lead-time-deep myopic action value with no future ordering; M2 adds
+one discounted continuation step using the next-period M1 action; SVBS computes vector base-stock
+levels over the remaining lead-time positions and orders the minimum raise implied by those levels.
+The fixed-cost heuristic columns use the inventory position
+\[
+P_t=x_t+\sum_{j=1}^{L-1} q_{t-j}.
+\]
+The $(s,S)$ policy orders $S-P_t$ when $P_t\le s$ and otherwise orders zero. The $(s,nQ)$ policy
+orders the smallest positive multiple $nQ$ that raises $P_t+nQ$ above $s$, again only when
+$P_t\le s$. The modified $(s,S,q)$ policy orders $\min\{q,S-P_t\}$ when $P_t\le s$ and zero
+otherwise. Thus the setup-cost comparators expose their order/no-order threshold and their own
+batching or capped-raise parameters as part of the policy definition.
+
+For an $L=4$ pipeline state ($d=4$, $d+1=5$), each learned policy's trainable parameter count follows
+from its decoder. The linear and network direct-quantity policies carry $2(d+1)=10$ and
+$H(d+1)+2(H+1)=58$ parameters respectively. The depth-1 and depth-2 soft trees carry $3(d+1)=15$ and
+$7(d+1)=35$. The reported ordinal-quantity policies use $M=20$ thresholds, giving
+$(M+1)(d+1)=105$ parameters for L-SGO and $H(d+1)+(M+1)(H+1)=229$ for NN-SGO.
 
 \subsection{Experiment setup}
 
 \paragraph{Instances.}
-We benchmark on the full paper grid rather than a single instance. The core parameters are holding
-cost $h=1$, mean demand $\mu=5$, lead times $L\in\{4,6,8,10\}$, and lost-sales penalties
-$p\in\{4,19\}$, crossed with the four demand families below, giving $4\times4\times2=32$ vanilla
-instances. The fixed-cost grid additionally crosses the fixed cost $K\in\{5,25\}$, giving $64$
-instances.
+We benchmark on a multi-instance surface rather than a single example. The vanilla lost-sales
+surface has holding cost $h=1$, mean demand $\mu=5$, lead times $L\in\{4,6,8,10\}$, lost-sales
+penalties $p\in\{4,19\}$, and the three demand families below, giving $3\times4\times2=24$
+instances. The fixed-cost problem uses the same vanilla surface and adds the two setup costs
+$K\in\{5,25\}$, giving $48$ fixed-cost instances.
 
 \paragraph{Demand families.}
-The four families are mean-preserving, all with $\mathbb{E}[D_t]=5$:
+The three reported families are mean-preserving, all with $\mathbb{E}[D_t]=5$:
 \begin{itemize}
     \item Poisson demand with mean $5$,
     \item Geometric demand with mean $5$,
     \item positively correlated two-state Markov-modulated Poisson (MMPP2$+$) demand with
-    $(\lambda_{\mathrm{low}},\lambda_{\mathrm{high}})=(3,7)$ and $p_{00}=p_{11}=0.9$,
-    \item negatively correlated (MMPP2$-$) demand with the same rates and $p_{00}=p_{11}=0.1$.
+    $(\lambda_{\mathrm{low}},\lambda_{\mathrm{high}})=(3,7)$ and $p_{00}=p_{11}=0.9$.
 \end{itemize}
-For the MMPP2 cases the latent regime $S_t\in\{\mathrm{low},\mathrm{high}\}$ follows a two-state
+For the MMPP2$+$ case the latent regime $S_t\in\{\mathrm{low},\mathrm{high}\}$ follows a two-state
 Markov chain with stay-probabilities $p_{00},p_{11}$, and $D_t\mid S_t\sim
 \mathrm{Poisson}(\lambda_{S_t})$. Because $p_{00}=p_{11}$ the stationary regime probabilities are
 $1/2$ each, preserving the mean $\tfrac12(3)+\tfrac12(7)=5$. The temporal dependence is set by the
-regime eigenvalue $\rho_{\mathrm{regime}}=p_{00}+p_{11}-1=\pm0.8$; after Poisson observation noise
+regime eigenvalue $\rho_{\mathrm{regime}}=p_{00}+p_{11}-1=0.8$; after Poisson observation noise
 the implemented lag-one demand autocorrelation is
 \[
 \mathrm{Corr}(D_t,D_{t+1})
 =\frac{\pi_{\mathrm{low}}\pi_{\mathrm{high}}(\lambda_{\mathrm{high}}-\lambda_{\mathrm{low}})^2
-(p_{00}+p_{11}-1)}{\mathrm{Var}(D_t)}=\pm\frac{3.2}{9}\approx\pm0.356,
+(p_{00}+p_{11}-1)}{\mathrm{Var}(D_t)}=\frac{3.2}{9}\approx0.356,
 \]
-positive for the persistent case and sign-alternating for the alternating case, whereas the Poisson
-and Geometric families are i.i.d.\ (zero autocorrelation at every lag).
+whereas the Poisson and Geometric families are i.i.d.\ (zero autocorrelation at every lag).
 
 \paragraph{Training and evaluation.}
 Policies are trained with CMA-ES (population $64$, training horizon $2000$) and evaluated on the
-long-run average cost over horizon $10^6$ with $10$ seeds and base seed $42$. The benchmark
+long-run average cost over horizon $10^6$ with $10$ consecutive seeds. The benchmark
 heuristics are the myopic-1, myopic-2, and smoothed value-based base-stock (SVBS) policies for
 vanilla lost sales, and the $(s,S)$, $(s,nQ)$, and modified $(s,S,q)$ policies for the fixed-cost
-variant, using literature-reported parameters where available.
+variant, using literature-reported parameters where available
+\citep{Zipkin2008OldSystems,Bijvank2015ParametricPolicies}.
 
 \subsection{Results}
 
 Tables~\ref{tab:results-vanilla-lost-sales} and~\ref{tab:results-fixed-cost-lost-sales} report the
-mean cost of the six learned policy approximators against the heuristic baselines across the full
-vanilla and fixed-cost grids. Empty cells are instances not yet trained; a dagger marks a diverged
-CMA-ES run (excluded from the row); bold marks the best (lowest) cost in each row.
+mean cost of the six learned policy approximators against the heuristic baselines across the reported
+vanilla and fixed-cost benchmark surfaces. The tables use the same layout: policy rows, lead-time
+column groups, and demand-family subcolumns. A dagger marks a diverged CMA-ES run (excluded from the
+comparison); bold marks the best reported heuristic or learned policy in each instance column. The
+fixed-cost table repeats the vanilla instance surface and adds the two setup costs $K\in\{5,25\}$.
 
-\begin{table}[t]
+\begin{table}[!htbp]
 \centering
-\small
-\caption{Vanilla lost-sales benchmark: mean cost of learned policy approximators vs.\ classical heuristics across the 32-instance paper grid. Optimal is the literature value where reported. (15/32 instances trained so far.)}
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\caption{Vanilla lost-sales benchmark: average cost by policy, shortage cost, lead time, and demand family across the reported 24-instance surface.}
 \label{tab:results-vanilla-lost-sales}
 \resizebox{\textwidth}{!}{%
-\begin{tabular}{lrrrrrrrrrr}
+\begin{tabular}{llrrrrrrrrrrrr}
 \toprule
- & \multicolumn{3}{c}{Heuristics} & \multicolumn{6}{c}{Learned policy approximators} & \multicolumn{1}{c}{} \\
-Instance & M1 & M2 & SVBS & L-SGD & NN-SGD & L-SGO & NN-SGO & Tree-1 & Tree-2 & Opt. \\
+ &  & \multicolumn{3}{c}{Lead time $L=4$} & \multicolumn{3}{c}{Lead time $L=6$} & \multicolumn{3}{c}{Lead time $L=8$} & \multicolumn{3}{c}{Lead time $L=10$} \\
+\cmidrule(lr){3-5}\cmidrule(lr){6-8}\cmidrule(lr){9-11}\cmidrule(lr){12-14}
+Shortage $p$ & Policy & Pois & Geom & MMPP2$+$ & Pois & Geom & MMPP2$+$ & Pois & Geom & MMPP2$+$ & Pois & Geom & MMPP2$+$ \\
 \midrule
-Geom $L10$ $p19$ &  &  &  &  &  &  &  &  &  &  \\
-Geom $L4$ $p19$ & 23.836 & 23.280 & 26.429 & \textbf{22.993} & 23.455 & 23.240 & 23.140 & 23.011 & 23.043 & 22.950 \\
-Geom $L6$ $p19$ & 25.821 & 24.930 & 30.103 & 24.486 & 24.483 & 24.370 & 24.474 & \textbf{24.349} & 24.430 &  \\
-Geom $L8$ $p19$ & 27.407 & 26.210 & 33.008 & 25.374 & 25.757 & 25.766 & 25.662 & \textbf{25.209} & 25.382 &  \\
-Geom $L10$ $p4$ & 12.075 & 11.400 & 19.421 & 10.921 & 10.993 & 10.991 & 10.995 & 10.934 & \textbf{10.912} &  \\
-Geom $L4$ $p4$ & 11.217 & 10.800 & 13.728 & 10.645 & 10.687 & 10.647 & 10.692 & \textbf{10.621} & 10.670 & 10.610 \\
-Geom $L6$ $p4$ & 11.650 & 11.080 & 15.738 & 10.790 & 10.791 & 10.823 & 10.799 & \textbf{10.776} & 10.820 &  \\
-Geom $L8$ $p4$ & 11.924 & 11.270 & 17.632 & \textbf{10.850} & 10.983 & 10.884 & $\dagger$ & 10.857 & 10.892 &  \\
-MMPP2- $L10$ $p19$ &  &  &  &  &  &  &  &  &  &  \\
-MMPP2- $L4$ $p19$ &  &  &  &  &  &  &  &  &  &  \\
-MMPP2- $L6$ $p19$ &  &  &  &  &  &  &  &  &  &  \\
-MMPP2- $L8$ $p19$ &  &  &  &  &  &  &  &  &  &  \\
-MMPP2- $L10$ $p4$ &  &  &  &  &  &  &  &  &  &  \\
-MMPP2- $L4$ $p4$ &  &  &  &  &  &  &  &  &  &  \\
-MMPP2- $L6$ $p4$ &  &  &  &  &  &  &  &  &  &  \\
-MMPP2- $L8$ $p4$ &  &  &  &  &  &  &  &  &  &  \\
-MMPP2+ $L10$ $p19$ &  &  &  &  &  &  &  &  &  &  \\
-MMPP2+ $L4$ $p19$ &  &  &  &  &  &  &  &  &  &  \\
-MMPP2+ $L6$ $p19$ &  &  &  &  &  &  &  &  &  &  \\
-MMPP2+ $L8$ $p19$ &  &  &  &  &  &  &  &  &  &  \\
-MMPP2+ $L10$ $p4$ &  &  &  &  &  &  &  &  &  &  \\
-MMPP2+ $L4$ $p4$ &  &  &  &  &  &  &  &  &  &  \\
-MMPP2+ $L6$ $p4$ &  &  &  &  &  &  &  &  &  &  \\
-MMPP2+ $L8$ $p4$ &  &  &  &  &  &  &  &  &  &  \\
-Pois $L10$ $p19$ & 11.820 & 11.090 & 13.336 & 10.634 & 10.772 & $\dagger$ & 10.733 & \textbf{10.629} & 10.698 & 11.090 \\
-Pois $L4$ $p19$ & 9.173 & 8.953 & 9.565 & 8.932 & \textbf{8.927} & 9.003 & 8.974 & 8.936 & 8.941 & 8.890 \\
-Pois $L6$ $p19$ & 10.269 & 9.831 & 11.234 & 9.759 & 10.131 & 9.794 & 9.758 & \textbf{9.711} & 9.720 &  \\
-Pois $L8$ $p19$ & 11.092 & 10.511 & 12.333 & 10.261 & 10.430 & 10.330 & 10.490 & \textbf{10.259} & 10.272 &  \\
-Pois $L10$ $p4$ & 5.890 & 5.310 & 8.038 & 5.048 & 5.066 & 16.978 & $\dagger$ & \textbf{5.013} & 5.067 & 5.310 \\
-Pois $L4$ $p4$ & 5.065 & 4.819 & 5.836 & 4.750 & 4.774 & 4.768 & 4.786 & \textbf{4.749} & 4.750 & 4.730 \\
-Pois $L6$ $p4$ & 5.422 & 5.051 & 6.781 & 4.897 & 4.900 & \textbf{4.893} & 5.064 & 4.895 & 4.936 &  \\
-Pois $L8$ $p4$ & 5.698 & 5.199 & 7.694 & \textbf{4.974} & 5.033 & $\dagger$ & 4.978 & 4.975 & 4.977 &  \\
+$4$ & Optimal & 4.730 & 10.610 &  &  &  &  &  &  &  &  &  &  \\
+ & M1 & 5.065 & 11.217 & 9.823 & 5.422 & 11.650 & 11.189 & 5.698 & 11.924 & 12.256 & 5.890 & 12.075 & 13.136 \\
+ & M2 & 4.819 & 10.800 & 9.452 & 5.051 & 11.080 & 10.591 & 5.199 & 11.270 & 11.460 & 5.310 & 11.400 & 12.155 \\
+ & SVBS & 5.836 & 13.728 & 10.312 & 6.781 & 15.738 & 12.271 & 7.694 & 17.632 & 13.995 & 8.038 & 19.421 & 15.190 \\
+ & L-SGD & 4.750 & 10.645 & 8.571 & 4.897 & 10.790 & 9.171 & \textbf{4.974} & \textbf{10.850} & 9.445 & 5.048 & 10.921 & 9.563 \\
+ & NN-SGD & 4.774 & 10.687 & 8.565 & 4.900 & 10.791 & 9.643 & 5.033 & 10.983 & 9.674 & 5.066 & 10.993 & 9.697 \\
+ & L-SGO & 4.768 & 10.647 & \textbf{8.549} & \textbf{4.893} & 10.823 & \textbf{9.109} & $\dagger$ & 10.884 & \textbf{9.443} & 16.978 & 10.991 & 9.725 \\
+ & NN-SGO & 4.786 & 10.692 & 8.577 & 5.064 & 10.799 & 9.183 & 4.978 & $\dagger$ & 9.481 & $\dagger$ & 10.995 & 9.726 \\
+ & Tree-1 & \textbf{4.749} & \textbf{10.621} & 8.579 & 4.895 & \textbf{10.776} & 9.159 & 4.975 & 10.857 & 9.445 & \textbf{5.013} & 10.934 & 9.590 \\
+ & Tree-2 & 4.750 & 10.670 & 8.595 & 4.936 & 10.820 & 9.302 & 4.977 & 10.892 & 9.446 & 5.067 & \textbf{10.912} & \textbf{9.547} \\
+\addlinespace
+$19$ & Optimal & 8.890 & 22.950 &  &  &  &  &  &  &  &  &  &  \\
+ & M1 & 9.173 & 23.836 & 17.182 & 10.269 & 25.821 & 20.129 & 11.092 & 27.407 & 22.399 & 11.820 & 28.672 & 24.218 \\
+ & M2 & 8.953 & 23.280 & 17.644 & 9.831 & 24.930 & 20.474 & 10.511 & 26.210 & 22.552 & 11.090 & 27.270 & \textbf{23.913} \\
+ & SVBS & 9.565 & 26.429 & 16.531 & 11.234 & 30.103 & 19.677 & 12.333 & 33.008 & \textbf{22.173} & 13.336 & 35.761 & 24.457 \\
+ & L-SGD & 8.932 & \textbf{22.993} & 16.686 & 9.759 & 24.486 & 19.862 & 10.261 & 25.374 & 22.378 & 10.634 & 26.287 & 24.197 \\
+ & NN-SGD & \textbf{8.927} & 23.455 & \textbf{16.341} & 10.131 & 24.483 & 19.650 & 10.430 & 25.757 & 22.211 & 10.772 & 26.129 & 24.406 \\
+ & L-SGO & 9.003 & 23.240 & 16.491 & 9.794 & 24.370 & \textbf{19.549} & 10.330 & 25.766 & 22.233 & $\dagger$ & 26.171 & 24.345 \\
+ & NN-SGO & 8.974 & 23.140 & 16.435 & 9.758 & 24.474 & 19.693 & 10.490 & 25.662 & 22.303 & 10.733 & \textbf{26.037} & 24.357 \\
+ & Tree-1 & 8.936 & 23.011 & 16.697 & \textbf{9.711} & \textbf{24.349} & 19.915 & \textbf{10.259} & \textbf{25.209} & 22.339 & \textbf{10.629} & 26.064 & 24.101 \\
+ & Tree-2 & 8.941 & 23.043 & 16.683 & 9.720 & 24.430 & 19.864 & 10.272 & 25.382 & 22.301 & 10.698 & 26.174 & 24.193 \\
 \bottomrule
 \end{tabular}}
-\par\medskip\footnotesize Empty cells: not yet trained. $\dagger$: diverged CMA-ES run (excluded). Bold: best (lowest) cost in the row.
+\par\medskip\footnotesize Optimal entries are shown only for verified literature optimum anchors; blanks mean no true optimum anchor is available for that expanded instance. $\dagger$: diverged CMA-ES run (excluded). Bold: best reported heuristic or learned policy in the instance column.
 \end{table}
+\FloatBarrier
 
-\begin{table}[t]
+\begin{table}[!htbp]
 \centering
-\small
-\caption{Fixed-order-cost lost-sales benchmark: mean cost of learned policy approximators vs.\ the $(s,S)$, $(s,nQ)$ and modified $(s,S,q)$ heuristics across the 64-instance grid. (47/64 instances trained so far.)}
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\caption{Fixed-order-cost lost-sales benchmark: average cost by policy, setup cost, shortage cost, lead time, and demand family across the reported 48-instance surface.}
 \label{tab:results-fixed-cost-lost-sales}
 \resizebox{\textwidth}{!}{%
-\begin{tabular}{lrrrrrrrrrr}
+\begin{tabular}{lllrrrrrrrrrrrr}
 \toprule
- & \multicolumn{3}{c}{Heuristics} & \multicolumn{6}{c}{Learned policy approximators} & \multicolumn{1}{c}{} \\
-Instance & $(s,S)$ & $(s,nQ)$ & $(s,S,q)$ & L-SGD & NN-SGD & L-SGO & NN-SGO & Tree-1 & Tree-2 & Opt. \\
+ &  &  & \multicolumn{3}{c}{Lead time $L=4$} & \multicolumn{3}{c}{Lead time $L=6$} & \multicolumn{3}{c}{Lead time $L=8$} & \multicolumn{3}{c}{Lead time $L=10$} \\
+\cmidrule(lr){4-6}\cmidrule(lr){7-9}\cmidrule(lr){10-12}\cmidrule(lr){13-15}
+Setup $K$ & Shortage $p$ & Policy & Pois & Geom & MMPP2$+$ & Pois & Geom & MMPP2$+$ & Pois & Geom & MMPP2$+$ & Pois & Geom & MMPP2$+$ \\
 \midrule
-Geom $L10$ $p19$ $K25$ & 43.651 & 38.055 & 43.652 & 36.354 & $\dagger$ & 36.400 & \textbf{36.005} & 36.241 & 36.158 &  \\
-Geom $L10$ $p19$ $K5$ & 35.693 & 33.406 & 35.603 & 29.576 & 29.822 & 30.219 & 29.879 & \textbf{29.517} & 29.615 &  \\
-Geom $L10$ $p4$ $K25$ & 19.036 & 18.872 & 18.890 & 19.992 & 19.992 & 19.992 & \textbf{18.633} & 19.992 & 19.992 &  \\
-Geom $L10$ $p4$ $K5$ & 15.024 & 14.542 & 14.524 & 14.023 & \textbf{13.861} & 13.942 & 13.866 & 13.871 & 14.019 &  \\
-Geom $L4$ $p19$ $K25$ & 32.726 & 32.946 & 32.772 & 32.668 & 32.645 & 32.937 & \textbf{32.435} & 32.640 & 33.081 &  \\
-Geom $L4$ $p19$ $K5$ & 26.888 & 26.878 & 26.835 & 27.260 & \textbf{26.531} & 26.696 & 26.602 & 27.071 & 27.078 &  \\
-Geom $L4$ $p4$ $K25$ & 18.428 & \textbf{18.231} & \textbf{18.231} & 19.992 & 19.992 & 19.992 & 19.992 & 19.992 & 19.992 &  \\
-Geom $L4$ $p4$ $K5$ & 14.130 & 13.968 & 13.939 & 14.069 & 13.649 & 13.755 & \textbf{13.637} & 14.057 & 13.751 &  \\
-Geom $L6$ $p19$ $K25$ & 35.015 & 34.586 & 35.116 & 34.569 & \textbf{34.021} & 34.256 & 34.185 & 35.108 & 34.425 &  \\
-Geom $L6$ $p19$ $K5$ & 28.669 & 28.872 & 28.543 & 28.195 & 27.941 & 28.243 & \textbf{27.859} & 28.250 & 28.177 &  \\
-Geom $L6$ $p4$ $K25$ & 18.736 & 18.579 & 18.579 & 19.992 & 19.992 & 19.992 & \textbf{18.424} & 19.992 & 19.992 &  \\
-Geom $L6$ $p4$ $K5$ & 14.697 & 14.177 & 14.299 & 13.933 & \textbf{13.825} & 13.876 & 13.841 & 13.933 & 13.837 &  \\
-Geom $L8$ $p19$ $K25$ & 38.859 & 35.812 & 38.865 & 35.287 & 35.389 & 36.025 & \textbf{35.070} & 35.884 & 35.164 &  \\
-Geom $L8$ $p19$ $K5$ & 31.221 & 29.870 & 31.067 & 28.977 & $\dagger$ & 29.046 & \textbf{28.936} & 28.957 & 28.962 &  \\
-Geom $L8$ $p4$ $K25$ & 18.925 & 18.649 & 18.648 & 19.992 & 19.992 & 18.509 & \textbf{18.431} & 19.992 & 19.992 &  \\
-Geom $L8$ $p4$ $K5$ & 14.839 & 14.389 & 14.426 & 14.136 & 13.910 & \textbf{13.847} & 14.144 & 14.134 & 13.865 &  \\
-MMPP2- $L10$ $p19$ $K25$ &  &  &  &  &  &  &  &  &  &  \\
-MMPP2- $L10$ $p19$ $K5$ &  &  &  &  &  &  &  &  &  &  \\
-MMPP2- $L10$ $p4$ $K25$ &  &  &  &  &  &  &  &  &  &  \\
-MMPP2- $L10$ $p4$ $K5$ &  &  &  &  &  &  &  &  &  &  \\
-MMPP2- $L4$ $p19$ $K25$ &  &  &  &  &  &  &  &  &  &  \\
-MMPP2- $L4$ $p19$ $K5$ &  &  &  &  &  &  &  &  &  &  \\
-MMPP2- $L4$ $p4$ $K25$ &  &  &  &  &  &  &  &  &  &  \\
-MMPP2- $L4$ $p4$ $K5$ &  &  &  &  &  &  &  &  &  &  \\
-MMPP2- $L6$ $p19$ $K25$ &  &  &  &  &  &  &  &  &  &  \\
-MMPP2- $L6$ $p19$ $K5$ &  &  &  &  &  &  &  &  &  &  \\
-MMPP2- $L6$ $p4$ $K25$ &  &  &  &  &  &  &  &  &  &  \\
-MMPP2- $L6$ $p4$ $K5$ &  &  &  &  &  &  &  &  &  &  \\
-MMPP2- $L8$ $p19$ $K25$ &  &  &  &  &  &  &  &  &  &  \\
-MMPP2- $L8$ $p19$ $K5$ &  &  &  &  &  &  &  &  &  &  \\
-MMPP2- $L8$ $p4$ $K25$ &  &  &  &  &  &  &  &  &  &  \\
-MMPP2- $L8$ $p4$ $K5$ &  &  &  &  &  &  &  &  &  &  \\
-MMPP2+ $L10$ $p19$ $K25$ &  &  &  &  &  &  &  &  &  &  \\
-MMPP2+ $L10$ $p19$ $K5$ &  &  &  & 28.632 & \textbf{28.042} & 28.241 & 28.079 & 28.673 & 28.847 &  \\
-MMPP2+ $L10$ $p4$ $K25$ &  &  &  & 18.043 & 17.946 & \textbf{17.786} & 17.831 & 19.995 & 19.995 &  \\
-MMPP2+ $L10$ $p4$ $K5$ &  &  &  & 12.818 & 12.816 & 12.808 & 12.817 & \textbf{12.791} & 12.899 &  \\
-MMPP2+ $L4$ $p19$ $K25$ &  &  &  & $\dagger$ & 27.434 & \textbf{27.386} & 27.423 & 28.727 & 28.216 &  \\
-MMPP2+ $L4$ $p19$ $K5$ &  &  &  & 21.350 & \textbf{20.079} & 20.172 & 20.208 & 21.309 & 21.325 &  \\
-MMPP2+ $L4$ $p4$ $K25$ & 17.342 & 17.351 & 17.318 & 19.995 & 19.995 & 19.995 & \textbf{17.279} & 19.995 & 19.995 &  \\
-MMPP2+ $L4$ $p4$ $K5$ & 12.158 & 12.113 & 12.077 & 12.314 & 13.655 & \textbf{11.807} & 11.831 & 12.146 & 11.982 &  \\
-MMPP2+ $L6$ $p19$ $K25$ &  &  &  & 33.398 & \textbf{30.199} & 31.004 & 30.495 & 33.330 & 33.603 &  \\
-MMPP2+ $L6$ $p19$ $K5$ &  &  &  & 24.567 & 23.306 & \textbf{23.255} & 23.542 & 24.552 & 24.642 &  \\
-MMPP2+ $L6$ $p4$ $K25$ &  &  &  & 19.995 & 19.995 & 19.995 & \textbf{17.840} & 19.995 & 19.995 &  \\
-MMPP2+ $L6$ $p4$ $K5$ &  &  &  & 12.681 & 12.854 & 12.613 & \textbf{12.363} & 12.691 & 12.665 &  \\
-MMPP2+ $L8$ $p19$ $K25$ &  &  &  & 35.916 & 32.862 & 33.133 & \textbf{32.537} & 35.822 & 32.999 &  \\
-MMPP2+ $L8$ $p19$ $K5$ &  &  &  & 27.001 & 25.924 & 26.071 & \textbf{25.805} & 27.087 & $\dagger$ &  \\
-MMPP2+ $L8$ $p4$ $K25$ &  &  &  & 19.995 & 19.995 & 19.995 & \textbf{17.753} & 19.995 & 19.995 &  \\
-MMPP2+ $L8$ $p4$ $K5$ &  &  &  & \textbf{12.722} & 12.940 & 12.751 & 13.010 & 12.770 & 12.735 &  \\
-Pois $L10$ $p19$ $K25$ & 33.668 & 25.247 & 33.995 & 23.727 & \textbf{22.772} & 25.213 & 23.061 & 23.750 & 22.977 &  \\
-Pois $L10$ $p19$ $K5$ & 21.667 & 19.152 & 21.529 & 15.151 & \textbf{15.030} & 15.780 & $\dagger$ & 15.108 & 15.044 &  \\
-Pois $L10$ $p4$ $K25$ & 16.562 & 16.020 & 16.331 & 17.491 & 17.451 & \textbf{15.651} & 16.271 & 17.864 & 19.710 &  \\
-Pois $L10$ $p4$ $K5$ & 10.015 & 9.600 & 9.826 & 8.934 & 8.933 & 8.943 & 9.153 & \textbf{8.931} & 8.934 &  \\
-Pois $L4$ $p19$ $K25$ & 21.104 & 21.016 & 21.016 & 21.166 & 20.845 & 21.672 & 20.854 & 21.173 & \textbf{20.770} &  \\
-Pois $L4$ $p19$ $K5$ & 13.889 & 13.657 & 13.560 & 13.619 & 13.590 & 13.574 & \textbf{13.475} & 13.628 & 13.613 &  \\
-Pois $L4$ $p4$ $K25$ & 16.002 & 15.840 & 15.877 & 16.645 & \textbf{15.572} & 17.983 & 15.627 & 20.004 & 16.203 &  \\
-Pois $L4$ $p4$ $K5$ & 9.369 & 9.211 & 9.202 & 8.784 & \textbf{8.733} & 8.784 & 8.748 & 8.771 & 8.783 &  \\
-Pois $L6$ $p19$ $K25$ & 22.073 & 22.283 & 22.373 & 22.878 & 21.709 & 22.447 & \textbf{21.598} & 21.914 & 22.243 &  \\
-Pois $L6$ $p19$ $K5$ & 14.841 & 14.694 & 14.476 & 14.265 & $\dagger$ & 14.417 & \textbf{14.167} & 14.268 & 14.260 &  \\
-Pois $L6$ $p4$ $K25$ & 16.136 & 15.979 & 16.060 & \textbf{15.812} & 17.075 & 15.847 & $\dagger$ & 18.321 & 18.167 &  \\
-Pois $L6$ $p4$ $K5$ & 9.772 & 9.385 & 9.380 & 9.558 & \textbf{8.871} & 9.009 & 8.871 & 8.872 & 9.560 &  \\
-Pois $L8$ $p19$ $K25$ & 25.969 & 22.664 & 25.971 & 24.641 & \textbf{22.345} & 24.816 & 22.752 & 22.654 & 22.622 &  \\
-Pois $L8$ $p19$ $K5$ & 15.816 & 15.301 & 15.618 & 14.704 & 14.770 & $\dagger$ & 14.788 & 14.701 & \textbf{14.700} &  \\
-Pois $L8$ $p4$ $K25$ & 16.331 & 15.837 & 15.806 & 16.988 & 17.018 & 15.810 & \textbf{15.656} & 19.497 & 16.632 &  \\
-Pois $L8$ $p4$ $K5$ & 9.965 & 9.569 & 9.562 & 9.588 & $\dagger$ & 8.993 & 8.909 & \textbf{8.905} & 8.954 &  \\
+$5$ & $4$ & $(s,S)$ & 9.369 & 14.130 & 12.158 & 9.772 & 14.697 &  & 9.965 & 14.839 &  & 10.015 & 15.024 &  \\
+ &  & $(s,nQ)$ & 9.211 & 13.968 & 12.113 & 9.385 & 14.177 &  & 9.569 & 14.389 &  & 9.600 & 14.542 &  \\
+ &  & $(s,S,q)$ & 9.202 & 13.939 & 12.077 & 9.380 & 14.299 &  & 9.562 & 14.426 &  & 9.826 & 14.524 &  \\
+ &  & L-SGD & 8.784 & 14.069 & 12.314 & 9.558 & 13.933 & 12.681 & 9.588 & 14.136 & \textbf{12.722} & 8.934 & 14.023 & 12.818 \\
+ &  & NN-SGD & \textbf{8.733} & 13.649 & 13.655 & \textbf{8.871} & \textbf{13.825} & 12.854 & $\dagger$ & 13.910 & 12.940 & 8.933 & \textbf{13.861} & 12.816 \\
+ &  & L-SGO & 8.784 & 13.755 & \textbf{11.807} & 9.009 & 13.876 & 12.613 & 8.993 & \textbf{13.847} & 12.751 & 8.943 & 13.942 & 12.808 \\
+ &  & NN-SGO & 8.748 & \textbf{13.637} & 11.831 & 8.871 & 13.841 & \textbf{12.363} & 8.909 & 14.144 & 13.010 & 9.153 & 13.866 & 12.817 \\
+ &  & Tree-1 & 8.771 & 14.057 & 12.146 & 8.872 & 13.933 & 12.691 & \textbf{8.905} & 14.134 & 12.770 & \textbf{8.931} & 13.871 & \textbf{12.791} \\
+ &  & Tree-2 & 8.783 & 13.751 & 11.982 & 9.560 & 13.837 & 12.665 & 8.954 & 13.865 & 12.735 & 8.934 & 14.019 & 12.899 \\
+\addlinespace
+$5$ & $19$ & $(s,S)$ & 13.889 & 26.888 &  & 14.841 & 28.669 &  & 15.816 & 31.221 &  & 21.667 & 35.693 &  \\
+ &  & $(s,nQ)$ & 13.657 & 26.878 &  & 14.694 & 28.872 &  & 15.301 & 29.870 &  & 19.152 & 33.406 &  \\
+ &  & $(s,S,q)$ & 13.560 & 26.835 &  & 14.476 & 28.543 &  & 15.618 & 31.067 &  & 21.529 & 35.603 &  \\
+ &  & L-SGD & 13.619 & 27.260 & 21.350 & 14.265 & 28.195 & 24.567 & 14.704 & 28.977 & 27.001 & 15.151 & 29.576 & 28.632 \\
+ &  & NN-SGD & 13.590 & \textbf{26.531} & \textbf{20.079} & $\dagger$ & 27.941 & 23.306 & 14.770 & $\dagger$ & 25.924 & \textbf{15.030} & 29.822 & \textbf{28.042} \\
+ &  & L-SGO & 13.574 & 26.696 & 20.172 & 14.417 & 28.243 & \textbf{23.255} & $\dagger$ & 29.046 & 26.071 & 15.780 & 30.219 & 28.241 \\
+ &  & NN-SGO & \textbf{13.475} & 26.602 & 20.208 & \textbf{14.167} & \textbf{27.859} & 23.542 & 14.788 & \textbf{28.936} & \textbf{25.805} & $\dagger$ & 29.879 & 28.079 \\
+ &  & Tree-1 & 13.628 & 27.071 & 21.309 & 14.268 & 28.250 & 24.552 & 14.701 & 28.957 & 27.087 & 15.108 & \textbf{29.517} & 28.673 \\
+ &  & Tree-2 & 13.613 & 27.078 & 21.325 & 14.260 & 28.177 & 24.642 & \textbf{14.700} & 28.962 & $\dagger$ & 15.044 & 29.615 & 28.847 \\
+\addlinespace
+$25$ & $4$ & $(s,S)$ & 16.002 & 18.428 & 17.342 & 16.136 & 18.736 &  & 16.331 & 18.925 &  & 16.562 & 19.036 &  \\
+ &  & $(s,nQ)$ & 15.840 & \textbf{18.231} & 17.351 & 15.979 & 18.579 &  & 15.837 & 18.649 &  & 16.020 & 18.872 &  \\
+ &  & $(s,S,q)$ & 15.877 & \textbf{18.231} & 17.318 & 16.060 & 18.579 &  & 15.806 & 18.648 &  & 16.331 & 18.890 &  \\
+ &  & L-SGD & 16.645 & 19.992 & 19.995 & \textbf{15.812} & 19.992 & 19.995 & 16.988 & 19.992 & 19.995 & 17.491 & 19.992 & 18.043 \\
+ &  & NN-SGD & \textbf{15.572} & 19.992 & 19.995 & 17.075 & 19.992 & 19.995 & 17.018 & 19.992 & 19.995 & 17.451 & 19.992 & 17.946 \\
+ &  & L-SGO & 17.983 & 19.992 & 19.995 & 15.847 & 19.992 & 19.995 & 15.810 & 18.509 & 19.995 & \textbf{15.651} & 19.992 & \textbf{17.786} \\
+ &  & NN-SGO & 15.627 & 19.992 & \textbf{17.279} & $\dagger$ & \textbf{18.424} & \textbf{17.840} & \textbf{15.656} & \textbf{18.431} & \textbf{17.753} & 16.271 & \textbf{18.633} & 17.831 \\
+ &  & Tree-1 & 20.004 & 19.992 & 19.995 & 18.321 & 19.992 & 19.995 & 19.497 & 19.992 & 19.995 & 17.864 & 19.992 & 19.995 \\
+ &  & Tree-2 & 16.203 & 19.992 & 19.995 & 18.167 & 19.992 & 19.995 & 16.632 & 19.992 & 19.995 & 19.710 & 19.992 & 19.995 \\
+\addlinespace
+$25$ & $19$ & $(s,S)$ & 21.104 & 32.726 &  & 22.073 & 35.015 &  & 25.969 & 38.859 &  & 33.668 & 43.651 &  \\
+ &  & $(s,nQ)$ & 21.016 & 32.946 &  & 22.283 & 34.586 &  & 22.664 & 35.812 &  & 25.247 & 38.055 &  \\
+ &  & $(s,S,q)$ & 21.016 & 32.772 &  & 22.373 & 35.116 &  & 25.971 & 38.865 &  & 33.995 & 43.652 &  \\
+ &  & L-SGD & 21.166 & 32.668 & $\dagger$ & 22.878 & 34.569 & 33.398 & 24.641 & 35.287 & 35.916 & 23.727 & 36.354 & 36.525 \\
+ &  & NN-SGD & 20.845 & 32.645 & 27.434 & 21.709 & \textbf{34.021} & \textbf{30.199} & \textbf{22.345} & 35.389 & 32.862 & \textbf{22.772} & $\dagger$ & 34.924 \\
+ &  & L-SGO & 21.672 & 32.937 & \textbf{27.386} & 22.447 & 34.256 & 31.004 & 24.816 & 36.025 & 33.133 & 25.213 & 36.400 & 36.811 \\
+ &  & NN-SGO & 20.854 & \textbf{32.435} & 27.423 & \textbf{21.598} & 34.185 & 30.495 & 22.752 & \textbf{35.070} & \textbf{32.537} & 23.061 & \textbf{36.005} & \textbf{34.373} \\
+ &  & Tree-1 & 21.173 & 32.640 & 28.727 & 21.914 & 35.108 & 33.330 & 22.654 & 35.884 & 35.822 & 23.750 & 36.241 & 37.530 \\
+ &  & Tree-2 & \textbf{20.770} & 33.081 & 28.216 & 22.243 & 34.425 & 33.603 & 22.622 & 35.164 & 32.999 & 22.977 & 36.158 & 36.324 \\
 \bottomrule
 \end{tabular}}
-\par\medskip\footnotesize Empty cells: not yet trained. $\dagger$: diverged CMA-ES run (excluded). Bold: best (lowest) cost in the row.
+\par\medskip\footnotesize Blank heuristic cells indicate no literature/catalog heuristic value for that MMPP2$+$ instance. $\dagger$: diverged CMA-ES run (excluded). Bold: best reported heuristic or learned policy in the instance column.
 \end{table}
+\FloatBarrier
 
-Two readings stand out. Vanilla lost sales is comparatively forgiving: across the i.i.d.\ families
-the soft-gated direct head and the soft trees land in essentially the same good basin, and the
-learned policies match or beat the best heuristic on almost every trained instance. Fixed-cost lost
-sales is the sharper architecture test, with no single dominant policy and a relative ordering of
-the heads that shifts with the demand family and the fixed cost $K$. The driving factor is not raw
-representational capacity but search geometry: under a fixed setup cost the action parameterization
-determines which order/no-order boundary CMA-ES can actually reach. The policies that win are those
-whose parameterization makes the relevant replenishment map easy enough for CMA-ES to find within
-the available budget.
+The column winners make the comparison easy to read. On the vanilla surface, learned policies are
+best in $22$ of $24$ instances; Tree-1 is the most frequent winner ($9$ instances), followed by L-SGO
+($5$ instances). The two instances still won by classical baselines are the high-penalty MMPP2$+$
+cases with $L=8,10$. On the fixed-cost surface, learned policies are instance-best among the
+available policies in $47$ of $48$ instances. NN-SGO is the most frequent winner ($20$ instances),
+followed by NN-SGD ($13$ instances); the only heuristic instance win is Geometric $L=4,p=4,K=25$,
+where $(s,nQ)$ and modified $(s,S,q)$ tie. Fixed-cost
+lost sales is therefore the sharper architecture test: the fixed charge makes the order/no-order
+boundary central, and the best-performing decoder changes with demand family and setup cost.
 
 \section{Dual sourcing}
 \label{sec:dual-sourcing}
@@ -322,7 +307,7 @@ for all policies --- so that the dominant per-seed variance cancels and the pair
 is statistically meaningful (paired SEM $\sim0.002$--$0.006$ versus per-seed standard deviation
 $\sim0.5$).
 
-\begin{table}[t]
+\begin{table}[!htbp]
 \centering
 \caption{Dual-sourcing benchmark instances \citep{gijsbrechts2022drl}. Common to all:
 $l_e=0$, $c_r=100$, $h=5$, $b=495$, demand $U\{0,\dots,4\}$, order caps $12$.}
@@ -336,39 +321,39 @@ dual\_l$\{2,3,4\}$\_ce110 & $2,3,4$ & $110$ \\
 \bottomrule
 \end{tabular}
 \end{table}
+\FloatBarrier
 
 \subsection{Results}
 
 Table~\ref{tab:ds-results} compares the best learned policy against the capped dual-index (CDI)
-optimal proxy under the common-random-number protocol. The learned soft tree \emph{matches} CDI on
-all six instances (four within the discrete-grid rounding floor, $\le+0.003\%$) and \emph{beats} it
-on two ($l_r=2,c_e=110$ and $l_r=4,c_e=110$) by a small but statistically significant margin that is
-confirmed on held-out seeds. Because CDI is the optimal static policy and the published
-$\sim0\%$-gap proxy for the optimum, matching or beating it on every row places the learned policy
-at the optimum, and it therefore \emph{decisively beats the published A3C baseline} (gaps
-$0.51$--$1.85\%$).
+optimal proxy under the common-random-number protocol. The learned soft tree is within the
+discrete-grid rounding floor of CDI on four instances ($\le+0.003\%$) and is lower on two
+($l_r=2,c_e=110$ and $l_r=4,c_e=110$), where the paired CRN difference is statistically significant.
+Because CDI is the best static capped-dual-index comparator and the published $\le0.11\%$-gap proxy
+for the bounded-DP optimum, this puts the learned policy at the same near-optimal reference level on
+every instance column and comfortably below the published A3C baseline (gaps $0.51$--$1.85\%$).
 
-\begin{table}[t]
+\begin{table}[!htbp]
 \centering
-\caption{Dual-sourcing: best learned soft-tree policy vs.\ the capped dual-index (CDI) optimal
-proxy, common-random-number evaluation ($70$ seeds, horizon $6\times10^4$). $\Delta\%$ is the
-learned policy's cost relative to CDI (negative is better); the last column is the published A3C
-optimality gap from \citet{gijsbrechts2022drl}. The two ``beats'' margins are confirmed on held-out
-seeds.}
+\small
+\caption{Dual-sourcing: best learned soft-tree policy vs.\ the capped dual-index (CDI) optimal proxy, common-random-number evaluation ($70$ seeds, horizon $6\times10^4$). $\Delta\%$ is the learned policy's cost relative to CDI (negative is better); the A3C row reports the published optimality gap from \citet{gijsbrechts2022drl}.}
 \label{tab:ds-results}
-\begin{tabular}{lrrlr}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lcccccc}
 \toprule
-Instance & CDI (proxy) & Learned & $\Delta\%$ & Pub.\ A3C gap \\
+ & \multicolumn{2}{c}{Regular lead time $l_r=2$} & \multicolumn{2}{c}{Regular lead time $l_r=3$} & \multicolumn{2}{c}{Regular lead time $l_r=4$} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+Policy / metric & $c_e=105$ & $c_e=110$ & $c_e=105$ & $c_e=110$ & $c_e=105$ & $c_e=110$ \\
 \midrule
-$l_r2$ $c_e105$ & 216.806 & 216.806 & $+0.000$ (match) & $0.52\%$ \\
-$l_r2$ $c_e110$ & 219.821 & 219.800 & $\mathbf{-0.009}$ (beats) & $0.80\%$ \\
-$l_r3$ $c_e105$ & 216.900 & 216.906 & $+0.003$ (match) & $0.82\%$ \\
-$l_r3$ $c_e110$ & 220.483 & 220.483 & $+0.000$ (match) & $0.51\%$ \\
-$l_r4$ $c_e105$ & 216.914 & 216.918 & $+0.002$ (match) & $1.85\%$ \\
-$l_r4$ $c_e110$ & 220.879 & 220.789 & $\mathbf{-0.041}$ (beats) & $1.33\%$ \\
+CDI proxy & 216.806 & 219.821 & 216.900 & 220.483 & 216.914 & 220.879 \\
+Learned soft tree & 216.806 & \textbf{219.800} & 216.906 & 220.483 & 216.918 & \textbf{220.789} \\
+Learned vs.\ CDI (\%) & $+0.000$ (match) & $\mathbf{-0.009}$ (beats) & $+0.003$ (match) & $+0.000$ (match) & $+0.002$ (match) & $\mathbf{-0.041}$ (beats) \\
+Published A3C gap & 0.52\% & 0.80\% & 0.82\% & 0.51\% & 1.85\% & 1.33\% \\
 \bottomrule
-\end{tabular}
+\end{tabular}}
+\par\medskip\footnotesize Bold learned costs are strictly below CDI under the paired CRN comparison; ``beats'' marks those significant negative paired margins.
 \end{table}
+\FloatBarrier
 
 \section{Multi-echelon inventory control: one warehouse, $K$ retailers with special delivery}
 
@@ -422,7 +407,7 @@ our coverage of their multi-echelon benchmark is complete. Table~\ref{tab:me-par
 their Table~3 parameters exactly for both settings under our faithful \texttt{gijs\_2022} dynamics;
 retailer demand is $\mathcal{N}(\mu,\sigma^2)$ rounded to a non-negative integer.
 
-\begin{table}[t]
+\begin{table}[!htbp]
 \centering
 \caption{Multi-echelon experiment settings, reproducing Table~3 of \citet{gijsbrechts2022drl} (the
 two complex case studies of \citet{vanroy1997ndp}) parameter-for-parameter under our faithful
@@ -432,16 +417,30 @@ deviation $\sigma$; number of retailers $K$; warehouse and retailer holding cost
 expedite cost $c^w$; lost-sales penalty $p$; special-delivery success probability $P_w$; production,
 warehouse, and retailer capacities $C^m,C^w,C^r$.}
 \label{tab:me-params}
-\resizebox{\textwidth}{!}{%
-\begin{tabular}{lrrrrrrrrrrrrr}
+\begin{tabular}{lcc}
 \toprule
-Setting & $l_w$ & $l_r$ & $\mu$ & $\sigma$ & $K$ & $h^w$ & $h^r$ & $c^w$ & $p$ & $P_w$ & $C^m$ & $C^w$ & $C^r$ \\
+Parameter & Setting 1 & Setting 2 \\
 \midrule
-1 & 2 & 2 & 5 & 14 & 10 & 3 & 3 & 0 & 60 & 0.8 & 100 & 1000 & 100 \\
-2 & 5 & 3 & 0 & 20 & 10 & 3 & 3 & 0 & 60 & 0.8 & 100 & 1000 & 100 \\
+\addlinespace[2pt]
+Warehouse lead time $l_w$ & $2$ & $5$ \\
+Retailer lead time $l_r$ & $2$ & $3$ \\
+Demand mean $\mu$ & $5$ & $0$ \\
+Demand standard deviation $\sigma$ & $14$ & $20$ \\
+Retailers $K$ & $10$ & $10$ \\
+\addlinespace[2pt]
+Warehouse holding cost $h^w$ & $3$ & $3$ \\
+Retailer holding cost $h^r$ & $3$ & $3$ \\
+Unit expedite cost $c^w$ & $0$ & $0$ \\
+Lost-sales penalty $p$ & $60$ & $60$ \\
+Special-delivery success probability $P_w$ & $0.8$ & $0.8$ \\
+\addlinespace[2pt]
+Production capacity $C^m$ & $100$ & $100$ \\
+Warehouse capacity $C^w$ & $1000$ & $1000$ \\
+Retailer capacity $C^r$ & $100$ & $100$ \\
 \bottomrule
-\end{tabular}}
+\end{tabular}
 \end{table}
+\FloatBarrier
 
 The published benchmarks we compare against are the constant base-stock costs $(330,23)\to 1302$
 and $(460,22)\to 1449$, the best neuro-dynamic-programming costs $1179$ and $1318$, and the A3C
@@ -463,24 +462,63 @@ base-stock by $\approx 14.4\%$ on both settings, \emph{exceeding} the published 
 learning failure. The best tree depth is instance-dependent (depth~2 for setting~1, depth~3 for
 setting~2), and the design-by-depth sweep selects it automatically.
 
-\begin{table}[t]
+\begin{table}[!htbp]
 \centering
 \caption{Multi-echelon learned-policy results (\texttt{gijs\_2022} dynamics; mean cost, lower is
-better). ``Improvement'' is the learned policy's cost reduction relative to the best constant
-base-stock; the last column is the published A3C improvement over constant base-stock from
+better). ``Improvement'' is the direct learned policy's cost reduction relative to the best
+constant base-stock; the last row is the published A3C improvement over constant base-stock from
 \citet{gijsbrechts2022drl}.}
 \label{tab:me-results}
-\begin{tabular}{lccccc}
+\begin{tabular}{lcc}
 \toprule
-Setting & Best const.\ base-stock $(y^w,y^r)$ & Grid tree & Direct tree (ours) & Improvement & Pub.\ A3C \\
+Policy / metric & Setting 1 & Setting 2 \\
 \midrule
-1 & $(300,25)\to 911.4$ & $3085.7$ & $\mathbf{779.8}$ & $\mathbf{14.4\%}$ & $8.95\%$ \\
-2 & $(525,25)\to 1137.8$ & $3795.1$ & $\mathbf{973.6}$ & $\mathbf{14.4\%}$ & $12.09\%$ \\
+Best const.\ base-stock $(y^w,y^r)$ & $(300,25)\to 911.4$ & $(525,25)\to 1137.8$ \\
+Grid tree & $3085.7$ & $3795.1$ \\
+Direct tree (ours) & $\mathbf{779.8}$ & $\mathbf{973.6}$ \\
+Improvement vs.\ best const. & $\mathbf{14.4\%}$ & $\mathbf{14.4\%}$ \\
+Published A3C improvement & $8.95\%$ & $12.09\%$ \\
 \bottomrule
 \end{tabular}
 \end{table}
+\FloatBarrier
 
 \appendix
+
+\section{Published vanilla lost-sales validation}
+
+Before using the vanilla lost-sales simulator and heuristic stack for learned-policy comparisons, we
+validate the canonical Poisson instance against the published/reference costs used in the lost-sales
+literature \citep{Zipkin2008OldSystems,Xin2021CappedBaseStock}. The validation instance has
+$h=1$, $p=4$, $L=4$, and $D_t\sim\mathrm{Poisson}(5)$ (repo anchor
+\texttt{lit\_poisson\_p4\_l4}). Table~\ref{tab:vanilla-lost-sales-validation} reports the reference
+costs and a current Rust rollout check for the heuristic policies
+(\texttt{lost\_sales\_heuristics\_all}, horizon $10^5$, seed $123$). This is an implementation
+check, not a learned-policy result.
+
+\begin{table}[!htbp]
+\centering
+\caption{Published/reference vanilla lost-sales validation example for the canonical
+Poisson-demand instance. The reproduced heuristic costs use the same long-horizon rollout protocol as
+Table~\ref{tab:results-vanilla-lost-sales}.}
+\label{tab:vanilla-lost-sales-validation}
+\begin{tabular}{lll}
+\toprule
+Quantity & Published/reference cost & Current code check \\
+\midrule
+optimal & 4.73 & 4.73 (catalog reference) \\
+myopic-1 & 5.06 & 5.0569 \\
+myopic-2 & 4.82 & 4.8208 \\
+SVBS & 5.83 & 5.8153 \\
+\bottomrule
+\end{tabular}
+\end{table}
+\FloatBarrier
+
+The heuristic costs match the published/reference values at the precision used in the benchmark
+tables, anchoring the vanilla lost-sales environment and the myopic/SVBS heuristic implementation.
+The MMPP2 rows in Table~\ref{tab:results-vanilla-lost-sales} are mean-preserving repo extensions and
+are not claimed as published literature rows.
 
 \section{Published fixed-cost lost-sales validation}
 
@@ -488,29 +526,32 @@ Before relying on the fixed-cost simulator and heuristic stack for learned-polic
 validate the implementation against the published example of
 \citet{Bijvank2015ParametricPolicies}. Their Table~1 reports a small Poisson-demand instance with
 $L=2$, $p=14$, $K=5$, $h=1$, $\mu=5$ (the repo anchor
-\texttt{bijvank2015\_table1\_l2\_p14\_k5}, encoded in
-\texttt{invman/problems/lost\_sales\_fixed\_order\_cost/reference\_instances.py}).
+\texttt{bijvank2015\_table1\_l2\_p14\_k5}, exposed through the
+\texttt{invman\_rust} fixed-order-cost reference catalog). The current code check uses the Rust
+exact average-cost value-iteration solver and exact evaluators for the published heuristic
+parameters.
 
-\begin{table}[t]
+\begin{table}[!htbp]
 \centering
 \caption{Published fixed-cost lost-sales validation example from
-\citet{Bijvank2015ParametricPolicies} and our reproduced long-run costs for the reported heuristic
-parameters.}
+\citet{Bijvank2015ParametricPolicies} and our reproduced exact average costs for the reported
+heuristic parameters.}
 \label{tab:fixed-cost-validation}
 \begin{tabular}{llll}
 \toprule
 Policy & Reported parameters & Published cost & Our reproduced cost \\
 \midrule
-optimal & --- & 11.46 & --- \\
-$(s,S)$ & $(17,23)$ & 11.62 & 11.6217 \\
-$(s,nQ)$ & $(17,7)$ & 11.56 & 11.5589 \\
-modified $(s,S,q)$ & $(17,23,7)$ & 11.50 & 11.5012 \\
+optimal & --- & 11.46 & 11.4631 \\
+$(s,S)$ & $(17,23)$ & 11.62 & 11.6181 \\
+$(s,nQ)$ & $(17,7)$ & 11.56 & 11.5552 \\
+modified $(s,S,q)$ & $(17,23,7)$ & 11.50 & 11.4974 \\
 \bottomrule
 \end{tabular}
 \end{table}
+\FloatBarrier
 
-The reproduced costs match the published values to within simulation precision, anchoring the
-fixed-cost environment and heuristic implementation to a published table.
+The reproduced exact costs match the published values to the precision of the reported table,
+anchoring the fixed-cost environment and heuristic implementation to a published benchmark row.
 
 \section{Environment validation against published costs}
 
@@ -519,9 +560,10 @@ the published \emph{constant base-stock} costs of \citet{vanroy1997ndp} (the sim
 two complex case studies), evaluated at the published $(y^w,y^r)$ levels under the original
 Van-Roy-style cost convention (\texttt{van\_roy\_1997} dynamics), with $100$ replications of horizon
 $10^5$, no warm-up discard, and the minimum-spread allocation. Table~\ref{tab:me-validation} shows
-that all three reproduce within $\sim 1\%$.
+that all three reproduce within the $2\%$ simulation-protocol tolerance (maximum absolute gap
+$1.31\%$).
 
-\begin{table}[t]
+\begin{table}[!htbp]
 \centering
 \caption{Reproduction of the published Van Roy constant base-stock costs.}
 \label{tab:me-validation}
@@ -535,12 +577,13 @@ Case study 2 & $(460,22)$ & $1449$ & $1437.6$ & $-0.79\%$ \\
 \bottomrule
 \end{tabular}
 \end{table}
+\FloatBarrier
 
 Two caveats keep this an implementation-fidelity check rather than a full literature verification.
 First, exact reproduction requires calibrated demand inputs: the simple problem uses a latent mean
 of $6.294$ (the effective mean of Van Roy's $\mathcal{N}(5,8^2)$ after rounding and clipping to
 non-negative integers), and case study~2 a latent mean of $1.0$ rather than the stated $0$. Second,
-we reproduce only the constant base-stock rows, not the A3C learner. The residual $\sim 1\%$ is
+we reproduce only the constant base-stock rows, not the A3C learner. The residual $\sim 1.3\%$ is
 attributed to unspecified details of Van Roy's original simulation protocol. The paper-faithful
 settings used for policy design (Table~\ref{tab:me-params}) instead use the \texttt{gijs\_2022} cost
 convention and the Table-3 demand means.
@@ -556,18 +599,28 @@ its published $\le0.11\%$ optimality gap. We do \emph{not} use our own bounded-D
 the denominator: at inventory bounds that keep the $l_r=4$ state space tractable, the truncated
 bounded-DP cost is mildly inconsistent --- it falls slightly below the simulated heuristic costs ---
 and widening the bounds to remove the truncation is computationally prohibitive at $l_r=4$. The
-capped dual-index proxy is exact to within its published gap and is evaluated on the identical
+capped dual-index proxy is near-exact to within its published gap and is evaluated on the identical
 common-random-number rollout as the learned policies.
 
 % Bibliography embedded inline (natbib-compatible \bibitem labels) so the manuscript is
 % self-contained and renders with a single pdflatex pass -- no bibtex step required. The
 % same entries are also kept in references.bib for tooling that prefers a .bib database.
-\begin{thebibliography}{9}
+\begin{thebibliography}{11}
 
 \bibitem[Bijvank et al.(2015)]{Bijvank2015ParametricPolicies}
 M.~Bijvank, S.~Bhulai, and W.~T. Huh.
 Parametric replenishment policies for inventory systems with lost sales and fixed order cost.
 \emph{European Journal of Operational Research}, 241(2):381--390, 2015.
+
+\bibitem[Zipkin(2008)]{Zipkin2008OldSystems}
+P.~Zipkin.
+Old and new methods for lost-sales inventory systems.
+\emph{Operations Research}, 56(5):1256--1263, 2008.
+
+\bibitem[Xin(2021)]{Xin2021CappedBaseStock}
+L.~Xin.
+Technical Note---Understanding the performance of capped base-stock policies in lost-sales inventory models.
+\emph{Operations Research}, 69(1):61--70, 2021.
 
 \bibitem[Van Roy et al.(1997)]{vanroy1997ndp}
 B.~Van Roy, D.~P. Bertsekas, Y.~Lee, and J.~N. Tsitsiklis.

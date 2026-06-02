@@ -42,3 +42,15 @@ To rebuild the full-grid benchmark suite first, if needed:
 ```bash
 python scripts/lost_sales_fixed_order_cost/benchmark_full_suite.py --reuse_existing --reuse_existing_instance_summary
 ```
+
+To push the benchmark manuscript to Overleaf:
+
+```bash
+python paper/push_to_overleaf.py --dry-run
+python paper/push_to_overleaf.py
+```
+
+The push script uploads `paper/inventory_control_policy_benchmarks.tex` to
+`extension/inventory_control_policy_benchmarks.tex` in the Overleaf project
+`invman_paper (revision)`. Authentication is handled by the local Overleaf session helper under
+`/home/nima/code/tools/security/access/login_sessions/overleaf`.

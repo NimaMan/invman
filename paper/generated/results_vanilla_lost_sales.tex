@@ -1,0 +1,39 @@
+\begin{table}[!htbp]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\caption{Vanilla lost-sales benchmark: average cost by policy, shortage cost, lead time, and demand family across the reported 24-instance surface.}
+\label{tab:results-vanilla-lost-sales}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{llrrrrrrrrrrrr}
+\toprule
+ &  & \multicolumn{3}{c}{Lead time $L=4$} & \multicolumn{3}{c}{Lead time $L=6$} & \multicolumn{3}{c}{Lead time $L=8$} & \multicolumn{3}{c}{Lead time $L=10$} \\
+\cmidrule(lr){3-5}\cmidrule(lr){6-8}\cmidrule(lr){9-11}\cmidrule(lr){12-14}
+Shortage $p$ & Policy & Pois & Geom & MMPP2$+$ & Pois & Geom & MMPP2$+$ & Pois & Geom & MMPP2$+$ & Pois & Geom & MMPP2$+$ \\
+\midrule
+$4$ & Optimal & 4.730 & 10.610 &  &  &  &  &  &  &  &  &  &  \\
+ & M1 & 5.065 & 11.217 & 9.823 & 5.422 & 11.650 & 11.189 & 5.698 & 11.924 & 12.256 & 5.890 & 12.075 & 13.136 \\
+ & M2 & 4.819 & 10.800 & 9.452 & 5.051 & 11.080 & 10.591 & 5.199 & 11.270 & 11.460 & 5.310 & 11.400 & 12.155 \\
+ & SVBS & 5.836 & 13.728 & 10.312 & 6.781 & 15.738 & 12.271 & 7.694 & 17.632 & 13.995 & 8.038 & 19.421 & 15.190 \\
+ & L-SGD & 4.750 & 10.645 & 8.571 & 4.897 & 10.790 & 9.171 & \textbf{4.974} & \textbf{10.850} & 9.445 & 5.048 & 10.921 & 9.563 \\
+ & NN-SGD & 4.774 & 10.687 & 8.565 & 4.900 & 10.791 & 9.643 & 5.033 & 10.983 & 9.674 & 5.066 & 10.993 & 9.697 \\
+ & L-SGO & 4.768 & 10.647 & \textbf{8.549} & \textbf{4.893} & 10.823 & \textbf{9.109} & $\dagger$ & 10.884 & \textbf{9.443} & 16.978 & 10.991 & 9.725 \\
+ & NN-SGO & 4.786 & 10.692 & 8.577 & 5.064 & 10.799 & 9.183 & 4.978 & $\dagger$ & 9.481 & $\dagger$ & 10.995 & 9.726 \\
+ & Tree-1 & \textbf{4.749} & \textbf{10.621} & 8.579 & 4.895 & \textbf{10.776} & 9.159 & 4.975 & 10.857 & 9.445 & \textbf{5.013} & 10.934 & 9.590 \\
+ & Tree-2 & 4.750 & 10.670 & 8.595 & 4.936 & 10.820 & 9.302 & 4.977 & 10.892 & 9.446 & 5.067 & \textbf{10.912} & \textbf{9.547} \\
+\addlinespace
+$19$ & Optimal & 8.890 & 22.950 &  &  &  &  &  &  &  &  &  &  \\
+ & M1 & 9.173 & 23.836 & 17.182 & 10.269 & 25.821 & 20.129 & 11.092 & 27.407 & 22.399 & 11.820 & 28.672 & 24.218 \\
+ & M2 & 8.953 & 23.280 & 17.644 & 9.831 & 24.930 & 20.474 & 10.511 & 26.210 & 22.552 & 11.090 & 27.270 & \textbf{23.913} \\
+ & SVBS & 9.565 & 26.429 & 16.531 & 11.234 & 30.103 & 19.677 & 12.333 & 33.008 & \textbf{22.173} & 13.336 & 35.761 & 24.457 \\
+ & L-SGD & 8.932 & \textbf{22.993} & 16.686 & 9.759 & 24.486 & 19.862 & 10.261 & 25.374 & 22.378 & 10.634 & 26.287 & 24.197 \\
+ & NN-SGD & \textbf{8.927} & 23.455 & \textbf{16.341} & 10.131 & 24.483 & 19.650 & 10.430 & 25.757 & 22.211 & 10.772 & 26.129 & 24.406 \\
+ & L-SGO & 9.003 & 23.240 & 16.491 & 9.794 & 24.370 & \textbf{19.549} & 10.330 & 25.766 & 22.233 & $\dagger$ & 26.171 & 24.345 \\
+ & NN-SGO & 8.974 & 23.140 & 16.435 & 9.758 & 24.474 & 19.693 & 10.490 & 25.662 & 22.303 & 10.733 & \textbf{26.037} & 24.357 \\
+ & Tree-1 & 8.936 & 23.011 & 16.697 & \textbf{9.711} & \textbf{24.349} & 19.915 & \textbf{10.259} & \textbf{25.209} & 22.339 & \textbf{10.629} & 26.064 & 24.101 \\
+ & Tree-2 & 8.941 & 23.043 & 16.683 & 9.720 & 24.430 & 19.864 & 10.272 & 25.382 & 22.301 & 10.698 & 26.174 & 24.193 \\
+\bottomrule
+\end{tabular}}
+\par\medskip\footnotesize Optimal entries are shown only for verified literature optimum anchors; blanks mean no true optimum anchor is available for that expanded instance. $\dagger$: diverged CMA-ES run (excluded). Bold: best reported heuristic or learned policy in the instance column.
+\end{table}
+\FloatBarrier
