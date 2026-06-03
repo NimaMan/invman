@@ -10,11 +10,11 @@ Current scope:
 
 Main files:
 
-- [inventory_control_policy_benchmarks.tex](inventory_control_policy_benchmarks.tex)
+- [learning_inventory_control_policies_es.tex](learning_inventory_control_policies_es.tex)
 - [references.bib](references.bib)
 
 The manuscript is kept self-contained. The benchmark results tables are maintained directly inside
-`inventory_control_policy_benchmarks.tex` instead of being generated through separate TeX partials.
+`learning_inventory_control_policies_es.tex` instead of being generated through separate TeX partials.
 
 The multi-echelon section reports the learned soft-tree policy beating the published A3C savings on
 both Gijs settings (setting 1: 14.4% vs 8.95%; setting 2: 14.4% vs 12.09%); env validation against
@@ -50,7 +50,7 @@ python paper/push_to_overleaf.py --dry-run
 python paper/push_to_overleaf.py
 ```
 
-The push script uploads `paper/inventory_control_policy_benchmarks.tex` to
-`extension/inventory_control_policy_benchmarks.tex` in the Overleaf project
+The push script uploads `paper/learning_inventory_control_policies_es.tex` to
+`extension/inventory_control_policy_benchmarks.tex` (the remote name is kept stable to preserve history) in the Overleaf project
 `invman_paper (revision)`. Authentication is handled by the local Overleaf session helper under
 `/home/nima/code/tools/security/access/login_sessions/overleaf`.

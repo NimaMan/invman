@@ -418,15 +418,11 @@ def dual_sourcing():
     refs = invman_rust.dual_sourcing_list_reference_instances()
     refmap = {r["name"]: r for r in refs}
 
-    def verdict(best: dict) -> str:
-        gap = float(best["gap_pct"])
-        paired_d = float(best["paired_d"])
-        paired_sem = float(best["paired_sem"])
-        if paired_d < -2.0 * paired_sem:
-            return r"\textbf{beats}"
-        if abs(gap) <= 0.003:
-            return "match"
-        return "match"
+    # The learned policy is benchmarked as MATCHING the capped-dual-index (CDI) optimal
+    # proxy, not beating it: CDI itself is only a <=0.11% proxy for the bounded-DP optimum,
+    # so the few negligibly-negative paired margins (e.g. -0.009%, -0.041%) sit inside CDI's
+    # own optimality band and are reported as matches rather than improvements. Every cell is
+    # therefore labelled "(match)" and no learned cost is bolded as a "beat".
 
     cell_map = {}
     for ref in refs:
@@ -439,11 +435,10 @@ def dual_sourcing():
         learned_mean = float(best["mean"])
         cdi_mean = float(row["cdi_mean"])
         gap = float(best["gap_pct"])
-        beats = learned_mean < cdi_mean
-        gap_cell = rf"$\mathbf{{{gap:+.3f}}}$ (beats)" if beats else rf"${gap:+.3f}$ ({verdict(best)})"
+        gap_cell = rf"${gap:+.3f}$ (match)"
         cell_map[(lead, expedited_cost)] = {
             "cdi": _fmt(cdi_mean),
-            "learned": _fmt(learned_mean, best=beats),
+            "learned": _fmt(learned_mean),
             "gap": gap_cell,
             "a3c": f"{g:.2f}\\%" if g is not None else "",
         }
@@ -498,7 +493,10 @@ def dual_sourcing():
     lines += [
         r"\bottomrule",
         r"\end{tabular}}",
-        r"\par\medskip\footnotesize Bold learned costs are strictly below CDI under the paired CRN comparison; ``beats'' marks those significant negative paired margins.",
+        r"\par\medskip\footnotesize All six instances match CDI to within its own published "
+        r"optimality band ($\le0.11\%$): four are at or within the discrete-grid rounding floor "
+        r"($\le+0.003\%$) and two are negligibly below CDI ($-0.009\%$, $-0.041\%$) under the "
+        r"paired CRN comparison. We report these as matches, not improvements.",
         r"\end{table}",
         r"\FloatBarrier",
     ]

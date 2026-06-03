@@ -8,7 +8,7 @@ Objective
 =========
 Turn the completed fixed-cost instance summaries under
   outputs/benchmarks/<RUN_TAG>/instances/*.json
-into paper-ready mean-cost tables for paper/inventory_control_policy_benchmarks.tex.
+into paper-ready mean-cost tables for paper/learning_inventory_control_policies_es.tex.
 
 The fixed-cost suite compares three classical heuristics -- (s,S), (s,nQ), and
 the modified (s,S,q) -- against six learned CMA-ES policy families. A learned

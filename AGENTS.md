@@ -251,7 +251,7 @@ These per-instance JSON files contain:
 
 The new manuscript workspace is:
 
-- `paper/inventory_control_policy_benchmarks.tex`
+- `paper/learning_inventory_control_policies_es.tex`
 - `paper/references.bib`
 
 The TeX file is currently a working note aligned with the architecture study, not just the old

@@ -126,7 +126,7 @@ Current status:
 
 - the literature rows are carried in `references.rs`
 - the repo heuristic is **not** literature-verified yet
-- the current reproduction results are recorded in `outputs/multi_echelon/van_roy_validation_2026-04-10.json`
+- the current reproduction results are recorded in `outputs/multi_echelon/van_roy_protocol_audit_2026-05-29.json` (the calibrated run that matches the manuscript validation table; the earlier pre-calibration `van_roy_validation_2026-04-10.json` was removed as superseded)
 - the protocol audit is recorded in `outputs/multi_echelon/van_roy_protocol_audit_2026-04-12.json`
 - the exact verifier is `literature_verified = false`; it exists to validate the Rust implementation,
   not to support literature claims

@@ -2,6 +2,11 @@
 
 This directory adapts the `karpathy/autoresearch` idea to the inventory-management repo.
 
+> **Designing a policy for a new problem?** Read [`POLICY_DESIGN_GUIDELINES.md`](POLICY_DESIGN_GUIDELINES.md)
+> first — the reusable recipe (anchor the env to published costs → treat the action
+> parameterization as part of the policy → encode in the best heuristic's coordinate system →
+> warm-start CMA-ES → autoresearch loop → checklist for adding a new problem to the paper).
+
 Primary references:
 
 - repository: https://github.com/karpathy/autoresearch

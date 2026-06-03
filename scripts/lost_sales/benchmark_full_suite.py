@@ -31,6 +31,7 @@ COMMON_BUDGET = {
 }
 EXPERIMENT_SPECS = [
     {"id": "linear_categorical_quantity_q20", "rollout_backend": "rust", "status": "trusted"},
+    {"id": "nn_categorical_quantity_h8_selu_q20", "rollout_backend": "rust", "status": "trusted"},
     {"id": "linear_sigmoid_direct_quantity", "rollout_backend": "rust", "status": "trusted"},
     {"id": "linear_soft_gated_direct_quantity", "rollout_backend": "rust", "status": "trusted"},
     {"id": "nn_soft_gated_direct_quantity_h8_selu", "rollout_backend": "rust", "status": "provisional"},

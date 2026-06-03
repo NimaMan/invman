@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Upload the benchmark manuscript to the Overleaf revision project.
+"""Upload the manuscript (learning_inventory_control_policies_es.tex) to the Overleaf revision project.
 
 Authentication is delegated to the local Overleaf session helper in
 /home/nima/code/tools/security/access/login_sessions/overleaf. That helper reads
@@ -18,7 +18,9 @@ from pathlib import Path
 
 PAPER_DIR = Path(__file__).resolve().parent
 DEFAULT_PROJECT = "invman_paper (revision)"
-DEFAULT_LOCAL_TEX = PAPER_DIR / "inventory_control_policy_benchmarks.tex"
+DEFAULT_LOCAL_TEX = PAPER_DIR / "learning_inventory_control_policies_es.tex"
+# Remote name is intentionally kept stable to preserve the existing Overleaf
+# file and its revision history; the local file was renamed, the remote was not.
 DEFAULT_REMOTE_TEX = "extension/inventory_control_policy_benchmarks.tex"
 DEFAULT_HELPER_DIR = Path(
     os.environ.get(
@@ -82,7 +84,7 @@ def _write_remote(io, remote_path: str, content: str) -> None:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Push paper/inventory_control_policy_benchmarks.tex to Overleaf."
+        description="Push paper/learning_inventory_control_policies_es.tex to Overleaf."
     )
     parser.add_argument("--project", default=DEFAULT_PROJECT, help=f"Overleaf project name. Default: {DEFAULT_PROJECT!r}")
     parser.add_argument(

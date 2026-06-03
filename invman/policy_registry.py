@@ -505,6 +505,16 @@ _POLICY_ALIASES = {
         activation="selu",
         max_order_size=20,
     ),
+    # H=8 SELU categorical head, matching the width of the other paper NN policies
+    # (nn_soft_gated_{direct,ordinal}_quantity_h8_selu) for a fair same-backbone comparison.
+    "nn_categorical_quantity_h8_selu_q20": _dense_spec(
+        "nn_categorical_quantity_h8_selu_q20",
+        policy_backbone="nn",
+        policy_decoder="categorical_quantity",
+        hidden_dim=(8,),
+        activation="selu",
+        max_order_size=20,
+    ),
     "soft_tree_depth2_linear_leaf_q8": _soft_tree_spec(
         "soft_tree_depth2_linear_leaf_q8",
         depth=2,

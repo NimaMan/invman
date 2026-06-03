@@ -109,11 +109,11 @@ $25$ & $19$ & $(s,S)$ & 21.104 & 32.726 &  & 22.073 & 35.015 &  & 25.969 & 38.85
 Policy / metric & $c_e=105$ & $c_e=110$ & $c_e=105$ & $c_e=110$ & $c_e=105$ & $c_e=110$ \\
 \midrule
 CDI proxy & 216.806 & 219.821 & 216.900 & 220.483 & 216.914 & 220.879 \\
-Learned soft tree & 216.806 & \textbf{219.800} & 216.906 & 220.483 & 216.918 & \textbf{220.789} \\
-Learned vs.\ CDI (\%) & $+0.000$ (match) & $\mathbf{-0.009}$ (beats) & $+0.003$ (match) & $+0.000$ (match) & $+0.002$ (match) & $\mathbf{-0.041}$ (beats) \\
+Learned soft tree & 216.806 & 219.800 & 216.906 & 220.483 & 216.918 & 220.789 \\
+Learned vs.\ CDI (\%) & $+0.000$ (match) & $-0.009$ (match) & $+0.003$ (match) & $+0.000$ (match) & $+0.002$ (match) & $-0.041$ (match) \\
 Published A3C gap & 0.52\% & 0.80\% & 0.82\% & 0.51\% & 1.85\% & 1.33\% \\
 \bottomrule
 \end{tabular}}
-\par\medskip\footnotesize Bold learned costs are strictly below CDI under the paired CRN comparison; ``beats'' marks those significant negative paired margins.
+\par\medskip\footnotesize All six instances match CDI to within its own published optimality band ($\le0.11\%$): four are at or within the discrete-grid rounding floor ($\le+0.003\%$) and two are negligibly below CDI ($-0.009\%$, $-0.041\%$) under the paired CRN comparison. We report these as matches, not improvements.
 \end{table}
 \FloatBarrier

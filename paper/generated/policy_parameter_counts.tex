@@ -1,0 +1,28 @@
+\begin{table}[!htbp]
+\centering
+\small
+\caption{Trainable parameter counts of the learned policies (the length of the flat vector CMA-ES optimizes), with closed-form formulas. Counts are validated against the saved models. Lost-sales / fixed-cost counts grow with the lead time $L$ (input dimension); dual sourcing with the regular lead time $l_r$; multi-echelon with the raw decision-state dimension $i$. Every policy carries tens to a few hundred parameters, two to three orders of magnitude smaller than a typical deep-RL network.}
+\label{tab:param-counts}
+\begin{tabular}{lllcccc}
+\toprule
+\multicolumn{7}{l}{\emph{Lost sales \& fixed-cost lost sales} (input dim $=L$)} \\
+Policy & Backbone & \#params & $L{=}4$ & $L{=}6$ & $L{=}8$ & $L{=}10$ \\
+\midrule
+L-SGD & linear & $2(L{+}1)$ & 10 & 14 & 18 & 22 \\
+NN-SGD & NN ($H{=}8$) & $8(L{+}1){+}18$ & 58 & 74 & 90 & 106 \\
+L-SGO & linear & $21(L{+}1)$ & 105 & 147 & 189 & 231 \\
+NN-SGO & NN ($H{=}8$) & $8(L{+}1){+}189$ & 229 & 245 & 261 & 277 \\
+L-Cat & linear & $21(L{+}1)$ & 105 & 147 & 189 & 231 \\
+NN-Cat & NN ($H{=}8$) & $8(L{+}1){+}189$ & 229 & 245 & 261 & 277 \\
+Tree-1 & soft tree & $3(L{+}1)$ & 15 & 21 & 27 & 33 \\
+Tree-2 & soft tree & $7(L{+}1)$ & 35 & 49 & 63 & 77 \\
+\midrule
+\multicolumn{7}{l}{\emph{Dual sourcing} (depth-2 capped-dual-index-coordinate tree, input dim $=l_r$)} \\
+Soft tree & soft tree & $3(l_r{+}1){+}12$ & \multicolumn{4}{l}{$l_r{=}2$: 21; $l_r{=}3$: 24; $l_r{=}4$: 27} \\
+\midrule
+\multicolumn{7}{l}{\emph{Multi-echelon} (direct-level tree)} \\
+Soft tree & soft tree & $11(i{+}1)$ & \multicolumn{4}{l}{setting1 (depth 2, $i=22$): 253} \\
+Soft tree & soft tree & $23(i{+}1)$ & \multicolumn{4}{l}{setting2 (depth 3, $i=35$): 828} \\
+\bottomrule
+\end{tabular}
+\end{table}
