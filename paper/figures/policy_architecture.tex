@@ -282,7 +282,7 @@
 
   % environment boundary + name
   \begin{scope}[on background layer]
-    \node[envbox,fit=(sup)(stk)(dem)(lost)(hcost)(rq)(sh)] (box) {};
+    \node[envbox,fit=(current bounding box)] (box) {};
   \end{scope}
   \node[envtitle,above=3pt of box.north,anchor=south]
         {Lost-sales environment (one period)};
@@ -327,7 +327,7 @@
   \node[costP,right=3pt of lost.east] {penalty\\$p\,(D_t-I_t)^+$};
 
   \begin{scope}[on background layer]
-    \node[envbox,fit=(sup)(stk)(dem)(lost)(hcost)(rq)(sh)] (box) {};
+    \node[envbox,fit=(current bounding box)] (box) {};
   \end{scope}
   \node[envtitle,above=3pt of box.north,anchor=south]
         {Fixed-cost lost-sales environment (one period)};
@@ -383,7 +383,7 @@
         {$J_t=I_t+q^e_t-D_t$\\(end-of-period net inventory)};
 
   \begin{scope}[on background layer]
-    \node[envbox,fit=(reg)(exp)(stk)(dem)(bo)] (box) {};
+    \node[envbox,fit=(current bounding box)] (box) {};
   \end{scope}
   \node[envtitle,above=3pt of box.north,anchor=south]
         {Dual-sourcing environment (one period)};
@@ -450,7 +450,7 @@
   \node[costP,right=3pt of dem.east] {expedite $c^w E_t$\\$+$ lost $p\,\ell_t$};
 
   \begin{scope}[on background layer]
-    \node[envbox,fit=(man)(wh)(ret)(dem)(rqw)(shw)(shr)(sd)(hr)] (box) {};
+    \node[envbox,fit=(current bounding box)] (box) {};
   \end{scope}
   \node[envtitle,above=3pt of box.north,anchor=south]
         {Divergent multi-echelon environment with special delivery (one period)};

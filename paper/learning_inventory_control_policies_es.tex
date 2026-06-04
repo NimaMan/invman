@@ -1876,12 +1876,12 @@ stock and any unmet demand lost.
           node[midway,above=3pt,ltlabel] {\ding{185}\, serve\\$\min(I_t,D_t)$};
     \draw[lostflow] (dem) -- (lost);
 
-    \node[costK,left=3pt of sup.west] {order\\cost $c\,q_t$};
+    \node[costK,left=3pt of sup.west] (ck) {order\\cost $c\,q_t$};
     \node[costH] (hcost) at (6.4,-3.6) {holding\\$h\,(I_t-D_t)^+$};
-    \node[costP,right=3pt of lost.east] {penalty\\$p\,(D_t-I_t)^+$};
+    \node[costP,right=3pt of lost.east] (cp) {penalty\\$p\,(D_t-I_t)^+$};
 
     \begin{scope}[on background layer]
-      \node[envbox,fit=(sup)(stk)(dem)(lost)(hcost)(rq)(sh)] (box) {};
+      \node[envbox,fit=(current bounding box)] (box) {};
     \end{scope}
     \node[envtitle,above=3pt of box.north,anchor=south]
           {Lost-sales environment (one period)};
@@ -1891,7 +1891,7 @@ stock and any unmet demand lost.
   % scaled picture so it can never dictate the diagram width).
   \par\vspace{6pt}\centerline{%
     \tikz\node[draw=mydarkblue!55,rounded corners=4pt,fill=mydarkblue!4,inner sep=7pt]{%
-      \begin{minipage}{14.8cm}\centering
+      \begin{minipage}{\dimexpr\linewidth-18pt\relax}\centering
         {\small\bfseries\color{mydarkblue!85}Per-period event sequence}\\[4pt]
         {\small\begin{tabular}{@{}p{4.5cm}p{4.5cm}p{4.5cm}@{}}
           \ding{182}\,observe state $\mathbf S_t$ & \ding{183}\,place order request $q_t$ & \ding{184}\,receive arrival $q_{t-L}$\\[4pt]
@@ -1935,7 +1935,7 @@ placed.
     \node[costP,right=3pt of lost.east] {penalty\\$p\,(D_t-I_t)^+$};
 
     \begin{scope}[on background layer]
-      \node[envbox,fit=(sup)(stk)(dem)(lost)(hcost)(rq)(sh)] (box) {};
+      \node[envbox,fit=(current bounding box)] (box) {};
     \end{scope}
     \node[envtitle,above=3pt of box.north,anchor=south]
           {Fixed-cost lost-sales environment (one period)};
@@ -1943,7 +1943,7 @@ placed.
   }
   \par\vspace{6pt}\centerline{%
     \tikz\node[draw=mydarkblue!55,rounded corners=4pt,fill=mydarkblue!4,inner sep=7pt]{%
-      \begin{minipage}{14.8cm}\centering
+      \begin{minipage}{\dimexpr\linewidth-18pt\relax}\centering
         {\small\bfseries\color{mydarkblue!85}Per-period event sequence}\\[4pt]
         {\small\begin{tabular}{@{}p{4.5cm}p{4.5cm}p{4.5cm}@{}}
           \ding{182}\,observe state $\mathbf S_t$ & \ding{183}\,order request $q_t$ (\emph{setup} $+K$ if $q_t>0$) & \ding{184}\,receive arrival $q_{t-L}$\\[4pt]
@@ -1993,7 +1993,7 @@ unit cost $c_e>c_r$) --- and unmet demand is backordered rather than lost.
           {$J_t=I_t+q^e_t-D_t$\\(end-of-period net inventory)};
 
     \begin{scope}[on background layer]
-      \node[envbox,fit=(reg)(exp)(stk)(dem)(bo)] (box) {};
+      \node[envbox,fit=(current bounding box)] (box) {};
     \end{scope}
     \node[envtitle,above=3pt of box.north,anchor=south]
           {Dual-sourcing environment (one period)};
@@ -2001,7 +2001,7 @@ unit cost $c_e>c_r$) --- and unmet demand is backordered rather than lost.
   }
   \par\vspace{6pt}\centerline{%
     \tikz\node[draw=mydarkblue!55,rounded corners=4pt,fill=mydarkblue!4,inner sep=7pt]{%
-      \begin{minipage}{14.8cm}\centering
+      \begin{minipage}{\dimexpr\linewidth-18pt\relax}\centering
         {\small\bfseries\color{mydarkblue!85}Per-period event sequence}\\[4pt]
         {\small\begin{tabular}{@{}p{4.5cm}p{4.5cm}p{4.5cm}@{}}
           \ding{182}\,observe state $\mathbf S_t$ & \ding{183}\,request $(q^r_t,q^e_t)$ & \ding{184}\,regular arrival $q^r_{t-l_r}$ \& expedited $q^e_t$ (same period)\\[4pt]
@@ -2062,7 +2062,7 @@ hybrid special-delivery/lost-sales service of unmet retailer demand.
     \node[costP,right=3pt of dem.east] {expedite $c^w E_t$\\$+$ lost $p\,\ell_t$};
 
     \begin{scope}[on background layer]
-      \node[envbox,fit=(man)(wh)(ret)(dem)(rqw)(shw)(shr)(sd)(hr)] (box) {};
+      \node[envbox,fit=(current bounding box)] (box) {};
     \end{scope}
     \node[envtitle,above=3pt of box.north,anchor=south]
           {Divergent multi-echelon environment with special delivery (one period)};
@@ -2070,7 +2070,7 @@ hybrid special-delivery/lost-sales service of unmet retailer demand.
   }
   \par\vspace{6pt}\centerline{%
     \tikz\node[draw=mydarkblue!55,rounded corners=4pt,fill=mydarkblue!4,inner sep=7pt]{%
-      \begin{minipage}{14.8cm}\centering
+      \begin{minipage}{\dimexpr\linewidth-18pt\relax}\centering
         {\small\bfseries\color{mydarkblue!85}Per-period event sequence}\\[4pt]
         {\small\begin{tabular}{@{}p{4.5cm}p{4.5cm}p{4.5cm}@{}}
           \ding{182}\,arrivals merge into warehouse \& retailer stock & \ding{183}\,warehouse requests $q^w_t$; retailers request to $y^r_t$ & \ding{184}\,warehouse ships (max--min $\mathcal A$ if short)\\[4pt]
