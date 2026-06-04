@@ -1,41 +1,42 @@
 # Verification
 
-`spare_parts_inventory` is verified by executable assertions in `tests/verification.rs`.
+`spare_parts_inventory` is exercised by executable assertions in `tests/verification.rs`.
+This file states, honestly, which of those assertions are LITERATURE VERIFICATION (an
+in-crate test re-runs an env/solver and reproduces a paper-printed number within a stated
+tolerance) and which are not, per the repo rule in `rust/README.md`.
 
-Current verifier scope:
+## Literature-verified (the only one in this family)
 
-- reference-shape checks from `references.rs`
-- policy-state layout checks
-- worked-transition accounting checks
-- exact reduced finite-horizon DP comparison against the carried heuristics
-- exact analytical reproduction of Kranenburg (2006) Table 5.2 for the lateral-transshipment subfamily
+- `kranenburg_table_5_2_rows_are_reproduced_within_table_rounding`
+  - re-runs the ANALYTICAL lateral-transshipment solver in
+    `literature/kranenburg_lateral_transshipment.rs`
+  - reproduces every printed row of Table 5.2 (Kranenburg 2006 PhD thesis, TU/e,
+    Chapter 5, p.107) within table-rounding tolerance 0.02
+  - this is a continuous-review, METRIC-style multi-location model, STRUCTURALLY DIFFERENT
+    from the trainable `env.rs`; the verification covers the analytical module ONLY
 
-The frozen reference numbers asserted in tests are repo-native exact values on the reduced
-verification instance plus literature-verified Chapter 5 table values for the Kranenburg
-subfamily.
+## NOT literature verification (characterization / self-consistency / snapshot)
 
-Verification status (re-confirmed 2026-05-31 against the installed `invman_rust`):
+- `worked_transition_matches_expected_accounting`
+  - pins one env.rs step against hand-computed accounting (drift guard)
+- `env_periodic_review_trajectory_is_pinned_characterization_not_literature`
+  - pins a full multi-period env.rs trajectory (actions, failures, per-period costs,
+    deterministic repair return, total cost) against hand-computed env.rs accounting
+- `exact_dp_dominates_repo_heuristics`
+  - self-consistency only: the exact finite-horizon DP optimum dominates the carried
+    heuristics on the reduced verification instance; reproduces no paper number
+- `van_oers_2024_table_is_recorded_but_not_literature_verified`
+  - frozen snapshot of the van Oers (2024) Table 1 constants; no env/solver re-runs them,
+    so it is explicitly NOT verification
+- `reference_set_has_expected_shape`, `raw_state_layout_matches_expected_shape`,
+  `heuristic_first_actions_match_named_heuristic_evaluators`
+  - structural / shape checks
 
-- Kranenburg (2006) Table 5.2 is LITERATURE-VERIFIED: the analytical solver in
-  `literature/kranenburg_lateral_transshipment.rs` reproduces all 35 published rows. The
-  situation-1 randomized base-stock construction was independently re-derived from first
-  principles (base case: `R*=9.09`, `C(R*)=91.90`, situation-3 `R*=6.10`, `C(R*)=63.00`,
-  ratio 1.46) and matches the published numbers. Worst absolute deviation across all 35 rows
-  is 0.005, against the 0.02 table-rounding tolerance.
-- The reduced finite-horizon DP and the primary 17-period instance are repo-native and
-  NOT verified against any published number; the bindings flag this explicitly as
-  `repo_exact_solver_not_verified_against_literature`. The DP only anchors internal
-  self-consistency (it must weakly dominate the carried heuristics).
-- van Oers et al. (2024) Table 1 is carried as a table-only catalog (recorded exactly as
-  published); no repo solver re-derives it. The 2026-05-31 literature audit verified the
-  bibliographic metadata via Crossref (IFAC-PapersOnLine 58(19), 1006-1011,
-  DOI 10.1016/j.ifacol.2024.09.144) but did not re-confirm the individual Table 1 cell
-  values. The scenario structs set `literature_verified: true`, but for this block that
-  flag means only "transcribed from a published table", not "reproduced by a solver".
+## Flags
 
-Reproduce every verification block (without rebuilding Rust) via
-`scripts/spare_parts_inventory/benchmark_spare_parts_inventory.py`. The pre-existing helper
-`scripts/spare_parts_inventory/common.py` was repaired on 2026-05-31: it imported a removed
-`invman.policies.soft_tree.SoftTreePolicy`; it now builds the current `invman.policy.Policy`
-descriptor so `train_soft_tree_reference.py`, `validate_against_exact_dp.py`, and
-`validate_kranenburg_lateral_transshipment.py` import and run again.
+`references.rs` is the source of truth. It flags:
+
+- Kranenburg Table 5.2 rows: `literature_verified = true`
+- `PRIMARY_REFERENCE_INSTANCE` (env.rs canonical): `literature_verified = false`
+- `VERIFICATION_PROBLEM_INSTANCE` (env.rs reduced DP instance): `literature_verified = false`
+- van Oers (2024) scenarios: `literature_verified = false`

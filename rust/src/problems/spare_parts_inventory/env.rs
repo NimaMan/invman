@@ -1,3 +1,41 @@
+// =============================================================================
+// spare_parts_inventory::env
+//
+// PURPOSE
+//   The trainable single-echelon PERIODIC-REVIEW repairable spare-parts MDP.
+//
+// MODEL (repo-native; NOT literature-verified)
+//   State per period:
+//     on_hand_inventory, backlog,
+//     procurement_pipeline (length = procurement_lead_time),
+//     repair_pipeline      (length = repair_lead_time).
+//   operational_units = installed_base - backlog.
+//   Per-period transition (step_state), ORDER-AFTER-DEMAND:
+//     1. realized_failures occur among operational_units (binomial in demand.rs).
+//     2. failures are met from on-hand first; the shortfall increases backlog.
+//        post_failure_on_hand = on_hand - min(on_hand, failures)
+//        post_failure_backlog = backlog + failures - min(on_hand, failures)
+//     3. arrivals = procurement_pipeline[0] + repair_pipeline[0] clear backlog
+//        first, then add to on-hand.
+//     4. the order_quantity enters the tail of the procurement pipeline; the
+//        failed units enter the tail of the repair pipeline and return
+//        DETERMINISTICALLY exactly repair_lead_time periods later.
+//     5. period_cost = procurement_cost * order_quantity
+//                    + holding_cost   * post_failure_on_hand
+//                    + downtime_cost  * post_failure_backlog.
+//
+// VERIFICATION STATUS (honest, per rust/README.md)
+//   NOT literature-verified. No paper publishes a numeric cost for this exact
+//   construction (binomial failures + deterministic fixed-lead-time repair return
+//   + finite-horizon DP). The Kranenburg (2006) Table 5.2 reproduction belongs to
+//   the analytical CONTINUOUS-REVIEW lateral-transshipment module
+//   (literature/kranenburg_lateral_transshipment.rs), which is a STRUCTURALLY
+//   DIFFERENT model and does NOT verify this environment. env.rs is exercised only
+//   by characterization / drift-guard tests and a self-consistency DP comparison.
+//   references.rs flags PRIMARY_REFERENCE_INSTANCE and VERIFICATION_PROBLEM_INSTANCE
+//   with literature_verified = false.
+// =============================================================================
+
 use pyo3::exceptions::PyValueError;
 use pyo3::PyResult;
 

@@ -11,60 +11,40 @@ Repo interpretation:
   reusable numeric benchmark rows, even if the repo-native executable primary instance is a
   different spare-parts subfamily
 
-Current benchmark split (three blocks, with distinct verification status each):
+## Verification status (honest, per rust/README.md "What counts as literature-verified")
 
-1. Executable literature-verified EXACT benchmark: Kranenburg (2006) Chapter 5
-   lateral-transshipment comparison. The Rust analytical solver
-   (`literature/kranenburg_lateral_transshipment.rs`) reproduces all 35 rows of
-   the published Table 5.2 — situation-1 (separate stock points) vs situation-3
-   (lateral transshipment), optimal randomized stock `R*`, cost `C(R*)`, and the
-   cost ratio. This is the load-bearing literature verification: numbers are
-   recomputed from Kranenburg's Chapter 5 model, not stored.
-2. Repo-native EXACT finite-horizon DP on a reduced verification instance for the
-   single-echelon repairable spare-parts MDP. This is NOT literature-verified; it
-   is an internal self-consistency anchor (the exact DP must weakly dominate both
-   carried heuristics).
-3. Literature catalog (table-only): van Oers et al. (2024) Table 1 two-echelon
-   periodic-review serial spare-parts benchmark with optional additive
-   manufacturing. The repo stores the published rows exactly; there is no repo
-   solver that re-derives them yet.
+A benchmark is literature-verified ONLY when an in-crate test RE-RUNS the env/solver
+and asserts the freshly computed metric reproduces a number PRINTED IN A PAPER within
+a stated tolerance. By that rule:
 
-Verification status (honest, verified 2026-05-31 against the installed
-`invman_rust`):
+- LITERATURE-VERIFIED (and the ONLY one in this family): Kranenburg (2006) Chapter 5
+  Table 5.2 lateral-transshipment comparison. The ANALYTICAL module
+  `literature/kranenburg_lateral_transshipment.rs` re-derives R* and total cost for
+  Situation 1 (separate stock points) and Situation 3 (lateral transshipment) and the
+  test `kranenburg_table_5_2_rows_are_reproduced_within_table_rounding` reproduces every
+  printed Table 5.2 row (Kranenburg 2006 PhD thesis, TU/e, Chapter 5, p.107) within
+  tolerance 0.02. This is a CONTINUOUS-REVIEW, METRIC-style multi-location model and is
+  STRUCTURALLY A DIFFERENT MODEL from the trainable `env.rs`. Its verification covers the
+  analytical module only.
 
-- Kranenburg (2006) Table 5.2: LITERATURE-VERIFIED. All 35 rows reproduced within
-  worst absolute deviation 0.005 (situation-1 `R*`), 0.005 (situation-3 `R*`/cost),
-  0.005 (ratio), all well under the 0.02 table-rounding tolerance. The citation and
-  all 35 stored anchor rows were re-confirmed verbatim against the open-access TU/e
-  thesis PDF (DOI 10.6100/IR616052) during the 2026-05-31 literature audit.
-- van Oers et al. (2024) Table 1: recorded-as-published only (table-only catalog),
-  not reproduced by a repo solver. The 2026-05-31 audit verified the bibliographic
-  metadata via Crossref (Numerical Analysis of A Spare Parts Supply Chain With
-  Additive Manufacturing; van Oers, Tanil & Basten; IFAC-PapersOnLine 58(19),
-  1006-1011; DOI 10.1016/j.ifacol.2024.09.144) but did NOT re-confirm the individual
-  Table 1 cell values (full text paywalled). Note: the scenario structs carry
-  `literature_verified: true`, but for this block that flag means only "transcribed
-  from a published table", NOT "reproduced by a solver" — treat it as table-only.
-- Single-echelon repairable MDP (primary + verification instances): repo-native,
-  NOT literature-verified; flagged in code as
-  `repo_exact_solver_not_verified_against_literature`. The MDPI review (Zhang, Huang
-  & Yuan 2021), Zhou et al. (2024), and van der Haar et al. (SSRN 2024) frame this
-  family but carry no benchmark numbers.
+- NOT literature-verified: the trainable environment `env.rs` (the repo-native
+  single-echelon PERIODIC-REVIEW repairable MDP: binomial failures, deterministic repair
+  return after `repair_lead_time`, backorders, order-after-demand). No paper publishes a
+  numeric cost for this exact construction. Its tests are a characterization / drift guard
+  (`env_periodic_review_trajectory_is_pinned_characterization_not_literature`,
+  `worked_transition_matches_expected_accounting`) and a self-consistency DP comparison
+  (`exact_dp_dominates_repo_heuristics`) -- none reproduces a paper number.
+  `references.rs` flags both `PRIMARY_REFERENCE_INSTANCE` and
+  `VERIFICATION_PROBLEM_INSTANCE` with `literature_verified = false`.
 
-Benchmark results (block 3, learned policy on the 17-period primary instance,
-discount 0.99, evaluated on a held-out block of 4096 fresh seeds 900000..904096):
+- NOT literature-verified: van Oers et al. (2024) Table 1 two-echelon serial benchmark.
+  The table values are RECORDED constants only; no env/solver here re-runs them, so the
+  test `van_oers_2024_table_is_recorded_but_not_literature_verified` is a frozen snapshot,
+  which the repo rule excludes from "verified". Flagged `literature_verified = false`.
+  Kept as a catalog target for a future executable two-echelon serial env.
 
-| Policy | Params | Mean discounted cost | vs soft-tree |
-| --- | --- | ---: | ---: |
-| `soft_tree` (depth 2, oblique, linear, T=0.10) | trained CMA-ES artifact | 53.06 | — |
-| best constant `base_stock` | S=6 | 53.78 | soft-tree 1.34% better |
-| benchmark `base_stock` | S=5 | 62.99 | soft-tree 15.77% better |
-| `lead_time_mean_cover` | buffer=1.0 | 92.95 | soft-tree 42.92% better |
-
-The soft-tree weights are loaded from the saved CMA-ES artifact
-`outputs/spare_parts_inventory/retry_d2_t010_e300_s123.json` and re-rolled out of
-sample, so the comparison is held out. Reproduce all three blocks with
-`scripts/spare_parts_inventory/benchmark_spare_parts_inventory.py`.
+DO NOT let the analytical Kranenburg numbers imply env.rs is verified -- they describe a
+different model.
 
 Code lives under `rust/src/problems/spare_parts_inventory/`.
 

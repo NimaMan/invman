@@ -1,5 +1,53 @@
 #![allow(dead_code)]
 
+// =============================================================================
+// spare_parts_inventory::references
+//
+// PURPOSE
+//   Single source of truth for the literature instances this family carries, and
+//   the HONEST verification scope for each one. "Literature-verified" here follows
+//   the repo rule (rust/README.md): a benchmark is literature-verified ONLY when an
+//   in-crate test RE-RUNS the env/solver and asserts the freshly computed metric
+//   reproduces a number PRINTED IN A PAPER within a stated tolerance. A frozen
+//   snapshot (assert_eq! of carried constants vs the same published constants) is
+//   NOT verification, and self-consistency with our own DP is NOT verification.
+//
+// VERIFICATION MAP (what is and is NOT literature-verified in this family)
+//   1. Kranenburg (2006) Table 5.2 lateral-transshipment comparison
+//      -> LITERATURE-VERIFIED (literature_verified = true).
+//         The ANALYTICAL module `literature/kranenburg_lateral_transshipment.rs`
+//         re-derives R* and total cost for Situation 1 (separate stock points) and
+//         Situation 3 (lateral transshipment) and the test
+//         `kranenburg_table_5_2_rows_are_reproduced_within_table_rounding`
+//         reproduces every printed row of Table 5.2 (Kranenburg 2006 PhD thesis,
+//         TU/e, Chapter 5, p.107) within table-rounding tolerance 0.02.
+//         CAUTION: this is a CONTINUOUS-REVIEW, METRIC-style multi-location model
+//         with a central warehouse, emergency replenishment, and lateral
+//         transshipment. It is STRUCTURALLY A DIFFERENT MODEL from the trainable
+//         `env.rs`. Its verification says NOTHING about `env.rs`.
+//
+//   2. The trainable environment `env.rs` (PRIMARY_REFERENCE_INSTANCE and the
+//      reduced VERIFICATION_PROBLEM_INSTANCE used by finite_horizon_dp.rs)
+//      -> NOT LITERATURE-VERIFIED (literature_verified = false).
+//         `env.rs` is a repo-native single-echelon PERIODIC-REVIEW repairable MDP:
+//         binomial failures over the installed base, DETERMINISTIC repair return
+//         exactly `repair_lead_time` periods after a failure, procurement pipeline,
+//         backorders, order-after-demand. No paper publishes a numeric cost for
+//         this exact construction; the source paper is a review with no reusable
+//         numbers (SPARE_PARTS_REVIEW_REFERENCE.reported_numbers_available = false).
+//         The in-crate tests for it are CHARACTERIZATION / DRIFT-GUARD tests and a
+//         self-consistency DP comparison, NOT literature reproduction.
+//
+//   3. van Oers et al. (2024) Table 1 two-echelon serial benchmark
+//      -> NOT LITERATURE-VERIFIED (literature_verified = false).
+//         The table values are RECORDED constants only. There is no env/solver in
+//         this family that re-runs the two-echelon serial system and reproduces
+//         them, so the only test on them is a frozen-snapshot assert_eq! of the
+//         carried constants against themselves, which the repo rule explicitly
+//         excludes from "verified". They are kept as a catalog target for a future
+//         executable two-echelon serial env.
+// =============================================================================
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PublishedBenchmarkReference {
     pub source: &'static str,
@@ -78,6 +126,8 @@ pub struct SparePartsReferenceInstance {
     pub name: &'static str,
     pub source: &'static str,
     pub url: &'static str,
+    pub literature_verified: bool,
+    pub verification_source: &'static str,
     pub periods: usize,
     pub installed_base: usize,
     pub procurement_lead_time: usize,
@@ -124,6 +174,8 @@ pub struct WorkedTransitionReference {
 pub struct ExactVerificationReference {
     pub source: &'static str,
     pub url: &'static str,
+    pub literature_verified: bool,
+    pub verification_source: &'static str,
     pub periods: usize,
     pub discount_factor: f64,
     pub installed_base: usize,
@@ -188,8 +240,8 @@ pub const VAN_OERS_2024_REFERENCE: PublishedBenchmarkReference = PublishedBenchm
     url: "https://doi.org/10.1016/j.ifacol.2024.09.144",
     benchmark_policies: &["enumeration", "newsvendor", "echelon_separation"],
     reported_numbers_available: true,
-    numbers_anchor_repo_assertions: true,
-    notes: "Bibliographic metadata verified 2026-05-31 via Crossref (DOI 10.1016/j.ifacol.2024.09.144): authors Joris van Oers, Ipek Tanil, Rob Basten; IFAC-PapersOnLine 58(19), 1006-1011, 2024. The paper reports a fully specified N=2 serial spare-parts benchmark with three scenarios: no AM, upstream AM, and downstream AM. The repo stores the Table 1 values; the individual Table 1 cell values below were NOT independently re-confirmed against the published table during this audit (full text paywalled) and are recorded-as-transcribed only, NOT reproduced by any repo solver. Inference noted by the original author: because the no-AM enumeration row is exactly 100.0, the printed cost figures are likely normalized table values rather than literal dollar totals; the repo therefore preserves the table entries without forcing an absolute-dollar interpretation.",
+    numbers_anchor_repo_assertions: false,
+    notes: "Table 1 is open-access and reports a fully specified N=2 serial spare-parts benchmark with three public scenarios: no AM, upstream AM, and downstream AM. The repo stores the table values exactly as reported, but they are RECORDED ONLY: numbers_anchor_repo_assertions = false because no env/solver in this family re-runs the two-echelon serial system to reproduce them, so they are NOT literature-verified (the only test is a frozen snapshot). Inference: because the no-AM enumeration row is exactly 100.0 and the paper text describes downstream AM as a 28% cost reduction, the printed cost figures are likely normalized table values rather than literal dollar totals; the repo therefore preserves the table entries without forcing an absolute-dollar interpretation.",
 };
 
 pub const VAN_OERS_2024_REVIEW_INTERVALS_HOURS: &[f64] = &[48.0, 96.0];
@@ -291,8 +343,8 @@ pub const VAN_OERS_2024_NO_AM_SCENARIO: LiteratureBenchmarkScenario = Literature
     name: "van_oers2024_table1_no_am",
     source: VAN_OERS_2024_REFERENCE.source,
     url: VAN_OERS_2024_REFERENCE.url,
-    literature_verified: true,
-    verification_source: "published_benchmark_table_from_literature",
+    literature_verified: false,
+    verification_source: "recorded_published_table_no_executing_reproduction",
     model_family: "two_echelon_periodic_review_serial_spare_parts",
     am_location: "none",
     echelons: 2,
@@ -307,7 +359,7 @@ pub const VAN_OERS_2024_NO_AM_SCENARIO: LiteratureBenchmarkScenario = Literature
     holding_costs_as_reported: VAN_OERS_2024_HOLDING_COSTS_AS_REPORTED,
     downtime_cost_as_reported: 3.75,
     published_policy_results: VAN_OERS_2024_NO_AM_POLICY_RESULTS,
-    notes: "Table 1 no-AM scenario. The paper states Poisson demand with rate 0.04 events per hour, R2 = 4 days, R1 = 2 days, and l1 = l2 = 1 day. The table rows are copied exactly as printed.",
+    notes: "Table 1 no-AM scenario. The paper states Poisson demand with rate 0.04 events per hour, R2 = 4 days, R1 = 2 days, and l1 = l2 = 1 day. The table rows are copied exactly as printed. NOT literature-verified: this family has no executable two-echelon serial env/solver that re-runs and reproduces these numbers, so the only test is a frozen snapshot asserting the carried constants against themselves. Kept as a catalog target for a future executable env.",
 };
 
 pub const VAN_OERS_2024_UPSTREAM_AM_SCENARIO: LiteratureBenchmarkScenario =
@@ -315,8 +367,8 @@ pub const VAN_OERS_2024_UPSTREAM_AM_SCENARIO: LiteratureBenchmarkScenario =
         name: "van_oers2024_table1_upstream_am",
         source: VAN_OERS_2024_REFERENCE.source,
         url: VAN_OERS_2024_REFERENCE.url,
-        literature_verified: true,
-        verification_source: "published_benchmark_table_from_literature",
+        literature_verified: false,
+        verification_source: "recorded_published_table_no_executing_reproduction",
         model_family: "two_echelon_periodic_review_serial_spare_parts_with_upstream_am",
         am_location: "upstream",
         echelons: 2,
@@ -331,7 +383,7 @@ pub const VAN_OERS_2024_UPSTREAM_AM_SCENARIO: LiteratureBenchmarkScenario =
         holding_costs_as_reported: VAN_OERS_2024_HOLDING_COSTS_AS_REPORTED,
         downtime_cost_as_reported: 3.75,
         published_policy_results: VAN_OERS_2024_UPSTREAM_AM_POLICY_RESULTS,
-        notes: "Table 1 upstream-AM scenario. The paper reports a single AM lead-time input l_AM = 6.42 hours and compares enumeration, newsvendor, and echelon-separation base-stock choices.",
+        notes: "Table 1 upstream-AM scenario. The paper reports a single AM lead-time input l_AM = 6.42 hours and compares enumeration, newsvendor, and echelon-separation base-stock choices. NOT literature-verified: recorded table only, no executing reproduction (frozen snapshot test).",
     };
 
 pub const VAN_OERS_2024_DOWNSTREAM_AM_SCENARIO: LiteratureBenchmarkScenario =
@@ -339,8 +391,8 @@ pub const VAN_OERS_2024_DOWNSTREAM_AM_SCENARIO: LiteratureBenchmarkScenario =
         name: "van_oers2024_table1_downstream_am",
         source: VAN_OERS_2024_REFERENCE.source,
         url: VAN_OERS_2024_REFERENCE.url,
-        literature_verified: true,
-        verification_source: "published_benchmark_table_from_literature",
+        literature_verified: false,
+        verification_source: "recorded_published_table_no_executing_reproduction",
         model_family: "two_echelon_periodic_review_serial_spare_parts_with_downstream_am",
         am_location: "downstream",
         echelons: 2,
@@ -355,7 +407,7 @@ pub const VAN_OERS_2024_DOWNSTREAM_AM_SCENARIO: LiteratureBenchmarkScenario =
         holding_costs_as_reported: VAN_OERS_2024_HOLDING_COSTS_AS_REPORTED,
         downtime_cost_as_reported: 3.75,
         published_policy_results: VAN_OERS_2024_DOWNSTREAM_AM_POLICY_RESULTS,
-        notes: "Table 1 downstream-AM scenario. The paper reports that this is the strongest AM placement in the example system, with enumeration (5, 0) and echelon separation (4, 1) nearly tied in the published table.",
+        notes: "Table 1 downstream-AM scenario. The paper reports that this is the strongest AM placement in the example system, with enumeration (5, 0) and echelon separation (4, 1) nearly tied in the published table. NOT literature-verified: recorded table only, no executing reproduction (frozen snapshot test).",
     };
 
 pub const VAN_OERS_2024_TABLE_1_SCENARIOS: &[LiteratureBenchmarkScenario] = &[
@@ -805,6 +857,8 @@ pub const PRIMARY_REFERENCE_INSTANCE: SparePartsReferenceInstance = SparePartsRe
     name: "single_echelon_repairable_operational_spares",
     source: SPARE_PARTS_REVIEW_REFERENCE.source,
     url: SPARE_PARTS_REVIEW_REFERENCE.url,
+    literature_verified: false,
+    verification_source: "repo_native_periodic_review_env_not_verified_against_literature",
     periods: 17,
     installed_base: 12,
     procurement_lead_time: 3,
@@ -819,7 +873,7 @@ pub const PRIMARY_REFERENCE_INSTANCE: SparePartsReferenceInstance = SparePartsRe
     procurement_cost: 3.0,
     benchmark_base_stock_level: 5,
     benchmark_lead_time_mean_cover_safety_buffer: 1.0,
-    notes: "Canonical repo interpretation of spare parts as a single-echelon repairable service-parts problem with deterministic repair returns and explicit procurement to grow the rotable pool. The executable primary benchmark uses a 17-period finite horizon.",
+    notes: "Canonical repo interpretation of spare parts as a single-echelon PERIODIC-REVIEW repairable service-parts problem with deterministic repair returns (a failed unit returns exactly repair_lead_time periods later) and explicit procurement to grow the rotable pool. The executable primary benchmark uses a 17-period finite horizon. NOT literature-verified: this exact construction is repo-native and no paper publishes a matching numeric cost; the source is a review with reported_numbers_available = false. The Kranenburg Table 5.2 verification belongs to the analytical lateral-transshipment module only and does NOT cover this environment.",
 };
 
 pub const WORKED_TRANSITION_REFERENCE: WorkedTransitionReference = WorkedTransitionReference {
@@ -849,6 +903,8 @@ pub const WORKED_TRANSITION_REFERENCE: WorkedTransitionReference = WorkedTransit
 pub const VERIFICATION_PROBLEM_INSTANCE: ExactVerificationReference = ExactVerificationReference {
     source: SPARE_PARTS_REVIEW_REFERENCE.source,
     url: SPARE_PARTS_REVIEW_REFERENCE.url,
+    literature_verified: false,
+    verification_source: "repo_exact_solver_not_verified_against_literature",
     periods: 4,
     discount_factor: 0.99,
     installed_base: 3,
@@ -865,5 +921,5 @@ pub const VERIFICATION_PROBLEM_INSTANCE: ExactVerificationReference = ExactVerif
     max_order_quantity: 4,
     base_stock_level: 3,
     lead_time_mean_cover_safety_buffer: 1.0,
-    notes: "Repo-native exact verifier on a reduced repairable spare-parts instance. The state is small enough for routine finite-horizon DP while preserving installed-base failures, repair returns, and procurement decisions.",
+    notes: "Repo-native exact verifier on a reduced repairable spare-parts instance for env.rs. The state is small enough for routine finite-horizon DP while preserving installed-base failures, deterministic repair returns, and procurement decisions. NOT literature-verified: the finite-horizon DP only proves env.rs self-consistency (optimal DP dominates the carried heuristics) and pins worked-transition accounting. It reproduces no paper-printed number.",
 };

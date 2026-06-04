@@ -63,11 +63,8 @@ fn primary_reference_to_py(
         "benchmark_lead_time_mean_cover_safety_buffer",
         reference.benchmark_lead_time_mean_cover_safety_buffer,
     )?;
-    dict.set_item("literature_verified", false)?;
-    dict.set_item(
-        "verification_source",
-        "repo_exact_solver_not_verified_against_literature",
-    )?;
+    dict.set_item("literature_verified", reference.literature_verified)?;
+    dict.set_item("verification_source", reference.verification_source)?;
     dict.set_item("notes", reference.notes)?;
     Ok(dict.into_any().unbind().into())
 }
@@ -293,11 +290,8 @@ fn verification_reference_to_py(
     let dict = PyDict::new_bound(py);
     dict.set_item("source", reference.source)?;
     dict.set_item("url", reference.url)?;
-    dict.set_item("literature_verified", false)?;
-    dict.set_item(
-        "verification_source",
-        "repo_exact_solver_not_verified_against_literature",
-    )?;
+    dict.set_item("literature_verified", reference.literature_verified)?;
+    dict.set_item("verification_source", reference.verification_source)?;
     dict.set_item("periods", reference.periods)?;
     dict.set_item("discount_factor", reference.discount_factor)?;
     dict.set_item("installed_base", reference.installed_base)?;
