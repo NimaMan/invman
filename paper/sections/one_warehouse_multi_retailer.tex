@@ -1,0 +1,309 @@
+% ---------------------------------------------------------------------------
+% One-warehouse multi-retailer (OWMR) section.
+%
+% INPUT-ABLE FRAGMENT: this file is \input{} into the manuscript
+% learning_inventory_control_policies_es.tex and reuses ITS preamble macros
+% and TikZ styles (envbox, envtitle, envsupply/envstock/envsink/envlost,
+% reqflow/matflow/demandflow/lostflow, ltlabel/reqlabel, costH/costP, the boxed
+% "Per-period event sequence" panel, booktabs, \ding). It defines NO new styles
+% and contains NO \documentclass.
+%
+% ALGORITHMIC / DATA-PROVENANCE NOTE (every number is sourced from the repo):
+%   Instance + dynamics : src/problems/one_warehouse_multi_retailer/env.rs
+%       (step_state: warehouse receipt -> allocation -> retailer receipt ->
+%       demand -> partial backorder/emergency; warehouse holding charged
+%       POST-emergency per Kaynov Eq.6), allocation.rs (proportional floor per
+%       Kaynov Eq.8; min_shortage = max-min resulting position), references.rs
+%       (TABLE_A3_INSTANCES; protocol 100 periods, 1000 reps, L_w=2, emergency
+%       prob 0.8, h_w=0.5, h_r=1). The asymmetric/high-CV partial-backorder
+%       instances kaynov2024_instance_{12,13,14} are studied here.
+%   Comparator gate     : strongest in-repo grid-searched echelon base-stock +
+%       allocation, re-scored on the held-out CRN block. The published Kaynov
+%       PPO row (= -reward) is a REFERENCE learned comparator, NOT the gate.
+%   Results             : outputs/one_warehouse_multi_retailer/asymmetric_learned/
+%       *.json + scripts/one_warehouse_multi_retailer/ASYMMETRIC_LEARNED_RESULTS.md
+%       (committed c976af5). instance_12 learned 1154.09 vs gate 1169.59
+%       (+1.33%, paired +15.50 +/- 0.97, ~16 SEM); instance_13 learned 85974.79
+%       vs gate 91890.25 (+6.44%, paired +5915.47 +/- 49.50, ~120 SEM);
+%       instance_14 ties (trained xbest > gate -> deployed gate-reproducing
+%       anchor). Published PPO 1118.92 / 79727.39 / 42835.02.
+%   HONEST FRAMING      : learned beats the strongest IN-REPO HEURISTIC gate
+%       beyond SEM on 2/3 and ties on the hardest; it does NOT beat the
+%       published PPO (PPO remains strongest learned policy on every row).
+% ---------------------------------------------------------------------------
+\section{One warehouse, multiple retailers}
+\label{sec:owmr}
+
+\subsection{Problem formulation}
+\label{sec:owmr-formulation}
+
+Figure~\ref{fig:env-owmr} depicts this environment as a flow network --- the warehouse order and
+its lead-time receipt, the downstream allocation of scarce warehouse stock to the retailers, each
+retailer's lead-time receipt and demand draw, and where holding and the partial-backorder penalty
+are charged.
+
+\begin{figure}[t]
+  \centering
+  \resizebox{\textwidth}{!}{%
+  \begin{tikzpicture}[x=1cm,y=1cm]
+    % Two-echelon divergent system: one external supplier feeds a single
+    % warehouse, which allocates scarce on-hand stock across K retailers (three
+    % drawn). Order requests UP (dashed control); lead-time material DOWN (solid).
+    % Each retailer faces its own demand; under the partial-backorder regime a
+    % fraction of a shortage is backordered and the rest is lost.
+    \node[envsupply] (sup)  at (0,0)      {external\\supplier};
+    \node[envstock]  (wh)   at (6.2,0)    {warehouse\\IP $y^w_t$\\(lead $L_w$)};
+    \node[envstock]  (r1)   at (13.0,3.0) {retailer $1$\\IP $y^1_t$};
+    \node[envstock]  (r2)   at (13.0,0.0) {retailer $k$\\IP $y^k_t$};
+    \node[envstock]  (r3)   at (13.0,-3.0){retailer $K$\\IP $y^K_t$};
+    \node[envsink]   (d2)   at (19.4,0.0) {demand $D^k_t$};
+    \node[envlost]   (b2)   at (19.4,-3.4){shortage:\\backorder $\beta$\\/ \emph{lost} $1-\beta$};
+
+    % warehouse replenishment: dashed request UP, solid lead-time arrival DOWN
+    \draw[reqflow] (wh.north west) to[bend right=30] (sup.north east);
+    \node[reqlabel] at (2.9,1.9) {\ding{183}\, warehouse order};
+    \draw[matflow] (sup.south east) to[bend right=10] (wh.west);
+    \node[ltlabel]  at (3.0,-1.5) {\ding{185}\, receipt (placed $L_w$ ago)};
+
+    % allocation warehouse -> retailers (solid material, scarce -> rationed)
+    \draw[matflow] (wh.east) to[bend left=10]  (r1.west);
+    \draw[matflow] (wh.east) -- (r2.west);
+    \draw[matflow] (wh.east) to[bend right=10] (r3.west);
+    \node[ltlabel] at (9.6,1.55) {\ding{186}\, allocate scarce\\on-hand (proportional\\/ min-shortage)};
+
+    % one representative retailer's demand + partial backorder
+    \draw[demandflow] (r2) -- (d2)
+          node[midway,above=3pt,ltlabel] {\ding{187}\, demand};
+    \draw[lostflow] (d2) -- (b2);
+
+    \node[costH,above=8mm of wh.north] {holding $h_w(y^w_t)^+$};
+    \node[costH,above=3pt of r1.north] {holding $h_r$};
+    \node[costP,right=2pt of b2.east] {penalty $p\,b^k_t$};
+
+    \begin{scope}[on background layer]
+      \node[envbox,fit=(current bounding box)] (box) {};
+    \end{scope}
+    \node[envtitle,above=3pt of box.north,anchor=south]
+          {One-warehouse, $K$-retailer environment (partial backorder, warehouse lead $L_w$)};
+  \end{tikzpicture}%
+  }
+  \par\vspace{6pt}\centerline{%
+    \tikz\node[draw=mydarkblue!55,rounded corners=4pt,fill=mydarkblue!4,inner sep=7pt]{%
+      \begin{minipage}{\dimexpr\linewidth-18pt\relax}\centering
+        {\small\bfseries\color{mydarkblue!85}Per-period event sequence}\\[4pt]
+        {\small\begin{tabular}{@{}p{4.3cm}p{4.3cm}p{4.3cm}@{}}
+          \ding{182}\,observe warehouse + retailer inventory positions & \ding{183}\,set warehouse order-up-to and per-retailer targets & \ding{184}\,warehouse receipt (placed $L_w$ ago) arrives\\[4pt]
+          \ding{185}\,\emph{allocate} scarce warehouse on-hand across retailers (proportional / min-shortage) & \ding{186}\,retailer receipts arrive; demand $D^k_t$ drawn; a fraction $\beta$ of each shortage is backordered, the rest lost & \ding{187}\,charge $h_w$ on warehouse on-hand, $h_r$ on retailer on-hand, penalty $p$ on backorders\\
+        \end{tabular}}
+      \end{minipage}};}\par
+  \caption{One-warehouse multi-retailer environment of \citet{kaynov2024owmr}, drawn as an
+  event-based interaction. A single warehouse \emph{orders} from an external supplier (thin dashed
+  control arrow) and receives the goods after a lead time $L_w$ (solid material arrow). Each period
+  the warehouse \emph{allocates} its scarce on-hand stock across the $K$ retailers under a fixed
+  rationing rule --- \emph{proportional} (floor rationing, Kaynov Eq.~8) or \emph{min-shortage} ---
+  and each retailer receives its allocation after its own lead time, then faces demand $D^k_t$. Under
+  the \emph{partial-backorder} regime a fraction $\beta$ of any retailer shortage is backordered and
+  the remainder is lost. Warehouse holding $h_w$ is charged on warehouse on-hand stock (after
+  emergency fulfilment, Kaynov Eq.~6), retailer holding $h_r$ on retailer on-hand stock, and a penalty
+  $p$ on backordered units; the boxed panel gives the per-period event sequence
+  (Section~\ref{sec:owmr-formulation}, Eq.~\eqref{eq:owmr-cost}).}
+  \label{fig:env-owmr}
+\end{figure}
+
+We consider the periodic-review one-warehouse, $K$-retailer (OWMR) distribution system of
+\citet{kaynov2024owmr}. A single warehouse replenishes from an external supplier with deterministic
+lead time $L_w$ and rations its on-hand stock across $K$ retailers, each with its own deterministic
+lead time $L_{r,k}$ and i.i.d.\ demand $D^k_t$. We study the \emph{partial-backorder} regime: a fixed
+fraction $\beta$ of each retailer shortage is backordered and carried forward, the rest is lost. We
+write $(x)^+=\max(0,x)$.
+
+\paragraph{Timing of a period.}
+At the start of period $t$ the controller observes the warehouse and per-retailer inventory positions,
+sets the warehouse order and the per-retailer replenishment requests, the warehouse receipt placed
+$L_w$ periods earlier arrives, the warehouse \emph{allocates} its available on-hand stock across the
+retailers' requests under the rationing rule, each retailer's allocation arrives after $L_{r,k}$,
+demand $D^k_t$ is realized at each retailer, a fraction $\beta$ of any shortage is backordered and the
+rest lost, and holding and penalty costs are charged.
+
+\paragraph{State.}
+The state is the warehouse inventory position $y^w_t$ together with each retailer's inventory
+position and the in-transit pipelines,
+\begin{equation*}
+    \mathbf{S}_t=\bigl(y^w_t,\ \{y^k_t\}_{k=1}^{K},\ \text{warehouse pipeline},\ \{\text{retailer-}k\text{ pipeline}\}_{k=1}^{K}\bigr),
+\end{equation*}
+where an inventory position aggregates on-hand stock, in-transit receipts, and (negative) outstanding
+backorders.
+
+\paragraph{Action.}
+The decision is the warehouse order-up-to level and the per-retailer replenishment targets,
+\begin{equation*}
+    a_t=\bigl(S^w_t,\ S^1_t,\dots,S^K_t\bigr),
+\end{equation*}
+a $(K{+}1)$-dimensional control: the warehouse orders up to $S^w_t$, and the requested retailer
+replenishments are the deficits $(S^k_t-y^k_t)^+$, which the warehouse fills subject to its available
+on-hand stock via the allocation rule.
+
+\paragraph{Transition (allocation).}
+Let $A_t$ be the warehouse on-hand stock available for allocation and $\{g^k_t\}$ the retailer
+requests. If $\sum_k g^k_t\le A_t$ every request is met in full; otherwise the scarce stock is
+rationed. Under \emph{proportional} allocation each retailer receives the floor of its
+pro-rata share (Kaynov Eq.~8); under \emph{min-shortage} allocation the warehouse maximizes the
+minimum resulting retailer inventory position. The allocated quantities then enter the retailer
+pipelines and arrive after $L_{r,k}$.
+
+\paragraph{One-period cost.}
+Writing $I^w_t$ for warehouse on-hand stock (after any emergency fulfilment), $I^k_t$ for retailer-$k$
+on-hand stock, and $b^k_t$ for retailer-$k$ backorders, the cost incurred in period $t$ is
+\begin{equation}
+    \label{eq:owmr-cost}
+    c_t \;=\; h_w\,I^w_t \;+\; \sum_{k=1}^{K}\bigl(h_r\,I^k_t \;+\; p\,b^k_t\bigr),
+\end{equation}
+with warehouse holding $h_w$, retailer holding $h_r$, and per-unit backorder penalty $p$.
+
+\paragraph{Objective.}
+A stationary policy $\pi_{\btheta}$ maps the state to the action. Performance is the expected total
+undiscounted cost over the $H$-period horizon,
+\begin{equation}
+    \label{eq:owmr-objective}
+    C(\btheta) \;=\; \mathbb{E}\!\left[\sum_{t=1}^{H} c_t\right],
+    \qquad \min_{\btheta}\ C(\btheta),
+\end{equation}
+with $H=100$ as in \citet{kaynov2024owmr}; $C(\btheta)$ is estimated by simulation over shared
+demand-path seeds.
+
+\FloatBarrier
+
+\subsection{Policy}
+\label{sec:owmr-policy}
+
+The OWMR problem tests whether the learned policy can exploit \emph{heterogeneity and
+state-dependence across retailers} that a single shared base-stock level cannot express.
+\textbf{Input.} The policy input is the warehouse and per-retailer inventory positions, divide-by-
+scale normalized by the demand mean as in Section~\ref{sec:methods-principle}. \textbf{Output.} A
+valid action is the $(K{+}1)$-dimensional vector of warehouse and per-retailer order-up-to targets
+(the \texttt{echelon\_targets} action geometry), clipped to non-negative integers. \textbf{Internals.}
+$\pi_{\btheta}$ uses the soft-tree backbone of Section~\ref{sec:soft-tree}: a depth-2 tree with leaves
+that emit the target vector. The crucial design choice is the action geometry. The symmetric
+geometry (a single shared retailer target) cannot represent asymmetric replenishment and only ties
+the tuned heuristic; the \emph{per-retailer} \texttt{echelon\_targets} geometry (one target per
+retailer) is the natural asymmetric generalization of the gate and is the lever we test.
+
+\paragraph{The decisive lever: a per-retailer warm-start floor.}
+The keep/discard floor is the gate-reproducing CMA-ES warm start (Section~\ref{sec:methods-cmaes}). We
+generalize this warm start from the two-control symmetric geometry to \emph{any} control dimension:
+the leaves are seeded so that generation~0 emits the gate's full per-retailer target vector
+$(S^w,S^1,\dots,S^K)$, reproducing the gate to within numerical error on identical demand paths, after
+which CMA-ES searches outward. This floor is essential: \emph{without} it the richer per-retailer
+geometry is not a free win --- at screening it \emph{loses} to the gate by $-12.79\%$ on the
+heterogeneous instance, because the optimizer cannot locate the base-stock region in the larger
+search space; \emph{with} the floor the same instance flips to a $+1.33\%$ win. The raw per-retailer
+order geometry without a gate-reproducing anchor (\texttt{direct\_orders}) loses by $-50.84\%$,
+confirming the floor, not the representation, is what makes the per-retailer class usable.
+
+\subsection{Experiment setup}
+\label{sec:owmr-setup}
+
+The symmetric Poisson$(3)$ instances of \citet{kaynov2024owmr} are near-optimally solved by a tuned
+echelon base-stock policy --- a learned soft tree only \emph{ties} the heuristic there. We therefore
+study the three \emph{asymmetric / high-coefficient-of-variation} partial-backorder instances of
+Table~\ref{tab:owmr-params}, where the published PPO of \citet{kaynov2024owmr} beats base-stock by
+$\sim$20\%, indicating genuine exploitable structure.
+
+\paragraph{Comparator gate.}
+The like-for-like comparator is the strongest in-repo policy: an echelon base-stock policy whose
+warehouse level and per-retailer levels are grid-searched on a search-seed block (full Cartesian for
+the $K{=}3$ instance; symmetric reduction for the symmetric instance; the Kaynov safety-factor
+candidate set for the heterogeneous $K{=}10$ instance), under the better of \{proportional,
+min-shortage\} allocation, then re-scored on a disjoint held-out block. This in-repo gate is already
+substantially stronger than Kaynov's reported base-stock and sits between it and the published PPO,
+so a beat against it transitively implies a policy at least as good as the published base-stock. The
+published PPO row is reported as the strongest \emph{learned} reference, not as the keep/discard gate.
+
+\paragraph{Evaluation protocol.}
+Policies are trained with warm-started CMA-ES (population $32$, $600$ generations at full budget) and
+evaluated under the common-random-number protocol of Section~\ref{sec:methods-eval}: the gate grid is
+searched on a $64$-path block (argmin verified stable against $96/256$), and learned policy and gate
+are re-scored on a disjoint $4096$-path held-out block under the deployed allocation. A win is claimed
+only when the paired-difference advantage exceeds its standard error. The deployed policy is the
+better of the trained CMA-ES incumbent and the gate-reproducing warm-start anchor.
+
+\begin{table}[!htbp]
+\centering
+\small
+\caption{OWMR asymmetric / high-variability partial-backorder instances of \citet{kaynov2024owmr}
+studied here (Table~A.3). All are partial-backorder with warehouse lead $L_w=2$, emergency-shipment
+probability $0.8$, horizon $100$. Source:
+\texttt{src/problems/one\_warehouse\_multi\_retailer/references.rs}.}
+\label{tab:owmr-params}
+\begin{tabular}{llllll}
+\toprule
+Instance & $K$ & Per-retailer demand & $h_w$ & $h_r$ & $p$ \\
+\midrule
+instance\_12 & $3$  & $N(1,5),\ N(5,1),\ \mathrm{Pois}(0.5)$ & $0.5$ & $1$ & $9$ \\
+instance\_13 & $10$ & $N(5,14)\times 10$ (symmetric, $\sigma/\mu=2.8$) & $3$ & $3$ & $60$ \\
+instance\_14 & $10$ & clipped-normal gradient $N(0,20)..N(10,0)$ + $4\times$Poisson & $3$ & $3$ & $60$ \\
+\bottomrule
+\end{tabular}
+\par\medskip\footnotesize Demand is rounded and clipped at $0$. instance\_13 is symmetric but very
+high CV; instance\_12 and instance\_14 are heterogeneous across retailers.
+\end{table}
+\FloatBarrier
+
+\subsection{Results}
+\label{sec:owmr-results}
+
+Table~\ref{tab:owmr-results} reports the learned per-retailer soft tree against the in-repo gate on
+the held-out block. The learned policy \emph{beats the tuned gate beyond sampling error on two of the
+three instances}, and ties on the third. On the heterogeneous $K{=}3$ instance it improves the
+$100$-period cost from $1169.59$ to $1154.09$ ($+1.33\%$, paired advantage $+15.50\pm0.97$,
+$\approx16\times$ SEM) by learning state-dependent per-retailer deviations from the shared base-stock.
+On the symmetric high-CV $K{=}10$ instance a linear-leaf policy improves the cost from $91890.25$ to
+$85974.79$ ($+6.44\%$, paired $+5915.47\pm49.50$, $\approx120\times$ SEM), closing most of the gap to
+the published PPO (from $15.26\%$ to $7.84\%$); here the exploitable structure is \emph{dynamic
+state-dependence under high demand variance} (a constant-leaf shared base-stock only ties), not
+per-retailer heterogeneity. On the hardest, strongly heterogeneous $K{=}10$ instance the learned
+policy \emph{ties} the gate: with the per-retailer warm-start floor the trained incumbent lands above
+the strong asymmetric gate within budget, so the deployed policy falls back to the gate-reproducing
+anchor. This tie is \emph{search-limited}, not representation-limited --- the gate lies inside the
+learned policy's class, but CMA-ES cannot improve on it over the $10$-dimensional target space in
+$600$ generations.
+
+\paragraph{Interpretation.}
+The honest headline is that the learned soft tree \emph{beats the strongest in-repo heuristic gate}
+beyond sampling error on the heterogeneous $K{=}3$ instance and the high-CV symmetric $K{=}10$
+instance, and ties it on the hardest heterogeneous $K{=}10$ instance. On all three rows the in-repo
+gate is itself stronger than the published Kaynov base-stock and sits between it and the published
+PPO; the learned policy does \emph{not} beat the published PPO, which remains the strongest learned
+policy on every row ($-3.14\%$, $-7.84\%$, $-17.77\%$ relative to PPO). The mechanism behind the wins
+is the generalized per-retailer warm-start floor of Section~\ref{sec:owmr-policy}: it converts a rich
+but hard-to-optimize action geometry from a screening-stage loss into a robust held-out win.
+
+\begin{table}[!htbp]
+\centering
+\small
+\caption{OWMR asymmetric / high-CV instances: best learned per-retailer soft tree vs.\ the strongest
+in-repo echelon base-stock $+$ allocation gate, common-random-number evaluation ($4096$ held-out
+paths, horizon $100$). Costs are $100$-period undiscounted totals (lower is better). $\Delta\%$ is the
+learned policy's improvement over the gate; ``paired $\pm$ SEM'' is the gate$-$learned advantage on
+identical paths (a win requires it to exceed its SEM). The published PPO column is the strongest
+\emph{learned} reference of \citet{kaynov2024owmr} (= $-$reward), not the keep/discard gate. Source:
+\texttt{outputs/one\_warehouse\_multi\_retailer/}.}
+\label{tab:owmr-results}
+\begin{tabular}{lccccc}
+\toprule
+Instance & Learned & Gate & $\Delta\%$ & Paired $\pm$ SEM & Published PPO \\
+\midrule
+instance\_12 & $\mathbf{1154.09}$  & $1169.59$  & $\mathbf{+1.33\%}$ & $+15.50\pm0.97$    & $1118.92$ \\
+instance\_13 & $\mathbf{85974.79}$ & $91890.25$ & $\mathbf{+6.44\%}$ & $+5915.47\pm49.50$ & $79727.39$ \\
+instance\_14 & $50445.20$ & $50445.20$ & $+0.00\%$ & $+0.00\pm0.00$ & $42835.02$ \\
+\bottomrule
+\end{tabular}
+\par\medskip\footnotesize Winning geometry / leaf: instance\_12 per-retailer \texttt{echelon\_targets}
+(linear), instance\_13 symmetric \texttt{echelon\_targets} (linear), instance\_14 per-retailer
+\texttt{echelon\_targets} (ties under both linear and constant leaves). The comparator is the
+strongest \emph{in-repo} heuristic gate (itself stronger than Kaynov's published base-stock); the
+learned policy beats it beyond SEM on instance\_12 and instance\_13 and ties it on the search-limited
+instance\_14. The learned policy does not beat the published PPO ($-3.14\%$, $-7.84\%$, $-17.77\%$
+relative to PPO), which remains the strongest learned policy on every row.
+\end{table}
+\FloatBarrier

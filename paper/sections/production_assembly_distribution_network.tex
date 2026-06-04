@@ -1,0 +1,277 @@
+% ---------------------------------------------------------------------------
+% Production / assembly / distribution network section (Pirhooshyaran & Snyder).
+%
+% INPUT-ABLE FRAGMENT: this file is \input{} into the manuscript
+% learning_inventory_control_policies_es.tex and reuses ITS preamble macros and
+% TikZ styles (envbox, envtitle, envsupply/envstock/envsink/envlost, reqflow/
+% matflow/demandflow/lostflow, ltlabel/reqlabel, costH/costP, the boxed
+% "Per-period event sequence" panel, booktabs, \ding). It defines NO new styles
+% and contains NO \documentclass.
+%
+% BIBLIOGRAPHY: this section cites \citet{pirhooshyaran2021network}
+% (Pirhooshyaran & Snyder 2021, arXiv:2006.05608), which is NOT yet in
+% paper/references.bib; the entry must be added before compiling (out of scope
+% of this fragment).
+%
+% HONESTY STATUS (load-bearing -- do not soften): this environment is FAITHFUL
+% (verified equation-by-equation against the paper, eqs. 1-13) but
+% literature_verified=FALSE. The ONLY published number it reproduces is the
+% single-node newsvendor cost 127.11 (env exact DP -> ~127.10, <1%), which
+% certifies env DYNAMICS, not the case3 result. The case3 comparator is the
+% environment's OWN best grid-searched pairwise base-stock, a RESEARCH baseline,
+% NOT a published optimum. The serial optimum 47.65 is STRUCTURALLY UNREACHABLE
+% by this env (echelon-vs-local position mismatch) and lives in the serial
+% section; it is NOT a target here. This is a learned-beats-own-best-heuristic
+% research result, never a published-number beat.
+%
+% DATA-PROVENANCE NOTE:
+%   Instance + dynamics : src/problems/multi_echelon/
+%       production_assembly_distribution_network/ (env.rs: process-all-raw-on-
+%       arrival, proportional allocation with backorder carry-over, order-after-
+%       demand, holding on raw+finished+in-transit per cost eq.3),
+%       heuristics/base_stock.rs (pairwise_base_stock_requests, eq.5),
+%       literature/references.rs (PRIMARY_REFERENCE_INSTANCE
+%       pirhooshyaran2021_serial_case3; literature_verified=false).
+%   Results             : scripts/production_assembly_distribution_network/
+%       RESULTS_case3_learned_vs_own_best_heuristic.md (committed 14b45d4, full
+%       budget, 4000 held-out paired-CRN paths). Gate = env's own best pairwise
+%       base-stock OUL [8,7,9], held-out 60.24/period. Learned depth-2 oblique
+%       linear: seed123 57.25 +/- 0.22 (-4.96%), seed321 54.96 +/- 0.23
+%       (-8.77%); depth-3 seed123 57.85 +/- 0.25 (-3.97%). Gen-0 flow warm-start
+%       70.85 +/- 0.61.
+% ---------------------------------------------------------------------------
+\section{Production / assembly / distribution network}
+\label{sec:pirhoo}
+
+\subsection{Problem formulation}
+\label{sec:pirhoo-formulation}
+
+Figure~\ref{fig:env-pirhoo} depicts this environment as a flow network --- the per-relation order
+requests, the lead-time shipments of raw material between nodes, the ``process all raw on arrival''
+conversion to finished goods, the external demand at the downstream node, and where holding (on raw,
+finished, and in-transit stock) and the backorder penalty are charged.
+
+\begin{figure}[t]
+  \centering
+  \resizebox{\textwidth}{!}{%
+  \begin{tikzpicture}[x=1cm,y=1cm]
+    % Serial case-3 instantiation of the general supply-network MDP: a 3-node
+    % serial chain 0 -> 1 -> 2 (node 0 sole source), external demand at node 2.
+    % Each node carries raw + finished inventory; order requests UP (dashed
+    % control) on each supply relation, lead-time material DOWN (solid). Backlog
+    % is carried over at the demand node.
+    \node[envsupply] (sup) at (0,0)      {external\\source};
+    \node[envstock]  (n0)  at (5.4,0)    {node $0$\\raw\,$\mid$\,finished};
+    \node[envstock]  (n1)  at (11.0,0)   {node $1$\\raw\,$\mid$\,finished};
+    \node[envstock]  (n2)  at (16.6,0)   {node $2$\\raw\,$\mid$\,finished};
+    \node[envsink]   (dem) at (22.0,0)   {demand\\$D_t\sim N(5,1)$};
+    \node[envlost]   (bo)  at (22.0,-3.6){backorder\\(carried)};
+
+    % per-relation requests UP (dashed control)
+    \draw[reqflow] (n0.north west) to[bend right=26] (sup.north east);
+    \draw[reqflow] (n1.north west) to[bend right=26] (n0.north east);
+    \draw[reqflow] (n2.north west) to[bend right=26] (n1.north east);
+    \node[reqlabel] at (10.9,1.95) {\ding{183}\, pairwise order-up-to on each relation};
+
+    % lead-time material DOWN (solid)
+    \draw[matflow] (sup.south east) to[bend right=10] (n0.west);
+    \draw[matflow] (n0.south east)  to[bend right=10] (n1.west);
+    \draw[matflow] (n1.south east)  to[bend right=10] (n2.west);
+    \node[ltlabel] at (8.1,-1.5) {\ding{185}\, ship (lead $L$); \emph{process all raw on arrival}};
+
+    \draw[demandflow] (n2) -- (dem)
+          node[midway,above=3pt,ltlabel] {\ding{186}\, demand};
+    \draw[lostflow] (dem) -- (bo);
+
+    \node[costH,above=8mm of n1.north] {holding on raw\,$+$\,finished\,$+$\,in-transit};
+    \node[costP,right=2pt of bo.east] {penalty $b\,B_t$};
+
+    \begin{scope}[on background layer]
+      \node[envbox,fit=(current bounding box)] (box) {};
+    \end{scope}
+    \node[envtitle,above=3pt of box.north,anchor=south]
+          {General supply network (serial case~3 instantiation; external demand at the downstream node)};
+  \end{tikzpicture}%
+  }
+  \par\vspace{6pt}\centerline{%
+    \tikz\node[draw=mydarkblue!55,rounded corners=4pt,fill=mydarkblue!4,inner sep=7pt]{%
+      \begin{minipage}{\dimexpr\linewidth-18pt\relax}\centering
+        {\small\bfseries\color{mydarkblue!85}Per-period event sequence}\\[4pt]
+        {\small\begin{tabular}{@{}p{4.3cm}p{4.3cm}p{4.3cm}@{}}
+          \ding{182}\,observe per-node raw/finished inventory, pipelines, backlog & \ding{183}\,place a pairwise order-up-to request on each supply relation & \ding{184}\,external demand $D_t$ is observed at the downstream node\\[4pt]
+          \ding{185}\,shipments placed $L$ ago arrive; each node \emph{processes all raw on arrival} into finished goods & \ding{186}\,downstream demand served from finished stock; shortfall \emph{backordered} and carried over & \ding{187}\,charge holding on raw, finished, and in-transit stock (cost eq.~3) and penalty $b$ on backorders\\
+        \end{tabular}}
+      \end{minipage}};}\par
+  \caption{General production/assembly/distribution supply-network environment of
+  \citet{pirhooshyaran2021network}, drawn as an event-based interaction; we instantiate it at the
+  paper's serial case~3 (a 3-node serial chain $0\!\to\!1\!\to\!2$, node $0$ the sole source, external
+  demand $N(5,1)$ at the downstream node $2$). Each node carries raw-material and finished-goods
+  inventory. Each period a \emph{pairwise order-up-to} request is placed on every supply relation (thin
+  dashed control arrows); shipments placed $L$ periods earlier arrive (solid material arrows) and each
+  node \emph{processes all raw material on arrival} into finished goods. Downstream demand is served
+  from finished stock and any shortfall is \emph{backordered and carried over}. Holding cost is charged
+  on raw, finished, \emph{and} in-transit stock (the paper's cost equation~3) and a penalty $b$ on
+  backorders; the boxed panel gives the per-period event sequence
+  (Section~\ref{sec:pirhoo-formulation}, Eq.~\eqref{eq:pirhoo-cost}).}
+  \label{fig:env-pirhoo}
+\end{figure}
+
+We consider the general production/assembly/distribution supply-network model of
+\citet{pirhooshyaran2021network}: a directed network of nodes, each carrying raw-material and
+finished-goods inventory, connected by supply relations with deterministic shipment lead times. The
+control is a pairwise order-up-to policy on the supply relations; each node \emph{processes all raw
+material on arrival} into finished goods, external demand arrives at the downstream node(s), and
+shortfalls are backordered and carried over. We instantiate it at the paper's \emph{serial case~3}
+(a 3-node serial chain), the instance wired into the environment. Our implementation is verified
+\emph{equation-by-equation} against the paper (cost equation~3; a worked-transition fixture reproduces
+the per-period cost by hand), but it is \emph{not} literature-verified at the network level: see the
+honesty note below.
+
+\paragraph{Timing of a period.}
+At the start of period $t$ the controller observes each node's raw and finished inventory, the
+in-transit pipelines, and the downstream backlog, and places a pairwise order-up-to request on each
+supply relation. External demand is observed; shipments placed $L$ periods earlier arrive and each
+node processes all arriving raw material into finished goods; downstream demand is served from finished
+stock with proportional allocation and any shortfall is backordered; holding and penalty costs are
+charged.
+
+\paragraph{State.}
+The state collects, for each node, its raw and finished inventory and in-transit pipeline, together
+with the downstream backlog,
+\begin{equation*}
+    \mathbf{S}_t=\bigl(\{\text{raw}^{n}_t,\ \text{fin}^{n}_t,\ \text{pipeline}^{n}_t\}_{n},\ \text{backlog}_t\bigr).
+\end{equation*}
+
+\paragraph{Action.}
+The decision is a per-relation order quantity (one entry per supply relation),
+\begin{equation*}
+    a_t=\bigl(q^{1}_t,\dots,q^{R}_t\bigr),
+\end{equation*}
+the order placed on each of the $R$ supply relations; for serial case~3, $R=3$ (the two internal edges
+and the external source).
+
+\paragraph{Transition.}
+Orders placed on each relation are shipped subject to upstream availability and arrive after the
+relation's lead time. On arrival each node processes all raw material into finished goods. Downstream
+demand is served from finished stock; when finished stock is scarce it is allocated proportionally and
+the unmet quantity is backordered and carried into the next period.
+
+\paragraph{One-period cost.}
+The cost incurred in period $t$ is the holding cost on \emph{all} inventory (raw, finished, and
+in-transit) plus the backorder penalty at the demand node:
+\begin{equation}
+    \label{eq:pirhoo-cost}
+    c_t \;=\; \sum_{n}\Bigl(h^{n}\bigl[\text{raw}^{n}_t+\text{fin}^{n}_t+\text{in-transit}^{n}_t\bigr]\Bigr) \;+\; b\,B_t ,
+\end{equation}
+with per-node holding rates $h^{n}$ and per-unit backorder penalty $b$ at the demand node ($B_t$ the
+backorder level), following the paper's cost equation~3.
+
+\paragraph{Objective.}
+A stationary policy $\pi_{\btheta}$ maps the state to the per-relation orders. Performance is the
+expected undiscounted average per-period cost over the horizon, $\min_{\btheta} C(\btheta)$, estimated
+by simulation over shared demand-path seeds.
+
+\FloatBarrier
+
+\subsection{Policy}
+\label{sec:pirhoo-policy}
+
+This environment tests the recipe on a \emph{network} action space. \textbf{Input.} The policy input
+is the per-node feature vector (raw and finished inventory, in-transit pipeline, and backlog),
+divide-by-scale normalized. \textbf{Output.} A valid action is the per-relation order vector (a
+\texttt{vector\_quantity} action of dimension $R$), clipped to the physical action box.
+\textbf{Internals.} $\pi_{\btheta}$ uses the soft-tree backbone of Section~\ref{sec:soft-tree}: a
+depth-2 tree with \emph{oblique} splits and \emph{linear} leaves, so each leaf maps the policy-state
+features to the per-relation orders and oblique splits switch regime by inventory state. The design
+choice we test is the \emph{leaf class}: a constant leaf can emit only a fixed order rate (and stays
+at the flow regime), whereas a linear leaf reads finished inventory, in-transit pipeline, and backlog
+to express inventory-position feedback on the same supply relations as the pairwise base-stock policy.
+We warm-start CMA-ES at the steady-state flow rate (order the demand mean on each relation), the
+simplest reproducible known-good point, and the search refines outward.
+
+\subsection{Experiment setup}
+\label{sec:pirhoo-setup}
+
+We study the paper's serial case~3 (\texttt{pirhooshyaran2021\_serial\_case3}): a 3-node serial chain
+$0\!\to\!1\!\to\!2$ with node $0$ the sole source, external demand $N(5,1)$ at node $2$ only, horizon
+$T=10$, shipment lead times (external$\to$0, $0\to1$, $1\to2$) $=(2,1,1)$, local holding $[2,4,7]$, and
+backorder cost $37.12$ at node $2$. The objective is the undiscounted average per-period cost.
+
+\paragraph{Honesty status: a faithful but not literature-verified environment.}
+This environment reproduces exactly one \emph{published} quantity: the single-node newsvendor cost of
+the paper's Table~1 ($\mu=100,\sigma=10,h=10,p=30,L=1$), for which the environment's exact dynamic
+program returns $\approx127.10$ against the published $127.11$ ($<1\%$). This certifies the
+\emph{dynamics}. There is \emph{no} published optimum for the multi-node version of \emph{this} MDP, so
+every multi-node reference instance carries \texttt{literature\_verified=false}. In particular, the
+textbook serial optimum $47.65$ (Section~\ref{sec:serial}) is an \emph{echelon} base-stock cost and is
+\emph{structurally unreachable} by this environment's \emph{local} pairwise policy (which targets the
+raw-material position and excludes finished goods); we therefore do \emph{not} use $47.65$ (or any
+published number) as the comparator here. The comparator is instead the environment's \emph{own} best
+heuristic.
+
+\paragraph{Comparator gate (a research baseline, not an optimum).}
+The strongest heuristic native to this environment is the pairwise base-stock policy (the paper's
+equation~5). We grid-search its per-relation order-up-to levels on a search-seed block and re-score the
+argmin on a disjoint held-out block: the argmin is order-up-to $[8,7,9]$ with held-out cost
+$60.24$ per period. We state explicitly that $60.24$ is the environment's own best heuristic, not an
+optimum.
+
+\paragraph{Evaluation protocol.}
+Policies are trained with warm-started CMA-ES (population $24$, $60$ generations) and evaluated under
+the common-random-number protocol of Section~\ref{sec:methods-eval}: learned policy and gate are scored
+on the \emph{same} held-out block ($4000$ paths), paired on identical demand realizations.
+
+\subsection{Results}
+\label{sec:pirhoo-results}
+
+Table~\ref{tab:pirhoo-results} reports the learned soft tree against the environment's own best
+pairwise base-stock on the held-out block. The learned policy \emph{beats the environment's own best
+heuristic}, robustly and reproducibly: the depth-2 oblique-linear tree improves the per-period cost
+from $60.24$ to $57.25\pm0.22$ ($-4.96\%$) on one CMA seed and to $54.96\pm0.23$ ($-8.77\%$) on
+another, and a depth-3 tree gives $57.85\pm0.25$ ($-3.97\%$); every configuration beats the gate by
+more than $3.9\%$, outside the held-out standard error by $\ge 9\times$ SEM, across two seeds and two
+depths. The flow warm-start (generation~0) sits at $70.85\pm0.61$, so the improvement is the CMA-ES
+delta, not the initialization. The mechanism is a strictly richer control class on the \emph{same}
+action relations: the pairwise base-stock policy reacts only to the local raw-material position, while
+the learned linear-leaf tree additionally reads finished inventory, backlog, and inbound pipeline, and
+switches behaviour by inventory regime; constant-leaf trees stay at the flow regime and lose to the
+gate, confirming the leaf class is the lever.
+
+\paragraph{Honest scope.}
+This is a \emph{research} result on a faithful but \emph{not} literature-verified environment: the
+learned policy beats the environment's \emph{own} best heuristic, not any published cost. We report it
+as evidence that action design (the leaf class), not optimizer capacity, governs whether a black-box
+search recovers structured-control performance --- consistent with the same finding on the lost-sales,
+one-warehouse multi-retailer, and multi-echelon environments elsewhere in this work. Upgrading the
+environment to literature-verified would require recovering the paper's exact order-up-to to
+inventory-position simulation convention and binding the in-crate echelon-position policy; we leave
+that to future work and do not present this row as a published-number benchmark.
+
+\begin{table}[!htbp]
+\centering
+\small
+\caption{Production/assembly/distribution network (serial case~3): best learned soft tree vs.\ the
+environment's \emph{own} best pairwise base-stock gate, common-random-number evaluation ($4000$
+held-out paths). Costs are undiscounted per-period averages (lower is better). $\Delta\%$ is the
+learned policy's improvement over the gate; ``SEM mult.'' is that gain divided by the held-out
+standard error. The gate ($60.24$) is the environment's own grid-searched heuristic, \emph{not} a
+published optimum --- this is a research comparison, not a literature-number beat. Source: the
+held-out ledger under \texttt{scripts/production\_assembly\_distribution\_network/}.}
+\label{tab:pirhoo-results}
+\begin{tabular}{lccc}
+\toprule
+Policy / config & Held-out cost ($\pm$ SEM) & $\Delta\%$ vs gate & SEM mult. \\
+\midrule
+Best pairwise base-stock (gate, OUL $[8,7,9]$) & $60.24$ & --- & --- \\
+Flow warm-start (generation $0$)               & $70.85\pm0.61$ & $+17.6\%$ & --- \\
+Learned soft tree, depth $2$, seed $123$       & $\mathbf{57.25\pm0.22}$ & $\mathbf{-4.96\%}$ & $\approx 14\times$ \\
+Learned soft tree, depth $2$, seed $321$       & $\mathbf{54.96\pm0.23}$ & $\mathbf{-8.77\%}$ & $\approx 23\times$ \\
+Learned soft tree, depth $3$, seed $123$       & $\mathbf{57.85\pm0.25}$ & $\mathbf{-3.97\%}$ & $\approx 10\times$ \\
+\bottomrule
+\end{tabular}
+\par\medskip\footnotesize The comparator is the environment's own best heuristic on a faithful but
+\texttt{literature\_verified=false} environment; the result is a research learned-beats-own-heuristic
+comparison, not a published-number beat. The serial optimum $47.65$ (Section~\ref{sec:serial}) is
+structurally unreachable by this environment's local pairwise policy and is not used as a target here.
+\end{table}
+\FloatBarrier
