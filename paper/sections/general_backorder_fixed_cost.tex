@@ -1,0 +1,367 @@
+% =============================================================================
+% General-network backorder inventory control (Geevers, van Hezewijk & Mes, 2024;
+% the "CardBoard Company" general network), experiment set 1.
+%
+% INPUT-ABLE SECTION. No \documentclass. Relies on the manuscript preamble for:
+%   - TikZ env styles: envbox, envsupply, envstock, envsink, reqflow, matflow,
+%     demandflow, costH, costP, costK, reqlabel, ltlabel, envtitle (Sec. preamble);
+%   - the boxed per-period event-sequence panel idiom (cf. fig:env-multiechelon,
+%     fig:env-dual);
+%   - booktabs, \FloatBarrier (placins), \citep{geevers2024cardboard}, \btheta.
+%
+% ALGORITHMIC DESCRIPTION (faithful to the Rust env it documents):
+%   src/problems/multi_echelon/general_backorder_fixed_cost/{env.rs,heuristics.rs,
+%   rollout.rs,references.rs}. One period, in code order (advance_to_decision_state):
+%   (1) receive supplier->warehouse and warehouse->retailer deliveries due now;
+%   (2) suppliers ship the warehouse orders placed last period (unit lead time);
+%   (3) each warehouse fulfils current retailer orders, rationing by retailer
+%       (inventory - customer backorders) when short, unmet -> retailer backorders;
+%   (4) each retailer serves customer demand from on-hand, unmet -> customer backorders;
+%   (5) leftover stock clears outstanding warehouse->retailer and retailer->customer
+%       backorders; (6) cost = warehouse holding (0.6) + retailer holding (1.0)
+%       + retailer/customer backorder (19.0); warehouse backorder cost = 0.0.
+%   IMPORTANT: despite the family/folder name "..._fixed_cost", the env charges NO
+%   fixed/setup ordering cost -- only holding + backorder (verified in env.rs:
+%   period_cost = holding_cost + warehouse_backorder_cost + customer_backorder_cost).
+%   Policy: node_base_stock_targets -- a soft tree emits a 9-dim per-node order-up-to
+%   target vector; warehouses raise IP to target, retailers raise a single
+%   weight-sampled upstream edge's IP to target (set-1 relative-rationing routing).
+% =============================================================================
+
+\section{General-network backorder inventory control}
+\label{sec:genbackorder}
+
+\subsection{Problem formulation}
+\label{sec:genbackorder-formulation}
+
+Figure~\ref{fig:env-genbackorder} depicts this environment as a flow network --- the external
+suppliers, the warehouses and retailers of a general directed supply network, the order requests and
+their lead-time shipments, the per-node order-up-to (base-stock) targets, and where holding and
+backorder costs are charged.
+
+\begin{figure}[t]
+  \centering
+  \resizebox{\textwidth}{!}{%
+  \begin{tikzpicture}[x=1cm,y=1cm]
+    % A general directed network drawn as a small representative slice: external
+    % suppliers -> warehouses (intermediate stock points) -> retailers (customer-facing
+    % stock points) -> demand. The full set-1 network is 4 suppliers / 4 warehouses /
+    % 5 retailers with a many-to-many warehouse->retailer edge set (caption gives the
+    % full fidelity). Request arcs UP (control), ship/arrival arcs DOWN (goods).
+    \node[envsupply] (sup) at (0,0)    {external\\suppliers\\($\times M$)};
+    \node[envstock]  (wh)  at (5.8,0)  {warehouses $j$\\$I^w_{j,t}$ \;($\times W$)};
+    \node[envstock]  (ret) at (11.6,0) {retailers $i$\\$I^r_{i,t}$ \;($\times R$)};
+    \node[envsink]   (dem) at (17.2,0) {demand\\$d_{i,t}\!\sim\!\mathrm{Pois}(\lambda)$ \;($\times R$)};
+
+    % supplier -> warehouse: arrival arc DOWN (event 1), warehouse request arc UP (event 6/next)
+    \draw[reqflow] (wh.north) to[bend right=42] (sup.north);
+    \node[reqlabel] (rqw) at (2.9,2.25) {\ding{183}\, raise $\mathrm{IP}^w_j$ to $S^w_j$};
+    \draw[matflow] (sup.south) to[bend right=42] (wh.south);
+    \node[ltlabel] (shw) at (2.9,-2.25) {\ding{182}\, arrival (placed $1$ ago)\\merges into stock};
+
+    % warehouse -> retailer: request arc UP (event 2 region), ship arc DOWN (event 3)
+    \draw[reqflow] (ret.north) to[bend right=38] (wh.north);
+    \node[reqlabel] at (8.7,2.25) {\ding{183}\, raise $\mathrm{IP}^r_i$ to $S^r_i$\\(routed to one edge)};
+    \draw[matflow] (wh.south) to[bend right=26] (ret.south);
+    \node[ltlabel] (shr) at (8.7,-1.85) {\ding{184}\, ships after $1$;\\ration by stock if short};
+
+    \draw[demandflow] (ret) -- (dem)
+          node[midway,above=3pt,ltlabel] {\ding{185}\, serve from on-hand};
+
+    % backorders: unmet customer demand backordered (red dashed, routed below)
+    \draw[lostflow] (dem.south) to[out=-90,in=-90,looseness=1.0] (ret.south);
+    \node[font=\small,myred!70!black,align=center,fill=white,inner sep=2pt] (bo) at (14.2,-2.55)
+          {\ding{186}\, unmet $\to$ \emph{customer backorder}\\(cleared later from stock)};
+
+    \node[costH] (hw) at (5.8,3.55) {holding $h^w (I^w_{j,t})^+$};
+    \node[costH] (hr) at (11.6,4.35) {holding $h^r (I^r_{i,t})^+$};
+    \node[costP,right=3pt of dem.east] {backorder\\$b\,B^r_{i,t}$};
+
+    \begin{scope}[on background layer]
+      \node[envbox,fit=(current bounding box)] (box) {};
+    \end{scope}
+    \node[envtitle,above=3pt of box.north,anchor=south]
+          {General-network backorder environment (one period)};
+  \end{tikzpicture}%
+  }
+  \par\vspace{6pt}\centerline{%
+    \tikz\node[draw=mydarkblue!55,rounded corners=4pt,fill=mydarkblue!4,inner sep=7pt]{%
+      \begin{minipage}{\dimexpr\linewidth-18pt\relax}\centering
+        {\small\bfseries\color{mydarkblue!85}Per-period event sequence}\\[4pt]
+        {\small\begin{tabular}{@{}p{4.5cm}p{4.5cm}p{4.5cm}@{}}
+          \ding{182}\,deliveries due now merge into warehouse \& retailer on-hand & \ding{183}\,suppliers ship last period's warehouse orders; warehouses fulfil current retailer orders (ration if short) & \ding{184}\,shipped goods enter the unit-lead-time pipelines\\[4pt]
+          \ding{185}\,each retailer serves customer demand $d_{i,t}$ from on-hand & \ding{186}\,unmet demand $\to$ customer backorder; leftover stock clears existing backorders & \ding{187}\,holding $(h^w,h^r)$ $+$ backorder $b$; orders placed for next period\\
+        \end{tabular}}
+      \end{minipage}};}\par
+  \caption{General-network (CardBoard Company) backorder environment of \citet{geevers2024cardboard},
+  drawn as an event-based interaction. A directed network of $M$ external suppliers, $W$ warehouses,
+  and $R$ retailers carries a single product: every warehouse $j$ and retailer $i$ is a base-stock
+  stock point. Each period the warehouses \emph{send order requests} to the (uncapacitated) suppliers
+  and the retailers \emph{request} replenishment up the warehouse--retailer edges (thin dashed control
+  arrows); shipments arrive after a \emph{unit} lead time (solid material arrows). When a warehouse
+  cannot cover all the retailer requests routed to it, it rations them by retailer
+  (on-hand $-$ customer backorders), the remainder becoming warehouse--retailer backorders. Each
+  retailer serves its own i.i.d.\ $\mathrm{Poisson}(\lambda)$ customer demand from on-hand stock;
+  \emph{unmet customer demand is backordered}, and leftover stock later clears outstanding backorders.
+  Holding cost is charged on end-of-period on-hand stock at the warehouses ($h^w$) and retailers
+  ($h^r$), and a backorder penalty $b$ on outstanding customer backorders; \emph{there is no fixed
+  ordering cost in the published objective} (Sec.~\ref{sec:genbackorder-formulation}). The boxed panel
+  beneath gives the per-period event sequence (Eq.~\eqref{eq:gbk-cost}). The full set-1 network
+  ($M{=}4$, $W{=}4$, $R{=}5$, with a many-to-many warehouse--retailer edge set and historical
+  connection weights) is given in Table~\ref{tab:gbk-params}.}
+  \label{fig:env-genbackorder}
+\end{figure}
+
+We formalize the general-network system as a discrete-time MDP under the long-run average-cost
+criterion, mirroring the multi-echelon formulation above. A set of $M$ uncapacitated external
+suppliers feeds $W$ warehouses (intermediate stock points), and the warehouses feed $R$ retailers
+(customer-facing stock points) over a fixed directed network of warehouse--retailer edges, across
+periods $t\in\{1,2,\dots,T\}$; we are interested in the limit $T\to\infty$. Every warehouse and every
+retailer is a single-product base-stock stock point. Supplier-to-warehouse and warehouse-to-retailer
+shipments each take a constant \emph{unit} lead time. Retailer $i$ faces i.i.d.\ integer customer
+demand $d_{i,t}\sim\mathrm{Poisson}(\lambda)$, independently across retailers and periods. We write
+$x^+=\max(0,x)$. Despite the carried family name (\emph{general backorder, fixed cost}), the published
+objective and the environment charge holding and backorder cost only and \emph{no} fixed/setup
+ordering cost --- as written in the model of \citet{geevers2024cardboard} and confirmed in the
+implementation's one-period cost (Eq.~\eqref{eq:gbk-cost}).
+
+\paragraph{Timing of a period.}
+Entering period $t$, each warehouse $j$ holds on-hand stock $I^w_{j,t-1}$ with the
+supplier-to-warehouse order placed last period in transit, and each retailer $i$ holds $I^r_{i,t-1}$
+with its inbound edge shipments in transit; outstanding warehouse--retailer backorders $B^w_{e,t}$
+(per edge $e$) and customer backorders $B^r_{i,t}$ are carried forward. The period proceeds in stages,
+in the order implemented by the simulator: (i) the shipments due to arrive now are added to warehouse
+and retailer on-hand; (ii) each supplier ships the warehouse order placed one period earlier (it
+enters the unit-lead-time pipeline); (iii) each warehouse fulfils the current retailer orders routed
+to it from its available on-hand, and when a warehouse cannot cover all its requests it rations them
+in increasing order of the requesting retailer's $\big(I^r_{i}-B^r_{i}\big)$, the unfilled part
+becoming an edge backorder $B^w_{e}$; (iv) demand $d_{i,t}$ is realized at each retailer and served
+from on-hand, the unmet part $\big(d_{i,t}-I^r_{i}\big)^+$ becoming a customer backorder; (v) any
+leftover warehouse stock clears outstanding edge backorders and any leftover retailer stock clears
+outstanding customer backorders; (vi) costs are charged on the resulting end-of-period stocks and
+backorders, and the new replenishment orders for next period are placed.
+
+\paragraph{State.}
+The pre-decision MDP state collects, for every stock point, its on-hand level, its inbound pipeline,
+and its outstanding backorders:
+\begin{equation*}
+  \mathbf S_t = \Big(\, \big(I^w_{j,t-1}\big)_{j=1}^{W};\ \big(I^r_{i,t-1}\big)_{i=1}^{R};\
+  \text{pipelines (per warehouse, per edge)};\ \big(B^w_{e,t}\big)_{e};\ \big(B^r_{i,t}\big)_{i=1}^{R} \,\Big).
+\end{equation*}
+From it we form, for each warehouse and retailer, the inventory positions
+\begin{equation*}
+  \mathrm{IP}^w_{j}=I^w_{j}+(\text{supplier in transit})_j-\textstyle\sum_{e\to j}B^w_{e},
+  \qquad
+  \mathrm{IP}^r_{i}=I^r_{i}+\textstyle\sum_{e\to i}(\text{in transit})_e-B^r_{i},
+\end{equation*}
+and, per inbound edge, an edge-level position used by the set-1 routing. These inventory positions are
+the quantities the base-stock control acts on.
+
+\paragraph{Action.}
+The control is the vector of per-node order-up-to (base-stock) targets
+\begin{equation*}
+  \mathbf a_t = \big(\,\underbrace{S^w_{1,t},\dots,S^w_{W,t}}_{\text{warehouses}},\
+  \underbrace{S^r_{1,t},\dots,S^r_{R,t}}_{\text{retailers}}\,\big),
+\end{equation*}
+one target per stock point ($W+R$ targets). Each warehouse $j$ orders
+$q^w_{j,t}=\big(S^w_{j,t}-\mathrm{IP}^w_{j,t}\big)^+$ from its supplier. Each retailer's desired raise
+$\big(S^r_{i,t}-\mathrm{IP}^r_{i,t}\big)^+$ is realized through the warehouse--retailer network by the
+set-1 \emph{order-per-stock-point} routing: the retailer's order is routed to exactly one upstream
+warehouse edge, drawn according to the historical connection weights (relative rationing), and that
+edge's inventory position is raised toward $S^r_{i,t}$. Orders are non-negative integers; suppliers are
+uncapacitated.
+
+\paragraph{Transition.}
+The shipments due now are added to on-hand; warehouses ship the supplier and retailer orders into the
+unit-lead-time pipelines; each warehouse rations retailer requests it cannot cover, accruing edge
+backorders $B^w_{e}$; each retailer serves demand and accrues customer backorders $B^r_{i}$; and
+leftover stock clears outstanding backorders. The resulting end-of-period on-hand stocks
+$\big(I^w_{j,t}\big),\big(I^r_{i,t}\big)$, the advanced pipelines, and the residual backorders
+$\big(B^w_{e,t+1}\big),\big(B^r_{i,t+1}\big)$ together define $\mathbf S_{t+1}$.
+
+\paragraph{One-period cost.}
+Holding cost is charged on end-of-period on-hand inventory at the warehouse rate $h^w$ and retailer
+rate $h^r$, and a backorder penalty $b$ on outstanding customer backorders; the warehouse-level
+backorder rate is zero. There is \emph{no} fixed ordering cost. The period cost is
+\begin{equation}
+  c_t = h^w\sum_{j=1}^{W}\big(I^w_{j,t}\big)^+ + h^r\sum_{i=1}^{R}\big(I^r_{i,t}\big)^+
+        + b\sum_{i=1}^{R} B^r_{i,t} .
+  \label{eq:gbk-cost}
+\end{equation}
+
+\paragraph{Objective.}
+A stationary policy $\pi_{\btheta}$ maps the state $\mathbf S_t$ to the target vector $\mathbf a_t$.
+Writing $\bar C_T(\btheta)=\tfrac1T\sum_{t=1}^{T}\mathbb E[c_t]$ for the expected average cost over $T$
+periods under $\pi_{\btheta}$, the objective is to minimize the long-run average expected cost
+$\bar C(\btheta)=\lim_{T\to\infty}\bar C_T(\btheta)$. As in the other problems this limit is estimated
+by the empirical average cost over a long simulated horizon with a warm-up discarded, which is the
+quantity CMA-ES minimizes.
+
+\FloatBarrier
+
+\subsection{Policy}
+\label{sec:gbk-policy}
+
+This problem keeps the recipe of Figure~\ref{fig:policy-pipeline} but pushes the action geometry to a
+\emph{vector} of per-node base-stock targets on a general network. \textbf{Input.} The policy input is
+a compact, scale-normalized summary of the pre-decision state: the per-warehouse and per-retailer
+inventory positions ($W+R$ features), the network totals (total on-hand, total backorders, total
+in-transit), the demand mean, and the remaining-horizon fraction ($14$ features for set~1).
+\textbf{Output.} A valid action is the $9$-dimensional vector of per-node order-up-to targets
+($W{=}4$ warehouses, $R{=}5$ retailers), each clamped to its physical box. \textbf{Internals.}
+Following the policy interface of Section~\ref{sec:methods-principle}, $\pi_{\btheta}$ normalizes the
+state and uses the soft decision tree with oblique splits and vector-valued leaves of
+Section~\ref{sec:soft-tree} as its backbone; the decoder reads each leaf's $9$ outputs directly as the
+per-node base-stock targets. The order-up-to projection then guarantees validity: each warehouse
+orders $\big(S^w_{j}-\mathrm{IP}^w_{j}\big)^+$ and each retailer raises its (weight-routed, set-1)
+inventory position toward $S^r_{i}$, all within the box $S^w_j\in[0,220]$, $S^r_i\in[0,140]$ --- set
+above the published levels (max $100$) so the learned policy's higher targets are reachable and the
+operating region is interior to the box.
+
+The action geometry is the heuristic's own coordinate system: a \emph{state-independent} soft tree
+(zero split weights, identical leaves) emits a constant target vector, which is exactly a constant
+node-base-stock policy. Encoding the published set-1 levels $[82,100,64,83,35,35,35,35,35]$ in the
+leaf parameters therefore makes \emph{generation~0 reproduce the published benchmark}; a
+\emph{state-dependent} tree, by contrast, lets the per-node targets react to the inventory-position
+summary, a strictly richer class than any single constant base-stock vector, and this is where the
+learned policy improves. We warm-start CMA-ES at this benchmark encoding with a small step size
+($\sigma=0.2$): a large $\sigma$ saturates the sigmoid leaves and lets the oblique split weights
+diverge, so the lever is re-anchoring and shrinking $\sigma$, not adding optimizer budget.
+
+\paragraph{Decision path: a worked example.}
+The best run is a depth-2 oblique soft tree with constant leaves in the node-base-stock-targets mode
+($81$ parameters). The compact state summary is read by the tree; the dominant leaf emits the $9$-dim
+target vector, which the order-up-to projection converts into warehouse orders
+$\big(S^w_j-\mathrm{IP}^w_j\big)^+$ and per-retailer raises routed (set-1) to a single weight-sampled
+upstream edge toward $S^r_i$. At the warm start the leaves emit the published constant vector
+$[82,100,64,83,35,35,35,35,35]$ exactly, reproducing the benchmark; after CMA-ES the leaves emit
+state-modulated targets that lower the long-run cost.
+
+\paragraph{Validation.}
+The set-1 environment itself is verified against the literature: the constant node-base-stock
+benchmark is reproduced at $\approx 10{,}355$ versus the published $10{,}467$ (gap $-1.1\%$), asserted
+in-crate (test \texttt{tests::verification::}\discretionary{}{}{}\texttt{set1\_benchmark\_reproduces\_}\discretionary{}{}{}\texttt{geevers\_published\_cost}, mean
+within $5\%$ of $10{,}467$), with retailer fill in the $98$--$99\%$ band matching the paper's target.
+The warm-started policy reproduces this benchmark at generation~0 ($10{,}378.6\pm10.6$ held-out), so
+the warm-start guarantee holds and the reported improvement is the increment CMA-ES adds on top.
+
+\subsection{Experiment setup}
+\label{sec:gbk-setup}
+
+We evaluate on \emph{set~1} of the general-network (CardBoard Company) model of
+\citet{geevers2024cardboard} --- the only one of its three experiment sets that we can verify against
+an open source. Sets~2 and~3 use an order-per-edge action space whose exact per-edge transition
+appears only in the gated journal full text; we could not reproduce their published benchmark from
+open sources and therefore exclude them. Set~1 (order per stock point) is confirmed verbatim against
+the open thesis: a $4$-supplier, $4$-warehouse, $5$-retailer network with a many-to-many
+warehouse--retailer edge set and historical connection weights, $\mathrm{Poisson}(15)$ retailer
+demand, unit lead times, and the Kunnumkal--Topaloglu (2011) cost structure (warehouse holding $0.6$,
+retailer holding $1.0$, retailer backorder $19.0$, no warehouse backorder cost).
+Table~\ref{tab:gbk-params} lists the set-1 instance.
+
+The comparator is the published \emph{constant node-base-stock} benchmark of
+\citet{geevers2024cardboard} at levels $[82,100,64,83,35,35,35,35,35]$ (tuned to a $98\%$ retailer
+fill-rate target), published cost $10{,}467$. This is the like-for-like, same-environment comparator
+that the learned policy must beat. We re-derive it in the environment ($\approx 10{,}355$, gap
+$-1.1\%$, $3$ seeds $\times\,500$ replications); this reproduction is the keep/discard gate. The paper
+also reports a PPO learner with best cost $8{,}714$; we report it only as a context row, because it is
+a \emph{cross-protocol} reference (a different learner under the paper's own training and evaluation
+protocol), \emph{not} a head-to-head comparison under our paired evaluation. The policy is trained with
+warm-started CMA-ES (depth $\in\{1,2\}$, oblique splits, constant leaves, $\sigma=0.2$) and evaluated
+under a paired common-random-number protocol: held-out base seeds (from $500{,}000$, stride $1{,}000$,
+disjoint from the training block at $10{,}000$), each a $100$-period path with a $50$-period warm-up
+cut; the full budget averages $2{,}000$ held-out paths and the \emph{same} seed block scores both the
+warm-start (benchmark) and the learned policy.
+
+\begin{table}[!htbp]
+\centering
+\caption{General-network set-1 instance of \citet{geevers2024cardboard} (CardBoard Company), as carried
+in the environment (\texttt{references.rs}, \texttt{geevers2023\_general\_set1}; the only
+literature-verified set). The network has $4$ suppliers, $4$ warehouses, and $5$ retailers connected
+by a many-to-many warehouse--retailer edge set with historical connection weights (each retailer's
+incoming weights sum to $1$). All lead times are $1$; demand is $\mathrm{Poisson}(15)$ at each
+retailer. Cost structure is Kunnumkal--Topaloglu (2011): warehouse holding $h^w$, retailer holding
+$h^r$, retailer (customer) backorder $b$, warehouse backorder $0$; \emph{no} fixed ordering cost.}
+\label{tab:gbk-params}
+\begin{tabular}{lc}
+\toprule
+Parameter & Set 1 \\
+\midrule
+\addlinespace[2pt]
+Suppliers $M$ / warehouses $W$ / retailers $R$ & $4\ /\ 4\ /\ 5$ \\
+Supplier$\to$warehouse lead time & $1$ \\
+Warehouse$\to$retailer lead time & $1$ \\
+Retailer demand & $\mathrm{Poisson}(\lambda),\ \lambda=15$ \\
+\addlinespace[2pt]
+Warehouse holding cost $h^w$ & $0.6$ \\
+Retailer holding cost $h^r$ & $1.0$ \\
+Retailer (customer) backorder cost $b$ & $19.0$ \\
+Warehouse backorder cost & $0.0$ \\
+Fixed ordering cost & $0$ (none) \\
+\addlinespace[2pt]
+Action space & one order per stock point \\
+Order routing & single upstream edge by connection weight \\
+Benchmark base-stock levels & $[82,100,64,83,35,35,35,35,35]$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+\FloatBarrier
+
+\subsection{Results}
+\label{sec:gbk-results}
+
+Table~\ref{tab:gbk-results} reports the published constant node-base-stock benchmark, our
+in-environment reproduction of it (the gate), the best learned policy, and --- as a clearly labeled
+cross-protocol context row --- the paper's PPO best. The learned soft tree, in the node-base-stock-targets
+coordinate system, reduces the long-run average cost to $8{,}034.8\pm17.6$, an improvement of $22.4\%$
+over the reproduced constant node-base-stock benchmark ($10{,}354.8$); a second independent CMA-ES seed
+reaches $7{,}590.7\pm19.2$ ($-26.7\%$). Both margins are many times the standard error of the mean, so
+they are genuine out-of-sample gains rather than evaluation-seed noise, and they are robust to the
+optimizer's initialization. Generation~0 reproduces the benchmark ($10{,}378.6$), confirming the
+warm-start, so the $\approx 2{,}300$--$2{,}800$ cost reduction is exactly what CMA-ES adds on top of the
+heuristic.
+
+\paragraph{Interpretation.}
+The like-for-like result is the $22.4$--$26.7\%$ improvement over the constant node-base-stock
+benchmark on the \emph{same} environment under a paired CRN comparison: putting the policy in the
+benchmark's per-node order-up-to coordinate system and letting a state-dependent tree modulate the
+targets --- rather than enlarging or replacing the action space --- is the operative lever, consistent
+with the action-geometry findings on the other problems. Two honest caveats bound the reading. First,
+despite the carried family name, the environment charges holding and backorder cost only and \emph{no}
+fixed ordering cost (Eq.~\eqref{eq:gbk-cost}); the section title reflects the model actually
+implemented and verified, not a setup-cost variant. Second, the published PPO best ($8{,}714$) is a
+\emph{cross-protocol} figure: it is produced by a different learner under the paper's own training and
+evaluation protocol, whereas our numbers come from the paired held-out CRN protocol above. Our learned
+policy lands $679$--$1{,}123$ below that PPO figure, which is suggestive of the design's strength but is
+\emph{not} a head-to-head PPO beat, and we do not claim one. The defensible claim is the paired,
+same-environment improvement over the published constant node-base-stock benchmark.
+
+\begin{table}[!htbp]
+\centering
+\caption{General-network set-1 learned-policy results (\citealp{geevers2024cardboard}; long-run average
+cost, lower is better). The improvement is the learned policy's cost reduction relative to the
+\emph{reproduced} constant node-base-stock benchmark ($10{,}354.8$, the paired gate); held-out
+common-random-number evaluation ($2{,}000$ seeds, $100$-period paths, $50$-period warm-up). The PPO row
+is a cross-protocol context figure from \citet{geevers2024cardboard} (a different learner under the
+paper's own protocol), \emph{not} a head-to-head comparison.}
+\label{tab:gbk-results}
+\begin{tabular}{lcc}
+\toprule
+Policy / metric & Held-out cost & $\Delta\%$ vs.\ benchmark \\
+\midrule
+Published const.\ node-base-stock benchmark & $10{,}467$ & --- \\
+Reproduced benchmark (paired gate) & $10{,}354.8$ & $-1.1\%$ (vs.\ published) \\
+Warm-start (gen.\ 0 $=$ benchmark) & $10{,}378.6 \pm 10.6$ & $+0.2\%$ \\
+Learned soft tree, seed 123 (ours) & $\mathbf{8{,}034.8 \pm 17.6}$ & $\mathbf{-22.4\%}$ \\
+Learned soft tree, seed 777 (ours) & $\mathbf{7{,}590.7 \pm 19.2}$ & $\mathbf{-26.7\%}$ \\
+\addlinespace[2pt]
+\multicolumn{3}{l}{\footnotesize Cross-protocol context (not head-to-head):} \\
+Published PPO best \citep{geevers2024cardboard} & $8{,}714$ & cross-protocol \\
+\bottomrule
+\end{tabular}
+\par\medskip\footnotesize The like-for-like comparator is the constant node-base-stock benchmark on
+the same environment; both learned seeds beat it by $>22\%$ under the paired CRN comparison
+($\gg 2\times$ SEM). The PPO figure is reported only as context; the learned policy lands
+$679$--$1{,}123$ below it, but under a different protocol, so it is not claimed as a head-to-head beat.
+\end{table}
+\FloatBarrier

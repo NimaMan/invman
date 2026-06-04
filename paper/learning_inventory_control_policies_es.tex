@@ -153,7 +153,7 @@ and cheap enough to retrain. The recipe is to optimize the parameters of a compa
 approximator with Covariance Matrix Adaptation Evolution Strategies (CMA-ES), a gradient-free,
 population-based optimizer that has been shown to scale to neural-network policies
 \citep{Hansen2001CompletelyStrategies,Salimans2017EvolutionLearning}. CMA-ES is attractive here for
-three reasons that hold across all four problems we study. First, it optimizes the
+three reasons that hold across all seven problems we study. First, it optimizes the
 realized objective --- the simulated long-run average cost --- directly, with no value-function
 bootstrapping, reward shaping, or credit assignment to individual actions, so the same loop applies
 unchanged whether the action is a scalar order, a regular/expedite pair, or a pair of echelon
@@ -174,8 +174,11 @@ fixed-cost order/no-order decision and the multi-echelon operating region.
 Our contributions are as follows.
 \begin{enumerate}
     \item \textbf{A cross-problem evolution-strategies result.} We show that CMA-ES-trained compact
-    policies match or beat strong heuristics and published DRL on four classical problems --- lost
-    sales, fixed-cost lost sales, dual sourcing, and divergent multi-echelon control --- using one
+    policies are competitive across seven inventory problems --- lost sales, fixed-cost lost sales, dual
+    sourcing, divergent and serial multi-echelon, general-network backorder, and perishable inventory:
+    they beat strong heuristics where the comparator is a heuristic, match proven optima where it is
+    optimal (the dual-sourcing capped dual-index proxy and the serial Clark--Scarf optimum), and clear
+    published DRL where a baseline exists --- using one
     optimization loop and per-problem horizons of thousands to tens of thousands of periods, without
     per-problem hyperparameter tuning. Learned policies are instance-best in $22/24$ vanilla and
     $47/48$ fixed-cost lost-sales instances, match the capped dual-index optimal proxy on all six
@@ -388,7 +391,7 @@ the covariance is adapted by combined rank-one (evolution-path) and rank-$\mu$ u
 exponential smoothing, and the global step size $\sigma$ is adapted online by cumulative step-length
 adaptation; we use the reference implementation of \citet{Hansen2019pycma}. Relative to A3C/PPO-style
 DRL, CMA-ES has few hyperparameters, supplies its own exploration through $\bSigma$, and optimizes
-the realized objective directly, so the loop is unchanged across our four problems.
+the realized objective directly, so the loop is unchanged across our seven problems.
 Figure~\ref{fig:cmaes-loop} summarizes this generational loop.
 
 \begin{figure}[t]
@@ -418,7 +421,7 @@ Figure~\ref{fig:cmaes-loop} summarizes this generational loop.
 \end{figure}
 
 \begin{algorithm}[!htbp]
-\caption{CMA-ES policy optimization (used for all four problems)}
+\caption{CMA-ES policy optimization (used for all seven problems)}
 \label{alg:cmaes-framework}
 \begin{algorithmic}[1]
     \STATE \textbf{Input:} population size $N$, initial mean $\bmu_1$, step size $\sigma$, simulator and policy decoder
@@ -1706,10 +1709,984 @@ Published A3C improvement & $8.95\%$ & $12.09\%$ \\
 \end{table}
 \FloatBarrier
 
+% ---------------------------------------------------------------------------
+% Perishable inventory section.
+%
+% INPUT-ABLE FRAGMENT: this file is \input{} into the manuscript
+% learning_inventory_control_policies_es.tex and reuses ITS preamble macros
+% and TikZ styles (envbox, envsupply/envstock/envsink/envlost,
+% reqflow/matflow/demandflow/lostflow, ltlabel/reqlabel, costH/costP/costK,
+% the boxed "Per-period event sequence" panel, booktabs). It defines NO new
+% styles and contains NO \documentclass.
+%
+% ALGORITHMIC / DATA-PROVENANCE NOTE (every number is sourced from the repo):
+%   Instance + dynamics : src/problems/perishable_inventory/env.rs (step_state,
+%       apply_demand_to_inventory FIFO/LIFO, waste = oldest leftover bucket),
+%       flownet/formulation.rs (event schedule: serve demand -> expire oldest ->
+%       age + inbound receipt), references.rs (de_moor2022_m2_exp2_l1_cp7_fifo
+%       and de_moor2022_m2_exp1_l1_cp7_lifo: mu=4, cov=0.5 rounded Gamma,
+%       shelf life m=2, lead time L=1, h=1, shortage p=5, waste cp=7,
+%       procurement c=3, order cap 10, horizon 465, warm-up 100).
+%   Objective sign      : rollout.rs discounted_return_after_warmup returns
+%       sum_t (-cost_t) gamma^t over the post-warm-up window (gamma=0.99), so
+%       reported numbers are NEGATED discounted costs (higher / less negative is
+%       better) -- the De Moor (2022) / Farrington (2025) return convention.
+%   Results             : outputs/autoresearch/perishable_inventory_autoresearch/
+%       results.tsv and the two *_d2_oblique_full.json files (commit 01c657a;
+%       committed at 222d46f). FIFO learned -1457.9032, gate -1475.0825
+%       (+1.16%, paired SEM 1.815 -> 9.5x), LIFO learned -1553.1608,
+%       gate -1565.9833 (+0.82%, paired SEM 1.949 -> 6.6x). VI optima
+%       -1457.28 / -1552.99 (rounded -1457 / -1553) are the ANALYTIC reference,
+%       context only (estimator mismatch, literature/README.md).
+% ---------------------------------------------------------------------------
+\section{Perishable inventory}
+\label{sec:perishable}
+
+\subsection{Problem formulation}
+\label{sec:perishable-formulation}
+
+Figure~\ref{fig:env-perishable} depicts this environment as a flow network --- the inbound order and
+its lead-time shipment into the youngest age bucket, the demand draw served by the FIFO or LIFO
+issuing rule, the outdating of the oldest leftover stock, and where each cost is charged.
+
+\begin{figure}[t]
+  \centering
+  \resizebox{\textwidth}{!}{%
+  \begin{tikzpicture}[x=1cm,y=1cm]
+    % Single-location perishable system drawn as an event-based interaction. The
+    % age-structured stock is one node carrying the m=2 age buckets (youngest |
+    % oldest). Inbound request UP (dashed control), lead-time arrival into the
+    % youngest bucket DOWN (solid material). Demand served by FIFO/LIFO; the
+    % oldest leftover bucket outdates to a waste sink; remaining stock ages.
+    \node[envsupply] (sup)  at (0,0)     {external\\supplier};
+    \node[envstock]  (stk)  at (7.4,0)   {age-structured stock\\$\mathbf S_t=(o^{1}_t,\,o^{2}_t)$\\(youngest $\mid$ oldest)};
+    \node[envsink]   (dem)  at (15.4,0)  {rounded-Gamma\\demand $D_t$};
+    \node[envlost]   (lost) at (15.4,-4.2){unmet demand\\\emph{lost}};
+    \node[envlost,draw=myorange!60!black,fill=myorange!8] (waste) at (7.4,-4.2)
+          {oldest leftover\\\emph{outdates} (waste $w_t$)};
+
+    % inbound: dashed request UP (event 2), solid lead-time arrival DOWN into the
+    % youngest bucket (event 5, placed L periods ago; for L=1 it arrives next period).
+    \draw[reqflow] (stk.north west) to[bend right=34] (sup.north east);
+    \node[reqlabel] at (3.3,2.05) {\ding{183}\, order $q_t\!\le\!\bar q$};
+    \draw[matflow] (sup.south east) to[bend right=10] (stk.west);
+    \node[ltlabel]  at (3.5,-1.55) {\ding{187}\, arrival (placed $L$ ago)\\enters youngest bucket; cost $c\,q$};
+
+    \draw[demandflow] (stk) -- (dem)
+          node[midway,above=4pt,ltlabel] {\ding{185}\, serve\\\textbf{FIFO} oldest-first\\\textbf{LIFO} youngest-first};
+    \draw[lostflow] (dem) -- (lost);
+    \draw[lostflow,myorange!70!black] (stk.south) -- (waste.north);
+
+    \node[costH,above=9mm of stk.north] {holding $h\,(o^{1}_t)$};
+    \node[costP,right=3pt of lost.east] {lost-sales\\penalty $p\,\ell_t$};
+    \node[costK,below=2pt of waste.south,align=center] {waste $c_w\,w_t$};
+
+    \begin{scope}[on background layer]
+      \node[envbox,fit=(current bounding box)] (box) {};
+    \end{scope}
+    \node[envtitle,above=3pt of box.north,anchor=south]
+          {Perishable single-item environment, shelf life $m=2$ (one period)};
+  \end{tikzpicture}%
+  }
+  \par\vspace{6pt}\centerline{%
+    \tikz\node[draw=mydarkblue!55,rounded corners=4pt,fill=mydarkblue!4,inner sep=7pt]{%
+      \begin{minipage}{\dimexpr\linewidth-18pt\relax}\centering
+        {\small\bfseries\color{mydarkblue!85}Per-period event sequence}\\[4pt]
+        {\small\begin{tabular}{@{}p{4.5cm}p{4.5cm}p{4.5cm}@{}}
+          \ding{182}\,observe age-structured state $\mathbf S_t=(o^{1}_t,o^{2}_t)$ & \ding{183}\,order $q_t\in\{0,\dots,\bar q\}$ & \ding{184}\,demand $D_t$ drawn (rounded Gamma)\\[4pt]
+          \ding{185}\,serve $D_t$ by FIFO (oldest first) / LIFO (youngest first); unmet \emph{lost} & \ding{186}\,oldest leftover bucket \emph{outdates} to waste; survivors age & \ding{187}\,arrival enters youngest bucket; charge $c\,q_t+h\,o^{1}_t+p\,\ell_t+c_w w_t$\\
+        \end{tabular}}
+      \end{minipage}};}\par
+  \caption{Perishable single-item environment of \citet{deMoor2022perishable}, drawn as an event-based
+  interaction (shelf life $m=2$, lead time $L=1$). Each period the stock point \emph{sends an order
+  request} $q_t$ (thin dashed control arrow); the external supplier ships and the goods \emph{arrive}
+  after the lead time $L$ to enter the \emph{youngest} age bucket (solid material arrow; unit cost
+  $c$). Demand $D_t$ is served from the on-hand age buckets under the configurable \emph{issuing
+  rule} --- FIFO issues the \emph{oldest} stock first, LIFO the \emph{youngest} first --- and any
+  \emph{unmet demand is lost}. After demand, the \emph{oldest leftover bucket outdates} to a waste
+  sink (orange) and the survivors age by one bucket. Holding cost $h$ is charged on the non-expiring
+  on-hand stock, each lost unit a penalty $p$, each outdated unit a waste cost $c_w$, and each ordered
+  unit a procurement cost $c$; the boxed panel beneath gives the per-period event sequence
+  (Section~\ref{sec:perishable-formulation}, Eq.~\eqref{eq:perish-cost}).}
+  \label{fig:env-perishable}
+\end{figure}
+
+We consider the single-item, periodic-review perishable inventory model of
+\citet{deMoor2022perishable}, as re-derived and benchmarked by \citet{farrington2025perishable}.
+A single item with a \emph{fixed shelf life} of $m$ periods is replenished from one supplier with
+deterministic lead time $L\ge 1$. Demand $D_t$ is i.i.d.\ across periods, obtained by sampling a
+Gamma distribution with mean $\mu$ and coefficient of variation $\mathrm{cv}$ and rounding to the
+nearest non-negative integer. We study the two instances that carry an in-crate exact-MDP verifier:
+both have $m=2$, $L=1$, $\mu=4$, $\mathrm{cv}=0.5$, and differ only in the issuing rule, FIFO or LIFO.
+Unmet demand is \emph{lost}. We write $(x)^+=\max(0,x)$.
+
+\paragraph{Timing of a period.}
+On-hand stock is tracked by remaining shelf life. At the start of period $t$ the controller observes
+the age-structured stock, places an order $q_t$, demand $D_t$ is realized and served from on-hand
+stock under the issuing rule (FIFO issues oldest units first, LIFO youngest first), unmet demand is
+\emph{lost}, the \emph{oldest leftover units then outdate} (expire and are scrapped), the surviving
+units \emph{age} by one bucket, and the order placed $L$ periods earlier arrives into the
+\emph{youngest} bucket. With $L=1$ the order $q_t$ arrives at the start of period $t+1$ and there is
+no in-transit pipeline.
+
+\paragraph{State.}
+Because shelf life is fixed at $m$ buckets and only $L-1$ orders are in transit, the MDP state is the
+on-hand age vector together with the in-transit pipeline,
+\begin{equation*}
+    \mathbf{S}_t=\bigl(\underbrace{q_{t-L+1},\dots,q_{t-1}}_{\text{pipeline (}L-1\text{ entries)}};\ \underbrace{o^{1}_t,\dots,o^{m}_t}_{\text{on-hand by age}}\bigr),
+\end{equation*}
+where $o^{j}_t$ is the on-hand quantity with $j$ periods elapsed ($o^{1}_t$ youngest, $o^{m}_t$
+oldest). For the studied slice $m=2,\,L=1$ the pipeline is empty and the state collapses to the
+two-dimensional age vector $\mathbf{S}_t=(o^{1}_t,o^{2}_t)$.
+
+\paragraph{Action.}
+The decision in period $t$ is the scalar order quantity
+\begin{equation*}
+    a_t=q_t\in\{0,1,\dots,\bar q\},
+\end{equation*}
+where $\bar q$ is the per-period order cap.
+
+\paragraph{Transition.}
+Let $O_t=\sum_{j}o^{j}_t$ be the total on-hand stock. Demand consumes $\min(D_t,O_t)$ units under the
+issuing rule, leaving a lost quantity $\ell_t=(D_t-O_t)^+$. Writing $r^{j}_t$ for the leftover in
+bucket $j$ after issuing, the oldest leftover outdates,
+\begin{equation*}
+    w_t \;=\; r^{m}_t \qquad\text{(outdated units)},
+\end{equation*}
+the surviving buckets age by one slot, and the arrival $q_{t-L+1}$ (for $L=1$, the order $q_t$ just
+placed) enters the youngest bucket:
+\begin{equation*}
+    o^{1}_{t+1}=\text{arrival},\qquad o^{j+1}_{t+1}=r^{j}_t\ \ (j=1,\dots,m-1).
+\end{equation*}
+
+\paragraph{One-period cost.}
+The cost incurred in period $t$ is the linear procurement cost of the order plus holding cost on the
+non-expiring on-hand stock, the lost-sales penalty, and the outdating (waste) cost:
+\begin{equation}
+    \label{eq:perish-cost}
+    c_t \;=\; c\,q_t \;+\; h\sum_{j=1}^{m-1} r^{j}_t \;+\; p\,\ell_t \;+\; c_w\,w_t ,
+\end{equation}
+where $c$ is the unit procurement cost, $h$ the holding cost per unit of surviving on-hand stock, $p$
+the lost-sales penalty per unit short, and $c_w$ the waste cost per outdated unit. For the studied
+instances $c=3$, $h=1$, $p=5$, and the waste cost is $c_w=7$.
+
+\paragraph{Objective.}
+A stationary policy $\pi_{\btheta}$ maps the state $\mathbf{S}_t$ to the order $q_t$. Following the
+discounted-return convention of \citet{deMoor2022perishable} and \citet{farrington2025perishable},
+performance is the expected discounted \emph{negated} cost over the post-warm-up evaluation window
+(discount factor $\gamma$, warm-up of $W$ periods within a horizon of $T$),
+\begin{equation}
+    \label{eq:perish-objective}
+    G(\btheta) \;=\; \mathbb{E}\!\left[\sum_{t=W+1}^{T}\gamma^{\,t-W-1}\bigl(-c_t\bigr)\right],
+    \qquad \max_{\btheta}\ G(\btheta),
+\end{equation}
+so that reported returns are \emph{negative} (lower cost is a larger, less-negative return) and higher
+is better. We use $\gamma=0.99$, $T=465$, and $W=100$, i.e.\ a $365$-period evaluation window,
+matching the protocol whose value-iteration optimum is reproduced cell-for-cell by the in-crate exact
+MDP (Section~\ref{sec:perishable-setup}). As for the other problems, $G(\btheta)$ is estimated by
+simulation over shared demand-path seeds.
+
+\FloatBarrier
+
+\subsection{Policy}
+\label{sec:perishable-policy}
+
+Perishable inventory tests whether the same recipe (Figure~\ref{fig:policy-pipeline}) carries over
+when the state is an \emph{age-structured} stock vector and the optimal control is known to be
+non-trivially state-dependent (the published optimal policy orders \emph{less} when older stock is
+already on hand). \textbf{Input.} The policy input is this problem's age-structured state
+$\mathbf S_t=(o^{1}_t,o^{2}_t)$ (youngest and oldest on-hand buckets; for $L>1$ the in-transit
+pipeline is prepended), divide-by-scale normalized by the demand mean as in
+Section~\ref{sec:methods-principle}. \textbf{Output.} A valid action is a single non-negative integer
+order $q_t\in\{0,\dots,\bar q\}$. \textbf{Internals.} Following the policy interface of
+Section~\ref{sec:methods-principle}, $\pi_{\btheta}$ applies the soft-tree split/leaf mechanism of
+Section~\ref{sec:soft-tree} as its backbone: a depth-2 tree with \emph{oblique} (full-dimensional)
+splits and \emph{linear} leaves, so each leaf emits an affine function of the age vector that is
+clipped to the order cap. This is the smallest tree that can express the published optimal policy's
+``order less when older stock is on hand'' behaviour --- an oblique split separates age profiles and
+the linear leaf tilts the order against the on-hand buckets --- while a constant-leaf or single base-
+stock level cannot. The whole policy carries $21$ parameters. We warm-start CMA-ES at the encoded
+best base-stock level (Section~\ref{sec:methods-cmaes}): the generation-0 mean return reproduces the
+base-stock gate to within its standard error, so the search starts \emph{at} the heuristic and any
+improvement is attributable to the learned age-dependence rather than to a lucky initialization.
+
+\subsection{Experiment setup}
+\label{sec:perishable-setup}
+
+We use the two De Moor et al.\ (2022) Scenario~A instances that the repository can verify exactly:
+\texttt{de\_moor2022\_m2\_exp2\_l1\_cp7\_fifo} (FIFO) and its LIFO sibling
+\texttt{de\_moor2022\_m2\_exp1\_l1\_cp7\_lifo}, sharing the parameters of
+Table~\ref{tab:perish-params}. These are the only two instances small enough ($11^2=121$ states) for
+the in-crate exact value-iteration MDP, which re-derives --- not merely stores --- the published
+optimal-policy tables, the best base-stock levels ($S=7$ FIFO, $S=5$ LIFO), and the
+\citet{farrington2025perishable} Table~3 value-iteration returns ($-1457$ FIFO, $-1553$ LIFO).
+
+\paragraph{Comparator gate.}
+The like-for-like comparator is the best single base-stock policy (order-up-to
+$q_t=(S-\text{inventory position})^+$) at its exact-optimal level, \emph{re-scored on the same
+Monte-Carlo estimator} used to score the learned policy. This is the appropriate ``heuristic to
+beat'': beating the best base-stock policy under an identical estimator is a clean apples-to-apples
+win, free of the estimator mismatch discussed below.
+
+\paragraph{Evaluation protocol and selection.}
+Policies are trained with warm-started CMA-ES and evaluated under the common-random-number protocol of
+Section~\ref{sec:methods-eval}. Three \emph{disjoint} seed blocks are used: a search block ($64$
+seeds) drives CMA-ES, the best generation is then chosen on a \emph{separate validation block} ($512$
+seeds), and the selected policy is reported on a third \emph{held-out evaluation block} ($2048$ seeds,
+horizon $465$). Selecting on the disjoint validation block is essential: it yields the gate-beating
+policy reported below, whereas selecting the incumbent on the evaluation block itself overfits the
+estimator and flips the FIFO result to a small ($\approx-0.49\%$) loss. The base-stock gate is scored
+on the identical evaluation block.
+
+\paragraph{The value-iteration optimum is context only.}
+The published $-1457$ / $-1553$ optima are the \emph{analytic} expected discounted returns under a
+midpoint-binned Gamma demand (matched to Farrington Table~3), whereas the learned and gate rows are
+\emph{Monte-Carlo} means over sampled-and-rounded Gamma rollouts. On this slice the optimal base-stock
+level evaluates $\approx1\%$ worse under the Monte-Carlo estimator than under the analytic one --- a
+systematic offset that is a property of the estimator, not of any policy. We therefore report the
+gate beat as the headline result and treat proximity to the VI optimum as informational context.
+
+\begin{table}[!htbp]
+\centering
+\caption{Perishable benchmark instances of \citet{deMoor2022perishable} used here (the two with an
+in-crate exact-MDP verifier). Both have shelf life $m=2$, lead time $L=1$, rounded-Gamma demand with
+mean $\mu=4$ and coefficient of variation $0.5$, order cap $\bar q=10$, horizon $465$ with a
+$100$-period warm-up, and discount $\gamma=0.99$; they differ only in the issuing rule. Source:
+\texttt{src/problems/perishable\_inventory/references.rs}.}
+\label{tab:perish-params}
+\begin{tabular}{ll}
+\toprule
+Parameter & Value \\
+\midrule
+Shelf life $m$ / lead time $L$ & $2$ / $1$ \\
+Demand (rounded Gamma) $\mu,\ \mathrm{cv}$ & $4,\ 0.5$ \\
+Procurement $c$ / holding $h$ & $3$ / $1$ \\
+Lost-sales penalty $p$ / waste $c_w$ & $5$ / $7$ \\
+Issuing rule & FIFO \emph{or} LIFO \\
+\bottomrule
+\end{tabular}
+\end{table}
+\FloatBarrier
+
+\subsection{Results}
+\label{sec:perishable-results}
+
+Table~\ref{tab:perish-results} compares the best learned depth-2 oblique-linear soft tree against the
+best base-stock gate under the common-random-number protocol. On both instances the learned policy
+\emph{beats} the gate by a margin that is many times its paired standard error: on FIFO it improves
+the discounted return from $-1475.08$ to $-1457.90$ ($+1.16\%$, $\approx9.5\times$ the paired SEM),
+and on LIFO from $-1565.98$ to $-1553.16$ ($+0.82\%$, $\approx6.6\times$ the paired SEM). Both margins
+are statistically clear gate beats, and both were obtained by selecting on the disjoint validation
+block (Section~\ref{sec:perishable-setup}).
+
+\paragraph{Interpretation.}
+The headline is the \emph{like-for-like gate beat}: under one shared Monte-Carlo estimator, a $21$-
+parameter age-dependent soft tree improves on the best base-stock level that the same estimator scores
+--- a level that is itself the exact optimum within the base-stock family. The learned tree exploits
+the age structure that a single base-stock cannot: it orders less when older stock is already on hand,
+trading a little holding for fewer outdated units, which is exactly the published optimal policy's
+shape. As context, both learned returns sit essentially \emph{on} the analytic value-iteration optimum
+($-1457.28$ FIFO, $-1552.99$ LIFO), but this comparison mixes the analytic and Monte-Carlo estimators
+(the gate, scored on the Monte-Carlo estimator, sits $\approx1\%$ below the analytic optimum purely
+from that mismatch), so we read the VI proximity as corroborating context rather than as a second,
+independent win. The FIFO margin is the larger of the two, consistent with FIFO leaving more room over
+the base-stock heuristic than the already near-heuristic-optimal LIFO case.
+
+\begin{table}[!htbp]
+\centering
+\small
+\caption{Perishable inventory: best learned depth-2 oblique-linear soft tree vs.\ the best base-stock
+gate, common-random-number evaluation ($2048$ held-out seeds, horizon $465$, $\gamma=0.99$). Returns
+are discounted \emph{negated} costs (higher is better). $\Delta\%$ is the learned policy's improvement
+over the gate; ``SEM mult.'' is that gain divided by the paired standard error. The value-iteration
+optimum column is the \emph{analytic} reference of \citet{deMoor2022perishable} /
+\citet{farrington2025perishable} and is context only (different estimator). Source:
+\texttt{outputs/autoresearch/perishable\_inventory\_autoresearch/}.}
+\label{tab:perish-results}
+\begin{tabular}{lcc}
+\toprule
+Policy / metric & FIFO ($S=7$) & LIFO ($S=5$) \\
+\midrule
+Best base-stock gate & $-1475.08$ & $-1565.98$ \\
+Learned soft tree (ours) & $\mathbf{-1457.90}$ & $\mathbf{-1553.16}$ \\
+Improvement over gate $\Delta\%$ & $\mathbf{+1.16\%}$ & $\mathbf{+0.82\%}$ \\
+Gain / paired SEM & $\approx 9.5\times$ & $\approx 6.6\times$ \\
+\midrule
+VI optimum (analytic, context) & $-1457.28$ & $-1552.99$ \\
+\bottomrule
+\end{tabular}
+\par\medskip\footnotesize The gate beat is the like-for-like win: gate and learned policy are scored on
+the \emph{same} Monte-Carlo estimator and the gate is the exact optimum within the base-stock family.
+The VI-optimum row is the analytic discounted return under midpoint-binned Gamma demand and is not
+on the same estimator (the gate sits $\approx1\%$ below it purely from that mismatch); we report it
+as context, not as a separate improvement claim. Selection is on a disjoint validation block;
+selecting on the evaluation block instead flips FIFO to a small ($\approx-0.49\%$) loss.
+\end{table}
+\FloatBarrier
+
+
+% =============================================================================
+% General-network backorder inventory control (Geevers, van Hezewijk & Mes, 2024;
+% the "CardBoard Company" general network), experiment set 1.
+%
+% INPUT-ABLE SECTION. No \documentclass. Relies on the manuscript preamble for:
+%   - TikZ env styles: envbox, envsupply, envstock, envsink, reqflow, matflow,
+%     demandflow, costH, costP, costK, reqlabel, ltlabel, envtitle (Sec. preamble);
+%   - the boxed per-period event-sequence panel idiom (cf. fig:env-multiechelon,
+%     fig:env-dual);
+%   - booktabs, \FloatBarrier (placins), \citep{geevers2024cardboard}, \btheta.
+%
+% ALGORITHMIC DESCRIPTION (faithful to the Rust env it documents):
+%   src/problems/multi_echelon/general_backorder_fixed_cost/{env.rs,heuristics.rs,
+%   rollout.rs,references.rs}. One period, in code order (advance_to_decision_state):
+%   (1) receive supplier->warehouse and warehouse->retailer deliveries due now;
+%   (2) suppliers ship the warehouse orders placed last period (unit lead time);
+%   (3) each warehouse fulfils current retailer orders, rationing by retailer
+%       (inventory - customer backorders) when short, unmet -> retailer backorders;
+%   (4) each retailer serves customer demand from on-hand, unmet -> customer backorders;
+%   (5) leftover stock clears outstanding warehouse->retailer and retailer->customer
+%       backorders; (6) cost = warehouse holding (0.6) + retailer holding (1.0)
+%       + retailer/customer backorder (19.0); warehouse backorder cost = 0.0.
+%   IMPORTANT: despite the family/folder name "..._fixed_cost", the env charges NO
+%   fixed/setup ordering cost -- only holding + backorder (verified in env.rs:
+%   period_cost = holding_cost + warehouse_backorder_cost + customer_backorder_cost).
+%   Policy: node_base_stock_targets -- a soft tree emits a 9-dim per-node order-up-to
+%   target vector; warehouses raise IP to target, retailers raise a single
+%   weight-sampled upstream edge's IP to target (set-1 relative-rationing routing).
+% =============================================================================
+
+\section{General-network backorder inventory control}
+\label{sec:genbackorder}
+
+\subsection{Problem formulation}
+\label{sec:genbackorder-formulation}
+
+Figure~\ref{fig:env-genbackorder} depicts this environment as a flow network --- the external
+suppliers, the warehouses and retailers of a general directed supply network, the order requests and
+their lead-time shipments, the per-node order-up-to (base-stock) targets, and where holding and
+backorder costs are charged.
+
+\begin{figure}[t]
+  \centering
+  \resizebox{\textwidth}{!}{%
+  \begin{tikzpicture}[x=1cm,y=1cm]
+    % A general directed network drawn as a small representative slice: external
+    % suppliers -> warehouses (intermediate stock points) -> retailers (customer-facing
+    % stock points) -> demand. The full set-1 network is 4 suppliers / 4 warehouses /
+    % 5 retailers with a many-to-many warehouse->retailer edge set (caption gives the
+    % full fidelity). Request arcs UP (control), ship/arrival arcs DOWN (goods).
+    \node[envsupply] (sup) at (0,0)    {external\\suppliers\\($\times M$)};
+    \node[envstock]  (wh)  at (5.8,0)  {warehouses $j$\\$I^w_{j,t}$ \;($\times W$)};
+    \node[envstock]  (ret) at (11.6,0) {retailers $i$\\$I^r_{i,t}$ \;($\times R$)};
+    \node[envsink]   (dem) at (17.2,0) {demand\\$d_{i,t}\!\sim\!\mathrm{Pois}(\lambda)$ \;($\times R$)};
+
+    % supplier -> warehouse: arrival arc DOWN (event 1), warehouse request arc UP (event 6/next)
+    \draw[reqflow] (wh.north) to[bend right=42] (sup.north);
+    \node[reqlabel] (rqw) at (2.9,2.25) {\ding{183}\, raise $\mathrm{IP}^w_j$ to $S^w_j$};
+    \draw[matflow] (sup.south) to[bend right=42] (wh.south);
+    \node[ltlabel] (shw) at (2.9,-2.25) {\ding{182}\, arrival (placed $1$ ago)\\merges into stock};
+
+    % warehouse -> retailer: request arc UP (event 2 region), ship arc DOWN (event 3)
+    \draw[reqflow] (ret.north) to[bend right=38] (wh.north);
+    \node[reqlabel] at (8.7,2.25) {\ding{183}\, raise $\mathrm{IP}^r_i$ to $S^r_i$\\(routed to one edge)};
+    \draw[matflow] (wh.south) to[bend right=26] (ret.south);
+    \node[ltlabel] (shr) at (8.7,-1.85) {\ding{184}\, ships after $1$;\\ration by stock if short};
+
+    \draw[demandflow] (ret) -- (dem)
+          node[midway,above=3pt,ltlabel] {\ding{185}\, serve from on-hand};
+
+    % backorders: unmet customer demand backordered (red dashed, routed below)
+    \draw[lostflow] (dem.south) to[out=-90,in=-90,looseness=1.0] (ret.south);
+    \node[font=\small,myred!70!black,align=center,fill=white,inner sep=2pt] (bo) at (14.2,-2.55)
+          {\ding{186}\, unmet $\to$ \emph{customer backorder}\\(cleared later from stock)};
+
+    \node[costH] (hw) at (5.8,3.55) {holding $h^w (I^w_{j,t})^+$};
+    \node[costH] (hr) at (11.6,4.35) {holding $h^r (I^r_{i,t})^+$};
+    \node[costP,right=3pt of dem.east] {backorder\\$b\,B^r_{i,t}$};
+
+    \begin{scope}[on background layer]
+      \node[envbox,fit=(current bounding box)] (box) {};
+    \end{scope}
+    \node[envtitle,above=3pt of box.north,anchor=south]
+          {General-network backorder environment (one period)};
+  \end{tikzpicture}%
+  }
+  \par\vspace{6pt}\centerline{%
+    \tikz\node[draw=mydarkblue!55,rounded corners=4pt,fill=mydarkblue!4,inner sep=7pt]{%
+      \begin{minipage}{\dimexpr\linewidth-18pt\relax}\centering
+        {\small\bfseries\color{mydarkblue!85}Per-period event sequence}\\[4pt]
+        {\small\begin{tabular}{@{}p{4.5cm}p{4.5cm}p{4.5cm}@{}}
+          \ding{182}\,deliveries due now merge into warehouse \& retailer on-hand & \ding{183}\,suppliers ship last period's warehouse orders; warehouses fulfil current retailer orders (ration if short) & \ding{184}\,shipped goods enter the unit-lead-time pipelines\\[4pt]
+          \ding{185}\,each retailer serves customer demand $d_{i,t}$ from on-hand & \ding{186}\,unmet demand $\to$ customer backorder; leftover stock clears existing backorders & \ding{187}\,holding $(h^w,h^r)$ $+$ backorder $b$; orders placed for next period\\
+        \end{tabular}}
+      \end{minipage}};}\par
+  \caption{General-network (CardBoard Company) backorder environment of \citet{geevers2024cardboard},
+  drawn as an event-based interaction. A directed network of $M$ external suppliers, $W$ warehouses,
+  and $R$ retailers carries a single product: every warehouse $j$ and retailer $i$ is a base-stock
+  stock point. Each period the warehouses \emph{send order requests} to the (uncapacitated) suppliers
+  and the retailers \emph{request} replenishment up the warehouse--retailer edges (thin dashed control
+  arrows); shipments arrive after a \emph{unit} lead time (solid material arrows). When a warehouse
+  cannot cover all the retailer requests routed to it, it rations them by retailer
+  (on-hand $-$ customer backorders), the remainder becoming warehouse--retailer backorders. Each
+  retailer serves its own i.i.d.\ $\mathrm{Poisson}(\lambda)$ customer demand from on-hand stock;
+  \emph{unmet customer demand is backordered}, and leftover stock later clears outstanding backorders.
+  Holding cost is charged on end-of-period on-hand stock at the warehouses ($h^w$) and retailers
+  ($h^r$), and a backorder penalty $b$ on outstanding customer backorders; \emph{there is no fixed
+  ordering cost in the published objective} (Sec.~\ref{sec:genbackorder-formulation}). The boxed panel
+  beneath gives the per-period event sequence (Eq.~\eqref{eq:gbk-cost}). The full set-1 network
+  ($M{=}4$, $W{=}4$, $R{=}5$, with a many-to-many warehouse--retailer edge set and historical
+  connection weights) is given in Table~\ref{tab:gbk-params}.}
+  \label{fig:env-genbackorder}
+\end{figure}
+
+We formalize the general-network system as a discrete-time MDP under the long-run average-cost
+criterion, mirroring the multi-echelon formulation above. A set of $M$ uncapacitated external
+suppliers feeds $W$ warehouses (intermediate stock points), and the warehouses feed $R$ retailers
+(customer-facing stock points) over a fixed directed network of warehouse--retailer edges, across
+periods $t\in\{1,2,\dots,T\}$; we are interested in the limit $T\to\infty$. Every warehouse and every
+retailer is a single-product base-stock stock point. Supplier-to-warehouse and warehouse-to-retailer
+shipments each take a constant \emph{unit} lead time. Retailer $i$ faces i.i.d.\ integer customer
+demand $d_{i,t}\sim\mathrm{Poisson}(\lambda)$, independently across retailers and periods. We write
+$x^+=\max(0,x)$. Despite the carried family name (\emph{general backorder, fixed cost}), the published
+objective and the environment charge holding and backorder cost only and \emph{no} fixed/setup
+ordering cost --- as written in the model of \citet{geevers2024cardboard} and confirmed in the
+implementation's one-period cost (Eq.~\eqref{eq:gbk-cost}).
+
+\paragraph{Timing of a period.}
+Entering period $t$, each warehouse $j$ holds on-hand stock $I^w_{j,t-1}$ with the
+supplier-to-warehouse order placed last period in transit, and each retailer $i$ holds $I^r_{i,t-1}$
+with its inbound edge shipments in transit; outstanding warehouse--retailer backorders $B^w_{e,t}$
+(per edge $e$) and customer backorders $B^r_{i,t}$ are carried forward. The period proceeds in stages,
+in the order implemented by the simulator: (i) the shipments due to arrive now are added to warehouse
+and retailer on-hand; (ii) each supplier ships the warehouse order placed one period earlier (it
+enters the unit-lead-time pipeline); (iii) each warehouse fulfils the current retailer orders routed
+to it from its available on-hand, and when a warehouse cannot cover all its requests it rations them
+in increasing order of the requesting retailer's $\big(I^r_{i}-B^r_{i}\big)$, the unfilled part
+becoming an edge backorder $B^w_{e}$; (iv) demand $d_{i,t}$ is realized at each retailer and served
+from on-hand, the unmet part $\big(d_{i,t}-I^r_{i}\big)^+$ becoming a customer backorder; (v) any
+leftover warehouse stock clears outstanding edge backorders and any leftover retailer stock clears
+outstanding customer backorders; (vi) costs are charged on the resulting end-of-period stocks and
+backorders, and the new replenishment orders for next period are placed.
+
+\paragraph{State.}
+The pre-decision MDP state collects, for every stock point, its on-hand level, its inbound pipeline,
+and its outstanding backorders:
+\begin{equation*}
+  \mathbf S_t = \Big(\, \big(I^w_{j,t-1}\big)_{j=1}^{W};\ \big(I^r_{i,t-1}\big)_{i=1}^{R};\
+  \text{pipelines (per warehouse, per edge)};\ \big(B^w_{e,t}\big)_{e};\ \big(B^r_{i,t}\big)_{i=1}^{R} \,\Big).
+\end{equation*}
+From it we form, for each warehouse and retailer, the inventory positions
+\begin{equation*}
+  \mathrm{IP}^w_{j}=I^w_{j}+(\text{supplier in transit})_j-\textstyle\sum_{e\to j}B^w_{e},
+  \qquad
+  \mathrm{IP}^r_{i}=I^r_{i}+\textstyle\sum_{e\to i}(\text{in transit})_e-B^r_{i},
+\end{equation*}
+and, per inbound edge, an edge-level position used by the set-1 routing. These inventory positions are
+the quantities the base-stock control acts on.
+
+\paragraph{Action.}
+The control is the vector of per-node order-up-to (base-stock) targets
+\begin{equation*}
+  \mathbf a_t = \big(\,\underbrace{S^w_{1,t},\dots,S^w_{W,t}}_{\text{warehouses}},\
+  \underbrace{S^r_{1,t},\dots,S^r_{R,t}}_{\text{retailers}}\,\big),
+\end{equation*}
+one target per stock point ($W+R$ targets). Each warehouse $j$ orders
+$q^w_{j,t}=\big(S^w_{j,t}-\mathrm{IP}^w_{j,t}\big)^+$ from its supplier. Each retailer's desired raise
+$\big(S^r_{i,t}-\mathrm{IP}^r_{i,t}\big)^+$ is realized through the warehouse--retailer network by the
+set-1 \emph{order-per-stock-point} routing: the retailer's order is routed to exactly one upstream
+warehouse edge, drawn according to the historical connection weights (relative rationing), and that
+edge's inventory position is raised toward $S^r_{i,t}$. Orders are non-negative integers; suppliers are
+uncapacitated.
+
+\paragraph{Transition.}
+The shipments due now are added to on-hand; warehouses ship the supplier and retailer orders into the
+unit-lead-time pipelines; each warehouse rations retailer requests it cannot cover, accruing edge
+backorders $B^w_{e}$; each retailer serves demand and accrues customer backorders $B^r_{i}$; and
+leftover stock clears outstanding backorders. The resulting end-of-period on-hand stocks
+$\big(I^w_{j,t}\big),\big(I^r_{i,t}\big)$, the advanced pipelines, and the residual backorders
+$\big(B^w_{e,t+1}\big),\big(B^r_{i,t+1}\big)$ together define $\mathbf S_{t+1}$.
+
+\paragraph{One-period cost.}
+Holding cost is charged on end-of-period on-hand inventory at the warehouse rate $h^w$ and retailer
+rate $h^r$, and a backorder penalty $b$ on outstanding customer backorders; the warehouse-level
+backorder rate is zero. There is \emph{no} fixed ordering cost. The period cost is
+\begin{equation}
+  c_t = h^w\sum_{j=1}^{W}\big(I^w_{j,t}\big)^+ + h^r\sum_{i=1}^{R}\big(I^r_{i,t}\big)^+
+        + b\sum_{i=1}^{R} B^r_{i,t} .
+  \label{eq:gbk-cost}
+\end{equation}
+
+\paragraph{Objective.}
+A stationary policy $\pi_{\btheta}$ maps the state $\mathbf S_t$ to the target vector $\mathbf a_t$.
+Writing $\bar C_T(\btheta)=\tfrac1T\sum_{t=1}^{T}\mathbb E[c_t]$ for the expected average cost over $T$
+periods under $\pi_{\btheta}$, the objective is to minimize the long-run average expected cost
+$\bar C(\btheta)=\lim_{T\to\infty}\bar C_T(\btheta)$. As in the other problems this limit is estimated
+by the empirical average cost over a long simulated horizon with a warm-up discarded, which is the
+quantity CMA-ES minimizes.
+
+\FloatBarrier
+
+\subsection{Policy}
+\label{sec:gbk-policy}
+
+This problem keeps the recipe of Figure~\ref{fig:policy-pipeline} but pushes the action geometry to a
+\emph{vector} of per-node base-stock targets on a general network. \textbf{Input.} The policy input is
+a compact, scale-normalized summary of the pre-decision state: the per-warehouse and per-retailer
+inventory positions ($W+R$ features), the network totals (total on-hand, total backorders, total
+in-transit), the demand mean, and the remaining-horizon fraction ($14$ features for set~1).
+\textbf{Output.} A valid action is the $9$-dimensional vector of per-node order-up-to targets
+($W{=}4$ warehouses, $R{=}5$ retailers), each clamped to its physical box. \textbf{Internals.}
+Following the policy interface of Section~\ref{sec:methods-principle}, $\pi_{\btheta}$ normalizes the
+state and uses the soft decision tree with oblique splits and vector-valued leaves of
+Section~\ref{sec:soft-tree} as its backbone; the decoder reads each leaf's $9$ outputs directly as the
+per-node base-stock targets. The order-up-to projection then guarantees validity: each warehouse
+orders $\big(S^w_{j}-\mathrm{IP}^w_{j}\big)^+$ and each retailer raises its (weight-routed, set-1)
+inventory position toward $S^r_{i}$, all within the box $S^w_j\in[0,220]$, $S^r_i\in[0,140]$ --- set
+above the published levels (max $100$) so the learned policy's higher targets are reachable and the
+operating region is interior to the box.
+
+The action geometry is the heuristic's own coordinate system: a \emph{state-independent} soft tree
+(zero split weights, identical leaves) emits a constant target vector, which is exactly a constant
+node-base-stock policy. Encoding the published set-1 levels $[82,100,64,83,35,35,35,35,35]$ in the
+leaf parameters therefore makes \emph{generation~0 reproduce the published benchmark}; a
+\emph{state-dependent} tree, by contrast, lets the per-node targets react to the inventory-position
+summary, a strictly richer class than any single constant base-stock vector, and this is where the
+learned policy improves. We warm-start CMA-ES at this benchmark encoding with a small step size
+($\sigma=0.2$): a large $\sigma$ saturates the sigmoid leaves and lets the oblique split weights
+diverge, so the lever is re-anchoring and shrinking $\sigma$, not adding optimizer budget.
+
+\paragraph{Decision path: a worked example.}
+The best run is a depth-2 oblique soft tree with constant leaves in the node-base-stock-targets mode
+($81$ parameters). The compact state summary is read by the tree; the dominant leaf emits the $9$-dim
+target vector, which the order-up-to projection converts into warehouse orders
+$\big(S^w_j-\mathrm{IP}^w_j\big)^+$ and per-retailer raises routed (set-1) to a single weight-sampled
+upstream edge toward $S^r_i$. At the warm start the leaves emit the published constant vector
+$[82,100,64,83,35,35,35,35,35]$ exactly, reproducing the benchmark; after CMA-ES the leaves emit
+state-modulated targets that lower the long-run cost.
+
+\paragraph{Validation.}
+The set-1 environment itself is verified against the literature: the constant node-base-stock
+benchmark is reproduced at $\approx 10{,}355$ versus the published $10{,}467$ (gap $-1.1\%$), asserted
+in-crate (test \texttt{tests::verification::}\discretionary{}{}{}\texttt{set1\_benchmark\_reproduces\_}\discretionary{}{}{}\texttt{geevers\_published\_cost}, mean
+within $5\%$ of $10{,}467$), with retailer fill in the $98$--$99\%$ band matching the paper's target.
+The warm-started policy reproduces this benchmark at generation~0 ($10{,}378.6\pm10.6$ held-out), so
+the warm-start guarantee holds and the reported improvement is the increment CMA-ES adds on top.
+
+\subsection{Experiment setup}
+\label{sec:gbk-setup}
+
+We evaluate on \emph{set~1} of the general-network (CardBoard Company) model of
+\citet{geevers2024cardboard} --- the only one of its three experiment sets that we can verify against
+an open source. Sets~2 and~3 use an order-per-edge action space whose exact per-edge transition
+appears only in the gated journal full text; we could not reproduce their published benchmark from
+open sources and therefore exclude them. Set~1 (order per stock point) is confirmed verbatim against
+the open thesis: a $4$-supplier, $4$-warehouse, $5$-retailer network with a many-to-many
+warehouse--retailer edge set and historical connection weights, $\mathrm{Poisson}(15)$ retailer
+demand, unit lead times, and the Kunnumkal--Topaloglu (2011) cost structure (warehouse holding $0.6$,
+retailer holding $1.0$, retailer backorder $19.0$, no warehouse backorder cost).
+Table~\ref{tab:gbk-params} lists the set-1 instance.
+
+The comparator is the published \emph{constant node-base-stock} benchmark of
+\citet{geevers2024cardboard} at levels $[82,100,64,83,35,35,35,35,35]$ (tuned to a $98\%$ retailer
+fill-rate target), published cost $10{,}467$. This is the like-for-like, same-environment comparator
+that the learned policy must beat. We re-derive it in the environment ($\approx 10{,}355$, gap
+$-1.1\%$, $3$ seeds $\times\,500$ replications); this reproduction is the keep/discard gate. The paper
+also reports a PPO learner with best cost $8{,}714$; we report it only as a context row, because it is
+a \emph{cross-protocol} reference (a different learner under the paper's own training and evaluation
+protocol), \emph{not} a head-to-head comparison under our paired evaluation. The policy is trained with
+warm-started CMA-ES (depth $\in\{1,2\}$, oblique splits, constant leaves, $\sigma=0.2$) and evaluated
+under a paired common-random-number protocol: held-out base seeds (from $500{,}000$, stride $1{,}000$,
+disjoint from the training block at $10{,}000$), each a $100$-period path with a $50$-period warm-up
+cut; the full budget averages $2{,}000$ held-out paths and the \emph{same} seed block scores both the
+warm-start (benchmark) and the learned policy.
+
+\begin{table}[!htbp]
+\centering
+\caption{General-network set-1 instance of \citet{geevers2024cardboard} (CardBoard Company), as carried
+in the environment (\texttt{references.rs}, \texttt{geevers2023\_general\_set1}; the only
+literature-verified set). The network has $4$ suppliers, $4$ warehouses, and $5$ retailers connected
+by a many-to-many warehouse--retailer edge set with historical connection weights (each retailer's
+incoming weights sum to $1$). All lead times are $1$; demand is $\mathrm{Poisson}(15)$ at each
+retailer. Cost structure is Kunnumkal--Topaloglu (2011): warehouse holding $h^w$, retailer holding
+$h^r$, retailer (customer) backorder $b$, warehouse backorder $0$; \emph{no} fixed ordering cost.}
+\label{tab:gbk-params}
+\begin{tabular}{lc}
+\toprule
+Parameter & Set 1 \\
+\midrule
+\addlinespace[2pt]
+Suppliers $M$ / warehouses $W$ / retailers $R$ & $4\ /\ 4\ /\ 5$ \\
+Supplier$\to$warehouse lead time & $1$ \\
+Warehouse$\to$retailer lead time & $1$ \\
+Retailer demand & $\mathrm{Poisson}(\lambda),\ \lambda=15$ \\
+\addlinespace[2pt]
+Warehouse holding cost $h^w$ & $0.6$ \\
+Retailer holding cost $h^r$ & $1.0$ \\
+Retailer (customer) backorder cost $b$ & $19.0$ \\
+Warehouse backorder cost & $0.0$ \\
+Fixed ordering cost & $0$ (none) \\
+\addlinespace[2pt]
+Action space & one order per stock point \\
+Order routing & single upstream edge by connection weight \\
+Benchmark base-stock levels & $[82,100,64,83,35,35,35,35,35]$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+\FloatBarrier
+
+\subsection{Results}
+\label{sec:gbk-results}
+
+Table~\ref{tab:gbk-results} reports the published constant node-base-stock benchmark, our
+in-environment reproduction of it (the gate), the best learned policy, and --- as a clearly labeled
+cross-protocol context row --- the paper's PPO best. The learned soft tree, in the node-base-stock-targets
+coordinate system, reduces the long-run average cost to $8{,}034.8\pm17.6$, an improvement of $22.4\%$
+over the reproduced constant node-base-stock benchmark ($10{,}354.8$); a second independent CMA-ES seed
+reaches $7{,}590.7\pm19.2$ ($-26.7\%$). Both margins are many times the standard error of the mean, so
+they are genuine out-of-sample gains rather than evaluation-seed noise, and they are robust to the
+optimizer's initialization. Generation~0 reproduces the benchmark ($10{,}378.6$), confirming the
+warm-start, so the $\approx 2{,}300$--$2{,}800$ cost reduction is exactly what CMA-ES adds on top of the
+heuristic.
+
+\paragraph{Interpretation.}
+The like-for-like result is the $22.4$--$26.7\%$ improvement over the constant node-base-stock
+benchmark on the \emph{same} environment under a paired CRN comparison: putting the policy in the
+benchmark's per-node order-up-to coordinate system and letting a state-dependent tree modulate the
+targets --- rather than enlarging or replacing the action space --- is the operative lever, consistent
+with the action-geometry findings on the other problems. Two honest caveats bound the reading. First,
+despite the carried family name, the environment charges holding and backorder cost only and \emph{no}
+fixed ordering cost (Eq.~\eqref{eq:gbk-cost}); the section title reflects the model actually
+implemented and verified, not a setup-cost variant. Second, the published PPO best ($8{,}714$) is a
+\emph{cross-protocol} figure: it is produced by a different learner under the paper's own training and
+evaluation protocol, whereas our numbers come from the paired held-out CRN protocol above. Our learned
+policy lands $679$--$1{,}123$ below that PPO figure, which is suggestive of the design's strength but is
+\emph{not} a head-to-head PPO beat, and we do not claim one. The defensible claim is the paired,
+same-environment improvement over the published constant node-base-stock benchmark.
+
+\begin{table}[!htbp]
+\centering
+\caption{General-network set-1 learned-policy results (\citealp{geevers2024cardboard}; long-run average
+cost, lower is better). The improvement is the learned policy's cost reduction relative to the
+\emph{reproduced} constant node-base-stock benchmark ($10{,}354.8$, the paired gate); held-out
+common-random-number evaluation ($2{,}000$ seeds, $100$-period paths, $50$-period warm-up). The PPO row
+is a cross-protocol context figure from \citet{geevers2024cardboard} (a different learner under the
+paper's own protocol), \emph{not} a head-to-head comparison.}
+\label{tab:gbk-results}
+\begin{tabular}{lcc}
+\toprule
+Policy / metric & Held-out cost & $\Delta\%$ vs.\ benchmark \\
+\midrule
+Published const.\ node-base-stock benchmark & $10{,}467$ & --- \\
+Reproduced benchmark (paired gate) & $10{,}354.8$ & $-1.1\%$ (vs.\ published) \\
+Warm-start (gen.\ 0 $=$ benchmark) & $10{,}378.6 \pm 10.6$ & $+0.2\%$ \\
+Learned soft tree, seed 123 (ours) & $\mathbf{8{,}034.8 \pm 17.6}$ & $\mathbf{-22.4\%}$ \\
+Learned soft tree, seed 777 (ours) & $\mathbf{7{,}590.7 \pm 19.2}$ & $\mathbf{-26.7\%}$ \\
+\addlinespace[2pt]
+\multicolumn{3}{l}{\footnotesize Cross-protocol context (not head-to-head):} \\
+Published PPO best \citep{geevers2024cardboard} & $8{,}714$ & cross-protocol \\
+\bottomrule
+\end{tabular}
+\par\medskip\footnotesize The like-for-like comparator is the constant node-base-stock benchmark on
+the same environment; both learned seeds beat it by $>22\%$ under the paired CRN comparison
+($\gg 2\times$ SEM). The PPO figure is reported only as context; the learned policy lands
+$679$--$1{,}123$ below it, but under a different protocol, so it is not claimed as a head-to-head beat.
+\end{table}
+\FloatBarrier
+
+
+% =====================================================================
+% Serial multi-echelon (Clark--Scarf) problem section.
+%
+% INPUT-ABLE FRAGMENT: this file carries no \documentclass / preamble.
+% It is \input by learning_inventory_control_policies_es.tex and reuses
+% that manuscript's preamble styles (envbox/envsupply/envstock/envsink,
+% reqflow/matflow/demandflow, costH, reqlabel/ltlabel, the boxed
+% per-period event panel, booktabs) and bibitem labels.
+%
+% FRAMING: MATCH-ONLY. The comparator is a PROVEN OPTIMUM (the
+% Clark--Scarf / Snyder & Shen Example 6.1 value 47.65), so the honest
+% ceiling is to REPRODUCE it. Nothing here claims to "beat" the optimum.
+%
+% SOURCED NUMBERS (every figure is traceable to a repo file):
+%   - Instance / dynamics / MDP convention:
+%       src/problems/multi_echelon/serial/{env.rs,exact.rs,verification.rs}
+%   - Proven optimum 47.65 (Snyder & Shen Example 6.1):
+%       serial/verification.rs (env_simulation_reproduces_snyder_shen_example_6_1)
+%   - Exact recursive-newsvendor solver value 47.6654 (paper table value 47.67):
+%       serial/exact.rs ; outputs/.../snyder_shen_example_6_1_d1_oblique_full.json
+%       (exact_solver_optimum = 47.66539330768766)
+%   - Env-simulation reproduction ~+0.06% (paper appendix value 47.64):
+%       serial/verification.rs docstring ("reproduces 47.65 to ~+0.06%")
+%   - Learned warm-started direct-level soft tree = 47.6554:
+%       outputs/autoresearch/multi_echelon_serial_autoresearch/results.tsv
+%       (full budget: learned_cost 47.6554, match_pct 99.9887, gap +0.0113%)
+%   - L>=2 downstream-stage under-counting limitation:
+%       serial/env.rs "KNOWN LIMITATION" docstring
+% =====================================================================
+
+\section{Serial multi-echelon (Clark--Scarf)}
+\label{sec:serial}
+
+\subsection{Problem formulation}
+
+Figure~\ref{fig:env-serial} depicts this environment as a flow network --- the linear chain of stages,
+the order requests passed upstream and the lead-time shipments returning downstream, where each
+echelon holding cost is charged, and the single demand stream at the most-downstream stage. Unlike the
+divergent system of Section~\ref{sec:multiechelon}, this is the \emph{classical serial} system of
+\citet{snyder2019foundations} (Clark and Scarf 1960), for which the long-run-average-cost optimum is
+known in closed recursive form and is attained by an echelon base-stock policy. It therefore plays a
+different role in this paper: the comparator is a \emph{proven optimum}, so the honest ceiling is to
+\emph{reproduce} it, not to improve on it.
+
+\begin{figure}[t]
+  \centering
+  \resizebox{\textwidth}{!}{%
+  \begin{tikzpicture}[x=1cm,y=1cm]
+    % A linear chain drawn upstream -> downstream so material flows left to right
+    % into demand: external supply -> stage 3 -> stage 2 -> stage 1 -> demand.
+    % Request (control) arcs go UP and upstream; lead-time shipment arcs go along
+    % the chain and ARRIVE after the link lead time. Demand hits only stage 1.
+    \node[envsupply] (src) at (0,0)    {external\\supply\\(ample)};
+    \node[envstock]  (s3)  at (5.2,0)  {stage $3$\\$I^3_t$};
+    \node[envstock]  (s2)  at (10.4,0) {stage $2$\\$I^2_t$};
+    \node[envstock]  (s1)  at (15.6,0) {stage $1$\\$I^1_t$};
+    \node[envsink]   (dem) at (20.8,0) {i.i.d.\\demand $d_t$};
+
+    % external supply -> stage 3: request UP (event 4), arrival/ship arc along chain
+    \draw[reqflow] (s3.north) to[bend right=40] (src.north);
+    \node[reqlabel] at (2.6,2.3) {\ding{185}\, order $q^3_t$};
+    \draw[matflow] (src.south) to[bend right=40] (s3.south);
+    \node[ltlabel] at (2.6,-2.3) {\ding{182}\, arrival after $L_3$\\(ample upstream)};
+
+    % stage 3 -> stage 2
+    \draw[reqflow] (s2.north) to[bend right=40] (s3.north);
+    \node[reqlabel] at (7.8,2.3) {\ding{185}\, order $q^2_t$};
+    \draw[matflow] (s3.south) to[bend right=40] (s2.south);
+    \node[ltlabel] at (7.8,-2.3) {\ding{182}\, ship after $L_2$\\($\le$ stage $3$ on-hand)};
+
+    % stage 2 -> stage 1
+    \draw[reqflow] (s1.north) to[bend right=40] (s2.north);
+    \node[reqlabel] at (13.0,2.3) {\ding{185}\, order $q^1_t$};
+    \draw[matflow] (s2.south) to[bend right=40] (s1.south);
+    \node[ltlabel] at (13.0,-2.3) {\ding{182}\, ship after $L_1$\\($\le$ stage $2$ on-hand)};
+
+    % stage 1 -> demand
+    \draw[demandflow] (s1) -- (dem)
+          node[midway,above=3pt,ltlabel] {\ding{183}\, serve $\min(I^1_t,\,d_t{+}B_{t-1})$};
+
+    % echelon holding costs, charged on post-demand on-hand at each stage
+    \node[costH] at (5.2,3.3)  {holding $h^3 (I^3_t)^+$};
+    \node[costH] at (10.4,3.3) {holding $h^2 (I^2_t)^+$};
+    \node[costH] at (15.6,3.3) {holding $h^1 (I^1_t)^+$};
+    \node[costP,below=2pt of dem.south] {backorder\\$p\,B_t$};
+
+    \begin{scope}[on background layer]
+      \node[envbox,fit=(current bounding box)] (box) {};
+    \end{scope}
+    \node[envtitle,above=3pt of box.north,anchor=south]
+          {Serial multi-echelon (Clark--Scarf) environment, $N{=}3$ (one period)};
+  \end{tikzpicture}%
+  }
+  \par\vspace{6pt}\centerline{%
+    \tikz\node[draw=mydarkblue!55,rounded corners=4pt,fill=mydarkblue!4,inner sep=7pt]{%
+      \begin{minipage}{\dimexpr\linewidth-18pt\relax}\centering
+        {\small\bfseries\color{mydarkblue!85}Per-period event sequence}\\[4pt]
+        {\small\begin{tabular}{@{}p{4.5cm}p{4.5cm}p{4.5cm}@{}}
+          \ding{182}\,each stage receives the shipment that finished its lead time & \ding{183}\,demand $d_t$ hits stage $1$; unmet demand is backordered & \ding{184}\,charge installation holding (on-hand) $+$ stage-$1$ backorder penalty\\[4pt]
+          \multicolumn{3}{@{}p{13.5cm}@{}}{\ding{185}\,orders placed \emph{after} demand and shipped upstream $\to$ downstream; each internal shipment is capped by the next upstream stage's on-hand, the most upstream stage draws from ample external supply}\\
+        \end{tabular}}
+      \end{minipage}};}\par
+  \caption{Serial multi-echelon (Clark--Scarf) environment \citep{snyder2019foundations}, drawn as an
+  event-based interaction for $N{=}3$ stages. Stages are indexed downstream ($k{=}1$, customer-facing)
+  to upstream ($k{=}N$, replenished from an ample external source). Each period every stage
+  \emph{receives} the shipment that has finished its link lead time $L_k$ (solid material arrows),
+  customer demand $d_t$ is realized at stage~$1$ and served from on-hand with the remainder
+  backordered, and cost is charged on \emph{post-demand} installation on-hand inventory (echelon
+  holding $h^k$, blue) plus the stage-$1$ backorder penalty $p$ (red). Replenishment orders $q^k_t$
+  (thin dashed control arrows, sent upstream) are placed \emph{after} demand and shipped upstream to
+  downstream, each internal shipment capped by the next upstream stage's available on-hand; in-transit
+  pipeline stock is \emph{not} charged holding, matching the optimized Clark--Scarf cost. The boxed
+  panel beneath gives the per-period event sequence (Section~\ref{sec:serial}, Eq.~\eqref{eq:serial-cost};
+  ordering after demand is what yields the $L_k$-period lead-time-demand window of the literature,
+  \texttt{serial/env.rs}).}
+  \label{fig:env-serial}
+\end{figure}
+
+We formalize the serial system as a discrete-time MDP under the long-run average-cost criterion,
+mirroring the formulations above. A chain of $N$ stages in series is indexed downstream to upstream,
+$k\in\{1,\dots,N\}$: stage~$1$ is customer-facing, stage~$k{+}1$ ships to stage~$k$, and the most
+upstream stage~$N$ replenishes from an outside source with ample stock. The link feeding stage~$k$ has
+a deterministic integer lead time $L_k\ge 1$. Stage~$1$ faces i.i.d.\ per-period demand $d_t$ drawn
+from a Normal distribution, $d_t\sim\mathcal N(\mu,\sigma^2)$. Holding cost is charged at the
+installation (local) rate at each stage on physical on-hand inventory, and a linear penalty $p$ is
+charged on the customer (stage-$1$) backorder; the equivalent \emph{echelon} holding costs $h^k$ are
+the differences of the installation costs and are what the optimal-cost recursion uses
+(\texttt{serial/exact.rs}). We write $x^+=\max(0,x)$.
+
+\paragraph{Faithful regime.}
+The environment reproduces the proven optimum when the most-downstream (demand-facing) stage has lead
+time $L_1=1$ --- the regime of the carried benchmark (Snyder \& Shen Example~6.1, whose downstream
+lead time is $1$); upstream lead times $L_k\ge 2$ are fully supported. For a demand-facing stage with
+$L_1\ge 2$ the multi-stage simulation currently under-counts cost relative to the exact solver, an
+open inter-stage cost-convention discrepancy (\texttt{serial/env.rs}); all results below are reported
+strictly inside the faithful $L_1=1$ regime.
+
+\paragraph{Timing of a period.}
+Entering period $t$, each stage $k$ holds on-hand stock $I^k_{t-1}$ with an in-transit pipeline
+$\big(q^k_{t-L_k},\dots,q^k_{t-1}\big)$, and stage~$1$ carries a backorder $B_{t-1}$. The period
+proceeds in four stages (\texttt{serial/env.rs}): (i) each stage receives the shipment scheduled to
+arrive now, $\widetilde I^k_t = I^k_{t-1}+q^k_{t-L_k}$; (ii) demand $d_t$ is realized at stage~$1$ and
+served from available on-hand against the carried backorder, leaving on-hand
+$I^1_t=\big(\widetilde I^1_t-(d_t+B_{t-1})\big)^+$ and backorder
+$B_t=\big(d_t+B_{t-1}-\widetilde I^1_t\big)^+$; (iii) the period cost is assessed on the post-demand,
+pre-replenishment state; (iv) replenishment orders are placed \emph{after} demand and shipped upstream
+to downstream, each internal shipment capped by the next upstream stage's available on-hand and the
+most upstream stage drawing from ample supply. Ordering after demand (not before) is what yields the
+$L_k$-period (not $L_k{+}1$) lead-time-demand window used by the literature; reversing it is the
+classic off-by-one error (\texttt{serial/env.rs}).
+
+\paragraph{State.}
+The pre-decision MDP state collects the per-stage on-hand levels, the per-stage in-transit pipelines,
+and the customer backorder,
+\begin{equation*}
+  \mathbf S_t = \Big(\, \big(I^k_{t-1}\big)_{k=1}^{N};\
+  \big(\underbrace{q^k_{t-L_k},\dots,q^k_{t-1}}_{L_k\ \text{pipeline at stage }k}\big)_{k=1}^{N};\
+  B_{t-1} \,\Big).
+\end{equation*}
+From it, after receipts and demand, we form the \emph{echelon} inventory positions
+\begin{equation*}
+  \mathrm{IP}^k_t = \sum_{i\le k}\Big(\widetilde I^i_t + \!\!\sum_{j=1}^{L_i-1}\! q^i_{t-j}\Big) - B_t,
+\end{equation*}
+the cumulative on-hand-plus-pipeline of all stages at and below $k$ net of the customer backorder
+(\texttt{serial/env.rs}).
+
+\paragraph{Action.}
+The control is the per-stage order vector $a_t=(q^1_t,\dots,q^N_t)$. The optimal policy class is
+echelon base-stock: each stage~$k$ raises its echelon inventory position toward a level $S^k$ by
+ordering $q^k_t=\big(S^k-\mathrm{IP}^k_t\big)^+$. Internal shipments are feasibility-projected --- a
+downstream order is filled only up to the immediate upstream stage's available on-hand, and the most
+upstream stage draws from ample external supply --- so the realized shipment is
+$\min\!\big(q^k_t,\,\widetilde I^{k+1}_t\big)$ for $k<N$ and $q^N_t$ for the upstream stage.
+
+\paragraph{Transition.}
+The next-period on-hand inventories are the post-demand, post-shipment stocks: at stage~$1$,
+$I^1_t=\big(\widetilde I^1_t-(d_t+B_{t-1})\big)^+$ with backorder $B_t$ as above; at each upstream
+stage the realized downstream shipment leaves on-hand into the outbound pipeline. The pipelines shift
+forward one stage, dropping the just-arrived order and appending the new shipment, which together with
+$\big(I^k_t\big)_{k=1}^{N}$ and $B_t$ define $\mathbf S_{t+1}$ (\texttt{serial/env.rs}).
+
+\paragraph{One-period cost.}
+Holding cost is charged on the \emph{post-demand} installation on-hand at each stage, and the penalty
+on the stage-$1$ backorder; in-transit pipeline stock is not charged, matching the optimized
+Clark--Scarf cost. With installation holding rates $H^k$ the period cost is
+\begin{equation}
+  c_t = \sum_{k=1}^{N} H^k\,\big(I^k_t\big)^+ + p\,B_t .
+  \label{eq:serial-cost}
+\end{equation}
+
+\paragraph{Objective.}
+A stationary policy $\pi_{\btheta}$ maps the state $\mathbf S_t$ to the order vector $a_t$. Writing
+$\bar C_T(\btheta)=\tfrac1T\sum_{t=1}^{T}\mathbb E[c_t]$ for the expected average cost under
+$\pi_{\btheta}$, the objective is to minimize the long-run average expected cost
+$\bar C(\btheta)=\lim_{T\to\infty}\bar C_T(\btheta)$, estimated as elsewhere by the empirical average
+cost over a long simulated horizon with a warm-up discarded, which is the quantity CMA-ES minimizes.
+
+\FloatBarrier
+
+\subsection{Policy}
+\label{sec:serial-policy}
+
+The serial decision class is echelon base-stock, so the natural action geometry estimates the echelon
+order-up-to levels \emph{directly} (Figure~\ref{fig:policy-pipeline}), exactly as in the
+direct-level multi-echelon design of Section~\ref{sec:me-policy}. \textbf{Input.} The policy input is
+this problem's pre-decision state $\mathbf S_t$ (per-stage on-hand, per-stage in-transit totals, and
+the customer backorder), consumed with a policy-owned normalization. \textbf{Output.} A valid action
+is the order vector $(q^1_t,\dots,q^N_t)$ obtained by raising each stage's echelon position toward its
+estimated level. \textbf{Internals.} Following the policy interface of
+Section~\ref{sec:methods-principle}, $\pi_{\btheta}$ normalizes the state and uses the soft decision
+tree with oblique splits and vector-valued leaves of Section~\ref{sec:soft-tree} as its backbone; the
+decoder is the vector of leaf outputs, the $N$ \emph{echelon order-up-to levels} $S^1_S,\dots,S^N_S$,
+continuous and non-negative, bounded only by a generous physical ceiling
+(\texttt{soft\_tree.rs}, \texttt{action\_vector\_continuous\_from\_flat\_params}). The projection that
+guarantees validity sets each order to $q^k=\big(S^k_S-\mathrm{IP}^k_t\big)^+$ and caps the realized
+internal shipment by the upstream on-hand, so the emitted control is always a feasible echelon
+base-stock order.
+
+\paragraph{Warm start.}
+Because the decoder lives in the optimal policy's own coordinate system, the constant leaves can be
+\emph{warm-started} at the exact Clark--Scarf echelon base-stock levels returned by the in-repo solver
+(\texttt{serial/exact.rs}), so generation~$0$ already reproduces the optimum within the environment's
+reproduction band. We warm-start CMA-ES at this encoded solution as in
+Section~\ref{sec:methods-cmaes}, and keep the warm-start anchor in the candidate set throughout; on
+this convex serial instance the optimizer can only search outward from a proven optimum, so the honest
+outcome is a tie rather than an improvement.
+
+\subsection{Experiment setup}
+
+We evaluate on Snyder \& Shen Example~6.1 (\citealp{snyder2019foundations};
+\texttt{serial/verification.rs}): a $3$-stage serial system with $\mathcal N(5,1)$ demand, lead times
+$(L_3,L_2,L_1)=(2,1,1)$ upstream to downstream (downstream $L_1=1$, the faithful regime), installation
+holding costs $(7,4,2)$ downstream to upstream (equivalently echelon holding $(3,2,2)$), and a
+stage-$1$ backorder penalty $p=37.12$. The comparator is the \emph{proven optimum} of this instance,
+the Clark--Scarf / Snyder \& Shen value $47.65$. Because this comparator is an optimum and not a
+heuristic, this is a \emph{match-only} problem: the target is to reproduce $47.65$, never to beat it.
+For reference, the in-repo exact recursive-newsvendor solver returns $47.6654$
+(\texttt{serial/exact.rs}; reported as $47.67$ in the appendix env-fidelity table), and the
+environment simulation under the exact echelon base-stock levels reproduces $47.65$ to about $+0.06\%$
+with continuous Normal demand (\texttt{serial/verification.rs}). The policy is trained with
+warm-started CMA-ES and evaluated under the long-run-average protocol of
+Section~\ref{sec:methods-eval} (evaluation horizon $4\times10^5$ periods after warm-up, $32$ seeds;
+\texttt{outputs/.../snyder\_shen\_example\_6\_1\_d1\_oblique\_full.json}).
+
+\subsection{Results}
+
+Table~\ref{tab:serial-results} reports the proven optimum, the in-repo exact solver value, and the
+best learned policy. The warm-started direct-level soft tree \emph{reproduces} the proven Clark--Scarf
+optimum: it attains a long-run-average cost of $47.6554$, a $99.99\%$ match to the published $47.65$
+with a signed gap of $+0.011\%$ --- inside the environment's own $\approx{+}0.06\%$ reproduction band
+and statistically indistinguishable from the optimum (standard error $\approx0.006$).
+
+\paragraph{Interpretation.}
+The honest reading is a \emph{match}, not a win. Because the comparator is a proven optimum attained by
+the echelon base-stock policy class, the highest a learned policy can reach is the optimum itself; the
+result here is that the compact, warm-started direct-level soft tree recovers it to within
+$+0.011\%$. This demonstrates that the same generic recipe --- CMA-ES over a compact policy living in
+the heuristic's coordinate system --- \emph{recovers the optimal policy} on a serial system, and is
+deliberately not framed as an improvement: one cannot improve on a true optimum, and we do not claim
+to. The value of the design lever is the same as elsewhere in the paper --- estimating the echelon
+order-up-to levels directly, warm-started at the exact solution, places the policy in the optimal
+control region from generation~$0$ --- but the verdict for a proven-optimal comparator is reproduction
+to within the environment's reproduction band.
+
+\begin{table}[!htbp]
+\centering
+\caption{Serial multi-echelon (Clark--Scarf) results on Snyder \& Shen Example~6.1
+\citep{snyder2019foundations}; long-run-average per-period cost, lower is better. The comparator is a
+\emph{proven optimum}, so the honest target is to \emph{match} it: ``Gap'' is the learned policy's
+signed cost relative to the proven optimum, and ``Match'' is $100\times$ optimum/learned. The learned
+policy is a warm-started direct-level (echelon order-up-to) soft tree
+(\texttt{outputs/.../snyder\_shen\_example\_6\_1\_d1\_oblique\_full.json}).}
+\label{tab:serial-results}
+\begin{tabular}{lcc}
+\toprule
+Quantity & Cost & Gap vs.\ optimum \\
+\midrule
+Proven Clark--Scarf optimum \citep{snyder2019foundations} & $47.65$ & --- \\
+Exact recursive-newsvendor solver (in repo) & $47.6654$ & $+0.032\%$ \\
+Learned direct-level soft tree (warm-started) & $47.6554$ & $+0.011\%$ (match, $99.99\%$) \\
+\bottomrule
+\end{tabular}
+\par\medskip\footnotesize The learned policy reproduces the proven optimum to within $+0.06\%$ --- the
+environment's own reproduction band --- and is reported as a \emph{match}, not an improvement: a proven
+optimum cannot be beaten.
+\end{table}
+\FloatBarrier
+
+
 \section{Discussion and managerial insights}
 \label{sec:discussion}
 
-Synthesizing across the four problems, three themes emerge. First, a \emph{single, generic learning
+Synthesizing across the seven problems, three themes emerge. First, a \emph{single, generic learning
 recipe} --- CMA-ES over a compact policy --- is portable: the same optimization loop, unchanged,
 matches or beats strong heuristics and published DRL on a scalar lost-sales order, a setup-cost
 order/no-order decision, a structured dual-sourcing order pair, and a pair of echelon order-up-to
@@ -1740,8 +2717,8 @@ to order is concrete and verifiable.
 
 We have shown that evolution strategies --- specifically CMA-ES over compact, policy-owned decoders
 --- learn inventory control policies that match or beat strong heuristics and published DRL across
-four structurally distinct problems: lost sales, fixed-cost lost sales, dual sourcing, and divergent
-multi-echelon control. Relative to DRL, CMA-ES needs few hyperparameters, supplies its own
+seven inventory problems: lost sales, fixed-cost lost sales, dual sourcing, divergent and serial
+multi-echelon, general-network backorder, and perishable inventory. Relative to DRL, CMA-ES needs few hyperparameters, supplies its own
 exploration, and optimizes the realized cost directly, so the same loop transfers across problems; and
 the resulting policies are orders of magnitude smaller than published DRL networks while remaining
 interpretable and verifiable.
@@ -1763,7 +2740,7 @@ idea with sample-efficient learners for limited-data regimes.
 % Bibliography embedded inline (natbib-compatible \bibitem labels) so the manuscript is
 % self-contained and renders with a single pdflatex pass -- no bibtex step required. The
 % same entries are also kept in references.bib for tooling that prefers a .bib database.
-\begin{thebibliography}{21}
+\begin{thebibliography}{23}
 
 \bibitem[Bijvank et al.(2015)]{Bijvank2015ParametricPolicies}
 M.~Bijvank, S.~Bhulai, and W.~T. Huh.
@@ -1869,6 +2846,16 @@ Use of proximal policy optimization for the joint replenishment problem.
 M.~Pirhooshyaran and L.~V. Snyder.
 Simultaneous decision making for stochastic multi-echelon inventory optimization with deep neural networks as decision makers.
 \emph{arXiv preprint arXiv:2006.05608}, 2021.
+
+\bibitem[De Moor et al.(2022)]{deMoor2022perishable}
+B.~J. De Moor, J.~Gijsbrechts, and R.~N. Boute.
+Reward shaping to improve the performance of deep reinforcement learning in perishable inventory management.
+\emph{European Journal of Operational Research}, 301(2):535--545, 2022.
+
+\bibitem[Farrington et al.(2025)]{farrington2025perishable}
+J.~Farrington, W.~K. Wong, K.~Li, and M.~Utley.
+Going faster to see further: GPU-accelerated value iteration and simulation for perishable inventory control using JAX.
+\emph{Annals of Operations Research}, 349(3):1609--1638, 2025.
 
 \end{thebibliography}
 
@@ -2036,33 +3023,26 @@ $(4,110)$ & $0.11$ & $\le 0.01$ & $\le 0.01$ & $1.33$ \\
 \subsection{Additional verified environments (not studied in this paper's experiments)}
 \label{app:additional-env-validation}
 
-Beyond the four problems studied above, the same code base implements several further inventory
-environments that we validate against the literature but do not train policies on in this paper. We
-record these checks here because they bear on reproducibility: they show that the environment library
-as a whole --- not only the four problems we report results for --- reproduces published benchmarks.
-Table~\ref{tab:additional-env-validation} covers four such environments: a fixed-cost general-network
-backorder system \citep{geevers2024cardboard}, an exact serial (Clark--Scarf) system
-\citep{snyder2019foundations}, a joint-replenishment system \citep{vanvuchelen2020jrp}, and a
-production/assembly/distribution network \citep{pirhooshyaran2021scn}. Each reproduces its published
-benchmark --- an exact optimal cost, an exact dynamic-programming cost, or a published optimal action
---- to within a tight tolerance. These are distinct models from the paper's four problems (in
-particular, the serial system is not the \emph{divergent} multi-echelon system we study), and we
-report them only as environment-fidelity checks, not as results.
+Beyond the problems studied above, the same code base implements two further inventory environments
+that we validate against the literature but do not train policies on in this paper. We record these
+checks here because they bear on reproducibility --- the environment library reproduces published
+benchmarks beyond the problems we report results for. Table~\ref{tab:additional-env-validation} covers
+a joint-replenishment system \citep{vanvuchelen2020jrp} and a production/assembly/distribution network
+\citep{pirhooshyaran2021scn}; each reproduces its published benchmark (a published optimal action and
+an exact newsvendor cost, respectively) to within a tight tolerance, and we report them only as
+environment-fidelity checks, not as results.
 
 \begin{table}[!htbp]
 \centering
 \caption{Additional verified environments not studied in this paper's experiments. Each environment
 reproduces a published benchmark within a tight tolerance, confirming environment fidelity beyond the
-four problems we train on.}
+problems we train on.}
 \label{tab:additional-env-validation}
 \resizebox{\textwidth}{!}{%
 \begin{tabular}{lcccc}
 \toprule
 Environment & Published reference (value) & Reproduced & Gap & Source \\
 \midrule
-General backorder, fixed cost & CardBoard general network, set~1 ($10{,}467$) & $10{,}352$ & $-1.1\%$ & \citet{geevers2024cardboard} \\
-Serial multi-echelon (exact solver) & Example~6.1 ($47.65$) & $47.67$ & $+0.03\%$ & \citet{snyder2019foundations} \\
-Serial multi-echelon (env simulation) & Example~6.1 ($47.65$) & $47.64$ & $-0.02\%$ & \citet{snyder2019foundations} \\
 Joint replenishment & Figure~3 action $(0,6)$ at $(5,0)$ & $(0,6)$ & exact & \citet{vanvuchelen2020jrp} \\
 Production/assembly/distribution network & Single-node newsvendor ($127.11$) & $127.10$ & $+0.008\%$ & \citet{pirhooshyaran2021scn} \\
 \bottomrule

@@ -1,0 +1,287 @@
+% =====================================================================
+% Serial multi-echelon (Clark--Scarf) problem section.
+%
+% INPUT-ABLE FRAGMENT: this file carries no \documentclass / preamble.
+% It is \input by learning_inventory_control_policies_es.tex and reuses
+% that manuscript's preamble styles (envbox/envsupply/envstock/envsink,
+% reqflow/matflow/demandflow, costH, reqlabel/ltlabel, the boxed
+% per-period event panel, booktabs) and bibitem labels.
+%
+% FRAMING: MATCH-ONLY. The comparator is a PROVEN OPTIMUM (the
+% Clark--Scarf / Snyder & Shen Example 6.1 value 47.65), so the honest
+% ceiling is to REPRODUCE it. Nothing here claims to "beat" the optimum.
+%
+% SOURCED NUMBERS (every figure is traceable to a repo file):
+%   - Instance / dynamics / MDP convention:
+%       src/problems/multi_echelon/serial/{env.rs,exact.rs,verification.rs}
+%   - Proven optimum 47.65 (Snyder & Shen Example 6.1):
+%       serial/verification.rs (env_simulation_reproduces_snyder_shen_example_6_1)
+%   - Exact recursive-newsvendor solver value 47.6654 (paper table value 47.67):
+%       serial/exact.rs ; outputs/.../snyder_shen_example_6_1_d1_oblique_full.json
+%       (exact_solver_optimum = 47.66539330768766)
+%   - Env-simulation reproduction ~+0.06% (paper appendix value 47.64):
+%       serial/verification.rs docstring ("reproduces 47.65 to ~+0.06%")
+%   - Learned warm-started direct-level soft tree = 47.6554:
+%       outputs/autoresearch/multi_echelon_serial_autoresearch/results.tsv
+%       (full budget: learned_cost 47.6554, match_pct 99.9887, gap +0.0113%)
+%   - L>=2 downstream-stage under-counting limitation:
+%       serial/env.rs "KNOWN LIMITATION" docstring
+% =====================================================================
+
+\section{Serial multi-echelon (Clark--Scarf)}
+\label{sec:serial}
+
+\subsection{Problem formulation}
+
+Figure~\ref{fig:env-serial} depicts this environment as a flow network --- the linear chain of stages,
+the order requests passed upstream and the lead-time shipments returning downstream, where each
+echelon holding cost is charged, and the single demand stream at the most-downstream stage. Unlike the
+divergent system of Section~\ref{sec:multiechelon}, this is the \emph{classical serial} system of
+\citet{snyder2019foundations} (Clark and Scarf 1960), for which the long-run-average-cost optimum is
+known in closed recursive form and is attained by an echelon base-stock policy. It therefore plays a
+different role in this paper: the comparator is a \emph{proven optimum}, so the honest ceiling is to
+\emph{reproduce} it, not to improve on it.
+
+\begin{figure}[t]
+  \centering
+  \resizebox{\textwidth}{!}{%
+  \begin{tikzpicture}[x=1cm,y=1cm]
+    % A linear chain drawn upstream -> downstream so material flows left to right
+    % into demand: external supply -> stage 3 -> stage 2 -> stage 1 -> demand.
+    % Request (control) arcs go UP and upstream; lead-time shipment arcs go along
+    % the chain and ARRIVE after the link lead time. Demand hits only stage 1.
+    \node[envsupply] (src) at (0,0)    {external\\supply\\(ample)};
+    \node[envstock]  (s3)  at (5.2,0)  {stage $3$\\$I^3_t$};
+    \node[envstock]  (s2)  at (10.4,0) {stage $2$\\$I^2_t$};
+    \node[envstock]  (s1)  at (15.6,0) {stage $1$\\$I^1_t$};
+    \node[envsink]   (dem) at (20.8,0) {i.i.d.\\demand $d_t$};
+
+    % external supply -> stage 3: request UP (event 4), arrival/ship arc along chain
+    \draw[reqflow] (s3.north) to[bend right=40] (src.north);
+    \node[reqlabel] at (2.6,2.3) {\ding{185}\, order $q^3_t$};
+    \draw[matflow] (src.south) to[bend right=40] (s3.south);
+    \node[ltlabel] at (2.6,-2.3) {\ding{182}\, arrival after $L_3$\\(ample upstream)};
+
+    % stage 3 -> stage 2
+    \draw[reqflow] (s2.north) to[bend right=40] (s3.north);
+    \node[reqlabel] at (7.8,2.3) {\ding{185}\, order $q^2_t$};
+    \draw[matflow] (s3.south) to[bend right=40] (s2.south);
+    \node[ltlabel] at (7.8,-2.3) {\ding{182}\, ship after $L_2$\\($\le$ stage $3$ on-hand)};
+
+    % stage 2 -> stage 1
+    \draw[reqflow] (s1.north) to[bend right=40] (s2.north);
+    \node[reqlabel] at (13.0,2.3) {\ding{185}\, order $q^1_t$};
+    \draw[matflow] (s2.south) to[bend right=40] (s1.south);
+    \node[ltlabel] at (13.0,-2.3) {\ding{182}\, ship after $L_1$\\($\le$ stage $2$ on-hand)};
+
+    % stage 1 -> demand
+    \draw[demandflow] (s1) -- (dem)
+          node[midway,above=3pt,ltlabel] {\ding{183}\, serve $\min(I^1_t,\,d_t{+}B_{t-1})$};
+
+    % echelon holding costs, charged on post-demand on-hand at each stage
+    \node[costH] at (5.2,3.3)  {holding $h^3 (I^3_t)^+$};
+    \node[costH] at (10.4,3.3) {holding $h^2 (I^2_t)^+$};
+    \node[costH] at (15.6,3.3) {holding $h^1 (I^1_t)^+$};
+    \node[costP,below=2pt of dem.south] {backorder\\$p\,B_t$};
+
+    \begin{scope}[on background layer]
+      \node[envbox,fit=(current bounding box)] (box) {};
+    \end{scope}
+    \node[envtitle,above=3pt of box.north,anchor=south]
+          {Serial multi-echelon (Clark--Scarf) environment, $N{=}3$ (one period)};
+  \end{tikzpicture}%
+  }
+  \par\vspace{6pt}\centerline{%
+    \tikz\node[draw=mydarkblue!55,rounded corners=4pt,fill=mydarkblue!4,inner sep=7pt]{%
+      \begin{minipage}{\dimexpr\linewidth-18pt\relax}\centering
+        {\small\bfseries\color{mydarkblue!85}Per-period event sequence}\\[4pt]
+        {\small\begin{tabular}{@{}p{4.5cm}p{4.5cm}p{4.5cm}@{}}
+          \ding{182}\,each stage receives the shipment that finished its lead time & \ding{183}\,demand $d_t$ hits stage $1$; unmet demand is backordered & \ding{184}\,charge installation holding (on-hand) $+$ stage-$1$ backorder penalty\\[4pt]
+          \multicolumn{3}{@{}p{13.5cm}@{}}{\ding{185}\,orders placed \emph{after} demand and shipped upstream $\to$ downstream; each internal shipment is capped by the next upstream stage's on-hand, the most upstream stage draws from ample external supply}\\
+        \end{tabular}}
+      \end{minipage}};}\par
+  \caption{Serial multi-echelon (Clark--Scarf) environment \citep{snyder2019foundations}, drawn as an
+  event-based interaction for $N{=}3$ stages. Stages are indexed downstream ($k{=}1$, customer-facing)
+  to upstream ($k{=}N$, replenished from an ample external source). Each period every stage
+  \emph{receives} the shipment that has finished its link lead time $L_k$ (solid material arrows),
+  customer demand $d_t$ is realized at stage~$1$ and served from on-hand with the remainder
+  backordered, and cost is charged on \emph{post-demand} installation on-hand inventory (echelon
+  holding $h^k$, blue) plus the stage-$1$ backorder penalty $p$ (red). Replenishment orders $q^k_t$
+  (thin dashed control arrows, sent upstream) are placed \emph{after} demand and shipped upstream to
+  downstream, each internal shipment capped by the next upstream stage's available on-hand; in-transit
+  pipeline stock is \emph{not} charged holding, matching the optimized Clark--Scarf cost. The boxed
+  panel beneath gives the per-period event sequence (Section~\ref{sec:serial}, Eq.~\eqref{eq:serial-cost};
+  ordering after demand is what yields the $L_k$-period lead-time-demand window of the literature,
+  \texttt{serial/env.rs}).}
+  \label{fig:env-serial}
+\end{figure}
+
+We formalize the serial system as a discrete-time MDP under the long-run average-cost criterion,
+mirroring the formulations above. A chain of $N$ stages in series is indexed downstream to upstream,
+$k\in\{1,\dots,N\}$: stage~$1$ is customer-facing, stage~$k{+}1$ ships to stage~$k$, and the most
+upstream stage~$N$ replenishes from an outside source with ample stock. The link feeding stage~$k$ has
+a deterministic integer lead time $L_k\ge 1$. Stage~$1$ faces i.i.d.\ per-period demand $d_t$ drawn
+from a Normal distribution, $d_t\sim\mathcal N(\mu,\sigma^2)$. Holding cost is charged at the
+installation (local) rate at each stage on physical on-hand inventory, and a linear penalty $p$ is
+charged on the customer (stage-$1$) backorder; the equivalent \emph{echelon} holding costs $h^k$ are
+the differences of the installation costs and are what the optimal-cost recursion uses
+(\texttt{serial/exact.rs}). We write $x^+=\max(0,x)$.
+
+\paragraph{Faithful regime.}
+The environment reproduces the proven optimum when the most-downstream (demand-facing) stage has lead
+time $L_1=1$ --- the regime of the carried benchmark (Snyder \& Shen Example~6.1, whose downstream
+lead time is $1$); upstream lead times $L_k\ge 2$ are fully supported. For a demand-facing stage with
+$L_1\ge 2$ the multi-stage simulation currently under-counts cost relative to the exact solver, an
+open inter-stage cost-convention discrepancy (\texttt{serial/env.rs}); all results below are reported
+strictly inside the faithful $L_1=1$ regime.
+
+\paragraph{Timing of a period.}
+Entering period $t$, each stage $k$ holds on-hand stock $I^k_{t-1}$ with an in-transit pipeline
+$\big(q^k_{t-L_k},\dots,q^k_{t-1}\big)$, and stage~$1$ carries a backorder $B_{t-1}$. The period
+proceeds in four stages (\texttt{serial/env.rs}): (i) each stage receives the shipment scheduled to
+arrive now, $\widetilde I^k_t = I^k_{t-1}+q^k_{t-L_k}$; (ii) demand $d_t$ is realized at stage~$1$ and
+served from available on-hand against the carried backorder, leaving on-hand
+$I^1_t=\big(\widetilde I^1_t-(d_t+B_{t-1})\big)^+$ and backorder
+$B_t=\big(d_t+B_{t-1}-\widetilde I^1_t\big)^+$; (iii) the period cost is assessed on the post-demand,
+pre-replenishment state; (iv) replenishment orders are placed \emph{after} demand and shipped upstream
+to downstream, each internal shipment capped by the next upstream stage's available on-hand and the
+most upstream stage drawing from ample supply. Ordering after demand (not before) is what yields the
+$L_k$-period (not $L_k{+}1$) lead-time-demand window used by the literature; reversing it is the
+classic off-by-one error (\texttt{serial/env.rs}).
+
+\paragraph{State.}
+The pre-decision MDP state collects the per-stage on-hand levels, the per-stage in-transit pipelines,
+and the customer backorder,
+\begin{equation*}
+  \mathbf S_t = \Big(\, \big(I^k_{t-1}\big)_{k=1}^{N};\
+  \big(\underbrace{q^k_{t-L_k},\dots,q^k_{t-1}}_{L_k\ \text{pipeline at stage }k}\big)_{k=1}^{N};\
+  B_{t-1} \,\Big).
+\end{equation*}
+From it, after receipts and demand, we form the \emph{echelon} inventory positions
+\begin{equation*}
+  \mathrm{IP}^k_t = \sum_{i\le k}\Big(\widetilde I^i_t + \!\!\sum_{j=1}^{L_i-1}\! q^i_{t-j}\Big) - B_t,
+\end{equation*}
+the cumulative on-hand-plus-pipeline of all stages at and below $k$ net of the customer backorder
+(\texttt{serial/env.rs}).
+
+\paragraph{Action.}
+The control is the per-stage order vector $a_t=(q^1_t,\dots,q^N_t)$. The optimal policy class is
+echelon base-stock: each stage~$k$ raises its echelon inventory position toward a level $S^k$ by
+ordering $q^k_t=\big(S^k-\mathrm{IP}^k_t\big)^+$. Internal shipments are feasibility-projected --- a
+downstream order is filled only up to the immediate upstream stage's available on-hand, and the most
+upstream stage draws from ample external supply --- so the realized shipment is
+$\min\!\big(q^k_t,\,\widetilde I^{k+1}_t\big)$ for $k<N$ and $q^N_t$ for the upstream stage.
+
+\paragraph{Transition.}
+The next-period on-hand inventories are the post-demand, post-shipment stocks: at stage~$1$,
+$I^1_t=\big(\widetilde I^1_t-(d_t+B_{t-1})\big)^+$ with backorder $B_t$ as above; at each upstream
+stage the realized downstream shipment leaves on-hand into the outbound pipeline. The pipelines shift
+forward one stage, dropping the just-arrived order and appending the new shipment, which together with
+$\big(I^k_t\big)_{k=1}^{N}$ and $B_t$ define $\mathbf S_{t+1}$ (\texttt{serial/env.rs}).
+
+\paragraph{One-period cost.}
+Holding cost is charged on the \emph{post-demand} installation on-hand at each stage, and the penalty
+on the stage-$1$ backorder; in-transit pipeline stock is not charged, matching the optimized
+Clark--Scarf cost. With installation holding rates $H^k$ the period cost is
+\begin{equation}
+  c_t = \sum_{k=1}^{N} H^k\,\big(I^k_t\big)^+ + p\,B_t .
+  \label{eq:serial-cost}
+\end{equation}
+
+\paragraph{Objective.}
+A stationary policy $\pi_{\btheta}$ maps the state $\mathbf S_t$ to the order vector $a_t$. Writing
+$\bar C_T(\btheta)=\tfrac1T\sum_{t=1}^{T}\mathbb E[c_t]$ for the expected average cost under
+$\pi_{\btheta}$, the objective is to minimize the long-run average expected cost
+$\bar C(\btheta)=\lim_{T\to\infty}\bar C_T(\btheta)$, estimated as elsewhere by the empirical average
+cost over a long simulated horizon with a warm-up discarded, which is the quantity CMA-ES minimizes.
+
+\FloatBarrier
+
+\subsection{Policy}
+\label{sec:serial-policy}
+
+The serial decision class is echelon base-stock, so the natural action geometry estimates the echelon
+order-up-to levels \emph{directly} (Figure~\ref{fig:policy-pipeline}), exactly as in the
+direct-level multi-echelon design of Section~\ref{sec:me-policy}. \textbf{Input.} The policy input is
+this problem's pre-decision state $\mathbf S_t$ (per-stage on-hand, per-stage in-transit totals, and
+the customer backorder), consumed with a policy-owned normalization. \textbf{Output.} A valid action
+is the order vector $(q^1_t,\dots,q^N_t)$ obtained by raising each stage's echelon position toward its
+estimated level. \textbf{Internals.} Following the policy interface of
+Section~\ref{sec:methods-principle}, $\pi_{\btheta}$ normalizes the state and uses the soft decision
+tree with oblique splits and vector-valued leaves of Section~\ref{sec:soft-tree} as its backbone; the
+decoder is the vector of leaf outputs, the $N$ \emph{echelon order-up-to levels} $S^1_S,\dots,S^N_S$,
+continuous and non-negative, bounded only by a generous physical ceiling
+(\texttt{soft\_tree.rs}, \texttt{action\_vector\_continuous\_from\_flat\_params}). The projection that
+guarantees validity sets each order to $q^k=\big(S^k_S-\mathrm{IP}^k_t\big)^+$ and caps the realized
+internal shipment by the upstream on-hand, so the emitted control is always a feasible echelon
+base-stock order.
+
+\paragraph{Warm start.}
+Because the decoder lives in the optimal policy's own coordinate system, the constant leaves can be
+\emph{warm-started} at the exact Clark--Scarf echelon base-stock levels returned by the in-repo solver
+(\texttt{serial/exact.rs}), so generation~$0$ already reproduces the optimum within the environment's
+reproduction band. We warm-start CMA-ES at this encoded solution as in
+Section~\ref{sec:methods-cmaes}, and keep the warm-start anchor in the candidate set throughout; on
+this convex serial instance the optimizer can only search outward from a proven optimum, so the honest
+outcome is a tie rather than an improvement.
+
+\subsection{Experiment setup}
+
+We evaluate on Snyder \& Shen Example~6.1 (\citealp{snyder2019foundations};
+\texttt{serial/verification.rs}): a $3$-stage serial system with $\mathcal N(5,1)$ demand, lead times
+$(L_3,L_2,L_1)=(2,1,1)$ upstream to downstream (downstream $L_1=1$, the faithful regime), installation
+holding costs $(7,4,2)$ downstream to upstream (equivalently echelon holding $(3,2,2)$), and a
+stage-$1$ backorder penalty $p=37.12$. The comparator is the \emph{proven optimum} of this instance,
+the Clark--Scarf / Snyder \& Shen value $47.65$. Because this comparator is an optimum and not a
+heuristic, this is a \emph{match-only} problem: the target is to reproduce $47.65$, never to beat it.
+For reference, the in-repo exact recursive-newsvendor solver returns $47.6654$
+(\texttt{serial/exact.rs}; reported as $47.67$ in the appendix env-fidelity table), and the
+environment simulation under the exact echelon base-stock levels reproduces $47.65$ to about $+0.06\%$
+with continuous Normal demand (\texttt{serial/verification.rs}). The policy is trained with
+warm-started CMA-ES and evaluated under the long-run-average protocol of
+Section~\ref{sec:methods-eval} (evaluation horizon $4\times10^5$ periods after warm-up, $32$ seeds;
+\texttt{outputs/.../snyder\_shen\_example\_6\_1\_d1\_oblique\_full.json}).
+
+\subsection{Results}
+
+Table~\ref{tab:serial-results} reports the proven optimum, the in-repo exact solver value, and the
+best learned policy. The warm-started direct-level soft tree \emph{reproduces} the proven Clark--Scarf
+optimum: it attains a long-run-average cost of $47.6554$, a $99.99\%$ match to the published $47.65$
+with a signed gap of $+0.011\%$ --- inside the environment's own $\approx{+}0.06\%$ reproduction band
+and statistically indistinguishable from the optimum (standard error $\approx0.006$).
+
+\paragraph{Interpretation.}
+The honest reading is a \emph{match}, not a win. Because the comparator is a proven optimum attained by
+the echelon base-stock policy class, the highest a learned policy can reach is the optimum itself; the
+result here is that the compact, warm-started direct-level soft tree recovers it to within
+$+0.011\%$. This demonstrates that the same generic recipe --- CMA-ES over a compact policy living in
+the heuristic's coordinate system --- \emph{recovers the optimal policy} on a serial system, and is
+deliberately not framed as an improvement: one cannot improve on a true optimum, and we do not claim
+to. The value of the design lever is the same as elsewhere in the paper --- estimating the echelon
+order-up-to levels directly, warm-started at the exact solution, places the policy in the optimal
+control region from generation~$0$ --- but the verdict for a proven-optimal comparator is reproduction
+to within the environment's reproduction band.
+
+\begin{table}[!htbp]
+\centering
+\caption{Serial multi-echelon (Clark--Scarf) results on Snyder \& Shen Example~6.1
+\citep{snyder2019foundations}; long-run-average per-period cost, lower is better. The comparator is a
+\emph{proven optimum}, so the honest target is to \emph{match} it: ``Gap'' is the learned policy's
+signed cost relative to the proven optimum, and ``Match'' is $100\times$ optimum/learned. The learned
+policy is a warm-started direct-level (echelon order-up-to) soft tree
+(\texttt{outputs/.../snyder\_shen\_example\_6\_1\_d1\_oblique\_full.json}).}
+\label{tab:serial-results}
+\begin{tabular}{lcc}
+\toprule
+Quantity & Cost & Gap vs.\ optimum \\
+\midrule
+Proven Clark--Scarf optimum \citep{snyder2019foundations} & $47.65$ & --- \\
+Exact recursive-newsvendor solver (in repo) & $47.6654$ & $+0.032\%$ \\
+Learned direct-level soft tree (warm-started) & $47.6554$ & $+0.011\%$ (match, $99.99\%$) \\
+\bottomrule
+\end{tabular}
+\par\medskip\footnotesize The learned policy reproduces the proven optimum to within $+0.06\%$ --- the
+environment's own reproduction band --- and is reported as a \emph{match}, not an improvement: a proven
+optimum cannot be beaten.
+\end{table}
+\FloatBarrier
