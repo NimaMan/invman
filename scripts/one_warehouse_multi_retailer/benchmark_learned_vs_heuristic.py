@@ -43,10 +43,10 @@ PROTOCOL
   (train with `--train_allocation`, evaluate the learned policy with the SAME
   allocation the heuristic argmin used so the rationing rule is held fixed in the
   comparison; both reported).
-- HARD CPU CAP: set RAYON_NUM_THREADS=2 / OMP_NUM_THREADS=2 in the environment
-  before launching this script. The CMA-ES path here uses the population rollout
-  binding (no Python process pool), so all parallelism is rayon inside Rust and is
-  bounded by RAYON_NUM_THREADS. mp_num_processors is pinned to 1 regardless.
+- HARD CPU CAP: the shared CPU helper caps Rayon/BLAS/OpenMP before NumPy and Rust
+  imports. The CMA-ES path here uses the population rollout binding (no Python
+  process pool), so all parallelism is rayon inside Rust. mp_num_processors is
+  pinned to 1 regardless.
 
 USAGE
 -----
@@ -67,14 +67,18 @@ import time
 from pathlib import Path
 from types import SimpleNamespace
 
-import numpy as np
-
 PACKAGE_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT_DIR = Path(__file__).resolve().parent
 if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
+
+from invman.cpu_limits import configure_process_cpu_limits_from_argv  # noqa: E402
+
+configure_process_cpu_limits_from_argv(sys.argv[1:], default=2)
+
+import numpy as np
 
 from invman.es_mp import train  # noqa: E402
 

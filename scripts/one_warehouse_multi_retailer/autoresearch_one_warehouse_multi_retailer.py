@@ -53,9 +53,9 @@ ALGORITHM (per run)
 
 CPU CAP (HARD)
 --------------
-Set RAYON_NUM_THREADS=2 OMP_NUM_THREADS=2 in the environment before launching; mp_num_processors
-is pinned to 1 (parallelism is rayon inside the population-rollout binding). The repo defaults to
-~27 cores elsewhere; this runner MUST stay capped (two sibling agents run in parallel).
+The shared CPU helper caps Rayon/BLAS/OpenMP before NumPy and Rust imports; mp_num_processors
+is pinned to 1 (parallelism is rayon inside the population-rollout binding). The repo defaults
+to ~27 cores elsewhere; this runner MUST stay capped (two sibling agents run in parallel).
 
 USAGE (smoke)
 -------------
@@ -77,14 +77,18 @@ import time
 from pathlib import Path
 from types import SimpleNamespace
 
-import numpy as np
-
 PACKAGE_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT_DIR = Path(__file__).resolve().parent
 if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
+
+from invman.cpu_limits import configure_process_cpu_limits_from_argv  # noqa: E402
+
+configure_process_cpu_limits_from_argv(sys.argv[1:], default=2)
+
+import numpy as np
 
 from invman.es_mp import train  # noqa: E402
 
@@ -200,7 +204,7 @@ def _warm_start_flat_params(model, warehouse_level: int, retailer_level: int):
     best base-stock target (W, R) at every leaf, so generation 0 reproduces the strongest
     heuristic exactly. CRITICAL: the soft-tree does NOT output the raw leaf parameter; it
     passes the leaf output through a per-leaf-type transform before grid-snapping
-    (`rust/src/core/policies/soft_tree.rs::action_vector_from_flat_params`):
+    (`src/core/policies/soft_tree.rs::action_vector_from_flat_params`):
 
       - constant leaf:  scaled = min + sigmoid(leaf_param) * (max - min)
                         => to emit target T, leaf_param = logit((T - min) / (max - min)).
