@@ -1,0 +1,78 @@
+{
+  "problem": "one_warehouse_multi_retailer",
+  "reference": "kaynov2024_instance_7",
+  "source": "Kaynov et al. (2024), International Journal of Production Economics 267, 109088",
+  "instance": {
+    "customer_behavior": "lost_sales",
+    "warehouse_lead_time": 2,
+    "retailer_lead_times": [1, 1, 1],
+    "demand": "Poisson(3) x 3",
+    "holding_cost_warehouse": 0.5,
+    "holding_cost_retailers": [1.0, 1.0, 1.0],
+    "penalty_costs_retailers": [9.0, 9.0, 9.0],
+    "emergency_shipment_probability": 0.0,
+    "benchmark_periods": 100,
+    "benchmark_replications": 1000,
+    "env_note": "current verified env: Eq.8 floor proportional allocation + post-emergency holding"
+  },
+  "protocol": {
+    "budget": "full",
+    "es_population": 32,
+    "cma_generations": 600,
+    "train_seed_batch": 12,
+    "search_paths": 256,
+    "holdout_paths": 4096,
+    "discount_factor": 1.0,
+    "evaluation": "paired CRN held-out block, scored under both {proportional, min_shortage} allocations; headline = better allocation",
+    "rayon_threads": 2,
+    "policy_action_mode": "symmetric_echelon_targets",
+    "warm_start": "CMA-ES x0 seeded at the grid-searched best base-stock (W=44, R=[10,10,10]) under min_shortage; inverted leaf transform so gen-0 reproduces the heuristic exactly"
+  },
+  "baselines": {
+    "repo_grid_searched_echelon_base_stock_min_shortage": {
+      "warehouse_level": 44,
+      "retailer_levels": [10, 10, 10],
+      "holdout_mean_cost": 1401.4461669921875,
+      "holdout_stderr": 1.4403581376194374,
+      "role": "keep/discard gate (strongest in-repo heuristic)"
+    },
+    "repo_grid_searched_echelon_base_stock_proportional": {
+      "warehouse_level": 45,
+      "retailer_levels": [10, 10, 10],
+      "holdout_mean_cost": 1455.987548828125,
+      "holdout_stderr": 1.462583896581974
+    },
+    "published_kaynov_min_shortage_cost": 1408.08,
+    "published_kaynov_proportional_cost": 1406.27,
+    "published_kaynov_ppo_cost": 1405.08
+  },
+  "runs": {
+    "constant_leaf_d2_axis_aligned_temp0.05": {
+      "trained_xbest_holdout_min_shortage": 1404.649658203125,
+      "warm_start_anchor_holdout_min_shortage": 1401.4461669921875,
+      "deployed_policy": "warm_start_anchor",
+      "deployed_holdout_cost": 1401.4461669921875,
+      "gap_vs_best_heuristic": 0.0,
+      "gap_pct_vs_best_heuristic": 0.0,
+      "train_seconds": 595.46
+    },
+    "linear_leaf_d2_axis_aligned_temp0.05": {
+      "trained_xbest_holdout_min_shortage": 1415.279052734375,
+      "warm_start_anchor_holdout_min_shortage": 1401.4461669921875,
+      "deployed_policy": "warm_start_anchor",
+      "deployed_holdout_cost": 1401.4461669921875,
+      "gap_vs_best_heuristic": 0.0,
+      "gap_pct_vs_best_heuristic": 0.0,
+      "train_seconds": 607.38
+    }
+  },
+  "headline": {
+    "deployed_learned_holdout_cost": 1401.4461669921875,
+    "best_heuristic_holdout_cost": 1401.4461669921875,
+    "gap_pct_vs_best_heuristic": 0.0,
+    "gap_vs_published_min_shortage_1408.08": -6.63,
+    "gap_vs_published_ppo_1405.08": -3.63,
+    "verdict": "TIE vs the strongest in-repo heuristic under paired CRN at full reps; BELOW (cheaper than) the published min_shortage and PPO rows. The warm-started soft-tree reproduces the tuned min_shortage echelon base-stock exactly; CMA-ES finds no profitable state-dependent deviation (trained xbest overfits training seeds and is slightly above the heuristic on held-out: constant 1404.65, linear 1415.28).",
+    "confidence": "high"
+  }
+}
