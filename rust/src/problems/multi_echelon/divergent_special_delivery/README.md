@@ -105,9 +105,27 @@ How this package treats them:
 - Van Roy is the literature reference for the executable formulation and the published heuristic/NDP
   rows we want to reproduce.
 - Gijs supplies later benchmark settings and published relative improvements over constant
-  base-stock on the same family.
+  base-stock on the same family. Gijsbrechts et al. (2022) print **no absolute cost** for the
+  two-echelon setting; only the ~8.95% / ~12.09% relative A3C savings. The absolute `1302` / `1449`
+  constants are Van Roy (1997) numbers.
 - `literature_verified` applies to repo heuristic or exact implementations only, not to published
   A3C/NDP rows carried from the papers.
+
+### Two warehouse-order conventions (load-bearing distinction)
+
+The published Van Roy absolute costs were produced by Van Roy's heuristic, which computes the
+warehouse order **after** store orders are deducted (post-shipment; full report Section 4,
+p.10-11). The env supports this as the `van_roy_1997` reproduction mode. The faithful
+Gijsbrechts et al. (2022) MDP (Eq. (2), MSOM 24(3) p.1365-1366) instead raises the warehouse
+inventory position to its base-stock level **first**, then places retailer orders (pre-shipment);
+the env supports this as the `gijs_2022` mode, which is the actual policy-search target. The two
+conventions give materially different costs at the same base-stock levels: re-running the
+constant base-stock heuristic at the published Van Roy levels yields ~1285/-1.3% (setting 1) and
+~1345/-7.2% (setting 2) under `van_roy_1997`, but ~1052/-19.2% and ~1139/-21.4% under the faithful
+`gijs_2022` MDP (executing test
+`verification::tests::neither_dynamics_mode_reproduces_published_absolute_cost_within_tolerance`).
+**No executable mode reproduces a paper-printed absolute number within the 1% literature
+tolerance, so all divergent special-delivery rows keep `literature_verified = false`.**
 
 ## Verification
 
@@ -124,9 +142,15 @@ This package carries two different validation layers.
 
 Current status:
 
-- the literature rows are carried in `references.rs`
-- the repo heuristic is **not** literature-verified yet
-- the current reproduction results are recorded in `outputs/multi_echelon/van_roy_protocol_audit_2026-05-29.json` (the calibrated run that matches the manuscript validation table; the earlier pre-calibration `van_roy_validation_2026-04-10.json` was removed as superseded)
+- the literature rows are carried in `references.rs`, all with `literature_verified = false`
+- the repo heuristic is **not** literature-verified, and this is the correct honest status: neither
+  the `van_roy_1997` nor the faithful `gijs_2022` transition mode reproduces a paper-printed absolute
+  cost within tolerance (see the two-conventions distinction above and
+  `verification::tests::neither_dynamics_mode_reproduces_published_absolute_cost_within_tolerance`)
+- the published `1302` / `1449` are reproduced only approximately (~-1.3% / ~-7%) under the
+  post-shipment `van_roy_1997` reproduction mode, and not at all under the faithful pre-shipment
+  `gijs_2022` MDP (~-19% / ~-21%), which is the literature-unverified policy-search target
+- the current reproduction results are recorded in `outputs/multi_echelon/van_roy_validation_2026-04-10.json`
 - the protocol audit is recorded in `outputs/multi_echelon/van_roy_protocol_audit_2026-04-12.json`
 - the exact verifier is `literature_verified = false`; it exists to validate the Rust implementation,
   not to support literature claims

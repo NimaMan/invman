@@ -406,6 +406,41 @@ fn raw_state_layout_matches_expected_shape() {
 }
 
 #[test]
+fn van_roy_feature_layout_matches_expected_shape() {
+    let state =
+        initialize_state(3, &[2, 2], &[1, 0], &vec![vec![1], vec![0]]).expect("state must build");
+    let features = build_policy_features_with_mode(
+        &state,
+        VERIFICATION_PROBLEM_INSTANCE.warehouse_inventory_cap,
+        VERIFICATION_PROBLEM_INSTANCE.retailer_inventory_cap,
+        false,
+        VERIFICATION_PROBLEM_INSTANCE.periods,
+        PolicyFeatureMode::CompactSummary,
+        InventoryDynamicsMode::Gijs2022,
+    )
+    .expect("features must build");
+
+    // Compact-summary layout characterization (NOT a literature claim; the repo
+    // rule explicitly excludes frozen snapshots from literature verification).
+    // Indices 14-16 are the per-retailer normalized stage-inventory variances.
+    // Under the faithful gijs_2022 decision state, each retailer's available
+    // inventory includes the first inbound pipeline unit (pre-shipment / arrives
+    // this period), so for state retailer_inventory=[1,0], retailer_pipeline=
+    // [[1],[0]] the stage-0 inventories are [2,0]/4 = [0.5,0] with population
+    // variance 0.0625. (The earlier carried value 0.015625 was the pre-fix
+    // van-roy-style decision state that omitted the arriving pipeline unit; the
+    // mode-dependent fix made the gijs_2022 decision state faithful.)
+    let expected = vec![
+        0.25, 0.0, 0.0, 0.625, 0.25, 0.0, 0.0, 0.0625, 0.0, 0.0, 0.390625, 0.0625, 0.0, 0.0,
+        0.0625, 0.0625, 0.0625, 0.15625, 0.15625, 0.21875, 0.21875, 0.0,
+    ];
+    assert_eq!(features.len(), 22);
+    for (observed, target) in features.iter().zip(expected.iter()) {
+        assert!((observed - target).abs() < 1e-6);
+    }
+}
+
+#[test]
 fn worked_transition_matches_expected_accounting() {
     let worked = WORKED_TRANSITION_REFERENCE;
     let state = initialize_state(

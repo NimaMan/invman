@@ -124,7 +124,7 @@ pub const VAN_ROY_1997_REFERENCE: PublishedBenchmarkReference = PublishedBenchma
     url: "https://www.mit.edu/~jnt/Papers/C-97-bvr-retail-CDC.pdf",
     benchmark_policies: &["constant_base_stock", "neuro_dynamic_programming"],
     notes:
-        "The original CDC paper and the linked full-length report give executable demand-generation, heuristic, and NDP benchmark rows for one simple problem and two complex case studies. Transportation costs in the model are associated only with special deliveries.",
+        "The original CDC paper and the linked full-length report give executable demand-generation, heuristic, and NDP benchmark rows for one simple problem and two complex case studies. Transportation costs in the model are associated only with special deliveries. Van Roy's heuristic computes the warehouse order AFTER store orders are deducted (post-shipment; full report Section 4, p.10-11); this is the env's van_roy_1997 reproduction mode. Gijsbrechts et al. (2022) Eq.(2) instead raise the warehouse inventory position FIRST, then place retailer orders (pre-shipment); this is the env's faithful gijs_2022 MDP and the policy-search target. The two conventions give materially different costs at the same base-stock levels, so the published Van Roy absolute costs (1302/1449) are reproducible only approximately under the post-shipment van_roy_1997 mode, not under the faithful gijs_2022 mode.",
 };
 
 pub const GIJS_SETTING_WAREHOUSE_LEVELS: &[usize] = &[50, 60, 70, 80, 90, 100];
@@ -225,7 +225,7 @@ pub const LITERATURE_REFERENCE_INSTANCES: &[MultiEchelonReferenceInstance] = &[
         tuned_entropy_regularization: Some(4.68e-5),
         tuned_buffer_length: Some(100),
         notes:
-            "Van Roy complex case study 1, reused by Gijs as setting 1, in van_roy_1997 reproduction mode (post-shipment warehouse order convention + pre-demand holding timing). Latent normal demand mean 5, stdev 14 (effective ~8.4/9.8 after rounding+clipping). Reproduces the published constant base-stock cost 1302 at levels (330,23) within ~1.3%; best NDP cost 1179; A3C improves 8.95% over constant base-stock.",
+            "This is the first Van Roy complex case study reused by Gijs as setting 1. The underlying normal demand parameters are mean 5 and stdev 14, which induce true mean and stdev 8.6 and 9.8 after rounding and clipping. Van Roy (1997) full report Figure 6 / p.886 reports constant base-stock cost 1302 at levels (330,23) and best NDP cost 1179. literature_verified=false: the absolute 1302 is a Van Roy heuristic number (post-shipment warehouse order); the env's faithful gijs_2022 MDP (pre-shipment warehouse order, Gijs 2022 Eq.2, MSOM 24(3) p.1365-1366) is a structurally different transition that lands ~19% below 1302 at (330,23) and is the policy-search target. The van_roy_1997 reproduction mode lands ~1.3% below 1302 -- close but outside the 1% literature tolerance, and under an under-specified 'lengthy simulation' protocol. Gijs prints no absolute cost for this setting, only ~8.95% relative A3C savings. See verification::tests::neither_dynamics_mode_reproduces_published_absolute_cost_within_tolerance.",
     },
     MultiEchelonReferenceInstance {
         // van_roy_1997-mode REPRODUCTION instance for Van Roy / Gijs complex case study 2.
@@ -271,100 +271,7 @@ pub const LITERATURE_REFERENCE_INSTANCES: &[MultiEchelonReferenceInstance] = &[
         tuned_entropy_regularization: Some(1.46e-8),
         tuned_buffer_length: Some(100),
         notes:
-            "Van Roy complex case study 2, reused by Gijs as setting 2, in van_roy_1997 reproduction mode. demand_mean is the CALIBRATED value 1.0 (latent), not the paper's Table-3 mu=0: under van_roy_1997 dynamics this reproduces the published constant base-stock cost 1449 at levels (460,22) within ~0.7%. The paper-faithful mu=0 / gijs_2022 environment is gijsbrechts2022_setting2. Best NDP cost 1318; A3C improves 12.09% over constant base-stock.",
-    },
-    MultiEchelonReferenceInstance {
-        // PAPER-FAITHFUL Gijsbrechts (2022) setting 1, used as the autosearch + CMA-ES
-        // search target. gijs_2022 dynamics: pre-shipment warehouse order (Eq. (2)) and
-        // end-of-period holding. Table-3 latent demand mean 5, stdev 14. No published
-        // absolute/relative rows are attached (the faithful MDP does not reproduce Van
-        // Roy's absolute cost, which was computed under van_roy_1997 dynamics); correctness
-        // is checked by the gijs_2022 exact-DP / worked-transition tests instead. The A3C
-        // relative-savings target lives on van_roy1997_case_study1.
-        name: "gijsbrechts2022_setting1",
-        source: GIJSBRECHTS_2022_REFERENCE.source,
-        url: GIJSBRECHTS_2022_REFERENCE.url,
-        literature_verified: false,
-        warehouse_lead_time: 2,
-        retailer_lead_time: 2,
-        num_retailers: 10,
-        warehouse_holding_cost: 3.0,
-        retailer_holding_cost: 3.0,
-        warehouse_expedited_cost: 0.0,
-        warehouse_lost_sale_cost: 60.0,
-        expedited_service_prob: 0.8,
-        warehouse_capacity: 100,
-        warehouse_inventory_cap: 1000,
-        retailer_inventory_cap: 100,
-        inventory_dynamics_mode: "gijs_2022",
-        demand_distribution: "normal_rounded_clipped",
-        demand_mean: 5.0,
-        demand_std: 14.0,
-        benchmark_search_horizon: 10_000,
-        benchmark_periods: 100_000,
-        benchmark_replications: 100,
-        warm_up_periods_ratio: 0.0,
-        rollout_objective: "average_cost_after_warmup",
-        warehouse_base_stock_mode: "regular",
-        policy_allocation_mode: "min_shortage",
-        benchmark_warehouse_levels: GIJS_SETTING_WAREHOUSE_LEVELS,
-        benchmark_retailer_levels: GIJS_SETTING1_RETAILER_LEVELS,
-        published_constant_base_stock_mean_cost: None,
-        published_constant_base_stock_levels: &[],
-        published_van_roy_best_ndp_mean_cost: None,
-        published_a3c_savings_pct: None,
-        published_a3c_confidence_half_width_pct: None,
-        published_van_roy_savings_pct_approx: None,
-        tuned_learning_rate: None,
-        tuned_entropy_regularization: None,
-        tuned_buffer_length: None,
-        notes:
-            "Paper-faithful Gijsbrechts (2022) setting 1 (Table 3: lw=2, lr=2, mu=5, sigma=20->14, K=10, hw=hr=3, cw=0, p=60, Pw=0.8, Cm=100, Cw=1000, Cr=100) under gijs_2022 dynamics (pre-shipment warehouse order Eq. (2), end-of-period holding). Search target for policy design; not a Van Roy absolute-cost reproduction instance.",
-    },
-    MultiEchelonReferenceInstance {
-        // PAPER-FAITHFUL Gijsbrechts (2022) setting 2, the PRIMARY autosearch + CMA-ES
-        // search target. gijs_2022 dynamics + Table-3 latent demand mean 0 (NOT the
-        // calibrated 1.0 used by van_roy1997_case_study2). Correctness validated by the
-        // gijs_2022 exact-DP / worked-transition tests, not by Van Roy absolute reproduction.
-        name: "gijsbrechts2022_setting2",
-        source: GIJSBRECHTS_2022_REFERENCE.source,
-        url: GIJSBRECHTS_2022_REFERENCE.url,
-        literature_verified: false,
-        warehouse_lead_time: 5,
-        retailer_lead_time: 3,
-        num_retailers: 10,
-        warehouse_holding_cost: 3.0,
-        retailer_holding_cost: 3.0,
-        warehouse_expedited_cost: 0.0,
-        warehouse_lost_sale_cost: 60.0,
-        expedited_service_prob: 0.8,
-        warehouse_capacity: 100,
-        warehouse_inventory_cap: 1000,
-        retailer_inventory_cap: 100,
-        inventory_dynamics_mode: "gijs_2022",
-        demand_distribution: "normal_rounded_clipped",
-        demand_mean: 0.0,
-        demand_std: 20.0,
-        benchmark_search_horizon: 10_000,
-        benchmark_periods: 100_000,
-        benchmark_replications: 100,
-        warm_up_periods_ratio: 0.0,
-        rollout_objective: "average_cost_after_warmup",
-        warehouse_base_stock_mode: "regular",
-        policy_allocation_mode: "min_shortage",
-        benchmark_warehouse_levels: GIJS_SETTING_WAREHOUSE_LEVELS,
-        benchmark_retailer_levels: GIJS_SETTING2_RETAILER_LEVELS,
-        published_constant_base_stock_mean_cost: None,
-        published_constant_base_stock_levels: &[],
-        published_van_roy_best_ndp_mean_cost: None,
-        published_a3c_savings_pct: None,
-        published_a3c_confidence_half_width_pct: None,
-        published_van_roy_savings_pct_approx: None,
-        tuned_learning_rate: None,
-        tuned_entropy_regularization: None,
-        tuned_buffer_length: None,
-        notes:
-            "Paper-faithful Gijsbrechts (2022) setting 2 (Table 3: lw=5, lr=3, mu=0, sigma=20, K=10, hw=hr=3, cw=0, p=60, Pw=0.8, Cm=100, Cw=1000, Cr=100) under gijs_2022 dynamics. demand_mean is the paper's Table-3 value 0 (latent), NOT the calibrated 1.0. Primary search target for policy design.",
+            "This is the second Van Roy complex case study reused by Gijs as setting 2. The underlying normal demand parameters are mean 0 and stdev 20, which induce true mean and stdev 8.0 and 11.6 after rounding and clipping. Van Roy (1997) full report p.1147-1148/1166-1167 reports constant base-stock cost 1449 at levels (460,22) and best NDP cost 1318. literature_verified=false: same structural story as setting 1 -- the faithful gijs_2022 MDP (pre-shipment warehouse order) lands ~21% below 1449 at (460,22), while the van_roy_1997 reproduction mode lands ~7% below 1449. Neither reproduces the published absolute number within the 1% literature tolerance; Gijs prints no absolute cost, only ~12.09% relative A3C savings. See verification::tests::neither_dynamics_mode_reproduces_published_absolute_cost_within_tolerance.",
     },
 ];
 
