@@ -51,6 +51,6 @@ python paper/push_to_overleaf.py
 ```
 
 The push script uploads `paper/learning_inventory_control_policies_es.tex` to
-`extension/inventory_control_policy_benchmarks.tex` (the remote name is kept stable to preserve history) in the Overleaf project
+`learning_inventory_control_policies_es.tex` (project root) in the Overleaf project
 `invman_paper (revision)`. Authentication is handled by the local Overleaf session helper under
 `/home/nima/code/tools/security/access/login_sessions/overleaf`.

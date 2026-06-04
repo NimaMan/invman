@@ -20,6 +20,43 @@
 \newcommand{\bepsilon}{\boldsymbol{\epsilon}}
 \DeclareMathOperator*{\argmax}{arg\,max}
 
+% ---------------------------------------------------------------------------
+% Inline TikZ for the policy-architecture figures (Sections 3.1 and 4.2).
+% Visual style adapted from Izaak Neutelings' neural-network-zoo (Sept 2021),
+% as in the prior version of the paper and in figures/policy_architecture.tex.
+% amsmath/amssymb/graphicx are already loaded above; xcolor is loaded just below; we do not redefine
+% them here. We guard the color/style definitions so they cannot clash with
+% anything declared earlier.
+% ---------------------------------------------------------------------------
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,fit,backgrounds}
+\usepackage{listofitems}
+\usepackage[outline]{contour}
+\contourlength{1.4pt}
+\tikzset{>=latex}
+\colorlet{myred}{red!80!black}
+\colorlet{myblue}{blue!80!black}
+\colorlet{mygreen}{green!60!black}
+\colorlet{myorange}{orange!70!red!60!black}
+\colorlet{mydarkred}{red!30!black}
+\colorlet{mydarkblue}{blue!40!black}
+\colorlet{mydarkgreen}{green!30!black}
+\tikzset{
+  node/.style={thick,circle,draw=myblue,minimum size=22,inner sep=0.5,outer sep=0.6},
+  node in/.style={node,green!20!black,draw=mygreen!30!black,fill=mygreen!25},
+  node hidden/.style={node,blue!20!black,draw=myblue!30!black,fill=myblue!20},
+  node out/.style={node,red!20!black,draw=myred!30!black,fill=myred!20},
+  connect/.style={thick,mydarkblue},
+  connect arrow/.style={-{Latex[length=4,width=3.5]},thick,mydarkblue,shorten <=0.5,shorten >=1},
+  stage/.style={rounded corners=3pt,thick,minimum height=14mm,align=center,inner sep=6pt},
+  stage in/.style={stage,draw=mygreen!50!black,fill=mygreen!12},
+  stage mid/.style={stage,draw=myblue!50!black,fill=myblue!10},
+  stage dec/.style={stage,draw=myorange!60!black,fill=myorange!12},
+  stage out/.style={stage,draw=myred!50!black,fill=myred!15},
+  flow/.style={-{Latex[length=5,width=4]},thick,mydarkblue},
+}
+
 \title{Learning Inventory Control Policies with Evolution Strategies\\[0.35em]
        {\large\normalfont across Lost-Sales, Dual-Sourcing, and Multi-Echelon Problems}}
 \author{Nima Manaf \and Willem van Jaarsveld \and Rob Basten\\[0.3em]
@@ -120,12 +157,14 @@ Our contributions are as follows.
 
 The remainder of the paper is organized as follows. Section~\ref{sec:related} reviews related work
 on learned inventory policies, evolution strategies, dual sourcing, and multi-echelon control.
-Section~\ref{sec:methods} presents the unified methodology: the policy function approximators and
-their decoders, the per-problem action geometries, the CMA-ES optimizer and evaluation protocol, and
-a worked state-to-order example. Section~\ref{sec:numerical} reports the numerical study across the
-four problems, with interpretation of where each decoder wins and where heuristics still lead.
-Section~\ref{sec:discussion} draws managerial insights, and Section~\ref{sec:conclusion} concludes
-with limitations and future work.
+Section~\ref{sec:methods} presents the shared machinery: the policy interface (a learned map from
+state to valid action), the CMA-ES optimizer, and the evaluation protocol common to all problems.
+Sections~\ref{sec:lostsales}--\ref{sec:multiechelon} then treat each problem as a self-contained
+unit --- lost sales and fixed-cost lost sales, dual sourcing, and divergent multi-echelon control ---
+each stating its formulation, its policy (input state, internals, output action), its instance-level
+experiment setup, and its results, with interpretation of where each decoder wins and where
+heuristics still lead. Section~\ref{sec:discussion} draws managerial insights, and
+Section~\ref{sec:conclusion} concludes with limitations and future work.
 
 \section{Related work}
 \label{sec:related}
@@ -166,104 +205,90 @@ partial-lost-sales two-echelon model of \citet{nahmias1994partial}, multilocatio
 for one-warehouse multi-retailer systems \citep{kaynov2024owmr}. We use these as external benchmarks
 and otherwise train directly for each problem.
 
-\section{Methods}
+\section{Policy representation, optimization, and evaluation}
 \label{sec:methods}
 
-This section states once the modeling principle that runs through all four problems, describes the
-policy function approximators and their decoders, gives the per-problem action geometries, and then
-the CMA-ES optimizer and the evaluation protocol. The per-problem environment definitions appear with
-the experiments in Section~\ref{sec:numerical}.
+This section states the shared machinery used by every problem: the policy interface --- a learned
+deterministic map from a problem's state to a valid action --- the CMA-ES optimizer, and the
+evaluation protocol. Each problem's environment, its concrete policy internals, and its results are
+then developed in its own self-contained section (Sections~\ref{sec:lostsales}--\ref{sec:multiechelon}).
 
 \subsection{The action parameterization is part of the policy}
 \label{sec:methods-principle}
 
-Across every problem we treat the map from latent policy outputs to a feasible order as a learned
-component of the policy, not a fixed restriction imposed by the environment. The environment emits a
-raw state; the policy applies its own divide-by-scale normalization and then a \emph{decoder} that
-turns latent outputs into an integer order (lost sales), a regular/expedite order pair (dual
-sourcing), or a pair of echelon order-up-to levels (multi-echelon). Where a structured heuristic
-exists, we let the decoder live in that heuristic's coordinate system so the search explores a useful
-action geometry rather than an arbitrary raw-quantity space. This single principle replaces the
-per-problem boilerplate and makes the decoder a first-class design dimension we evaluate alongside the
-backbone.
+We treat each policy as a single deterministic map $\pi_{\btheta}$ whose \emph{input is always the
+problem's state $\mathbf S_t$} and whose \emph{output is always a valid action} $a_t$ for that
+problem, with everything in between owned by the policy and learned by CMA-ES. Concretely, $\pi_{\btheta}$ applies, in order: (i) its own divide-by-scale \emph{normalization} of the raw state,
+$\mathbf{x} = \mathbf{S}_t / \kappa$ with a fixed per-policy scale $\kappa>0$ (a policy
+hyperparameter); (ii) a \emph{backbone} (a linear map, a one-hidden-layer
+network, or a soft tree) mapping $\mathbf{x}$ to latent outputs; (iii) a \emph{decoder / action geometry} that
+turns those latent outputs into a candidate action --- an integer order, a regular/expedite order
+pair, or a pair of echelon order-up-to levels --- optionally living in a structured heuristic's
+coordinate system; and (iv) a \emph{projection/rounding} step onto the problem's valid action set
+(nonnegative integer rounding, clipping to caps). The normalization scale, the backbone weights, the
+decoder, and the action geometry are all parameters of the policy, not fixed properties of the
+environment; in particular the map from latent outputs to a feasible action is learned, not imposed.
+Where a structured heuristic exists, we let the decoder live in that heuristic's coordinate system so
+the search explores a useful action geometry rather than an arbitrary raw-quantity space. This makes
+the decoder a first-class design dimension that each problem's Policy subsection instantiates by
+naming its concrete input state, internals, and valid-action output.
+Figure~\ref{fig:policy-pipeline} summarizes this interface as a single pipeline: everything between
+the input state and the output action is the learned policy $\pi_{\btheta}$.
 
-\subsection{Policy function approximators}
-\label{sec:methods-policies}
+\begin{figure}[t]
+  \centering
+  \begin{tikzpicture}[x=1cm,y=1cm]
+    \node[stage in]  (s)   at (0,0)   {\textbf{state}\\$\mathbf{S}_t\in\mathbb{Z}_{\ge0}^{d}$};
+    \node[stage mid] (nrm) at (3.3,0) {normalization\\$\mathbf{x}=\mathbf{S}_t/\kappa$};
+    \node[stage mid] (bb)  at (7.0,0) {backbone $u_\theta(\mathbf{x})$\\\footnotesize linear \,$\mid$\, NN$_H$ \,$\mid$\, soft tree};
+    \node[stage dec] (dec) at (10.9,0){decoder\\\footnotesize (gated / ordinal /\\\footnotesize categorical / tree)};
+    \node[stage out] (a)   at (14.2,0){\textbf{valid action}\\$a_t\in\{0,\dots,\bar q\}$};
 
-Every learned policy composes a \emph{backbone} that maps the normalized state feature vector
-$x\in\mathbb{R}^d$ to latent outputs with a \emph{decoder} that turns those outputs into the action.
-We write $\sigma$ for the logistic function and $\mathrm{softplus}(z)=\ln(1+e^{z})$, and we
-denote nearest-nonnegative-integer rounding by
-$\lfloor z\rceil_{\ge 0} := \max\{0,\lfloor z\rceil\}$, where $\lfloor\cdot\rceil$ rounds to the
-nearest integer. We use two backbones: a linear map $u_\theta(x)=Wx+b$, and a
-one-hidden-layer network $u_\theta(x)=V\phi(Ux+c)+e$ of width $H=8$ with the self-normalizing SELU
-activation $\phi$ \citep{Klambauer2017Self}. The benchmark surface pairs the backbones with three
-policy-owned decoders.
+    \draw[flow] (s)   -- (nrm);
+    \draw[flow] (nrm) -- (bb);
+    \draw[flow] (bb)  -- (dec);
+    \draw[flow] (dec) -- (a);
 
-\paragraph{Soft-gated direct quantity (L-SGD, NN-SGD).}
-The backbone emits a gate score $g(x)$ and a quantity score $q(x)$, and the order is the gated
-softplus quantity
-\[
-a = \big\lfloor\sigma(g(x))\,\mathrm{softplus}(q(x))\big\rceil_{\ge 0}.
-\]
-The gate decides \emph{whether} to order and the softplus head decides \emph{how much}, a
-factorization that matters most under a fixed ordering cost.
+    % everything between the input state and the output action is the learned policy
+    \begin{scope}[on background layer]
+      \node[draw=mydarkblue!60,dashed,rounded corners=4pt,inner sep=10pt,
+            fit=(nrm)(bb)(dec)] (pol) {};
+    \end{scope}
+    \node[mydarkblue,below=2pt of pol.south] {\footnotesize policy $\pi_{\btheta}$ \,(parameters $\btheta$ learned by CMA-ES)};
+    \node[mygreen!50!black,above=2pt of s.north] {\footnotesize input};
+    \node[myred!60!black,above=2pt of a.north]   {\footnotesize output};
+  \end{tikzpicture}
+  \caption{The policy interface as one pipeline. The input is always the problem's state
+  $\mathbf{S}_t$ and the output is always a valid action $a_t$; in between, the policy applies its own
+  divide-by-scale normalization $\mathbf{x}=\mathbf{S}_t/\kappa$, a backbone (linear map,
+  one-hidden-layer network NN$_H$, or soft tree) producing latent outputs, a decoder / action
+  geometry, and a projection onto the valid action set. The normalization scale $\kappa$, the
+  backbone weights, the decoder, and the action geometry are all parameters of the policy
+  $\pi_{\btheta}$ (dashed box), learned by CMA-ES, rather than fixed properties of the environment.}
+  \label{fig:policy-pipeline}
+\end{figure}
 
-\paragraph{Soft-gated ordinal quantity (L-SGO, NN-SGO).}
-The backbone emits a gate score $g(x)$ and $M$ ordinal threshold scores $o_1(x),\dots,o_M(x)$, and
-the order gates a sum of threshold probabilities,
-\[
-a = \Big\lfloor\sigma(g(x))\sum_{k=1}^{M}\sigma(o_k(x))\Big\rceil_{\ge 0},
-\]
-so the threshold count $M$ sets both the largest representable quantity and the decoder's parameter
-count. We use $M=20$ thresholds.
+The two backbones and the generic soft-tree split/leaf mechanism are defined once here; the
+problem-specific decoders and action geometries are defined in each problem's Policy subsection. We
+write $\sigma$ for the logistic function and $\mathrm{softplus}(z)=\ln(1+e^{z})$, and we denote
+nearest-nonnegative-integer rounding by $\lfloor z\rceil_{\ge 0} := \max\{0,\lfloor z\rceil\}$, where
+$\lfloor\cdot\rceil$ rounds to the nearest integer. The two backbones are a linear map
+$u_\theta(x)=Wx+b$ and a one-hidden-layer network $u_\theta(x)=V\phi(Ux+c)+e$ of width $H=8$ with the
+self-normalizing SELU activation $\phi$ \citep{Klambauer2017Self}; both are illustrated, side by side,
+in Figure~\ref{fig:backbone}.
 
-\paragraph{Soft trees with linear leaves (Tree-1, Tree-2).}
-A soft decision tree with oblique splits computes leaf path-probabilities $\pi_\ell(x)$; each leaf
-emits a local softplus-affine quantity $q_\ell(x)=\mathrm{softplus}(\alpha_\ell^\top x+\beta_\ell)$,
-and the order is the rounded mixture
-\[
-a = \Big\lfloor\sum_\ell \pi_\ell(x)\,q_\ell(x)\Big\rceil_{\ge 0}.
-\]
-We report depth-1 (Tree-1) and depth-2 (Tree-2) trees. The same soft-tree machinery, with
-constant or vector-valued leaves, supplies the structured decoders for dual sourcing and
-multi-echelon control below.
-
-\paragraph{Parameter counts.}
-For an $L=4$ lost-sales pipeline state ($d=4$, $d+1=5$), each learned policy's trainable parameter
-count follows in closed form from its decoder. The linear and network direct-quantity policies carry
-$2(d+1)=10$ and $H(d+1)+2(H+1)=58$ parameters; the depth-1 and depth-2 soft trees carry $3(d+1)=15$
-and $7(d+1)=35$; and with $M=20$ thresholds the ordinal policies carry $(M+1)(d+1)=105$ (L-SGO) and
-$H(d+1)+(M+1)(H+1)=229$ (NN-SGO). These are orders of magnitude below the thousands-to-millions of
-parameters typical of DRL policies for the same problems \citep{gijsbrechts2022drl,kaynov2024owmr}.
-
-\subsection{Per-problem action geometries}
-\label{sec:methods-geometries}
-
-\paragraph{Lost sales and fixed-cost lost sales.}
-The feature vector is the pipeline state of dimension $d=L$; the decoder emits a single integer order
-$a\in\mathbb{Z}_{\ge0}$. Under a fixed ordering cost the gated decoders expose the order/no-order
-boundary explicitly through their gate.
-
-\paragraph{Dual sourcing.}
-The leaves emit a control in \emph{factorized capped-dual-index coordinates}
-$(s_e,\ \Delta_r,\ \bar c_r)$ with $s_r=s_e+\Delta_r$, where $s_e$ is the expedite order-up-to level,
-$s_r$ the regular order-up-to level, and $\bar c_r$ a cap on the regular order. The expedited order
-raises net inventory toward $s_e$ and the regular order raises the inventory position toward $s_r$
-subject to the cap. We compare a small-cap variant with $\bar c_r$ on the discrete grid
-$\{1,2,3,4,6,8,12\}$ (axis-aligned, constant leaves) and a continuous capped-dual-index-targets
-variant. Both keep the policy in the heuristic's coordinate system while letting the targets depend
-on state; a raw direct-order output cannot express the capped dual-index control.
-
-\paragraph{Multi-echelon.}
-The two leaf outputs map to a state-dependent warehouse order-up-to level $y^w_{S}$ and a shared
-retailer order-up-to level $y^r_{S}$. We contrast two action designs. The \textbf{grid} design draws
-the levels from the reduced discrete set used by \citet{gijsbrechts2022drl},
-$y^w\in\{50,60,\dots,100\}$ and $y^r\in\{0,5,\dots,40\}$; the \textbf{direct} design (ours) lets the
-leaves estimate the levels as continuous values rounded to non-negative integers, bounded only by the
-physical caps $y^w\in[0,C^w]$, $y^r\in[0,C^r]$. The distinction is consequential because the
-cost-minimizing warehouse base-stock for these settings is far above the reduced grid's cap of $100$;
-the grid is a policy artifact, not a problem constraint.
+\paragraph{Soft-tree split/leaf mechanism.}
+\label{sec:soft-tree}
+A soft decision tree with oblique splits maps the normalized feature vector $x\in\mathbb{R}^d$ to leaf
+path-probabilities $\pi_\ell(x)$: each internal node $n$ routes left with probability
+$\sigma(w_n^\top x + b_n)$ and right otherwise, and $\pi_\ell(x)$ is the product of the routing
+probabilities along the path to leaf $\ell$, so $\sum_\ell \pi_\ell(x)=1$. Each leaf emits a leaf
+output (a constant, a vector, or a softplus-affine quantity), and the tree's latent output is the
+path-probability mixture $\sum_\ell \pi_\ell(x)\,(\text{leaf output})_\ell$. We report depth-1 and
+depth-2 trees. This same machinery, with scalar softplus-affine leaves (lost sales,
+Section~\ref{sec:lostsales-policy}), constant leaves in capped-dual-index coordinates (dual sourcing,
+Section~\ref{sec:dual-policy}), or vector-valued order-up-to leaves (multi-echelon,
+Section~\ref{sec:me-policy}), supplies the structured decoder in each problem.
 
 \subsection{Optimization with CMA-ES}
 \label{sec:methods-cmaes}
@@ -312,26 +337,275 @@ CMA-ES runs occasionally diverge, producing a degenerate policy with a runaway c
 exclude such runs rather than report them; in the result tables a dagger ($\dagger$) marks an excluded
 diverged run, and the comparison is made over the remaining policies.
 
-\paragraph{Evaluation protocol.}
-Policies are evaluated by simulation under protocols matched to each problem. For \emph{lost sales}
-and \emph{fixed-cost lost sales} we train with CMA-ES (population $64$, training horizon $2000$) and
-evaluate the long-run average cost over a horizon of $10^6$ periods averaged across $10$ consecutive
-seeds. For \emph{dual sourcing} we use a common-random-number (CRN) protocol --- the same $70$
-demand-path seeds and horizon $6\times10^4$ for every policy --- so the dominant per-seed variance
-cancels and the paired cost difference is statistically meaningful (paired SEM $\sim0.002$--$0.006$
-versus per-seed standard deviation $\sim0.5$). For \emph{multi-echelon} we evaluate the long-run
-average cost over a horizon of $3\times10^4$ periods and $6$ seeds.
+\subsection{Evaluation protocol}
+\label{sec:methods-eval}
 
-\subsection{From state to order: a worked example}
-\label{sec:methods-worked}
+Policies are evaluated by simulation under protocols matched to each problem; the shared elements are
+stated once here and each problem's experiment setup states only its instance-specific details.
+Training uses CMA-ES with population $64$ and a short training horizon of $2000$ periods (the
+multi-echelon study additionally sweeps the action design against tree depth). Evaluation reports the
+long-run average cost over a long simulated horizon with a warm-up discard, averaged over multiple
+seeds: for \emph{lost sales} and \emph{fixed-cost lost sales}, a horizon of $10^6$ periods averaged
+across $10$ consecutive seeds; for \emph{multi-echelon}, a horizon of $3\times10^4$ periods and $6$
+seeds. For \emph{dual sourcing} we additionally use a common-random-number (CRN) protocol --- the
+same $70$ demand-path seeds and horizon $6\times10^4$ for every policy --- so the dominant per-seed
+variance cancels and the paired cost difference is statistically meaningful (paired SEM
+$\sim0.002$--$0.006$ versus per-seed standard deviation $\sim0.5$). Each problem's reported
+single-state actions are independently validated against a Rust rollout, with the cross-check detailed
+in that problem's section.%
+\footnote{\emph{Reproducibility.} The code, the policy forwards, the worked-example script, and the
+named instance anchors used in the validation appendices (e.g.\ \texttt{lit\_poisson\_p4\_l4},
+\texttt{bijvank2015\_table1\_l2\_p14\_k5}) are available in our open-source repository, where the
+independent Rust policy forwards used for the cross-checks are also exposed.}
 
+\section{Lost sales and fixed-cost lost sales}
+\label{sec:lostsales}
+
+\subsection{Problem formulation}
+\label{sec:lostsales-formulation}
+
+We study single-item, periodic-review lost-sales inventory control and its fixed-ordering-cost
+variant. Demand and order quantities are integer, and demand is stationary. The controller seeks a
+stationary ordering policy that minimizes the long-run average cost.
+
+\paragraph{Timing of a period.}
+Periods are indexed $t\in\{1,2,\dots,T\}$, and we are mainly interested in the limit
+$T\to\infty$. Within period $t$, events occur in the following order: (i) the order $q_{t-L}$ placed
+$L$ periods earlier arrives and is added to the leftover on-hand inventory, giving the on-hand stock
+$x_t$ available to serve demand; (ii) observing the state, the controller places an integer
+replenishment order $q_t\in\mathbb{Z}_{\ge0}$, which will arrive at the start of period $t+L$ after
+the fixed lead time $L\ge1$; (iii) demand $D_t$ is realized and served from on-hand stock, sales are
+limited to $x_t$ and \emph{unmet demand is lost} rather than backordered; (iv) holding and lost-sales
+costs are charged on the period's outcome.
+
+\paragraph{State.}
+Let $(\cdot)^{+}=\max(\cdot,0)$. Writing $I_t$ for the on-hand stock right after the period-$t$
+arrival, $I_t=x_t$ is the inventory available to serve demand, and the still-outstanding orders are
+the pipeline $(q_{t-L+1},\dots,q_{t-1})$ of the $L-1$ orders placed but not yet received. The
+post-arrival system state is the $L$-dimensional vector
+\begin{equation}
+    \mathbf{S}_t = \bigl(I_t,\,q_{t-L+1},\dots,q_{t-1}\bigr)\in\mathbb{Z}_{\ge0}^{L},
+    \label{eq:ls-state}
+\end{equation}
+whose first coordinate is the on-hand inventory (the arriving order $q_{t-L}$ has already been folded
+into it) and whose remaining $L-1$ coordinates are the outstanding pipeline. The cost in period $t$
+depends only on the first coordinate of $\mathbf{S}_t$, but $I_t$ cannot be controlled directly: it
+arises as a complex function of the ordering policy through the dynamics below, and the state space
+grows exponentially in the lead time, which makes exact solution by policy or value iteration
+intractable and the problem a notoriously hard one \citep{Bijvank2011LostSalesReview}.
+
+\paragraph{Action.}
+The decision in period $t$ is the order quantity $q_t\in\{0,1,\dots,\bar q\}$, where $\bar q$ is a
+maximum order size (a loose cap, e.g.\ a provable bound on the optimal order or a high demand
+quantile). A stationary policy $\pi_{\btheta}$ maps the observed state to an order,
+$q_t=\pi_{\btheta}(\mathbf{S}_t)$.
+
+\paragraph{Transition.}
+Let $D_t$ denote the demand in period $t$, with $D_t\sim D$ stationary across periods. The inventory
+on hand evolves as the leftover after demand plus the order that arrives one lead time later:
+\begin{equation}
+    I_{t} = \bigl(I_{t-1}-D_{t-1}\bigr)^{+} + q_{t-L},
+    \label{eq:ls-transition}
+\end{equation}
+so the unsatisfied demand $(D_{t-1}-I_{t-1})^{+}$ is lost and never carried forward. The pipeline
+advances by dropping the just-arrived order and appending the new order: the state updates from
+$\mathbf{S}_t=(I_t,q_{t-L+1},\dots,q_{t-1})$ to
+\begin{equation}
+    \mathbf{S}_{t+1} = \Bigl(\bigl(I_t-D_t\bigr)^{+}+q_{t-L+1},\;\; q_{t-L+2},\dots,q_{t-1},\,q_t\Bigr).
+    \label{eq:ls-state-transition}
+\end{equation}
+
+\paragraph{One-period cost.}
+A holding cost $h$ is charged per unit of inventory left on hand at the end of the period and a
+penalty $p$ per unit of lost sales. For realized demand $D_t$ and on-hand stock $I_t$, the cost is
+\begin{equation}
+    c_t = h\,\bigl(I_t-D_t\bigr)^{+} + p\,\bigl(D_t-I_t\bigr)^{+},
+    \label{eq:ls-cost}
+\end{equation}
+with expectation $\mathbb{E}[c_t]=h\,\mathbb{E}\bigl[(I_t-D_t)^{+}\bigr]+p\,\mathbb{E}\bigl[(D_t-I_t)^{+}\bigr]$
+taken over the demand. There is no fixed cost in the vanilla problem.
+
+\paragraph{Objective.}
+Let $\bar C_T(\btheta)=\frac{1}{T}\sum_{t=1}^{T}\mathbb{E}[c_t]$ be the average expected cost over a
+horizon of $T$ periods under policy $\pi_{\btheta}$. Because demand is stationary the whole problem is
+stationary, and the objective is to minimize the long-run average expected cost,
+\begin{equation}
+    \min_{\btheta}\;\bar C(\btheta), \qquad
+    \bar C(\btheta) = \lim_{T\to\infty} \bar C_T(\btheta).
+    \label{eq:ls-objective}
+\end{equation}
+This infinite-horizon average-cost criterion is the theoretical target; in practice we estimate it
+from a simulation rollout $\hat C_T(\btheta)=\frac{1}{T}\sum_{t=1}^{T}c_t$ over a long horizon with a
+warm-up discard, as detailed in Section~\ref{sec:methods-eval}.
+
+\paragraph{Fixed-cost lost sales.}
+The fixed-ordering-cost variant is identical in state \eqref{eq:ls-state}, dynamics
+\eqref{eq:ls-transition}--\eqref{eq:ls-state-transition}, and lost-sales rule; only the one-period
+cost gains a single setup term charged whenever a strictly positive order is placed,
+\begin{equation}
+    c_t^{K} = c_t + K\,\mathbf{1}\{q_t>0\},
+    \label{eq:ls-fixed-cost}
+\end{equation}
+with fixed cost $K\ge0$ and indicator $\mathbf{1}\{\cdot\}$, and the objective
+\eqref{eq:ls-objective} is taken with $c_t^{K}$ in place of $c_t$. This term makes the
+\emph{order/no-order} decision --- whether to replenish at all --- an explicit part of the MDP: it is
+no longer optimal to order in every period, so an optimal policy must trade the setup cost against the
+holding and lost-sales costs, and it is precisely on this decision that the action parameterizations
+of Section~\ref{sec:lostsales-policy} differ most.
+
+\subsection{Policy functions}
+\label{sec:lostsales-policy}
+
+This section instantiates the policy interface of Section~\ref{sec:methods-principle} for lost sales
+and, because the lost-sales action is a single integer order, it is also where the decoder family is
+defined; the dual-sourcing and multi-echelon policies (Sections~\ref{sec:dual-policy}
+and~\ref{sec:me-policy}) reuse the soft-tree mechanism with their own action geometries.
+
+\medskip\noindent\textbf{Input.} The policy input is this problem's state $\mathbf S_t$ of
+\eqref{eq:ls-state}, the $L$-vector $[I_t, q_{t-L+1},\dots,q_{t-1}]$ of post-arrival on-hand inventory
+and the outstanding pipeline (feature dimension $d=L$). \textbf{Output.} A valid action is an integer
+order $q_t\in\{0,1,\dots,\bar q\}$. \textbf{Internals.} The policy first normalizes the raw state by
+the divide-by-scale map $\mathbf{x}=\mathbf{S}_t/\kappa$ with scale $\kappa=20$ (the maximum order
+size $\bar q$); it then applies a backbone (the linear map, the one-hidden-layer network, or the
+soft-tree mechanism of Section~\ref{sec:soft-tree}; see Figure~\ref{fig:backbone}) to obtain latent
+outputs $\mathbf{u}=u_\theta(\mathbf{x})$; finally a decoder reads $\mathbf{u}$ and rounds to a
+nonnegative integer. We use three policy-owned decoders, each a clean map from the latent outputs to
+the order and each illustrated in Figure~\ref{fig:decoder-heads}. Under a fixed ordering cost the two
+gated decoders expose the order/no-order boundary explicitly through their gate, which is what makes
+them the relevant choice for the fixed-cost variant.
+
+\paragraph{Soft-gated direct quantity (L-SGD, NN-SGD).}
+The backbone splits its latent output into a gate score $g(\mathbf{x})\in\mathbb{R}$ and a quantity
+score $q(\mathbf{x})\in\mathbb{R}$, and the decoder maps the pair to the gated softplus quantity
+\[
+a = \big\lfloor\,\underbrace{\sigma(g(\mathbf{x}))}_{\text{whether}}\;\cdot\;
+                \underbrace{\mathrm{softplus}(q(\mathbf{x}))}_{\text{how much}}\,\big\rceil_{\ge 0}.
+\]
+The logistic gate $\sigma(g)\in(0,1)$ decides \emph{whether} to order and the nonnegative softplus
+head decides \emph{how much}; this factorization is what lets the policy switch ordering off cleanly,
+and it matters most under a fixed ordering cost.
+
+\paragraph{Soft-gated ordinal quantity (L-SGO, NN-SGO).}
+Here the backbone emits a gate score $g(\mathbf{x})$ together with $M$ ordinal threshold scores
+$o_1(\mathbf{x}),\dots,o_M(\mathbf{x})$, and the decoder gates a sum of independent threshold
+probabilities,
+\[
+a = \Big\lfloor\,\sigma(g(\mathbf{x}))\sum_{k=1}^{M}\sigma(o_k(\mathbf{x}))\,\Big\rceil_{\ge 0}.
+\]
+Each $\sigma(o_k)\in(0,1)$ acts as a soft ``one more unit'' indicator, so the unrounded quantity moves
+in unit-scale increments and the threshold count $M$ fixes both the largest representable order and
+the decoder's parameter count; we use $M=20$ thresholds.
+
+\paragraph{Soft trees with linear leaves (Tree-1, Tree-2).}
+Using the soft-tree split/leaf mechanism of Section~\ref{sec:soft-tree}, each leaf $\ell$ emits a
+local softplus-affine quantity $q_\ell(\mathbf{x})=\mathrm{softplus}(\alpha_\ell^\top\mathbf{x}+\beta_\ell)$,
+and the decoder returns the rounded path-probability mixture of the leaf quantities,
+\[
+a = \Big\lfloor\,\sum_\ell \pi_\ell(\mathbf{x})\,q_\ell(\mathbf{x})\,\Big\rceil_{\ge 0},
+\]
+where $\pi_\ell(\mathbf{x})$ are the routing path-probabilities of Section~\ref{sec:soft-tree}. The
+oblique splits let the tree partition the state into regimes and order a different affine quantity in
+each; we report depth-1 (Tree-1) and depth-2 (Tree-2) trees.
+
+\begin{figure}[t]
+  \centering
+  \begin{tikzpicture}[x=2.1cm,y=1.25cm]
+    \readlist\Nnod{3,6,4}        % nodes per layer: d (=L), H, K (latent outputs)
+    \readlist\Nstr{d,H,K}        % size symbols per layer
+    \readlist\Cstr{\strut x,h,u} % coefficient symbol per layer
+    \def\yshift{0.5}
+
+    \foreachitem \N \in \Nnod{
+      \def\lay{\Ncnt}
+      \pgfmathsetmacro\prev{int(\Ncnt-1)}
+      \foreach \i [evaluate={\c=int(\i==\N); \y=\N/2-\i-\c*\yshift;
+                   \index=(\i<\N?int(\i):"\Nstr[\lay]");
+                   \x=\lay; }] in {1,...,\N}{
+        \ifnum\lay=1
+          \node[node in]     (N\lay-\i) at (\x,\y) {$\Cstr[\lay]_{\index}$};
+        \else\ifnum\lay=\Nnodlen
+          \node[node out]    (N\lay-\i) at (\x,\y) {$\Cstr[\lay]_{\index}$};
+        \else
+          \node[node hidden] (N\lay-\i) at (\x,\y) {$\Cstr[\lay]_{\index}$};
+        \fi\fi
+        \ifnum\lay>1
+          \foreach \j in {1,...,\Nnod[\prev]}{
+            \draw[connect,white,line width=1.2] (N\prev-\j) -- (N\lay-\i);
+            \draw[connect] (N\prev-\j) -- (N\lay-\i);
+          }
+        \fi
+      }
+      \path (N\lay-\N) --++ (0,1+\yshift) node[midway,scale=1.5] {$\vdots$};
+    }
+    \node[above=10,align=center,mygreen!60!black] at (N1-1.90) {normalized\\[-0.2em]state $\mathbf{x}$};
+    \node[above=10,align=center,myblue!60!black]  at (N2-1.90) {hidden layer $H$\\[-0.2em]\footnotesize (NN backbone only)};
+    \node[above=10,align=center,myred!60!black]   at (N\Nnodlen-1.90) {latent outputs $\mathbf{u}$\\[-0.2em]\footnotesize (to decoder)};
+  \end{tikzpicture}
+  \caption{The two backbones. Both map the normalized state $\mathbf{x}=\mathbf{S}_t/\kappa$ to the
+  latent outputs $\mathbf{u}$ that the decoder reads. The \emph{linear} backbone is the single affine
+  map $u_q=\sum_i x_i\,w_{q,i}+b_q$ (input layer connected directly to the latent outputs; the hidden
+  layer is absent). The \emph{one-hidden-layer network} (NN$_H$) inserts a hidden layer of width
+  $H=8$ with the SELU activation $\phi$, $\mathbf{h}=\phi(U\mathbf{x}+c)$ and
+  $\mathbf{u}=V\mathbf{h}+e$. Input nodes are green, hidden nodes blue, and latent-output nodes red.}
+  \label{fig:backbone}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \begin{tikzpicture}[x=1cm,y=1cm,every node/.style={align=left}]
+    \def\rowsep{1.6}
+    \node[stage mid,minimum height=46mm] (u) at (0,-2.4) {latent\\outputs\\$\mathbf{u}$};
+
+    % categorical (the classical argmax score head)
+    \node[anchor=west,mydarkblue] (d0) at (2,0)
+      {\textbf{categorical} \;(scores $y_0,\dots,y_{\bar q}$):\quad
+       $a=\displaystyle\argmax_{q\in\{0,\dots,\bar q\}} y_q$};
+    % soft-gated direct
+    \node[anchor=west,mydarkblue] (d1) at (2,-\rowsep)
+      {\textbf{soft-gated direct} \;(gate $g$, quantity $q$):\quad
+       $a=\big\lfloor\, \sigma(g)\cdot\mathrm{softplus}(q)\,\big\rceil_{\ge0}$};
+    % soft-gated ordinal
+    \node[anchor=west,mydarkblue] (d2) at (2,-2*\rowsep)
+      {\textbf{soft-gated ordinal} \;(gate $g$, thresholds $o_1,\dots,o_M$):\quad
+       $a=\Big\lfloor\, \sigma(g)\sum_{k=1}^{M}\sigma(o_k)\,\Big\rceil_{\ge0}$};
+    % soft tree
+    \node[anchor=west,mydarkblue] (d3) at (2,-3*\rowsep)
+      {\textbf{soft tree} \;(leaf prob.\ $\pi_\ell$, leaf quantity $q_\ell$):\quad
+       $a=\Big\lfloor\, \sum_{\ell}\pi_\ell(\mathbf{x})\,q_\ell(\mathbf{x})\,\Big\rceil_{\ge0}$};
+
+    \foreach \d in {d0,d1,d2,d3}{ \draw[flow] (u.east) -- (\d.west); }
+
+    \node[stage out,right=18mm of d1.east,yshift=-8mm] (a) {\textbf{valid}\\\textbf{action} $a$\\$\in\{0,\dots,\bar q\}$};
+    \node[mydarkblue,below=7mm of d3.south west,anchor=north west]
+      {\footnotesize $\sigma$: logistic; $\mathrm{softplus}(z)=\ln(1+e^z)$;
+       $\lfloor\cdot\rceil_{\ge0}$: round to the nearest non-negative integer.};
+  \end{tikzpicture}
+  \caption{The decoder heads, each a map from the latent outputs $\mathbf{u}$ to an integer order $a$.
+  The \emph{categorical} head is the classical score-per-order-size representation of the prior version
+  (one score $y_q$ per candidate order, action chosen by $\argmax$); the three heads used in this
+  paper are the \emph{soft-gated direct} quantity (L-SGD, NN-SGD), the \emph{soft-gated ordinal}
+  quantity (L-SGO, NN-SGO), and the \emph{soft tree} with softplus-affine linear leaves
+  (Tree-1, Tree-2). All four land in the same valid action set $\{0,\dots,\bar q\}$ after the
+  round-to-nonnegative-integer projection $\lfloor\cdot\rceil_{\ge0}$.}
+  \label{fig:decoder-heads}
+\end{figure}
+
+\paragraph{Parameter counts.}
+For an $L=4$ lost-sales pipeline state ($d=4$, $d+1=5$), each learned policy's trainable parameter
+count follows in closed form from its decoder. The linear and network direct-quantity policies carry
+$2(d+1)=10$ and $H(d+1)+2(H+1)=58$ parameters; the depth-1 and depth-2 soft trees carry $3(d+1)=15$
+and $7(d+1)=35$; and with $M=20$ thresholds the ordinal policies carry $(M+1)(d+1)=105$ (L-SGO) and
+$H(d+1)+(M+1)(H+1)=229$ (NN-SGO). These are orders of magnitude below the thousands-to-millions of
+parameters typical of DRL policies for the same problems \citep{gijsbrechts2022drl,kaynov2024owmr}.
+
+\paragraph{From state to order: a worked example.}
 To make the decoders concrete we trace how each maps a fixed state to an order, using validated
-numbers reproduced by the script \texttt{paper/policy\_state\_action\_examples.py}. For lost sales we
-use the canonical instance \texttt{lit\_poisson\_p4\_l4} ($L=4$, $h=1$, $p=4$, Poisson mean $5$). The
-policy input is the $4$-vector $[I_{\mathrm{eff}},q_{t-3},q_{t-2},q_{t-1}]$: coordinate $0$ is the
-effective inventory at decision time (the environment folds on-hand into the oldest in-transit slot)
-and coordinates $1$--$3$ are the three still-outstanding pipeline orders; the policy normalizes by
-$\texttt{state\_scale}=20$ before acting and the action is the order quantity. Table~\ref{tab:worked}
+numbers reproduced by our released script (see the reproducibility note). We use the
+canonical Poisson-demand instance with $L=4$, $h=1$, $p=4$, and Poisson mean $5$. The policy
+input is the $4$-vector $[I_{\mathrm{eff}},q_{t-3},q_{t-2},q_{t-1}]$: coordinate $0$ is the effective
+inventory at decision time (the environment folds on-hand into the oldest in-transit slot) and
+coordinates $1$--$3$ are the three still-outstanding pipeline orders; the policy normalizes by
+$\kappa=20$ before acting and the action is the order quantity. Table~\ref{tab:worked}
 shows the order each decoder returns for two states, a near-empty system $[2,0,0,0]$ and a
 well-stocked, full-pipeline system $[8,5,5,5]$.
 
@@ -339,10 +613,10 @@ well-stocked, full-pipeline system $[8,5,5,5]$.
 \centering
 \small
 \caption{Worked example: order returned by each learned lost-sales decoder for two states of the
-\texttt{lit\_poisson\_p4\_l4} instance ($L=4$, $h=1$, $p=4$, Poisson mean $5$). State coordinate $0$
+Poisson-demand instance with $L=4$, $h=1$, $p=4$, and Poisson mean $5$. State coordinate $0$
 is effective inventory; coordinates $1$--$3$ are the outstanding pipeline. Values are reproduced by
-\texttt{paper/policy\_state\_action\_examples.py} and, for the soft trees, equal the exposed Rust
-forward by construction.}
+our released script (see the reproducibility note) and, for the soft trees, equal the independent
+Rust policy forward by construction.}
 \label{tab:worked}
 \begin{tabular}{lcc}
 \toprule
@@ -366,84 +640,22 @@ $\lfloor 11.881\rceil_{\ge 0}=12$. The depth-2 soft tree
 routes the same state almost entirely to one leaf (path probabilities
 $[0,0,1.0,0]$) whose linear-leaf quantity is $14.048$, giving the order
 $\lfloor 14.048\rceil_{\ge 0}=14$; this value equals the
-exposed Rust forward \texttt{soft\_tree\_action\_from\_flat\_params} at that state by construction.
+independent Rust policy forward at that state by construction.
 For the well-stocked state $[8,5,5,5]$ every decoder backs off to a near-replenishment order of $3$
 or $4$, as expected when the pipeline already covers near-term demand.
 
-For \emph{dual sourcing} we use \texttt{dual\_l2\_ce105} ($l_r=2$), where the best model is a
-depth-2 axis-aligned constant-leaf soft tree with the small-cap capped-dual-index adapter. The
-reduced post-decision state is $[I_t, q_{t-1}]$ (net inventory and the regular pipeline). A soft-tree
-leaf emits a $3$-control $(s_e,\Delta_r,\bar c_r)$ on the discrete grid, and the adapter maps it to
-orders: $s_r=s_e+\max(\Delta_r,0)$, $\text{expedite}=\mathrm{clip}(s_e-I_t,0,12)$, and
-$\text{regular}=\min(\max(0,s_r-(I_t+q_{t-1})-\text{expedite}),\bar c_r,12)$. For state $[6,0]$ the tree
-selects the leaf control $(4,3,2)$ (dominant leaf probability $0.87$), and the adapter returns
-$(\text{expedite}=0,\ \text{regular}=1)$; for the leaner state $[2,0]$ the same leaf control yields
-$(\text{expedite}=2,\ \text{regular}=2)$ --- the expedite supplier covers the immediate net-inventory
-shortfall while the capped regular order rebuilds the position.
-
-For \emph{multi-echelon} we use \texttt{gijsbrechts2022\_setting1}, where the best run is a depth-2
-oblique soft tree with linear leaves in the direct-level action mode. The raw decision state has
-dimension $22$ (warehouse on-hand-after-arrival and its pipeline, then per-retailer on-hand and
-pipelines for $10$ retailers), normalized by $\texttt{state\_scale}=100$, and the two leaf outputs are
-the warehouse and retailer order-up-to levels directly. For a state with the warehouse holding $300$
-on hand (empty pipeline) and each of the $10$ retailers holding $20$ on hand with a pipeline of $5$,
-the dominant leaf (probability $1.0$) emits continuous levels $[298.572,54.445]$, rounded and clamped
-to a warehouse order-up-to of $299$ and a retailer order-up-to of $54$.
-
 \paragraph{Validation.}
-All six lost-sales policies and the dual-sourcing policy were validated by a full Python-vs-Rust
-rollout cost match on a fixed Poisson$(5)$ (lost sales) / Uniform$\{0,\dots,4\}$ (dual) demand
-sequence of $100{,}000$ periods; every absolute cost difference was exactly $0.000$ (well under the
-$0.05$ tolerance), confirming the divide-by-scale normalization handling, and no reported action was
-withheld. The lost-sales soft-tree single-state actions are the exposed Rust forward by construction,
-and the script additionally confirms the Python tree forward agrees with the Rust function at each
-printed state. The multi-echelon model has no deterministic demand-binding and a stochastic
-warehouse-allocation/emergency-shipment rollout, so a full cost match was not run; instead the vector
-soft-tree forward was validated by extracting the warehouse action dimension into a scalar control
-and matching it against the exposed Rust scalar forward over $5000$ random raw states (maximum
-$|{\rm py}-{\rm rust}|=0$). The retailer dimension uses the identical leaf math and differs only by a
-zero min-value offset and an upper clamp, so it is faithful by construction; the single multi-echelon
-action is therefore reported with this cross-check rather than a rollout cost match.
+All six lost-sales policies were validated by a full Python-versus-Rust rollout cost match on a fixed
+Poisson$(5)$ demand sequence of $100{,}000$ periods; every absolute cost difference was exactly
+$0.000$ (well under the $0.05$ tolerance), confirming that the divide-by-scale normalization is
+applied identically in both implementations, and no reported action was withheld. The lost-sales
+soft-tree single-state actions equal the independent Rust policy forward by construction, and the
+Python tree forward agrees with the Rust forward at each reported state.
 
-\section{Numerical study}
-\label{sec:numerical}
+\subsection{Experiment setup and heuristic comparators}
 
-We now report the four problems as evidence for the unifying claim laid out in
-Section~\ref{sec:introduction}: that one CMA-ES recipe over compact, policy-owned decoders carries
-across structurally distinct inventory problems. Each subsection states the problem, then reports
-results with interpretation of where a decoder wins and where it does not.
-
-\subsection{Lost sales and fixed-cost lost sales}
-
-\subsubsection{Problem description}
-
-We study single-item lost-sales inventory control and its fixed-ordering-cost variant. Each period
-$t$ the controller observes the inventory state --- the on-hand level and the outstanding-order
-pipeline $(q_{t-L+1},\dots,q_{t-1})$ --- and chooses an integer replenishment order
-$q_t\in\mathbb{Z}_{\ge 0}$ that arrives after a fixed lead time $L$. Demand $D_t$ is stochastic;
-sales are limited to on-hand stock and \emph{unmet demand is lost} rather than backordered. With
-on-hand stock $x_t$ available to serve demand $D_t$, the period ends with inventory
-$I_t=(x_t-D_t)^{+}$ and lost sales $(D_t-x_t)^{+}$ (writing $(\cdot)^{+}=\max(\cdot,0)$), incurring
-the one-period cost
-\[
-c_t = h\,(x_t-D_t)^{+} + p\,(D_t-x_t)^{+},
-\]
-a holding cost $h$ per unit left on hand and a penalty $p$ per unit of lost sales.
-
-\textbf{Fixed-cost lost sales} is a simple variant of the same problem: the dynamics, state, and
-lost-sales rule are identical, and the one-period cost gains a single term
-\[
-c_t^{K} = c_t + K\,\mathbf{1}\{q_t>0\},
-\]
-a fixed cost $K$ charged whenever a positive order is placed. This term makes the
-\emph{order/no-order} decision --- whether to replenish at all --- the dominant one, and it is
-precisely on this decision that the action parameterizations below differ most.
-
-\subsubsection{Heuristic comparators}
-
-The learned columns are the six policies of Section~\ref{sec:methods-policies} (L-SGD, NN-SGD, L-SGO,
-NN-SGO, Tree-1, Tree-2) with the lost-sales action geometry of Section~\ref{sec:methods-geometries};
-we describe only the problem-specific heuristic comparators here.
+The learned columns are the six policies of Section~\ref{sec:lostsales-policy} (L-SGD, NN-SGD, L-SGO,
+NN-SGO, Tree-1, Tree-2); we describe the problem-specific heuristic comparators here.
 
 The vanilla heuristic columns are Myopic-1 (M1), Myopic-2 (M2), and the standard vector base-stock
 policy (SVBS). M1 minimizes the lead-time-deep myopic action value with no future ordering; M2 adds
@@ -458,16 +670,17 @@ orders the smallest positive multiple $nQ$ that raises $P_t+nQ$ above $s$, again
 $P_t\le s$. The modified $(s,S,q)$ policy orders $\min\{q,S-P_t\}$ when $P_t\le s$ and zero
 otherwise. Thus the setup-cost comparators expose their order/no-order threshold and their own
 batching or capped-raise parameters as part of the policy definition. The learned-policy parameter
-counts for the $L=4$ pipeline state are given in Section~\ref{sec:methods-policies}.
+counts for the $L=4$ pipeline state are given in Section~\ref{sec:lostsales-policy}.
 
-\subsubsection{Experiment setup}
-
-\paragraph{Instances.}
+\paragraph{Vanilla instances.}
 We benchmark on a multi-instance surface rather than a single example. The vanilla lost-sales
 surface has holding cost $h=1$, mean demand $\mu=5$, lead times $L\in\{4,6,8,10\}$, lost-sales
 penalties $p\in\{4,19\}$, and the three demand families below, giving $3\times4\times2=24$
-instances. The fixed-cost problem uses the same vanilla surface and adds the two setup costs
-$K\in\{5,25\}$, giving $48$ fixed-cost instances.
+instances.
+
+\paragraph{Fixed-cost instances.}
+The fixed-cost problem uses the same vanilla surface and adds the two setup costs
+$K\in\{5,25\}$, giving $2\times3\times4\times2=48$ fixed-cost instances.
 
 \paragraph{Demand families.}
 The three reported families are mean-preserving, all with $\mathbb{E}[D_t]=5$:
@@ -491,21 +704,28 @@ the implemented lag-one demand autocorrelation is
 whereas the Poisson and Geometric families are i.i.d.\ (zero autocorrelation at every lag).
 
 \paragraph{Training and evaluation.}
-We use the lost-sales protocol of Section~\ref{sec:methods-cmaes}: CMA-ES training (population $64$,
+We use the lost-sales protocol of Section~\ref{sec:methods-eval}: CMA-ES training (population $64$,
 horizon $2000$) and evaluation of the long-run average cost over horizon $10^6$ with $10$ consecutive
 seeds. The benchmark heuristics are the myopic-1, myopic-2, and standard vector base-stock (SVBS)
 policies for vanilla lost sales, and the $(s,S)$, $(s,nQ)$, and modified $(s,S,q)$ policies for the
 fixed-cost variant, using literature-reported parameters where available
 \citep{Zipkin2008OldSystems,Bijvank2015ParametricPolicies}.
 
-\subsubsection{Results}
+\subsection{Results}
 
 Tables~\ref{tab:results-vanilla-lost-sales} and~\ref{tab:results-fixed-cost-lost-sales} report the
 mean cost of the six learned policy approximators against the heuristic baselines across the reported
-vanilla and fixed-cost benchmark surfaces. The tables use the same layout: policy rows, lead-time
+vanilla and fixed-cost benchmark surfaces. Both tables use the same layout: policy rows, lead-time
 column groups, and demand-family subcolumns. A dagger marks a diverged CMA-ES run (excluded from the
-comparison); bold marks the best reported heuristic or learned policy in each instance column. The
-fixed-cost table repeats the vanilla instance surface and adds the two setup costs $K\in\{5,25\}$.
+comparison); bold marks the best reported heuristic or learned policy in each instance column. We
+report the two sub-problems in turn.
+
+\subsubsection{Vanilla lost sales}
+\label{sec:lostsales-results-vanilla}
+
+Table~\ref{tab:results-vanilla-lost-sales} reports the mean cost of the six learned policies against
+the myopic-1 (M1), myopic-2 (M2), and standard vector base-stock (SVBS) heuristics across the
+24-instance vanilla surface.
 
 \begin{table}[!htbp]
 \centering
@@ -546,6 +766,28 @@ $19$ & Optimal & 8.890 & 22.950 &  &  &  &  &  &  &  &  &  &  \\
 \par\medskip\footnotesize Optimal entries are shown only for verified literature optimum anchors; blanks mean no true optimum anchor is available for that expanded instance. $\dagger$: diverged CMA-ES run (excluded). Bold: best reported heuristic or learned policy in the instance column.
 \end{table}
 \FloatBarrier
+
+The column winners make the comparison easy to read. On the vanilla surface, learned policies are
+best in $22$ of $24$ instances; Tree-1 is the most frequent winner ($9$ instances), followed by L-SGO
+($5$ instances). The two instances still won by classical baselines are the high-penalty MMPP2$+$
+cases with $L=8,10$.
+
+\paragraph{Interpretation.}
+On the vanilla surface, where the action is a plain quantity, the soft trees (Tree-1, Tree-2) and the
+linear ordinal decoder (L-SGO) dominate because a mild state-dependent raise is all that is needed and
+the smaller decoders optimize more reliably; the extra capacity of the network decoders does not pay
+for itself. The two vanilla instances still won by a classical baseline are the high-penalty
+($p=19$) MMPP2$+$ cases at the longest lead times $L=8$ and $L=10$, where SVBS ($L=8$) and Myopic-2
+($L=10$) edge the learned policies; here the combination of a regime-switching, autocorrelated demand
+and a deep pipeline is the hardest setting for a stationary compact policy, and closing this gap is
+an open item we return to in Section~\ref{sec:discussion}.
+
+\subsubsection{Fixed-cost lost sales}
+\label{sec:lostsales-results-fixed-cost}
+
+Table~\ref{tab:results-fixed-cost-lost-sales} repeats the vanilla instance surface and adds the two
+setup costs $K\in\{5,25\}$, giving $48$ instances, and replaces the vanilla heuristics with the
+$(s,S)$, $(s,nQ)$, and modified $(s,S,q)$ comparators.
 
 \begin{table}[!htbp]
 \centering
@@ -605,10 +847,7 @@ $25$ & $19$ & $(s,S)$ & 21.104 & 32.726 &  & 22.073 & 35.015 &  & 25.969 & 38.85
 \end{table}
 \FloatBarrier
 
-The column winners make the comparison easy to read. On the vanilla surface, learned policies are
-best in $22$ of $24$ instances; Tree-1 is the most frequent winner ($9$ instances), followed by L-SGO
-($5$ instances). The two instances still won by classical baselines are the high-penalty MMPP2$+$
-cases with $L=8,10$. On the fixed-cost surface, learned policies are instance-best among the
+On the fixed-cost surface, learned policies are instance-best among the
 available policies in $47$ of $48$ instances. NN-SGO is the most frequent winner ($20$ instances),
 followed by NN-SGD ($13$ instances); the only heuristic instance win is Geometric $L=4,p=4,K=25$,
 where $(s,nQ)$ and modified $(s,S,q)$ tie. Fixed-cost
@@ -616,55 +855,152 @@ lost sales is therefore the sharper architecture test: the fixed charge makes th
 boundary central, and the best-performing decoder changes with demand family and setup cost.
 
 \paragraph{Interpretation.}
-The pattern of decoder wins is informative. On the vanilla surface, where the action is a plain
-quantity, the soft trees (Tree-1, Tree-2) and the linear ordinal decoder (L-SGO) dominate because a
-mild state-dependent raise is all that is needed and the smaller decoders optimize more reliably; the
-extra capacity of the network decoders does not pay for itself. The fixed-cost surface inverts this:
-once a setup charge $K$ makes the order/no-order decision dominant, the gated decoders --- which
-factor the decision into an explicit gate (\emph{whether} to order) and a quantity head
-(\emph{how much}) --- win most instances, with the ordinal head (NN-SGO, $20$ wins) edging the
-direct head (NN-SGD, $13$ wins) where the quantity must batch into a few discrete levels. Two
-limitations are visible directly in the tables. First, at the high setup cost $K=25,\,p=4$ several
-learned policies collapse onto a degenerate \emph{never-order} policy: the repeated entries
+The pattern of decoder wins is informative. Once a setup charge $K$ makes the order/no-order decision
+dominant, the gated decoders --- which factor the decision into an explicit gate (\emph{whether} to
+order) and a quantity head (\emph{how much}) --- win most instances, inverting the vanilla preference
+for plain-quantity decoders; the ordinal head (NN-SGO, $20$ wins) edges the
+direct head (NN-SGD, $13$ wins) where the quantity must batch into a few discrete levels. A
+limitation is visible directly in the table: at the high setup cost $K=25,\,p=4$ several
+learned policies collapse onto a degenerate \emph{never-order} policy. The repeated entries
 $19.992$ (Geometric) and $19.995$ (MMPP2$+$) are the cost of a policy that effectively stops ordering
 to avoid the setup charge, which Tree-1 and Tree-2 reach across most $K=25,p=4$ instances; the gated
 ordinal decoder (NN-SGO) is the one architecture that consistently escapes this collapse and remains
 instance-best, underscoring that the decoder, not the optimizer, governs the order/no-order boundary.
-Second, the two vanilla instances still won by a classical baseline are the high-penalty
-($p=19$) MMPP2$+$ cases at the longest lead times $L=8$ and $L=10$, where SVBS ($L=8$) and Myopic-2
-($L=10$) edge the learned policies; here the combination of a regime-switching, autocorrelated demand
-and a deep pipeline is the hardest setting for a stationary compact policy, and closing this gap is
-an open item we return to in Section~\ref{sec:discussion}.
 
-\subsection{Dual sourcing}
+\section{Dual sourcing}
 \label{sec:dual-sourcing}
 
-\subsubsection{Problem description}
+\subsection{Problem formulation}
+\label{sec:dual-sourcing-formulation}
 
-We study the dual-sourcing inventory model of \citet{gijsbrechts2022drl}: a single item is
-replenished from a slow \emph{regular} supplier with lead time $l_r$ and a fast \emph{expedited}
-supplier with lead time $l_e=0$, against i.i.d.\ demand. Each period the controller chooses a
-regular order $q^r_t$ (unit cost $c_r$) and an expedited order $q^e_t$ (unit cost $c_e>c_r$);
-end-of-period net inventory incurs a holding cost $h$ per unit on hand or a backorder penalty $b$
-per unit short. Because only the expedite lead time is zero, the relevant post-decision state
-reduces to the net inventory plus the outstanding regular-order pipeline
-$(I_t, q^r_{t-l_r+1},\dots,q^r_{t-1})$. The classical structured policies are the single-index,
-dual-index \citep{veeraraghavan2008dualindex}, capped dual-index, and tailored base-surge
-heuristics \citep{sheopuri2010dualsourcing}.
+We consider the single-item, periodic-review dual-sourcing inventory model of
+\citet{gijsbrechts2022drl}. Demand and order quantities are integer, and the objective is to
+minimize the long-run average cost, which consists of procurement, inventory-holding, and
+backorder costs. A single item is replenished from two suppliers: a slow \emph{regular} supplier
+with lead time $l_r\ge 1$ and unit cost $c_r$, and a fast \emph{expedited} supplier with lead time
+$l_e=0$ and unit cost $c_e>c_r$. Demand is independent and identically distributed across periods,
+$D_t\sim D$, with $D$ uniform on $\{0,1,2,3,4\}$. We write $(x)^+=\max(0,x)$ and $(x)^-=\max(0,-x)$.
 
-\subsubsection{Policy and comparator}
+\paragraph{Timing of a period.}
+At the beginning of period $t\in\{1,2,\dots,T\}$ the regular order placed $l_r$ periods earlier,
+$q^r_{t-l_r}$, arrives and is added to the net inventory carried in from the previous period. We let
+$I_t$ denote the resulting net inventory at the start of period $t$, after this regular arrival but
+before the current orders and demand. The controller then places a regular order $q^r_t$ (which
+arrives $l_r$ periods later, at the start of period $t+l_r$) and an expedited order $q^e_t$ (which,
+because $l_e=0$, arrives immediately within period $t$). Demand $D_t$ is then realized and served
+from the on-hand stock $I_t+q^e_t$; unmet demand is \emph{backordered} rather than lost, so net
+inventory may become negative. Holding and backorder costs are charged on the end-of-period net
+inventory.
 
-Dual sourcing tests whether the same recipe carries over when the action is a structured order pair
-rather than a scalar. The learned policy is the soft-tree backbone of
-Section~\ref{sec:methods-policies} on the reduced pipeline state, with leaves that emit a control in
-the factorized capped-dual-index coordinates $(s_e,\Delta_r,\bar c_r)$ of
-Section~\ref{sec:methods-geometries}; we use its small-cap (axis-aligned, constant-leaf) and
-continuous-target variants and warm-start CMA-ES at the encoded capped-dual-index solution as
-described in Section~\ref{sec:methods-cmaes}. The comparison is therefore one of action geometry and
-reliable optimization rather than tree capacity, and is made against the classical structured
-heuristics introduced above.
+\paragraph{State.}
+Because only the expedited lead time is zero, the regular pipeline must be tracked while the
+expedited pipeline need not be. Following the post-decision (reduced) state of
+\citet{gijsbrechts2022drl}, the MDP state is the $l_r$-dimensional vector
+\begin{equation*}
+    \mathbf{S}_t=\bigl(I_t,\ q^r_{t-l_r+1},\ q^r_{t-l_r+2},\ \dots,\ q^r_{t-1}\bigr),
+\end{equation*}
+whose first component $I_t$ is the net inventory at the start of period $t$ (after the regular
+arrival $q^r_{t-l_r}$) and whose remaining $l_r-1$ components are the outstanding regular orders
+still in transit, ordered by remaining lead time. For $l_r=2$ this reduces to
+$\mathbf{S}_t=(I_t,\ q^r_{t-1})$.
 
-\subsubsection{Experiment setup}
+\paragraph{Action.}
+The decision in period $t$ is the order pair
+\begin{equation*}
+    \mathbf{a}_t=\bigl(q^r_t,\ q^e_t\bigr),\qquad
+    q^r_t\in\{0,1,\dots,\bar q_r\},\quad q^e_t\in\{0,1,\dots,\bar q_e\},
+\end{equation*}
+where $\bar q_r$ and $\bar q_e$ are the regular and expedited order caps.
+
+\paragraph{Transition.}
+Define the end-of-period net inventory after the expedited arrival and demand realization,
+\begin{equation*}
+    J_t \;=\; I_t + q^e_t - D_t .
+\end{equation*}
+The expedited order arrives within the period and contributes to $I_t+q^e_t$; the next-period net
+inventory then absorbs the regular order due next period, $q^r_{t-l_r+1}$, while the remaining
+regular pipeline shifts forward by one slot and the freshly placed regular order $q^r_t$ enters the
+last slot:
+\begin{align*}
+    I_{t+1} &= J_t + q^r_{t-l_r+1} \;=\; \bigl(I_t+q^e_t-D_t\bigr) + q^r_{t-l_r+1},\\
+    \mathbf{S}_{t+1} &= \bigl(I_{t+1},\ q^r_{t-l_r+2},\ \dots,\ q^r_{t-1},\ q^r_t\bigr).
+\end{align*}
+When $l_r=1$ there is no in-transit pipeline and the state collapses to
+$I_{t+1}=I_t+q^e_t-D_t+q^r_t$.
+
+\paragraph{One-period cost.}
+The cost incurred in period $t$ is the linear procurement cost of the two orders plus the
+end-of-period holding and backorder costs on the net inventory $J_t$:
+\begin{equation}
+    \label{ds_cost}
+    c_t \;=\; c_r\,q^r_t + c_e\,q^e_t + h\,(J_t)^+ + b\,(J_t)^- ,
+\end{equation}
+where $h$ is the holding cost per unit of end-of-period on-hand stock and $b$ is the backorder
+penalty per unit short. Equivalently, $h\,(J_t)^+ + b\,(J_t)^- = h\,(I_t+q^e_t-D_t)^+ +
+b\,(D_t-I_t-q^e_t)^+$. Taking expectations over the demand,
+\begin{equation*}
+    \mathbb{E}[c_t] = c_r\,q^r_t + c_e\,q^e_t
+    + h\,\mathbb{E}\bigl[(I_t+q^e_t-D_t)^+\bigr]
+    + b\,\mathbb{E}\bigl[(D_t-I_t-q^e_t)^+\bigr].
+\end{equation*}
+
+\paragraph{Objective.}
+A stationary policy $\pi_{\btheta}$ maps the state $\mathbf{S}_t$ to the order pair
+$(q^r_t,q^e_t)$. Denoting the average expected cost over a horizon of $T$ periods under
+$\pi_{\btheta}$ by $\bar C_T(\btheta)=\tfrac{1}{T}\sum_{t=1}^{T}\mathbb{E}[c_t]$, the objective is to
+minimize the long-run average expected cost, obtained as the limit
+\begin{equation}
+    \label{ds_objective}
+    \bar C(\btheta) \;=\; \lim_{T\to\infty}\,\bar C_T(\btheta),
+    \qquad \min_{\btheta}\ \bar C(\btheta).
+\end{equation}
+Because demand is stationary, the system is stationary and we seek a well-performing stationary
+policy. As for the other problems, $\bar C(\btheta)$ is estimated by simulation: a finite-horizon
+average cost $\hat C_T(\btheta)$ with a warm-up period is used during training and a long horizon for
+evaluation, in line with the standard inventory-simulation protocol.
+
+\subsection{Policy}
+\label{sec:dual-policy}
+
+Dual sourcing tests whether the same recipe (Figure~\ref{fig:policy-pipeline}) carries over when the
+action is a structured order pair rather than a scalar; here the backbone is the soft tree and the
+decoder lives in the capped-dual-index coordinate system. \textbf{Input.} The policy input is this
+problem's reduced post-decision state
+$\mathbf S_t=(I_t, q^r_{t-l_r+1},\dots,q^r_{t-1})$ (for $l_r=2$, $(I_t,q^r_{t-1})$: net inventory and
+the regular pipeline). \textbf{Output.} A valid action is an order pair $(q^r_t, q^e_t)$ within the
+caps $\bar q_r,\bar q_e$. \textbf{Internals.} Following the policy interface of
+Section~\ref{sec:methods-principle}, $\pi_{\btheta}$ normalizes the state and applies the soft-tree
+split/leaf mechanism of Section~\ref{sec:soft-tree} as its backbone; the decoder is the leaf output,
+which emits a control in \emph{factorized capped-dual-index coordinates} $(s_e,\ \Delta_r,\ \bar c_r)$ with
+$s_r=s_e+\Delta_r$, where $s_e$ is the expedite order-up-to level, $s_r$ the regular order-up-to
+level, and $\bar c_r$ a cap on the regular order. The capped-dual-index action geometry then projects
+this control onto the valid order pair: the expedited order raises net inventory toward $s_e$ and the
+regular order raises the inventory position toward $s_r$ subject to the cap $\bar c_r$ and the order
+caps. We compare a small-cap variant with $\bar c_r$ on the discrete grid $\{1,2,3,4,6,8,12\}$
+(axis-aligned, constant leaves) and a continuous capped-dual-index-targets variant; both keep the
+policy in the heuristic's coordinate system while letting the targets depend on state, and a raw
+direct-order output cannot express the capped dual-index control. We warm-start CMA-ES at the encoded
+capped-dual-index solution as described in Section~\ref{sec:methods-cmaes}. The comparison is
+therefore one of action geometry and reliable optimization rather than tree capacity, and is made
+against the classical structured heuristics introduced above.
+
+\paragraph{Decision path: a worked example.}
+We use the instance with $l_r=2$, $c_e=105$, where the best model is a depth-2 axis-aligned
+constant-leaf soft tree with the small-cap capped-dual-index adapter. The reduced post-decision state
+is $[I_t, q_{t-1}]$ (net inventory and the regular pipeline). A soft-tree leaf emits a $3$-control
+$(s_e,\Delta_r,\bar c_r)$ on the discrete grid, and the adapter maps it to orders:
+$s_r=s_e+\max(\Delta_r,0)$, $\text{expedite}=\mathrm{clip}(s_e-I_t,0,12)$, and
+$\text{regular}=\min(\max(0,s_r-(I_t+q_{t-1})-\text{expedite}),\bar c_r,12)$. For state $[6,0]$ the tree
+selects the leaf control $(4,3,2)$ (dominant leaf probability $0.87$), and the adapter returns
+$(\text{expedite}=0,\ \text{regular}=1)$; for the leaner state $[2,0]$ the same leaf control yields
+$(\text{expedite}=2,\ \text{regular}=2)$ --- the expedite supplier covers the immediate net-inventory
+shortfall while the capped regular order rebuilds the position. The dual-sourcing policy was validated
+by a full Python-versus-Rust rollout cost match on a fixed Uniform$\{0,\dots,4\}$ demand sequence of
+$100{,}000$ periods; every absolute cost difference was exactly $0.000$ (well under the $0.05$
+tolerance), confirming that the divide-by-scale normalization is applied identically in both
+implementations, and no reported action was withheld.
+
+\subsection{Experiment setup}
 
 We use the six small-scale benchmark instances of \citet{gijsbrechts2022drl} (their Figure~9),
 with $l_r\in\{2,3,4\}$ and $c_e\in\{105,110\}$ and the common parameters of
@@ -675,10 +1011,8 @@ is $\le0.11\%$ on every row, making it both the best heuristic and an effective 
 whereas A3C ranges from $0.51\%$ to $1.85\%$. We therefore benchmark the learned policy against the
 \emph{capped dual-index} cost as the optimal proxy rather than our own bounded DP
 (see Appendix~\ref{app:ds-validation}). Policies are trained with warm-started CMA-ES and evaluated
-under a common-random-number protocol --- the same $70$ demand-path seeds and horizon $6\times10^4$
-for all policies --- so that the dominant per-seed variance cancels and the paired cost difference
-is statistically meaningful (paired SEM $\sim0.002$--$0.006$ versus per-seed standard deviation
-$\sim0.5$).
+under the common-random-number protocol of Section~\ref{sec:methods-eval} ($70$ shared demand-path
+seeds, horizon $6\times10^4$).
 
 \begin{table}[!htbp]
 \centering
@@ -696,7 +1030,7 @@ dual\_l$\{2,3,4\}$\_ce110 & $2,3,4$ & $110$ \\
 \end{table}
 \FloatBarrier
 
-\subsubsection{Results}
+\subsection{Results}
 
 Table~\ref{tab:ds-results} compares the best learned policy against the capped dual-index (CDI)
 optimal proxy under the common-random-number protocol. The headline reading is that the learned soft
@@ -738,58 +1072,196 @@ Published A3C gap & 0.52\% & 0.80\% & 0.82\% & 0.51\% & 1.85\% & 1.33\% \\
 \end{table}
 \FloatBarrier
 
-\subsection{Multi-echelon inventory control: one warehouse, $R$ retailers with special delivery}
+\section{Multi-echelon inventory control: one warehouse, $R$ retailers with special delivery}
+\label{sec:multiechelon}
 
-\subsubsection{Problem description}
+\subsection{Problem formulation}
 
-We study the divergent two-echelon system of \citet{vanroy1997ndp}, also used as a deep-RL
-benchmark by \citet{gijsbrechts2022drl}: a single capacitated warehouse replenishes $R$ identical
-capacitated retailers. The warehouse orders from an external manufacturer with lead time $l_w$ and
-ships to retailers with lead time $l_r$. Each period $t$: (i) the warehouse places an order; (ii)
-each retailer raises its inventory position toward a target, shipped from current warehouse stock
-(allocated to minimize the spread of retailer positions when warehouse stock is short); (iii)
-retailer demand $d_i$ is realized and served from retailer on-hand; (iv) each unmet unit requests a
-same-day \emph{special delivery} from leftover warehouse stock with probability $P_w$ and is
-otherwise lost --- a hybrid of backlogging and lost sales; (v) pipelines advance. The state is the
-warehouse and per-retailer on-hand levels and outstanding-order pipelines. With $I^w_t,I^i_t$ the
-end-of-period on-hand inventories and $E_t$ the number of expedited units, the period cost is
-\[
-c_t = h^w I^w_t + h^r \sum_{i=1}^{R} I^i_t + c^w E_t + p\,(\text{lost units}),
-\]
-with warehouse/retailer holding costs $h^w,h^r$, unit expedite cost $c^w$, and lost-sale penalty
-$p$. Capacities bound the per-period production ($C^m$) and the warehouse and retail inventory
-positions ($C^w,C^r$). This is a member of the broader divergent / partial-lost-sales multi-echelon
-family \citep{nahmias1994partial, federgruen1984multilocation, dekok2018typology, kaynov2024owmr}.
+We formalize the divergent two-echelon system as a discrete-time MDP under the long-run
+average-cost criterion, mirroring the lost-sales formulation above. A single capacitated
+warehouse (echelon $0$) replenishes $R$ identical capacitated retailers (echelon
+$i\in\{1,\dots,R\}$) over periods $t\in\{1,2,\dots,T\}$; we are interested in the limit
+$T\to\infty$. The warehouse orders from an external manufacturer with lead time $l_w\ge 0$;
+shipments from the warehouse reach a retailer after a lead time $l_r\ge 0$. Retailer $i$ faces
+i.i.d.\ integer demand $d_{i,t}$ obtained by rounding a normal draw to the nearest non-negative
+integer, $d_{i,t}=\big\lfloor \max(0,\,z)\big\rceil$ with $z\sim\mathcal N(\mu,\sigma^2)$,
+independently across retailers and periods. We adopt the faithful Gijsbrechts et al.\ (2022) cost
+convention \citep{gijsbrechts2022drl} used for all experiments below, in which a period's arriving
+order is merged into on-hand stock \emph{before} ordering and holding cost is charged on
+\emph{end-of-period} on-hand inventory; the alternative Van Roy et al.\ (1997) convention
+\citep{vanroy1997ndp} (which restores the warehouse's post-shipment installation position and charges
+holding on the post-decision pre-demand stock) is used only to reproduce the published
+constant-base-stock costs and is not the convention stated here. We write $x^+=\max(0,x)$.
 
-\subsubsection{Policy and action designs}
+\paragraph{Timing of a period.}
+Entering period $t$, the warehouse holds on-hand stock $I^w_{t-1}$ with an outstanding-order
+pipeline $\big(q^w_{t-l_w},\dots,q^w_{t-1}\big)$, and each retailer $i$ holds $I^i_{t-1}$ with
+pipeline $\big(s^i_{t-l_r},\dots,s^i_{t-1}\big)$ of in-transit shipments. The period proceeds in
+five stages: (i) the order $q^w_{t-l_w}$ scheduled to arrive now is added to warehouse on-hand and
+the shipment $s^i_{t-l_r}$ to each retailer's on-hand, giving the available stocks
+$\widetilde I^w_t = I^w_{t-1}+q^w_{t-l_w}$ and $\widetilde I^i_t = I^i_{t-1}+s^i_{t-l_r}$; the
+warehouse then places a new order $q^w_t$ from the external source against its
+\emph{pre-shipment} installation inventory position. (ii) Each retailer raises its inventory
+position toward a shared order-up-to target $y^r_t$, requesting
+$\rho^i_t=\big(y^r_t-\mathrm{IP}^i_t\big)^+$ units; these requests are filled from current
+warehouse available stock $\widetilde I^w_t$, and when stock is short they are rationed by an
+allocation rule $\mathcal A$ that maximizes the minimum resulting retailer inventory position
+(equivalently, minimizes the spread of retailer positions), yielding the shipped quantities
+$s^i_t$ that leave warehouse stock into the outbound retailer pipelines. (iii) Demand $d_{i,t}$ is
+realized at each retailer and served from retailer available on-hand, $\sigma^i_t=\min(\widetilde
+I^i_t{}^+,\,d_{i,t})$, leaving unmet demand $u^i_t=d_{i,t}-\sigma^i_t$. (iv) Each unmet unit
+independently requests a same-day \emph{special delivery} from the leftover warehouse stock with
+probability $P_w$ and is otherwise lost; the accepted requests are filled up to the leftover
+warehouse stock, the rest are lost sales --- a hybrid of backlogging and lost sales. (v) The
+transportation pipelines advance one stage, appending $q^w_t$ and $s^i_t$ as the freshest
+in-transit orders.
 
-This is the most demanding test of the action-parameterization principle, because the wrong action
-geometry is fatal. The policy is the soft decision tree with oblique splits and linear leaves of
-Section~\ref{sec:methods-policies}, consuming the raw decision state with a policy-owned divide-by-scale
-normalization; its two leaf outputs are the state-dependent warehouse and retailer order-up-to levels
-$y^w_{S},y^r_{S}$, with the warehouse order $q^w = \big[\min(y^w_{S},C^w)-\mathrm{IP}^w\big]^+$ capped
-by $C^m$ (where $\mathrm{IP}^w$ is the warehouse inventory position and $[\cdot]^+=\max(\cdot,0)$) and
-each retailer order raising its position toward $\min(y^r_{S},C^r)$. We contrast the
-reduced \textbf{grid} action design of \citet{gijsbrechts2022drl} with our \textbf{direct} continuous
-design as in Section~\ref{sec:methods-geometries}; the grid caps the warehouse level at $100$ while
-the cost-minimizing warehouse base-stock here is $\approx 300$--$525$ (the published constant
-base-stock uses $y^w=330,460$), so the grid cannot express the operating region and is a policy
-artifact, not a problem constraint. We train for the problem itself and use the published numbers only
-as a benchmark, independently of the learner in \citet{gijsbrechts2022drl}.
+\paragraph{State.}
+The pre-decision MDP state collects the warehouse on-hand level and its inbound pipeline together
+with each retailer's on-hand level and inbound pipeline,
+\begin{equation*}
+  \mathbf S_t = \Big(\, I^w_{t-1};\ \underbrace{q^w_{t-l_w},\dots,q^w_{t-1}}_{l_w\ \text{warehouse pipeline}};\
+  \big(I^i_{t-1}\big)_{i=1}^{R};\ \big(\underbrace{s^i_{t-l_r},\dots,s^i_{t-1}}_{l_r\ \text{retailer pipeline}}\big)_{i=1}^{R} \,\Big),
+\end{equation*}
+an $(1+l_w)+R\,(1+l_r)$-dimensional vector. From it we form the post-arrival available stocks
+$\widetilde I^w_t,\widetilde I^i_t$ defined above and the (pre-shipment) installation inventory
+positions
+\begin{equation*}
+  \mathrm{IP}^w_t = \widetilde I^w_t + \sum_{k=1}^{l_w-1} q^w_{t-k},
+  \qquad
+  \mathrm{IP}^i_t = \widetilde I^i_t + \sum_{k=1}^{l_r-1} s^i_{t-k}.
+\end{equation*}
 
-\subsubsection{Experiment setup}
+\paragraph{Action.}
+The control is the pair $a_t=(q^w_t,\,y^r_t)$ consisting of the warehouse order quantity $q^w_t$
+and the shared retailer order-up-to level $y^r_t$ (a learned policy may emit a warehouse
+order-up-to level $y^w_t$ and set $q^w_t=\big[\min(y^w_t,C^w)-\mathrm{IP}^w_t\big]^+$). The order
+is feasible subject to the per-period production capacity $C^m$ and the warehouse
+inventory-position cap $C^w$, and the retailer target is capped by the retailer
+inventory-position cap $C^r$:
+\begin{equation*}
+  q^w_t = \min\!\Big(q^w_t,\ C^m,\ \big(C^w-\mathrm{IP}^w_t\big)^+\Big),
+  \qquad
+  y^r_t \le C^r .
+\end{equation*}
+The desired retailer orders $\rho^i_t=\big(y^r_t-\mathrm{IP}^i_t\big)^+$ are met by the shipped
+quantities
+\begin{equation*}
+  \big(s^i_t\big)_{i=1}^{R} = \mathcal A\!\Big(\big(\rho^i_t\big)_{i=1}^{R},\ \widetilde I^w_t{}^+\Big),
+  \qquad \sum_{i=1}^{R} s^i_t \le \widetilde I^w_t{}^+ ,
+\end{equation*}
+where $\mathcal A$ is the min-shortage (max--min position) allocation when warehouse stock cannot
+cover all requests, and $s^i_t=\rho^i_t$ otherwise. Because the warehouse orders against its
+\emph{pre}-shipment position $\mathrm{IP}^w_t$, the units shipped downstream are not deducted when
+sizing $q^w_t$; they reduce warehouse on-hand only through the next-period state.
+
+\paragraph{Transition.}
+Let $W_t=\big(\widetilde I^w_t{}^+-\sum_{i=1}^{R}s^i_t\big)^+$ denote the warehouse stock left
+after regular shipments. Total unmet demand is $U_t=\sum_{i=1}^{R}u^i_t$; the number of accepted
+special-delivery requests $A_t\sim\mathrm{Binomial}(U_t,P_w)$ is filled up to $W_t$, so the
+expedited (special-delivery) units and the lost units are
+\begin{equation*}
+  E_t = \min(A_t,\,W_t),
+  \qquad
+  \ell_t = U_t - E_t .
+\end{equation*}
+The next-period on-hand inventories are the end-of-period stocks
+\begin{align*}
+  I^w_t &= W_t - E_t, \\
+  I^i_t &= \widetilde I^i_t - \sigma^i_t = \big(I^i_{t-1}+s^i_{t-l_r}\big)-\min\!\big(\widetilde I^i_t{}^+,d_{i,t}\big),
+\end{align*}
+and the pipelines shift forward, dropping the just-arrived stage and appending the new order and
+shipments:
+\begin{equation*}
+  \big(q^w_{t-l_w+1},\dots,q^w_{t-1},\,q^w_t\big),
+  \qquad
+  \big(s^i_{t-l_r+1},\dots,s^i_{t-1},\,s^i_t\big)_{i=1}^{R},
+\end{equation*}
+which together with $I^w_t$ and $\big(I^i_t\big)_{i=1}^{R}$ define $\mathbf S_{t+1}$.
+
+\paragraph{One-period cost.}
+Holding cost is charged on end-of-period on-hand inventory at the warehouse rate $h^w$ and
+retailer rate $h^r$; each expedited unit costs $c^w$ and each lost unit a penalty $p$. There is no
+separate charge for regular retailer shipments. The period cost is
+\begin{equation}
+  c_t = h^w\,\big(I^w_t\big)^+ + h^r \sum_{i=1}^{R}\big(I^i_t\big)^+ + c^w\,E_t + p\,\ell_t .
+  \label{eq:me-cost}
+\end{equation}
+
+\paragraph{Objective.}
+A stationary policy $\pi_{\btheta}$ maps the state $\mathbf S_t$ to the action
+$a_t=(q^w_t,y^r_t)$. Writing $\bar C_T(\btheta)=\tfrac1T\sum_{t=1}^{T}\mathbb E[c_t]$ for the
+expected average cost over $T$ periods under $\pi_{\btheta}$, with the expectation taken over the
+demand process, the objective is to minimize the long-run average expected cost
+\begin{equation*}
+  \bar C(\btheta) = \lim_{T\to\infty} \bar C_T(\btheta) .
+\end{equation*}
+As in the lost-sales problem this limit is estimated by the empirical average cost
+$\hat C_T(\btheta)=\tfrac1T\sum_{t=1}^{T}c_t$ over a long simulated horizon with a warm-up
+discarded, which is the quantity CMA-ES minimizes.
+
+\subsection{Policy}
+\label{sec:me-policy}
+
+This is the most demanding test of the action-parameterization principle (Figure~\ref{fig:policy-pipeline}),
+because the wrong action geometry is fatal. \textbf{Input.} The policy input is this problem's
+pre-decision state
+$\mathbf S_t$ (warehouse on-hand and its inbound pipeline, then per-retailer on-hand and inbound
+pipelines), consumed with a policy-owned divide-by-scale normalization. \textbf{Output.} A valid
+action is the pair $(q^w_t, y^r_t)$: a warehouse order and a shared retailer order-up-to level, within
+the physical caps. \textbf{Internals.} Following the policy interface of
+Section~\ref{sec:methods-principle}, $\pi_{\btheta}$ normalizes the state and uses the soft decision
+tree with oblique splits and vector-valued leaves of Section~\ref{sec:soft-tree} as its backbone; the
+decoder is the pair of leaf outputs, the state-dependent warehouse and retailer order-up-to levels
+$y^w_{S},y^r_{S}$. The
+projection that guarantees validity sets the warehouse order to
+$q^w = \big[\min(y^w_{S},C^w)-\mathrm{IP}^w\big]^+$ capped by $C^m$ (where $\mathrm{IP}^w$ is the
+warehouse inventory position and $[\cdot]^+=\max(\cdot,0)$), and each retailer order raises its
+position toward $\min(y^r_{S},C^r)$.
+
+We contrast two action geometries for the leaf outputs. The reduced \textbf{grid} design of
+\citet{gijsbrechts2022drl} draws the levels from the reduced discrete set $y^w\in\{50,60,\dots,100\}$,
+$y^r\in\{0,5,\dots,40\}$; our \textbf{direct} design lets the leaves estimate the levels as continuous
+values rounded to non-negative integers, bounded only by the physical caps $y^w\in[0,C^w]$,
+$y^r\in[0,C^r]$. The distinction is consequential because the cost-minimizing warehouse base-stock
+for these settings is $\approx 300$--$525$ (the published constant base-stock uses $y^w=330,460$),
+far above the reduced grid's cap of $100$, so the grid cannot express the operating region and is a
+policy artifact, not a problem constraint. We train for the problem itself and use the published
+numbers only as a benchmark, independently of the learner in \citet{gijsbrechts2022drl}.
+
+\paragraph{Decision path: a worked example.}
+We use setting 1, where the best run is a depth-2 oblique soft tree with
+linear leaves in the direct-level action mode. The raw decision state has dimension $22$ (warehouse
+on-hand-after-arrival and its pipeline, then per-retailer on-hand and pipelines for $10$ retailers),
+normalized by $\kappa=100$, and the two leaf outputs are the warehouse and retailer
+order-up-to levels directly. For a state with the warehouse holding $300$ on hand (empty pipeline) and
+each of the $10$ retailers holding $20$ on hand with a pipeline of $5$, the dominant leaf (probability
+$1.0$) emits continuous levels $[298.572,54.445]$, rounded and clamped to a warehouse order-up-to of
+$299$ and a retailer order-up-to of $54$.
+
+\paragraph{Validation.}
+The multi-echelon model has no deterministic demand-binding and a stochastic
+warehouse-allocation and emergency-shipment rollout, so a full cost match is not appropriate; instead
+the vector soft-tree forward was validated by extracting the warehouse action dimension into a scalar
+control and matching it against the independent Rust scalar forward over $5000$ random raw states
+(maximum absolute discrepancy $0$). The retailer dimension uses the identical leaf computation and
+differs only by a zero minimum-value offset and an upper clamp, so it is faithful by construction; the
+single multi-echelon action is therefore reported with this cross-check rather than a rollout cost
+match.
+
+\subsection{Experiment setup}
 
 We evaluate on \emph{both} multi-echelon settings of \citet{gijsbrechts2022drl} --- the two complex
 case studies of \citet{vanroy1997ndp} --- which are the only multi-echelon instances they report, so
 our coverage of their multi-echelon benchmark is complete. Table~\ref{tab:me-params} reproduces
-their Table~3 parameters exactly for both settings under our faithful \texttt{gijs\_2022} dynamics;
-retailer demand is $\mathcal{N}(\mu,\sigma^2)$ rounded to a non-negative integer.
+their Table~3 parameters exactly for both settings under the faithful Gijsbrechts et al.\ (2022) cost
+convention; retailer demand is $\mathcal{N}(\mu,\sigma^2)$ rounded to a non-negative integer.
 
 \begin{table}[!htbp]
 \centering
 \caption{Multi-echelon experiment settings, reproducing Table~3 of \citet{gijsbrechts2022drl} (the
-two complex case studies of \citet{vanroy1997ndp}) parameter-for-parameter under our faithful
-\texttt{gijs\_2022} dynamics. These are the only two multi-echelon settings reported by
+two complex case studies of \citet{vanroy1997ndp}) parameter-for-parameter under the faithful
+Gijsbrechts et al.\ (2022) cost convention. These are the only two multi-echelon settings reported by
 \citet{gijsbrechts2022drl}; we evaluate both. Lead times $l_w,l_r$; demand mean $\mu$ and standard
 deviation $\sigma$; number of retailers $R$; warehouse and retailer holding costs $h^w,h^r$; unit
 expedite cost $c^w$; lost-sales penalty $p$; special-delivery success probability $P_w$; production,
@@ -826,10 +1298,11 @@ improvements over constant base-stock of $8.95\%\pm0.13\%$ and $12.09\%\pm0.39\%
 \citep{vanroy1997ndp, gijsbrechts2022drl}. As the in-environment benchmark we compute the best
 \emph{constant} (state-independent) base-stock by grid search over the physical operating region
 (warehouse up to $\approx C^w$, retailer up to $C^r$) rather than over the reduced grid. Policies
-are trained with CMA-ES; we sweep the action design against tree depth $\in\{2,3\}$ and evaluate the
-long-run average cost over a horizon of $3\times 10^4$ periods and $6$ seeds.
+are trained with CMA-ES; we sweep the action design against tree depth $\in\{2,3\}$ and evaluate
+under the multi-echelon protocol of Section~\ref{sec:methods-eval} (horizon $3\times 10^4$, $6$
+seeds).
 
-\subsubsection{Results}
+\subsection{Results}
 
 Table~\ref{tab:me-results} reports the best in-environment constant base-stock, the best learned
 policy under each action design, and the learned policy's improvement over the constant base-stock,
@@ -846,14 +1319,15 @@ setting~1, depth~3 for setting~2), and the design-by-depth sweep selects it auto
 comparison caveat is important: our $14.4\%$ improvement and the published A3C improvements
 ($8.95\%$, $12.09\%$) are computed against \emph{different} baselines and under \emph{different} cost
 conventions --- our improvement is relative to the best in-environment constant base-stock under the
-\texttt{gijs\_2022} dynamics, whereas the A3C figures are relative to the published van-Roy constant
-base-stock under the original cost convention --- so the cross-method comparison is indicative of the
+Gijsbrechts et al.\ (2022) cost convention, whereas the A3C figures are relative to the published
+Van Roy et al.\ (1997) constant base-stock under the original cost convention --- so the cross-method
+comparison is indicative of the
 direct design's strength rather than a strictly like-for-like ranking.
 
 \begin{table}[!htbp]
 \centering
-\caption{Multi-echelon learned-policy results (\texttt{gijs\_2022} dynamics; mean cost, lower is
-better). ``Improvement'' is the direct learned policy's cost reduction relative to the best
+\caption{Multi-echelon learned-policy results (Gijsbrechts et al.\ (2022) cost convention; mean cost,
+lower is better). ``Improvement'' is the direct learned policy's cost reduction relative to the best
 constant base-stock; the last row is the published A3C improvement over constant base-stock from
 \citet{gijsbrechts2022drl}.}
 \label{tab:me-results}
@@ -896,8 +1370,9 @@ hundred parameters, train without per-problem hyperparameter tuning, and reduce 
 matrix multiply or a shallow tree traversal, so they can be deployed in standard ERP or spreadsheet
 tooling and audited by non-specialists. Where a structured heuristic underlies the decoder (dual
 sourcing, multi-echelon), the learned policy's outputs are directly readable as order-up-to levels and
-caps. The worked example of Section~\ref{sec:methods-worked} and its Rust cross-check show the
-mapping from state to order is concrete and verifiable.
+caps. The per-problem worked examples (Sections~\ref{sec:lostsales-policy},
+\ref{sec:dual-policy}, and~\ref{sec:me-policy}) and their Rust cross-checks show the mapping from state
+to order is concrete and verifiable.
 
 \section{Conclusion, limitations, and future work}
 \label{sec:conclusion}
@@ -923,125 +1398,6 @@ covariance dimension, so very large parameterizations may need restricted or sep
 structures. Promising directions include richer state-dependent decoders for correlated demand,
 warm-starting from heuristics in problems beyond dual sourcing, and combining the action-geometry
 idea with sample-efficient learners for limited-data regimes.
-
-\appendix
-
-\section{Published vanilla lost-sales validation}
-
-Before using the vanilla lost-sales simulator and heuristic stack for learned-policy comparisons, we
-validate the canonical Poisson instance against the published/reference costs used in the lost-sales
-literature \citep{Zipkin2008OldSystems,Xin2021CappedBaseStock}. The validation instance has
-$h=1$, $p=4$, $L=4$, and $D_t\sim\mathrm{Poisson}(5)$ (repo anchor
-\texttt{lit\_poisson\_p4\_l4}). Table~\ref{tab:vanilla-lost-sales-validation} reports the reference
-costs and a current Rust rollout check for the heuristic policies
-(\texttt{lost\_sales\_heuristics\_all}, horizon $10^5$, seed $123$). This is an implementation
-check, not a learned-policy result.
-
-\begin{table}[!htbp]
-\centering
-\caption{Published/reference vanilla lost-sales validation example for the canonical
-Poisson-demand instance. The reproduced heuristic costs use the same long-horizon rollout protocol as
-Table~\ref{tab:results-vanilla-lost-sales}.}
-\label{tab:vanilla-lost-sales-validation}
-\begin{tabular}{lll}
-\toprule
-Quantity & Published/reference cost & Current code check \\
-\midrule
-optimal & 4.73 & 4.73 (catalog reference) \\
-myopic-1 & 5.06 & 5.0569 \\
-myopic-2 & 4.82 & 4.8208 \\
-SVBS & 5.83 & 5.8153 \\
-\bottomrule
-\end{tabular}
-\end{table}
-\FloatBarrier
-
-The heuristic costs match the published/reference values at the precision used in the benchmark
-tables, anchoring the vanilla lost-sales environment and the myopic/SVBS heuristic implementation.
-The MMPP2 rows in Table~\ref{tab:results-vanilla-lost-sales} are mean-preserving repo extensions and
-are not claimed as published literature rows.
-
-\section{Published fixed-cost lost-sales validation}
-
-Before relying on the fixed-cost simulator and heuristic stack for learned-policy comparisons, we
-validate the implementation against the published example of
-\citet{Bijvank2015ParametricPolicies}. Their Table~1 reports a small Poisson-demand instance with
-$L=2$, $p=14$, $K=5$, $h=1$, $\mu=5$ (the repo anchor
-\texttt{bijvank2015\_table1\_l2\_p14\_k5}, exposed through the
-\texttt{invman\_rust} fixed-order-cost reference catalog). The current code check uses the Rust
-exact average-cost value-iteration solver and exact evaluators for the published heuristic
-parameters.
-
-\begin{table}[!htbp]
-\centering
-\caption{Published fixed-cost lost-sales validation example from
-\citet{Bijvank2015ParametricPolicies} and our reproduced exact average costs for the reported
-heuristic parameters.}
-\label{tab:fixed-cost-validation}
-\begin{tabular}{llll}
-\toprule
-Policy & Reported parameters & Published cost & Our reproduced cost \\
-\midrule
-optimal & --- & 11.46 & 11.4631 \\
-$(s,S)$ & $(17,23)$ & 11.62 & 11.6181 \\
-$(s,nQ)$ & $(17,7)$ & 11.56 & 11.5552 \\
-modified $(s,S,q)$ & $(17,23,7)$ & 11.50 & 11.4974 \\
-\bottomrule
-\end{tabular}
-\end{table}
-\FloatBarrier
-
-The reproduced exact costs match the published values to the precision of the reported table,
-anchoring the fixed-cost environment and heuristic implementation to a published benchmark row.
-
-\section{Environment validation against published costs}
-
-Before using the multi-echelon environment for learned-policy comparison, we validate it against
-the published \emph{constant base-stock} costs of \citet{vanroy1997ndp} (the simple problem and the
-two complex case studies), evaluated at the published $(y^w,y^r)$ levels under the original
-Van-Roy-style cost convention (\texttt{van\_roy\_1997} dynamics), with $100$ replications of horizon
-$10^5$, no warm-up discard, and the minimum-spread allocation. Table~\ref{tab:me-validation} shows
-that all three reproduce within the $2\%$ simulation-protocol tolerance (maximum absolute gap
-$1.31\%$).
-
-\begin{table}[!htbp]
-\centering
-\caption{Reproduction of the published Van Roy constant base-stock costs.}
-\label{tab:me-validation}
-\begin{tabular}{lcccc}
-\toprule
-Instance & Levels $(y^w,y^r)$ & Published & Reproduced & Gap \\
-\midrule
-Simple problem & $(10,16)$ & $51.7$ & $51.72$ & $+0.03\%$ \\
-Case study 1 & $(330,23)$ & $1302$ & $1284.9$ & $-1.31\%$ \\
-Case study 2 & $(460,22)$ & $1449$ & $1437.6$ & $-0.79\%$ \\
-\bottomrule
-\end{tabular}
-\end{table}
-\FloatBarrier
-
-Two caveats keep this an implementation-fidelity check rather than a full literature verification.
-First, exact reproduction requires calibrated demand inputs: the simple problem uses a latent mean
-of $6.294$ (the effective mean of Van Roy's $\mathcal{N}(5,8^2)$ after rounding and clipping to
-non-negative integers), and case study~2 a latent mean of $1.0$ rather than the stated $0$. Second,
-we reproduce only the constant base-stock rows, not the A3C learner. The residual $\sim 1.3\%$ is
-attributed to unspecified details of Van Roy's original simulation protocol. The paper-faithful
-settings used for policy design (Table~\ref{tab:me-params}) instead use the \texttt{gijs\_2022} cost
-convention and the Table-3 demand means.
-
-\section{Dual-sourcing comparator and the bounded-DP optimum}
-\label{app:ds-validation}
-
-For dual sourcing we benchmark against the capped dual-index heuristic as the optimal proxy rather
-than a computed optimum. An exhaustive grid search over the capped-dual-index control
-$(s_e,\Delta_r,\bar c_r)$ under the evaluation protocol recovers the published capped-dual-index
-parameters and confirms that it is the best static control on every Figure~9 row, consistent with
-its published $\le0.11\%$ optimality gap. We do \emph{not} use our own bounded-DP value iteration as
-the denominator: at inventory bounds that keep the $l_r=4$ state space tractable, the truncated
-bounded-DP cost is mildly inconsistent --- it falls slightly below the simulated heuristic costs ---
-and widening the bounds to remove the truncation is computationally prohibitive at $l_r=4$. The
-capped dual-index proxy is near-exact to within its published gap and is evaluated on the identical
-common-random-number rollout as the learned policies.
 
 % Bibliography embedded inline (natbib-compatible \bibitem labels) so the manuscript is
 % self-contained and renders with a single pdflatex pass -- no bibtex step required. The
@@ -1134,5 +1490,124 @@ New policies for the stochastic inventory control problem with two supply source
 \emph{Operations Research}, 58(3):734--745, 2010.
 
 \end{thebibliography}
+
+\clearpage
+\appendix
+
+\section{Published vanilla lost-sales validation}
+
+Before using the vanilla lost-sales simulator and heuristic stack for learned-policy comparisons, we
+validate the canonical Poisson instance against the published/reference costs used in the lost-sales
+literature \citep{Zipkin2008OldSystems,Xin2021CappedBaseStock}. The validation instance has
+$h=1$, $p=4$, $L=4$, and $D_t\sim\mathrm{Poisson}(5)$ (repository anchor
+\texttt{lit\_poisson\_p4\_l4}). Table~\ref{tab:vanilla-lost-sales-validation} reports the reference
+costs and a Rust rollout reproduction for the heuristic policies (horizon $10^5$, seed $123$). This is
+an implementation-fidelity check, not a learned-policy result.
+
+\begin{table}[!htbp]
+\centering
+\caption{Published/reference vanilla lost-sales validation example for the canonical
+Poisson-demand instance. The reproduced heuristic costs use the same long-horizon rollout protocol as
+Table~\ref{tab:results-vanilla-lost-sales}.}
+\label{tab:vanilla-lost-sales-validation}
+\begin{tabular}{lll}
+\toprule
+Quantity & Published/reference cost & Reproduced cost \\
+\midrule
+optimal & 4.73 & 4.73 (catalog reference) \\
+myopic-1 & 5.06 & 5.0569 \\
+myopic-2 & 4.82 & 4.8208 \\
+SVBS & 5.83 & 5.8153 \\
+\bottomrule
+\end{tabular}
+\end{table}
+\FloatBarrier
+
+The heuristic costs match the published/reference values at the precision used in the benchmark
+tables, anchoring the vanilla lost-sales environment and the myopic/SVBS heuristic implementation.
+The MMPP2 rows in Table~\ref{tab:results-vanilla-lost-sales} are mean-preserving extensions of this
+surface and are not claimed as published literature rows.
+
+\section{Published fixed-cost lost-sales validation}
+
+Before relying on the fixed-cost simulator and heuristic stack for learned-policy comparisons, we
+validate the implementation against the published example of
+\citet{Bijvank2015ParametricPolicies}. Their Table~1 reports a small Poisson-demand instance with
+$L=2$, $p=14$, $K=5$, $h=1$, $\mu=5$ (the repository anchor
+\texttt{bijvank2015\_table1\_l2\_p14\_k5} in the fixed-order-cost reference catalog). The
+reproduction uses our exact average-cost value-iteration solver and exact evaluators for the published
+heuristic parameters.
+
+\begin{table}[!htbp]
+\centering
+\caption{Published fixed-cost lost-sales validation example from
+\citet{Bijvank2015ParametricPolicies} and our reproduced exact average costs for the reported
+heuristic parameters.}
+\label{tab:fixed-cost-validation}
+\begin{tabular}{llll}
+\toprule
+Policy & Reported parameters & Published cost & Our reproduced cost \\
+\midrule
+optimal & --- & 11.46 & 11.4631 \\
+$(s,S)$ & $(17,23)$ & 11.62 & 11.6181 \\
+$(s,nQ)$ & $(17,7)$ & 11.56 & 11.5552 \\
+modified $(s,S,q)$ & $(17,23,7)$ & 11.50 & 11.4974 \\
+\bottomrule
+\end{tabular}
+\end{table}
+\FloatBarrier
+
+The reproduced exact costs match the published values to the precision of the reported table,
+anchoring the fixed-cost environment and heuristic implementation to a published benchmark row.
+
+\section{Environment validation against published costs}
+
+Before using the multi-echelon environment for learned-policy comparison, we validate it against
+the published \emph{constant base-stock} costs of \citet{vanroy1997ndp} (the simple problem and the
+two complex case studies), evaluated at the published $(y^w,y^r)$ levels under the original
+Van Roy et al.\ (1997) cost convention \citep{vanroy1997ndp}, with $100$ replications of horizon
+$10^5$, no warm-up discard, and the minimum-spread allocation. Table~\ref{tab:me-validation} shows
+that all three reproduce within the $2\%$ simulation-protocol tolerance (maximum absolute gap
+$1.31\%$).
+
+\begin{table}[!htbp]
+\centering
+\caption{Reproduction of the published Van Roy constant base-stock costs.}
+\label{tab:me-validation}
+\begin{tabular}{lcccc}
+\toprule
+Instance & Levels $(y^w,y^r)$ & Published & Reproduced & Gap \\
+\midrule
+Simple problem & $(10,16)$ & $51.7$ & $51.72$ & $+0.03\%$ \\
+Case study 1 & $(330,23)$ & $1302$ & $1284.9$ & $-1.31\%$ \\
+Case study 2 & $(460,22)$ & $1449$ & $1437.6$ & $-0.79\%$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+\FloatBarrier
+
+Two caveats keep this an implementation-fidelity check rather than a full literature verification.
+First, exact reproduction requires calibrated demand inputs: the simple problem uses a latent mean
+of $6.294$ (the effective mean of Van Roy's $\mathcal{N}(5,8^2)$ after rounding and clipping to
+non-negative integers), and case study~2 a latent mean of $1.0$ rather than the stated $0$. Second,
+we reproduce only the constant base-stock rows, not the A3C learner. The residual $\sim 1.3\%$ is
+attributed to unspecified details of Van Roy's original simulation protocol. The paper-faithful
+settings used for policy design (Table~\ref{tab:me-params}) instead use the Gijsbrechts et al.\ (2022)
+cost convention and the Table-3 demand means.
+
+\section{Dual-sourcing comparator and the bounded-DP optimum}
+\label{app:ds-validation}
+
+For dual sourcing we benchmark against the capped dual-index heuristic as the optimal proxy rather
+than a computed optimum. An exhaustive grid search over the capped-dual-index control
+$(s_e,\Delta_r,\bar c_r)$ under the evaluation protocol recovers the published capped-dual-index
+parameters and confirms that it is the best static control on every Figure~9 row, consistent with
+its published $\le0.11\%$ optimality gap. We do \emph{not} use our own bounded-DP value iteration as
+the denominator: at inventory bounds that keep the $l_r=4$ state space tractable, the truncated
+bounded-DP cost is mildly inconsistent --- it falls slightly below the simulated heuristic costs ---
+and widening the bounds to remove the truncation is computationally prohibitive at $l_r=4$. The
+capped dual-index proxy is near-exact to within its published gap and is evaluated on the identical
+common-random-number rollout as the learned policies.
+
 
 \end{document}

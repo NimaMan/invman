@@ -19,9 +19,7 @@ from pathlib import Path
 PAPER_DIR = Path(__file__).resolve().parent
 DEFAULT_PROJECT = "invman_paper (revision)"
 DEFAULT_LOCAL_TEX = PAPER_DIR / "learning_inventory_control_policies_es.tex"
-# Remote name is intentionally kept stable to preserve the existing Overleaf
-# file and its revision history; the local file was renamed, the remote was not.
-DEFAULT_REMOTE_TEX = "extension/inventory_control_policy_benchmarks.tex"
+DEFAULT_REMOTE_TEX = "learning_inventory_control_policies_es.tex"
 DEFAULT_HELPER_DIR = Path(
     os.environ.get(
         "OVERLEAF_HELPER_DIR",
