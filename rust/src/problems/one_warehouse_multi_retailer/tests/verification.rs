@@ -240,3 +240,120 @@ fn finite_horizon_dp_dominates_repo_heuristics() {
         min_shortage.discounted_cost
     );
 }
+
+/// Literature verification (executing, stochastic): the env reproduces published Kaynov et al.
+/// (2024) Table A.3 benchmark REWARDS by simulation (100 periods x 1000 replications, undiscounted,
+/// mean-filled pipeline warm start, grid-searched echelon base-stock levels). Each regime is matched
+/// by the allocation rule the env is faithful to:
+///   - instance_7 (lost_sales), min-shortage: env 1394.8 vs published 1408.08 -> -0.94%
+///   - instance_11 (partial_backorder), proportional (Eq.8 floor + post-emergency holding): env
+///     1113.2 vs published 1111.76 -> +0.13%
+/// (On lost-sales the Eq.8 floor proportional is +3.1%, so that regime is verified via min-shortage;
+/// the backorder regime reaches ~-1.4% after the fixes but is not within ~1%, an unresolved residual
+/// in the paper's underspecified min-shortage stop-rule.) Levels/seed come from
+/// scripts/one_warehouse_multi_retailer/run_heuristic_published_benchmark.py.
+#[test]
+fn kaynov_table_a3_rows_reproduced_by_env_simulation() {
+    use crate::problems::one_warehouse_multi_retailer::allocation::AllocationPolicy;
+    use crate::problems::one_warehouse_multi_retailer::demand::mean_demand;
+    use crate::problems::one_warehouse_multi_retailer::heuristics::simulate_policy;
+
+    // Mean-filled pipeline warm start, then simulate; returns the mean 100-period cost.
+    fn simulate_benchmark(
+        instance_name: &str,
+        allocation: AllocationPolicy,
+        warehouse_base_stock: usize,
+        retailer_base_stock: &[usize],
+        seed: u64,
+    ) -> f64 {
+        let reference = TABLE_A3_INSTANCES
+            .iter()
+            .find(|r| r.name == instance_name)
+            .expect("benchmark instance must exist");
+        let means: Vec<f64> = reference
+            .demand_models
+            .iter()
+            .map(|model| mean_demand(model).expect("demand mean must compute"))
+            .collect();
+        let retailer_inventory: Vec<i32> = means.iter().map(|mean| mean.round() as i32).collect();
+        let warehouse_inventory = means.iter().sum::<f64>().round() as i32;
+        let warehouse_pipeline = vec![warehouse_inventory as usize; reference.warehouse_lead_time];
+        let retailer_pipeline: Vec<Vec<usize>> = reference
+            .retailer_lead_times
+            .iter()
+            .enumerate()
+            .map(|(idx, &lead)| vec![retailer_inventory[idx] as usize; lead])
+            .collect();
+        let state = initialize_state(
+            warehouse_inventory,
+            &warehouse_pipeline,
+            &retailer_inventory,
+            &retailer_pipeline,
+        )
+        .expect("mean-filled warm-start state must build");
+
+        let mut params = vec![warehouse_base_stock as f64];
+        params.extend(retailer_base_stock.iter().map(|&level| level as f64));
+
+        let summary = simulate_policy(
+            "echelon_base_stock",
+            &params,
+            &state,
+            reference.benchmark_periods,
+            reference.benchmark_replications,
+            seed,
+            reference.demand_models,
+            allocation,
+            reference.holding_cost_warehouse,
+            reference.holding_cost_retailers,
+            reference.penalty_costs_retailers,
+            reference.customer_behavior,
+            reference.emergency_shipment_probability,
+            1.0,
+        )
+        .expect("policy simulation must succeed");
+        summary.mean_cost
+    }
+
+    // instance_7 (lost_sales) verified via min-shortage allocation (S_w=44, S_r=[10,10,10]).
+    let instance_7 = TABLE_A3_INSTANCES
+        .iter()
+        .find(|r| r.name == "kaynov2024_instance_7")
+        .unwrap();
+    let published_7 = -instance_7
+        .published_min_shortage_benchmark
+        .expect("min-shortage benchmark")
+        .mean_cost;
+    let env_7 = simulate_benchmark(
+        "kaynov2024_instance_7",
+        AllocationPolicy::MinShortage,
+        44,
+        &[10, 10, 10],
+        2222,
+    );
+    assert!(
+        (env_7 - published_7).abs() / published_7 < 0.012,
+        "instance_7 min-shortage env cost {env_7} should reproduce published {published_7} within 1.2%"
+    );
+
+    // instance_11 (partial_backorder) verified via Eq.8-floor proportional (S_w=43, S_r=[6,6,6]).
+    let instance_11 = TABLE_A3_INSTANCES
+        .iter()
+        .find(|r| r.name == "kaynov2024_instance_11")
+        .unwrap();
+    let published_11 = -instance_11
+        .published_proportional_benchmark
+        .expect("proportional benchmark")
+        .mean_cost;
+    let env_11 = simulate_benchmark(
+        "kaynov2024_instance_11",
+        AllocationPolicy::Proportional,
+        43,
+        &[6, 6, 6],
+        2222,
+    );
+    assert!(
+        (env_11 - published_11).abs() / published_11 < 0.005,
+        "instance_11 proportional env cost {env_11} should reproduce published {published_11} within 0.5%"
+    );
+}
