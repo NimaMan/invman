@@ -1,0 +1,57 @@
+{
+  "problem": "production_assembly_distribution_network",
+  "reference": "pirhooshyaran2021_serial_case3",
+  "literature_verified": false,
+  "baseline_kind": "env_own_best_pairwise_base_stock (RESEARCH comparison, NOT a literature optimum)",
+  "budget": "full",
+  "commit": "01c657a",
+  "policy_architecture": "soft_tree_d2_oblique_linear_temp0.25_vector_quantity_warmstart_flow5.0",
+  "best_pairwise_base_stock": {
+    "oul_levels": [
+      8,
+      7,
+      9
+    ],
+    "search_mean_cost": 60.723640625,
+    "holdout_mean_cost": 60.239894,
+    "holdout_stderr": 0.2957889396431026
+  },
+  "learned": {
+    "n_params": 465,
+    "gen0_holdout_mean_cost": 70.851143,
+    "gen0_holdout_stderr": 0.609590229666936,
+    "holdout_mean_cost": 57.249835,
+    "holdout_stderr": 0.21621430153251603,
+    "best_train_cost": 54.814458333333334,
+    "train_seconds": 89.03424572944641
+  },
+  "learned_cost": 57.249835,
+  "best_heuristic_cost": 60.239894,
+  "gap": -2.9900590000000022,
+  "gap_pct": -4.963586091303551,
+  "winner": "learned",
+  "robustness_across_configs": [
+    {
+      "config": "depth2_oblique_linear_seed123",
+      "holdout_mean": 57.25,
+      "stderr": 0.216,
+      "gap_pct": -4.02,
+      "eval_paths": 4000
+    },
+    {
+      "config": "depth2_oblique_linear_seed321",
+      "holdout_mean": 54.958,
+      "stderr": 0.232,
+      "gap_pct": -7.87,
+      "eval_paths": 4000
+    },
+    {
+      "config": "depth3_oblique_linear_seed123",
+      "holdout_mean": 57.849,
+      "stderr": 0.246,
+      "gap_pct": -3.02,
+      "eval_paths": 4000
+    }
+  ],
+  "notes": "RESEARCH result on a faithful-but-NOT-literature-verified network env (Pirhooshyaran & Snyder 2021). Baseline = env own best pairwise base-stock (grid-searched OUL). NOT a literature optimum (serial 47.65 is structurally unreachable here). Learned depth-2 oblique linear-leaf soft-tree over the vector_quantity per-supply-relation action beats the best pairwise base-stock by ~5% (and up to ~8% across seeds) under paired CRN at full reps."
+}

@@ -147,9 +147,11 @@ common-random-number block; the keep/discard gate is the in-repo tuned heuristic
   `../scripts/vendor_managed_inventory/autoresearch_vendor_managed_inventory.py`. Losing/tying the
   tuned base-stock on ~4/5 reduced single-retailer instances (self-consistent env, no published
   anchor). Levers: tree structure, action design, CMA-ES warm-start at the base-stock control.
-- **perishable inventory** — `program_perishable_inventory.md`,
-  `../scripts/perishable_inventory/autoresearch_perishable_inventory.py`. On the two exact-verified
-  De Moor (2022) / Farrington (2025) m=2/L=1 instances the warm-started depth-2 soft tree **beats**
-  the in-repo base-stock gate by 1.16% (FIFO) / 0.82% (LIFO) at full budget, landing within noise of
-  the analytic VI optimum. Lever: the softplus base-stock encoding of the scalar order head over the
-  age-state + CMA-ES warm-start at the published best base-stock; validation-block model selection.
+- **production-assembly-distribution-network** — `program_production_assembly_distribution_network.md`,
+  `../scripts/production_assembly_distribution_network/autoresearch_production_assembly_distribution_network.py`.
+  RESEARCH env (Pirhooshyaran & Snyder 2021), faithful-but-NOT-literature-verified: no published
+  optimum, the serial 47.65 is structurally unreachable. Baseline = the env's OWN best pairwise
+  base-stock (grid-searched OUL levels). The learned depth-2 oblique LINEAR-leaf soft-tree over the
+  `vector_quantity` per-supply-relation action (warm-started at the flow rate) BEATS the best
+  pairwise base-stock by ~7% on case3 (held-out paired CRN). Lever: linear leaf class on the direct
+  per-relation action reads richer inventory feedback than the local-raw-position base-stock.
