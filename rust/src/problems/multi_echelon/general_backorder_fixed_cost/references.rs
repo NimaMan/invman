@@ -146,7 +146,7 @@ pub const LITERATURE_REFERENCE_INSTANCES: &[GeneralBackorderFixedCostReferenceIn
         name: "geevers2023_general_set1",
         source: GEEVERS_2023_REFERENCE.source,
         url: GEEVERS_2023_REFERENCE.url,
-        literature_verified: false,
+        literature_verified: true,
         num_suppliers: 4,
         num_warehouses: 4,
         num_retailers: 5,
@@ -167,7 +167,7 @@ pub const LITERATURE_REFERENCE_INSTANCES: &[GeneralBackorderFixedCostReferenceIn
         published_ppo_best_cost: Some(8_714.0),
         published_ppo_average_cost: Some(630_401.0),
         notes:
-            "Experiment set 1 (order per stock point). Each retailer order is routed to exactly one upstream warehouse drawn according to the historical connection weights (relative rationing). REPRODUCED: the repo node-base-stock simulation gives mean cost ~10355 vs published 10467 (gap -1.1%, 500 reps x 3 seeds) with warehouse and retailer fill rates in the 98-99% band, so this row is reproduced within the simulation-protocol tolerance. (The thesis also reports this exact row.)",
+            "Experiment set 1 (order per stock point). Each retailer order is routed to exactly one upstream warehouse drawn according to the historical connection weights (relative rationing). REPRODUCED: the repo node-base-stock simulation gives mean cost ~10355 vs published 10467 (gap -1.1%, 500 reps x 3 seeds) with warehouse and retailer fill rates in the 98-99% band, so this row is reproduced within the simulation-protocol tolerance. (The thesis also reports this exact row.) Asserted in-crate by tests::verification::set1_benchmark_reproduces_geevers_published_cost (mean within 5% of 10467).",
     },
     GeneralBackorderFixedCostReferenceInstance {
         name: "geevers2023_general_set2",
@@ -195,6 +195,8 @@ pub const LITERATURE_REFERENCE_INSTANCES: &[GeneralBackorderFixedCostReferenceIn
         published_ppo_average_cost: Some(314_923.0),
         notes:
             "Experiment set 2 (order per edge). NOT REPRODUCED. Under the configured split_across_all_connections_by_weight routing the repo gives ~15306 (gap +219%); no available routing mode (by-weight / evenly / duplicate / weighted / single) reproduces 4797 at the published base-stock [.,.,.,.,30,30,30,30,30]. ROOT CAUSE (diagnostic): with evenly-split per-edge ordering the repo needs retailer order-up-to ~36-37 (not 30) to hit BOTH cost ~4797 AND the paper's ~98% retailer fill simultaneously - a consistent ~6-7 unit offset in the retailer order-up-to level. This offset is the signature of a different per-edge inventory-position / order-up-to timing convention in the journal's order-per-edge transition (the exact equation is in the gated journal full text and could not be recovered). Carried as a published row; verification target = reproduce 4797 with the published level 30 once the per-edge transition is specified.",
+        // NOTE: set 2/3 stay literature_verified=false (not reproduced). Only set 1 is verified
+        // in-crate (general_backorder_fixed_cost::tests::verification::set1_benchmark_reproduces_geevers_published_cost).
     },
     GeneralBackorderFixedCostReferenceInstance {
         name: "geevers2023_general_set3",

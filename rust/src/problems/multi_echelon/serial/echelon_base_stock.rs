@@ -63,7 +63,10 @@ pub fn simulate(
         let d = match demand {
             SerialDemand::Poisson { .. } => poisson.as_ref().unwrap().sample(&mut rng),
             SerialDemand::Normal { .. } => {
-                normal.as_ref().unwrap().sample(&mut rng).round().max(0.0)
+                // Sample CONTINUOUS Normal (no rounding): the exact solver optimizes against the
+                // continuous Normal, so rounding here would inflate the simulated cost (it raised
+                // Ex6.1 to +1.62%). With continuous demand the env-sim reproduces 47.65 to +0.06%.
+                normal.as_ref().unwrap().sample(&mut rng).max(0.0)
             }
         };
         // Consume (receive + demand + cost), then decide replenishment on the resulting

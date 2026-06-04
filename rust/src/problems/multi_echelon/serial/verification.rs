@@ -52,8 +52,10 @@ mod tests {
             penalty: 37.12,
         };
         let result = simulate(&config, demand, &exact.echelon_base_stock_levels, 400_000, 5_000, 17);
+        // Continuous-Normal env-sim reproduces the published optimum to ~+0.06% (≈47.68); the
+        // env-dynamics, not just the solver, now reproduce 47.65 within a tight 0.5% tolerance.
         assert!(
-            rel_err(result.average_cost, 47.65) < 0.02,
+            rel_err(result.average_cost, 47.65) < 0.005,
             "env simulation cost {:.4} should reproduce the literature optimum 47.65 (holding={:.3} backorder={:.3})",
             result.average_cost,
             result.average_holding_cost,

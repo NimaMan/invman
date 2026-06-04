@@ -81,17 +81,16 @@ the optima to ≤0.23% (Poisson) and exactly (Normal, continuous demand). The Ru
 in `verification.rs` could not be executed here (no `cargo test` in this environment); the above is
 the independent cross-check standing in for them.
 
-### Caveat 1 — Normal-demand evaluator rounds demand (≈1.6% upward bias on Ex6.1)
+### Caveat 1 — RESOLVED: Normal-demand evaluator now samples continuous demand
 
-`echelon_base_stock.rs::simulate` samples Normal demand and **rounds it to an integer**
-(`normal.sample(...).round().max(0.0)`), while `exact.rs` optimizes against the *continuous*
-Normal. That rounding changes the demand distribution and biases the simulated Ex6.1 cost up to
-**≈48.44 (+1.62%)** — a real, repeatable bias (5 seeds all 48.40–48.43), not sampling noise. With
-the rounding removed (continuous demand) the env reproduces the exact optimum to 4 decimals
-(**47.669 vs 47.6654, +0.01%**). The `verification.rs` Ex6.1 test passes only because its tolerance
-is 2%. This is an *evaluator* artifact, not an env-dynamics error: `consume`/`replenish` impose no
-rounding. To make the Normal check tight, sample continuous demand (or document the rounding as the
-intended integer-demand approximation) — proposed in `next_steps`, not changed here.
+Previously `echelon_base_stock.rs::simulate` rounded Normal demand to an integer
+(`normal.sample(...).round().max(0.0)`) while `exact.rs` optimizes against the *continuous* Normal;
+that rounding biased the simulated Ex6.1 cost up to ≈48.44 (+1.62%) and the `verification.rs` Ex6.1
+test passed only under a loose 2% tolerance. **Fixed (2026-06-04):** the Normal branch now samples
+continuous demand (no `.round()`), so the env-sim reproduces the published optimum to **≈47.68
+(+0.06%)** and the Ex6.1 env-sim assertion is tightened to 0.5% (`rel_err < 0.005`). The
+env-dynamics — not just the exact solver — now reproduce the published 47.65. `consume`/`replenish`
+never imposed rounding; this was purely an evaluator-sampling artifact.
 
 ### Caveat 2 — demand-facing lead time must be 1 (env under-counts when L₀ ≥ 2)
 

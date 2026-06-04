@@ -10,8 +10,8 @@ use crate::problems::multi_echelon::general_backorder_fixed_cost::heuristics::{
     node_base_stock_orders, parse_benchmark_order_routing_mode, simulate_node_base_stock_policy,
 };
 use crate::problems::multi_echelon::general_backorder_fixed_cost::references::{
-    CBC_SUPPLIER_LEAD_TIMES, GEEVERS_SET1_BASE_STOCK_LEVELS, GEEVERS_SET23_BASE_STOCK_LEVELS,
-    LITERATURE_REFERENCE_INSTANCES, PRIMARY_REFERENCE_INSTANCE,
+    reference_instance_by_name, CBC_SUPPLIER_LEAD_TIMES, GEEVERS_SET1_BASE_STOCK_LEVELS,
+    GEEVERS_SET23_BASE_STOCK_LEVELS, LITERATURE_REFERENCE_INSTANCES, PRIMARY_REFERENCE_INSTANCE,
 };
 
 fn benchmark_network() -> GeneralBackorderFixedCostNetwork {
@@ -168,4 +168,28 @@ fn set3_benchmark_smoke_runs() {
     .unwrap();
     assert_eq!(costs.len(), 8);
     assert!(costs.iter().all(|cost| cost.is_finite() && *cost >= 0.0));
+}
+
+/// Literature verification (executing, not a snapshot): simulate the constant node-base-stock
+/// benchmark on Geevers et al. set 1 and assert the env reproduces the published mean cost
+/// 10,467 (open MSc thesis Geevers 2020, Sec. 6.6) within tolerance. Observed ~10,352 (-1.1%),
+/// the expected residual between the repo's simulator and the thesis's RNG/warm-up window.
+/// This is what justifies geevers2023_general_set1.literature_verified = true.
+#[test]
+fn set1_benchmark_reproduces_geevers_published_cost() {
+    let reference =
+        reference_instance_by_name("geevers2023_general_set1").expect("set 1 reference must exist");
+    // simulate_node_base_stock_policy uses the reference's own routing mode
+    // ("random_single_connection_by_weight" for set 1).
+    let costs = simulate_node_base_stock_policy(reference, GEEVERS_SET1_BASE_STOCK_LEVELS, 500, 1234)
+        .unwrap();
+    assert_eq!(costs.len(), 500);
+
+    let mean = costs.iter().sum::<f64>() / costs.len() as f64;
+    let published = 10_467.0_f64;
+    let gap = (mean - published).abs() / published;
+    assert!(
+        gap < 0.05,
+        "set 1 mean cost {mean} has gap {gap} vs published {published} (>5%)"
+    );
 }
