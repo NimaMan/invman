@@ -2,74 +2,66 @@
 
 Rust-first problem home for `ameliorating_inventory`.
 
-Source paper: Pahr and Grunow (2025), *The Value of Blending — Managing Ameliorating Inventory
-Using Deep Reinforcement Learning*, Production and Operations Management, Vol. 35 No. 5
-(DOI `10.1177/10591478251387795`; companion code
-`github.com/amelioratinginventory/ameliorating_inventory`). Citation metadata (authors, title,
-venue, year, DOI) and the two recorded upper bounds were independently web-verified; see
-`literature/README.md`.
+Source paper: Pahr & Grunow (2025), "The Value of Blending — Managing Ameliorating Inventory
+Using Deep Reinforcement Learning", Production and Operations Management 35(5),
+DOI 10.1177/10591478251387795. Companion code:
+https://github.com/amelioratinginventory/ameliorating_inventory
 
-## Problem in the source paper
+## Status
 
-- age-structured inventory of products that *ameliorate* (gain value) while stored
-  (whiskey, port wine, cheese)
-- multiple age-differentiated products, each with a target age
-- decisions: purchasing volume, production volume per product, and issuance per age
-- products may be **blended** across ages, giving operational flexibility
-- stochastic purchase prices, stochastic sales prices (copula-correlated with demand),
-  stochastic age-dependent decay, evaporation, and a processing-capacity limit
-- objective: maximize long-run **average profit**; performance reported as the gap to a
-  perfect-information LP upper bound
+- literature-verified: TRUE
+- An EXECUTING in-crate test re-solves the companion perfect-information LP from a checked-in
+  dataset and reproduces the published average-profit upper bound (`max_reward`) for two anchors:
+  - `spirits_0001` (10 ages, 3 products, target ages [2,4,6], capacity 50, holding 2.5, no
+    blending): published `max_reward = 1991.9344293376805`, re-solved gap < 1e-7.
+  - `port_wine` (25 ages, 2 products, target ages [9,19], blending enabled): published
+    `max_reward = 2444.8010643781136`, re-solved gap < 1e-7.
+- This is a reproduction, not a frozen snapshot: `tests/verification.rs` runs the solver and
+  asserts the freshly computed value matches the published number within `1e-3`.
 
-## Current Rust interpretation (reduced)
+## Faithful model (canonical)
 
-- discrete, finite-horizon, **discounted-cost** reduction
-- single decision: purchase quantity into the youngest age class
-- amelioration: surviving units age up one class per period (oldest class absorbing)
-- exact average-age blending issuance: a product ships only if the issued blend's mean age is
-  at least the product target age; young and old stock may be combined to reach an older target
-- fixed product prices, fixed purchase cost, fixed age-retention, fixed decay-salvage values
-- repo-native exact finite-horizon DP verifier on a small instance
+The companion environment optimises long-run AVERAGE profit of an age-structured ameliorating
+inventory with a price-augmented state and a 3-part action (purchase / production / issuance):
 
-## Current status: NOT literature-verified (repo-exact verified only)
+- `average_profit_blending_env.rs` — faithful per-period dynamics: truncated-Normal purchase
+  price (mean 200, std 50, truncated +-70), correlated demand/sales price, age-dependent
+  stochastic Beta decay (mean = `decay_mean[a]`) plus multiplicative evaporation
+  (`(1-evaporation)^(a+1)`), per-age capacity, blending issuance, and the reward
+  `revenue - purchase_cost - holding + decay_salvage - outdating`. Step ordering matches the
+  companion `step_continuous_issuance_lp`.
+- `issuance_blending_lp.rs` — the per-period blending issuance LP (target-age mean constraint,
+  blending / no-blending rules, evaporation, production cap), solved with the in-crate `microlp`
+  simplex.
+- `perfect_information_lp.rs` — the perfect-information (steady-state, expected-value) LP that
+  produces the published `max_reward` upper bound. This is the literature-verification anchor.
+  Its formulation matches the companion `upper_bound` function line-for-line (objective,
+  inventory balance, outdating, target-age, blending). Break points of the piecewise-linear
+  revenue envelope are clamped to their valid interval `[tp[i], tp[i+1]]` to remove
+  finite-precision overshoot (see the algorithmic header in that file).
+- `lp_dataset_loader.rs` — parser for the checked-in companion datasets (config + per-product
+  expected-revenue / slope tables + published bound) under `practical/datasets/`.
+- `references.rs` — literature instances and published anchors:
+  `PRIMARY_REFERENCE_INSTANCE` (spirits_0001), `PORT_WINE_REFERENCE_INSTANCE`, and
+  `VERIFICATION_PROBLEM_INSTANCE` (the spirits_0001 upper-bound anchor).
 
-The env is internally self-consistent (the worked transition reproduces exactly via the installed
-binding; the exact DP dominates both carried heuristics in `verification/tests.rs`), but it is a
-reduced approximation of the paper, not a faithful port. No published number anchors any
-executable assertion.
+## Reduced model (retained tractable companion, NOT the verification target)
 
-### Root cause of the gap (structural, not a bug)
-
-See `literature/README.md` for the term-by-term table. The decisive gaps: discounted-cost vs.
-average-profit objective; purchase-only action vs. the paper's purchase + production + issuance
-action; fixed prices/decay vs. stochastic purchase/sales prices and stochastic beta decay; no
-processing-capacity constraint; 5 ages / 2 products vs. the companion default 10 ages / 3 products
-(or 25 ages for the port-wine case study). These cannot be closed by localized edits to the
-present env; they require a new env.
-
-## Benchmark situation
-
-- Feasible now (without rebuilding Rust): heuristics-vs-heuristics and learned-soft-tree-vs-heuristics
-  on the repo-native instances, via the installed bindings
-  (`ameliorating_inventory_simulate_policy`, `..._policy_rollout_from_paths`,
-  `..._soft_tree_rollout*`). These produce internally meaningful numbers but are **not**
-  literature-comparable, because the instances and objective are repo-native.
-- A sanity benchmark on `PRIMARY_REFERENCE_INSTANCE` (5 ages, 2 products, Poisson [10,6], 40
-  periods, 2000 reps, γ=0.99) gives discounted profit ≈ 10,444 (newsvendor_purchase, target 24)
-  and ≈ 10,468 (two_dimensional_order_up_to, targets 24/8, cutoff 1). These are illustrative only.
-- Blocked: the exact-optimal DP (`finite_horizon_dp::solve_optimal_policy`) is `#[cfg(test)]`
-  and has **no Python binding**, so optimal-vs-heuristic-vs-learned benchmarking from Python is not
-  possible without a new binding (see the package functionality notes / next steps).
-- Not literature-comparable at all until the executable formulation gap is closed.
+`env.rs`, `issuance.rs`, `rollout.rs`, `heuristics/`, `finite_horizon_dp.rs`, `bindings.rs`,
+`demand.rs`, and `literature/` implement an earlier discrete, discounted-cost approximation used
+by the soft-tree rollout path. It is kept for the existing Python bindings and its own exact
+worked-example verifier (`verification/tests.rs`), but it is no longer the canonical formulation.
 
 ## Package layout
 
-- literature references and recorded anchors: `literature/references.rs`, `literature/README.md`
-- verification code: `verification/tests.rs`
-- exact reduced solver (test-only, no binding): `finite_horizon_dp.rs`
-- env transition + cost + blending issuance: `env.rs`, `issuance.rs`
-- demand models: `demand.rs`
-- heuristics: `heuristics/`
-- learned-policy rollout and bindings: `rollout.rs`, `bindings.rs`
-- practical notes: `practical/`
+- canonical faithful env: `average_profit_blending_env.rs`
+- issuance LP: `issuance_blending_lp.rs`
+- perfect-information upper-bound LP: `perfect_information_lp.rs`
+- dataset loader: `lp_dataset_loader.rs`
+- literature references + anchors: `references.rs`
+- executing literature verification: `tests/verification.rs`
+- checked-in companion datasets: `practical/datasets/`
+- reduced-model exact verifier: `verification/tests.rs`, `finite_horizon_dp.rs`
+- reduced-model heuristics: `heuristics/`
+- reduced-model rollout path: `rollout.rs`
 - experiment notes: `experiments/`
