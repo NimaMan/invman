@@ -5,7 +5,7 @@ use crate::problems::decentralized_inventory_control::finite_horizon_dp::{
     evaluate_named_heuristic, solve_optimal_policy,
 };
 use crate::problems::decentralized_inventory_control::heuristics::{
-    base_stock_orders, sterman_anchor_adjust_orders,
+    base_stock_orders, policy_rollout_from_paths, sterman_anchor_adjust_orders,
 };
 use crate::problems::decentralized_inventory_control::literature::references::{
     CANER_2014_REFERENCE, CLASSIC_BEER_GAME_CUSTOMER_DEMANDS, MOUSA_2024_REFERENCE,
@@ -261,4 +261,118 @@ fn exact_dp_dominates_repo_heuristics() {
         optimal.discounted_cost,
         sterman.discounted_cost
     );
+}
+
+/// Characterization (executing, NOT a snapshot): env.rs is a distinct decentralized serial MDP
+/// (mandatory order/information lead time + installation base-stock + post-fulfillment cost). Under
+/// the SAME published Sterman parameters and 36-week path, env.rs + sterman_anchor_adjust totals
+/// 378, NOT the closed-form board-game benchmark 204 ([46,50,54,54]). The 204 is reproduced only by
+/// the closed-form simulator (classic_sterman_benchmark_matches_literature). No published *cost* is
+/// reproducible by this env (every published Beer-Game benchmark uses echelon control on a
+/// zero-order-delay MDP), so literature_verified stays false; this test pins the honest structural
+/// gap so a future env change that alters it must update this assertion deliberately.
+/// (Mirrors scripts/decentralized_inventory_control/measure_env_vs_closedform.py.)
+#[test]
+fn env_sterman_anchor_adjust_does_not_reproduce_closed_form_204() {
+    let ship_pipelines = vec![vec![4usize, 4], vec![4, 4], vec![4, 4], vec![4, 4]];
+    let order_pipelines = vec![vec![], vec![4usize], vec![4], vec![4]];
+    let state = initialize_state(
+        &[12, 12, 12, 12],
+        &[0, 0, 0, 0],
+        &ship_pipelines,
+        &order_pipelines,
+        &[4, 4, 4, 4],
+        &[4, 4, 4, 4],
+        &[4.0, 4.0, 4.0, 4.0],
+        &[4, 4, 4, 4],
+    )
+    .expect("Beer Game initial state must build");
+
+    // Sterman params: targets(4) | adjustment_times(4) | supply_line_weights(4).
+    let sterman_params = [28.0, 28.0, 28.0, 20.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0];
+    let mut customer_demands = vec![4usize, 4, 4, 4];
+    customer_demands.extend(std::iter::repeat(8).take(32)); // canonical 36-week path
+
+    let env_total = policy_rollout_from_paths(
+        "sterman_anchor_adjust",
+        &sterman_params,
+        &state,
+        &customer_demands,
+        &[0.0, 0.0, 0.0, 0.0],
+        &[0.5, 0.5, 0.5, 0.5],
+        &[1.0, 1.0, 1.0, 1.0],
+        1.0,
+    )
+    .expect("env rollout must succeed");
+
+    assert!(
+        (env_total - 378.0).abs() < 1e-9,
+        "env.rs sterman_anchor_adjust total {env_total} should be 378 (closed-form benchmark is 204)"
+    );
+    let closed_form = simulate_classic_sterman_benchmark();
+    assert_eq!(closed_form.total_cost, 204.0);
+    assert!(
+        env_total - closed_form.total_cost > 100.0,
+        "the env-vs-closed-form gap ({env_total} vs 204) is structural, not a tuning artifact"
+    );
+}
+
+/// Method-level literature check (executing): for CONSTANT demand the Clark-Scarf serial optimum is
+/// the deterministic zero-inventory policy (cost 0). env.rs attains exactly that under an
+/// installation base-stock with S_k = d * (shipment_lead_k + order_lead_{k+1}) when primed at the
+/// steady state -- a genuine serial-optimum property of this MDP. This is a literature-METHOD check,
+/// not a printed published number, so literature_verified stays false.
+#[test]
+fn clark_scarf_constant_demand_serial_optimum_is_zero() {
+    // 4-stage chain, d=8, shipment leads [2,2,2,4], order leads [0,2,2,2] => S_k = 32 for all k.
+    let demand = 8usize;
+    let state4 = initialize_state(
+        &[0, 0, 0, 0],
+        &[0, 0, 0, 0],
+        &vec![vec![demand; 2], vec![demand; 2], vec![demand; 2], vec![demand; 4]],
+        &vec![vec![], vec![demand; 2], vec![demand; 2], vec![demand; 2]],
+        &[demand; 4],
+        &[demand; 4],
+        &[demand as f64; 4],
+        &[demand; 4],
+    )
+    .expect("primed steady-state must build");
+    let cost4 = policy_rollout_from_paths(
+        "base_stock",
+        &[32.0, 32.0, 32.0, 32.0],
+        &state4,
+        &vec![demand; 100],
+        &[0.0; 4],
+        &[0.5; 4],
+        &[1.0; 4],
+        1.0,
+    )
+    .expect("rollout must succeed");
+    assert!(cost4.abs() < 1e-9, "4-stage constant-demand serial optimum should be 0, got {cost4}");
+
+    // 2-stage chain, d=2, shipment leads [1,2], order leads [0,1] => S = [4,4].
+    let d2 = 2usize;
+    let state2 = initialize_state(
+        &[0, 0],
+        &[0, 0],
+        &vec![vec![d2; 1], vec![d2; 2]],
+        &vec![vec![], vec![d2; 1]],
+        &[d2; 2],
+        &[d2; 2],
+        &[d2 as f64; 2],
+        &[d2; 2],
+    )
+    .expect("primed steady-state must build");
+    let cost2 = policy_rollout_from_paths(
+        "base_stock",
+        &[4.0, 4.0],
+        &state2,
+        &vec![d2; 100],
+        &[0.0; 2],
+        &[0.5; 2],
+        &[1.0; 2],
+        1.0,
+    )
+    .expect("rollout must succeed");
+    assert!(cost2.abs() < 1e-9, "2-stage constant-demand serial optimum should be 0, got {cost2}");
 }
