@@ -28,10 +28,52 @@ levels reproduces the exact serial optimum (within Monte-Carlo error), for:
 
 This is the assembly literature anchor: Rosling's equivalence + the serial Clark–Scarf anchor.
 
-## Verification status (re-confirmed 2026-05-31, independent reproduction)
+## Verification status — VERIFIED-BY-EQUIVALENCE, NOT a published assembly number
 
-**Status: LITERATURE-VERIFIED-BY-EQUIVALENCE** for the in-scope case (equal component lead
-time, finished demand-facing lead time 1). Read this precisely — what is and is not anchored:
+**`literature_verified = false` for every carried assembly instance** (encoded in `references.rs`
+and guarded by `references::tests::no_assembly_instance_is_literature_verified`). Per the repo rule
+in `rust/README.md`, a family is literature-verified only when an in-crate test re-runs the
+env/solver and reproduces a number PRINTED IN A PAPER. This family has **no directly reproducible
+published assembly number**, for two structural reasons:
+
+1. **Rosling (1989) is a structural result, not a worked benchmark.** It proves an assembly system
+   is equivalent to a serial system (with lead-time reordering in the general case) and
+   characterizes the optimal policy as a balanced echelon base-stock policy under "long-run
+   balance." It does **not** tabulate an assembly optimal cost or base-stock vector that this
+   equal-lead-time, 2-stage-reducible env can reproduce. (Re-checked 2026-06-04 against the
+   RePEc/IDEAS abstract and secondary characterizations — e.g. Chen & Muharremoglu, "Completing
+   Rosling's Characterization" — no paper-printed assembly cost/base-stock table is available.)
+2. **The only published number in the chain is a 3-stage serial system the reduction cannot reach.**
+   Snyder & Shen Example 6.1 optimal cost **47.65** is the one genuinely paper-printed anchor, and
+   it is re-derived in `multi_echelon/serial`. But it is a **3-stage** serial system, while the
+   Rosling reduction of an equal-lead-time assembly system yields a **2-stage** serial system
+   (kit → finished). A 2-stage assembly path cannot produce the 3-stage 47.65.
+
+**What IS verified (the honest basis), strictly stronger than "self-consistent only":**
+
+- The equivalence is **literature-verified at the structural level** (Rosling 1989): the
+  equal-lead-time reduction in `rosling.rs` is exactly the collapse to a 2-stage `kit → finished`
+  serial system.
+- The serial system the assembly reduces to is the same Clark & Scarf model whose published anchor
+  (Snyder & Shen 47.65) and `stockpyl` reference optima **are** verified in `multi_echelon/serial`.
+- The assembly **`env.rs` simulation** reproduces (within Monte-Carlo error) the exact serial
+  optimum that the Rosling reduction + the literature-verified serial solver produce
+  (`verification.rs`, finished lead time 1).
+- A cross-family **drift guard** (`verification::tests::rosling_reduction_matches_serial_reference_
+  instance_not_a_published_assembly_number`) pins the reduction mechanism: a single-component
+  assembly instance (kit holding 1, finished holding 3, `L_c=L_a=1`, `p=10`, Poisson(5)) reduces
+  EXACTLY to the serial 2-stage Poisson reference instance (echelon `[2,1]`, `S*=[7,13]`,
+  `C*=16.797779`) — which is itself **reference-implementation-verified against `stockpyl`, NOT a
+  paper-printed number**, so reproducing it through the reduction is a consistency check, not
+  literature verification.
+
+The assembly *instance numbers themselves* (22.759 / 52.536 / 27.530) are **solver-derived**, not
+published. Net: literature-verified at the structural/equivalence level + reproduction of the
+(literature-verified) serial solver's optima by the env — but **not** a published assembly anchor.
+
+### Earlier note (retained for the metadata + independent-reproduction record)
+
+Read this precisely — what is and is not anchored:
 
 - The two **citations** (Rosling 1989; Clark & Scarf 1960) are correct in every metadata field
   (independently confirmed against RePEc/IDEAS and the INFORMS/ACM DOIs — see References).
@@ -139,8 +181,14 @@ The assembly module is **not exposed to Python**: it is not registered in
   two-phase; no Python binding yet).
 - `rosling.rs` — Rosling reduction of the assembly instance to its equivalent serial instance.
 - `echelon_base_stock.rs` — optimal echelon base-stock policy + Monte-Carlo evaluator.
+- `references.rs` — literature citations (Rosling 1989, Clark & Scarf 1960, the Snyder & Shen
+  serial anchor) and the honest per-instance `literature_verified = false` flags, with a guard test
+  (`no_assembly_instance_is_literature_verified`) that fails if any flag is flipped without a real
+  paper-printed assembly anchor.
 - `verification.rs` — env simulation reproduces the Rosling serial optimum (Rust unit tests,
-  `L_a=1`). Independently re-confirmed by `scripts/assembly/verify_assembly_rosling_independent.py`.
+  `L_a=1`), plus the cross-family drift guard
+  (`rosling_reduction_matches_serial_reference_instance_not_a_published_assembly_number`).
+  Independently re-confirmed by `scripts/assembly/verify_assembly_rosling_independent.py`.
 - `scripts/assembly/` (repo-level, outside this dir) — `verify_assembly_rosling_independent.py`
   (independent reproduction of verification.rs) and `benchmark_assembly_policies.py`
   (optimal-vs-heuristic benchmark).

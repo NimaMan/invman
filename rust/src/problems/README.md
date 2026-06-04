@@ -166,6 +166,20 @@ Current literature-verified package anchors:
   - the `exact` solver reproduces the same optima analytically (within 0.05%), cross-checked
     against Snyder's public `stockpyl.ssm_serial`; exact and simulation agree
   - this is the clean, training-ready env for the serial problem
+- `multi_echelon/assembly` (NOT literature-verified — verified BY EQUIVALENCE only)
+  - the textbook assembly system (Rosling 1989): components procured from outside suppliers are
+    assembled into one finished product. By Rosling (1989) it is equivalent to a serial system; the
+    equal-lead-time reduction in `rosling.rs` collapses it to a 2-stage `kit → finished` serial
+    system, and the env-sim reproduces that serial optimum (finished lead time 1)
+  - it carries NO directly reproducible PUBLISHED assembly number, so every carried instance is
+    `literature_verified = false` (`assembly/references.rs`, guarded by
+    `references::tests::no_assembly_instance_is_literature_verified`). Rosling (1989) is a
+    structural result (no worked assembly cost/base-stock table), and the only published number in
+    the chain (Snyder & Shen Example 6.1 = 47.65) is a 3-stage serial system the 2-stage assembly
+    reduction cannot reach
+  - honest basis: literature-verified at the STRUCTURAL/equivalence level (Rosling 1989) + the env
+    reproduces, by simulation, the optimum of the literature-verified serial solver it reduces to.
+    The assembly instance numbers (22.759 / 52.536 / 27.530) are solver-derived, not published
 - `production_assembly_distribution_network` (NOT literature-verified)
   - this family is the richer Pirhooshyaran & Snyder (2021) general supply-network model, NOT the
     textbook serial system. Its `env.rs` adds per-node production steps and pipeline holding, so

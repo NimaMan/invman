@@ -29,10 +29,18 @@ contract). More versions can be added here as siblings.
   Poisson 3-stage 72.04, 2-stage 16.80, 1-stage 4.22) within Monte-Carlo error, and the `exact`
   solver reproduces them analytically (within 0.05%, cross-checked against `stockpyl.ssm_serial`).
   (Verified for demand-facing lead time 1; downstream lead time >= 2 is a known open env item.)
-- `assembly/` — **literature-verified** via Rosling (1989: assembly == serial). The `env.rs`
-  simulation under the optimal echelon base-stock policy reproduces the exact serial optimum from
-  the verified serial solver. Verified for finished (demand-facing) lead time 1; component/upstream
-  lead times >= 2 supported.
+- `assembly/` — **NOT literature-verified — verified BY EQUIVALENCE only**
+  (`literature_verified = false` on every carried instance in `assembly/references.rs`). Rosling
+  (1989) proves an assembly system is equivalent to a serial system, and the env-sim under the
+  optimal echelon base-stock policy reproduces the exact serial optimum from the verified serial
+  solver (finished/demand-facing lead time 1; component/upstream lead times >= 2 supported). But
+  there is NO directly reproducible PUBLISHED assembly number: Rosling (1989) is a structural result
+  (no worked cost/base-stock table), and the only published number in the chain (Snyder & Shen
+  Example 6.1 = 47.65) is a 3-stage serial system the 2-stage assembly reduction cannot reach. So
+  the honest status is: structural/equivalence literature-verification (Rosling) + env reproduction
+  of the (literature-verified) serial solver's optimum — the assembly instance numbers themselves
+  (22.759 / 52.536 / 27.530) are solver-derived, not published. Guarded by
+  `assembly::references::tests::no_assembly_instance_is_literature_verified`.
 - `production_assembly_distribution_network/` — not literature-verified
   - implements the richer Pirhooshyaran model (per-node production step + pipeline holding), which
     does not reduce to the textbook serial/assembly optima; the paper's general-network simulation
