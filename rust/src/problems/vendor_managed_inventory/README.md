@@ -17,106 +17,69 @@ Original literature family:
 Current Rust environment:
 
 - continuous-time, cycle-based multi-retailer truck-dispatch simulator
-- 10 retailers and 2 products in the carried Sui/Gosavi/Lin (2010) benchmark family
+- 10 retailers and 2 products in the carried truck-dispatch case family
 - compound-Poisson retailer demand with discrete-uniform demand sizes
 - random route cycle times and retailer-specific lead times
 - truck-count dispatch action with a newsvendor-based allocation rule
 - DC `(Q,R)` replenishment with random manufacturer lead times
 
-The older reduced single-retailer finite-horizon slice is still kept only as verification support.
+The older reduced single-retailer finite-horizon slice is kept only as verification support.
 
 ## Literature Anchor
 
-There is exactly ONE source paper. (A previous version of this README wrongly split it into a
-"Giannoccaro and Pontrandolfo (2010)" headline paper plus a separate Sui/Gosavi/Lin anchor. There is
-no such Giannoccaro 2010 VMI paper — see the citation correction below.)
+Primary paper (corrected attribution, 2026-06-04):
 
-Source paper (supplies BOTH the truck-dispatch model AND the worked newsvendor case):
-
-- **Sui, Z., Gosavi, A., and Lin, L. (2010)**, *A Reinforcement Learning Approach for Inventory
+- Sui, Z., A. Gosavi, and L. Lin (2010), *A Reinforcement Learning Approach for Inventory
   Replenishment in Vendor-Managed Inventory Systems With Consignment Inventory*,
-  *Engineering Management Journal*, **22(4): 44-53**
+  Engineering Management Journal 22(4): 44-53.
 - DOI: <https://doi.org/10.1080/10429247.2010.11431878>
 - verified at Crossref (<https://api.crossref.org/works/10.1080/10429247.2010.11431878>) and
   Taylor & Francis (<https://www.tandfonline.com/doi/abs/10.1080/10429247.2010.11431878>)
 
-CITATION CORRECTION (2026-05-31, librarian audit): the DOI and title above belong to
-**Sui, Gosavi, and Lin (2010)**, not to Giannoccaro & Pontrandolfo. Giannoccaro & Pontrandolfo's RL
-inventory paper is *Inventory management in supply chains: a reinforcement learning approach*,
-*Int. J. Production Economics* **78(2): 153-161 (2002)** (DOI `10.1016/S0925-5273(00)00156-0`) — a
-different, non-VMI serial-supply-chain model that is **not** used here. The Rust constants are still
-named `GIANNOCCARO_2010_*`; renaming them needs a rebuild and is a tracked blocker.
+Attribution correction: earlier revisions mis-attributed this DOI and title to "Giannoccaro and
+Pontrandolfo (2010)". That was wrong — the DOI `10.1080/10429247.2010.11431878` and the exact title
+belong to Sui/Gosavi/Lin (2010). All `references.rs` symbols are now `SUI_GOSAVI_LIN_2010_*`.
 
-Verified analytical anchor (the newsvendor worked case, REPRODUCED EXACTLY):
+Public companion material (NOT the peer-reviewed paper):
 
-- public instructor case study by **Abhijit Gosavi**, *Case Study for Vendor-Managed Inventory (Based
-  on Sui, Gosavi, & Lin, 2010)*, Missouri S&T, dated Sep 7, 2010 (PDF footer 2020):
-  <https://web.mst.edu/_disabled/gosavia/vmi_case_study.pdf> (URL confirmed to load and was read
-  during the 2026-05-31 audit)
+- Gosavi instructor teaching case study: *CASE STUDY FOR VENDOR-MANAGED INVENTORY (BASED ON SUI,
+  GOSAVI, & LIN, 2010)*, Missouri University of Science and Technology, Sept 7, 2010 (PDF marked
+  "Copyrighted Material 2020"): <https://web.mst.edu/_disabled/gosavia/vmi_case_study.pdf>
+  - self-describes as class material ("As discussed in class ...") and states it is "based on the
+    journal article: Sui, Gosavi, and Lin (2010)"
 - author MATLAB code for that case: <https://web.mst.edu/_disabled/gosavia/vmi_newsvendor.m>
   (NOT independently confirmed to load; treat as unverified)
 
 Published paper experiment rows:
 
-- Sui, Gosavi & Lin (2010) report an 8-case table with newsvendor and RL profits
-- those profit rows are not carried as benchmark assertions because the public material does not define
-  the high/low demand-signal process tightly enough to reproduce the rows
+- the peer-reviewed paper reports an experimental results table (RL vs. newsvendor) on pp. 44-53
+- that table is paywalled (Taylor & Francis) and is not openly reproducible; no open source quotes
+  its numeric rows
+- the repo-constructed 8-case truck-dispatch case definitions are a structural interpretation, not
+  transcriptions of a published table, and their profit rows do not reproduce the published table
 
-## Current Status
+## Current Status (HONEST, per rust/README.md "What counts as literature-verified")
 
-Overall: **literature-verified = partial** (one analytical block verified; the env families are
-faithful-but-unreproduced and self-consistent-only respectively).
+- literature-verified against a number printed in the peer-reviewed Sui/Gosavi/Lin (2010) paper:
+  **NO**. The paper's results table is paywalled and not openly reproducible, so no peer-reviewed
+  paper number is re-run. `references.rs` carries `literature_verified = false`.
+- reproduced exactly by an executing in-crate test: the **Gosavi instructor teaching case study**
+  newsvendor worked example (mu=0.375, sigma^2=0.5833, mu_cycle=15, sigma^2_cycle=30.36,
+  MDH order-up-to=15, six-sigma=31.53, newsvendor=26.96). This is a teaching handout, not the
+  peer-reviewed paper, so per the repo rule it is a labeled worked-example reproduction, **not**
+  literature verification.
+- repo-exact verified: yes on the reduced single-retailer finite-horizon verifier (mechanics +
+  heuristic agreement + DP dominance). This is self-consistency, not literature verification.
 
-Per block:
+Why the full truck-dispatch table is not used as a benchmark:
 
-- **literature-verified: YES** for the public Sui/Gosavi/Lin (2010) worked newsvendor case-study
-  calculation. Confirmed on 2026-05-31 by fetching and reading the source PDF and matching every
-  displayed quantity (`mu=0.375`, `sigma^2=0.5833`, `mu_C=40`, `sigma_C^2=50`, cycle-demand mean 15,
-  variance 30.36, MDH `S=15`, six-sigma `S=31.53`, newsvendor `S=26.96`). This is a reproduced public
-  number, not merely a stored one.
-- **literature-verified: NO** for the full Sui/Gosavi/Lin (2010) truck-dispatch 8-case profit table.
-  The env (`step_paper_state`) is a faithful structural implementation, but no published profit row is
-  reproduced (status: faithful-but-no-published-anchor). These rows are dropped from the benchmark
-  layer.
-- **self-consistent-only** for the reduced single-retailer slice (`step_state`): its parameters are
-  repo-chosen with **no published anchor**; it is validated only against the repo's own exact
-  finite-horizon DP, which dominates both repo heuristics
-  (`verification/tests.rs::exact_dp_dominates_repo_heuristics`). This is a self-consistency check, not
-  a literature reproduction.
-
-Worked-case verification, line by line (env vs the cited PDF, page 4 of `vmi_case_study.pdf`):
-
-| quantity                  | published (Gosavi/Sui/Gosavi/Lin) | env (`newsvendor_case.rs`) |
-| ------------------------- | --------------------------------- | -------------------------- |
-| mean demand rate `mu`     | 0.375                             | 0.375                      |
-| demand variance `sigma^2` | 0.5833                            | 0.58333                    |
-| cycle time mean `mu_C`    | 40                                | 40.0                       |
-| cycle time var `sigma_C^2`| 50                                | 50.0                       |
-| cycle demand mean         | 15                                | 15.0                       |
-| cycle demand var          | 30.36 (= 23.33 + 7.03)            | 30.3646                    |
-| mean-demand heuristic `S` | 15                                | 15.0                       |
-| six-sigma `S`             | 31.53                             | 31.531                     |
-| newsvendor `S`            | 26.96                             | 26.99                      |
-
-The only deviation is the newsvendor `S`: the PDF prints `k = Phi^-1(0.98) = 2.17` (a hand-rounded
-critical ratio and a truncated `k`), giving `15 + 2.17*sqrt(30.36) = 26.96`. The env uses the
-full-precision critical ratio `0.9852` and `k = 2.176`, giving `26.99`. The verification test allows
-a `0.05` tolerance, which this 0.03 rounding gap satisfies. The math derivation (Wald's equation for
-the compound-Poisson demand moments, random-sum cycle-demand variance, classical newsvendor critical
-ratio) matches the paper exactly.
-
-Truck-dispatch (headline) benchmark status:
-
-- the 8-case truck-dispatch case definitions are executable in Rust, but their published profit
-  rows are dropped from the benchmark layer
-- the paper timing audit favors same-cycle dispatch with same-cycle retailer arrival for the current
-  cycle’s trucks; the alternative next-cycle arrival interpretation moved case 1 farther away from
-  the paper row and was rejected
-- the paper objective audit also shows that the published profit excludes DC holding, DC shortage,
-  and DC reorder costs; once that objective is used, reproduced case 1 newsvendor profit moves into
-  the right range at about `16.4` against the published `15.41`
-- the remaining gap is still statistically meaningful, so the full paper table is not used for
-  verification or paper comparisons
+- the published profit rows are not openly accessible
+- the repo's 10-retailer/2-product parameter rows are a structural interpretation, not a transcribed
+  published table
+- the high/low demand-signal process is not defined precisely enough in any open source to reproduce
+  the published rows; an earlier audit found the reproduced case-1 newsvendor profit (~16.4) did not
+  match a published figure (~15.41) closely enough to anchor verification, and even that 15.41 was
+  read from a figure, not an openly available results table
 
 ## Benchmark
 
@@ -252,13 +215,7 @@ and warm-starting CMA-ES at the tuned base-stock control.
 
 Code layout:
 
-- `env.rs`: holds BOTH env families — the reduced single-retailer finite-horizon slice
-  (`step_state`, the Python-exposed and DP-verified env used for the benchmark) and the
-  continuous-time multi-retailer truck-dispatch model (`step_paper_state`, the headline-paper env)
-- `finite_horizon_dp.rs`: exact DP + named-heuristic evaluator on the reduced slice (Rust-only)
-- `heuristics/`: `retailer_base_stock`, `dc_reserve_base_stock` (reduced slice), plus
-  `paper_newsvendor` / `paper_mean_demand` allocation rules (truck-dispatch model)
-- [references.rs](/home/nima/code/ml/invman/rust/src/problems/vendor_managed_inventory/literature/references.rs): literature rows and problem instances
-- [newsvendor_case.rs](/home/nima/code/ml/invman/rust/src/problems/vendor_managed_inventory/verification/newsvendor_case.rs): literature-backed analytical verification helper
-- [tests.rs](/home/nima/code/ml/invman/rust/src/problems/vendor_managed_inventory/verification/tests.rs): executable verification assertions
-- [scripts/vendor_managed_inventory/benchmark_reduced_single_retailer.py](/home/nima/code/ml/invman/scripts/vendor_managed_inventory/benchmark_reduced_single_retailer.py): the policy benchmark runner
+- root env / rollout / heuristics: paper-first continuous-time VMI truck-dispatch environment
+- [references.rs](/home/nima/code/ml/invman/rust/src/problems/vendor_managed_inventory/literature/references.rs): literature rows, honesty flags, and problem instances
+- [newsvendor_case.rs](/home/nima/code/ml/invman/rust/src/problems/vendor_managed_inventory/verification/newsvendor_case.rs): instructor-case worked-example reproduction helper
+- [tests.rs](/home/nima/code/ml/invman/rust/src/problems/vendor_managed_inventory/verification/tests.rs): executable verification assertions + literature-honesty drift guard

@@ -1,7 +1,79 @@
+// ============================================================================
+// vendor_managed_inventory / literature / references.rs
+//
+// OBJECTIVE
+//   Hold the literature instances and published-value records for the
+//   vendor-managed-inventory (VMI) family, and state HONESTLY which of them is
+//   literature-verified per the repo rule (an in-crate test must re-run the
+//   env/solver and reproduce a number PRINTED IN A PAPER within tolerance).
+//
+// PROVENANCE / HONESTY NOTE (corrected 2026-06-04)
+//   The primary paper this family targets is:
+//
+//     Sui, Z., A. Gosavi, and L. Lin (2010). "A Reinforcement Learning Approach
+//     for Inventory Replenishment in Vendor-Managed Inventory Systems With
+//     Consignment Inventory." Engineering Management Journal 22(4): 44-53.
+//     DOI: 10.1080/10429247.2010.11431878.
+//
+//   Earlier revisions of this file mis-attributed that DOI and title to
+//   "Giannoccaro and Pontrandolfo (2010)". That attribution was WRONG: the DOI
+//   10.1080/10429247.2010.11431878 and the exact title belong to Sui/Gosavi/Lin.
+//   All symbols are renamed to SUI_GOSAVI_LIN_2010_* accordingly.
+//
+//   WHAT IS REPRODUCIBLE BY THIS FAMILY, AND FROM WHERE
+//   - The only openly accessible artifact carrying concrete numbers is the
+//     instructor TEACHING CASE STUDY:
+//       Gosavi, A. "CASE STUDY FOR VENDOR-MANAGED INVENTORY (BASED ON SUI,
+//       GOSAVI, & LIN, 2010)", Missouri University of Science and Technology,
+//       Sept 7, 2010 (PDF marked "Copyrighted Material 2020").
+//     It self-describes as a class case study ("As discussed in class ...") and
+//     states "This case study is based on the journal article: Sui, Gosavi, and
+//     Lin (2010)." Its "Worked out example with data from the paper" computes,
+//     for the single-retailer single-product newsvendor:
+//       mu = lambda(a+b)/2 = 0.25*3/2 = 0.375
+//       sigma^2 = 0.25*[1/12 + 9/4] = 0.5833
+//       mu_cycle = 0.375*40 = 15 ; sigma^2_cycle = 40*0.5833 + 0.375^2*50 = 30.36
+//       MDH order-up-to S = 15 ; six-sigma S = 15+3*sqrt(30.36) = 31.53
+//       newsvendor S = 15 + Phi^{-1}(4/4.06)*sqrt(30.36) = 26.96
+//     evaluate_newsvendor_worked_case(...) re-derives these exactly; the
+//     verification test asserts reproduction within tolerance.
+//
+//   WHY literature_verified = false FOR THE PEER-REVIEWED PAPER
+//   - Those reproduced order-up-to numbers (15 / 31.53 / 26.96) are GOSAVI's own
+//     worked computation in the instructor HANDOUT, not a results row PRINTED in
+//     the peer-reviewed Sui/Gosavi/Lin (2010) EMJ paper. Per the repo rule, an
+//     instructor/handout number is explicitly NOT literature verification.
+//   - The peer-reviewed paper's experimental results table (RL vs. newsvendor
+//     profit per case, pp. 44-53) is paywalled (Taylor & Francis) and is not
+//     openly reproducible; no open source quotes its numeric rows. The
+//     handout's input parameters (T-distribution {30,40,50} w.p. {.25,.5,.25},
+//     d~UNIF(1,2), lambda=0.25, h=0.06, p=4.00) are described as "data from the
+//     paper", but the published profit/cost rows themselves are not accessible.
+//   - The repo's continuous-time 10-retailer/2-product truck-dispatch
+//     PaperVendorManagedInventoryModel and its 8 case definitions are a
+//     REPO-CONSTRUCTED interpretation of the paper's structure; their parameter
+//     rows are not transcribed from a published table and their profit rows do
+//     not reproduce the published table (the row-level gap is statistically
+//     meaningful and the demand-signal process is not public enough to resolve).
+//
+//   STATUS SUMMARY
+//   - literature_verified (peer-reviewed paper number): FALSE.
+//   - The Gosavi instructor case-study worked example IS reproduced exactly by
+//     an executing in-crate test; it is kept as a clearly-labeled instructor
+//     worked example, NOT as peer-reviewed-paper verification.
+// ============================================================================
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PublishedBenchmarkReference {
     pub source: &'static str,
     pub url: &'static str,
+    /// True only if an in-crate test re-runs the env/solver and reproduces a
+    /// number PRINTED IN THE PEER-REVIEWED PAPER within a stated tolerance.
+    /// False here: only the Gosavi instructor case-study worked example is
+    /// reproduced (a teaching handout, not the peer-reviewed paper).
+    pub literature_verified: bool,
+    /// Precisely what the reproduction test re-runs and against which artifact.
+    pub verification_source: &'static str,
     pub benchmark_policies: &'static [&'static str],
     pub notes: &'static str,
 }
@@ -61,6 +133,13 @@ pub struct NewsvendorWorkedCaseReference {
     pub source: &'static str,
     pub url: &'static str,
     pub matlab_code_url: &'static str,
+    /// False: these displayed numbers are from the Gosavi INSTRUCTOR CASE STUDY
+    /// (a teaching handout based on the paper), not a results row printed in the
+    /// peer-reviewed Sui/Gosavi/Lin (2010) EMJ paper. Per the repo rule, an
+    /// instructor/handout number is NOT literature verification.
+    pub literature_verified: bool,
+    /// What the reproduction asserts and against which artifact.
+    pub verification_source: &'static str,
     pub notes: &'static str,
     pub customer_arrival_rate: f64,
     pub demand_size_low: f64,
@@ -310,19 +389,23 @@ const PAPER_BASELINE_DC_PARAMS: [PaperDcProductParams; 2] = [
     },
 ];
 
-pub const GIANNOCCARO_2010_REFERENCE: PublishedBenchmarkReference = PublishedBenchmarkReference {
-    source: "Sui, Z., Gosavi, A., and Lin, L. (2010), A Reinforcement Learning Approach for Inventory Replenishment in Vendor-Managed Inventory Systems With Consignment Inventory, Engineering Management Journal, 22(4): 44-53",
+pub const SUI_GOSAVI_LIN_2010_REFERENCE: PublishedBenchmarkReference = PublishedBenchmarkReference {
+    source: "Sui, Z., A. Gosavi, and L. Lin (2010), A Reinforcement Learning Approach for Inventory Replenishment in Vendor-Managed Inventory Systems With Consignment Inventory, Engineering Management Journal 22(4): 44-53",
     url: "https://doi.org/10.1080/10429247.2010.11431878",
-    benchmark_policies: &["worked_newsvendor_calculation"],
-    notes: "CITATION CORRECTION (2026-05-31, librarian audit): this DOI/title belong to Sui, Gosavi, and Lin (2010) in Engineering Management Journal 22(4):44-53, NOT to Giannoccaro and Pontrandolfo. Verified at Crossref (https://api.crossref.org/works/10.1080/10429247.2010.11431878) and Taylor & Francis. Giannoccaro & Pontrandolfo (2002), Int. J. Production Economics 78(2):153-161, is a different (serial supply-chain) RL paper and is NOT the source here. The struct identifier still reads GIANNOCCARO_2010 only because renaming it touches bindings.rs/rollout.rs/tests.rs and needs a rebuild (see README blocker). The paper studies a continuous-time multi-retailer VMI system with consignment inventory, truck-capacity transport decisions, a DC (Q,R) replenishment rule, and a newsvendor-based allocation heuristic. The public worked newsvendor calculation is verified here; the full paper profit table is not carried as a benchmark because the public text does not specify the demand-signal semantics tightly enough to reproduce the rows.",
+    literature_verified: false,
+    verification_source: "no_peer_reviewed_paper_number_reproduced; only the Gosavi instructor case-study worked example (a teaching handout based on this paper) is re-run and reproduced by an in-crate test",
+    benchmark_policies: &["gosavi_instructor_case_study_worked_newsvendor_calculation"],
+    notes: "The peer-reviewed paper studies a continuous-time multi-retailer VMI system with consignment inventory, truck-capacity transport decisions, a DC (Q,R) replenishment rule, and a newsvendor-based allocation heuristic. NOT literature-verified: the paper's results table (RL vs. newsvendor profit per case, pp.44-53) is paywalled and not openly reproducible, so no number printed in the peer-reviewed paper is re-run here. What IS reproduced is the Gosavi (2010) instructor TEACHING CASE STUDY worked newsvendor example (a handout based on this paper), kept separately below as a clearly-labeled instructor worked example. The repo-constructed 10-retailer/2-product truck-dispatch case definitions below are a structural interpretation, not transcriptions of a published table, and do not reproduce the published profit rows.",
 };
 
-pub const GIANNOCCARO_2010_NEWSVENDOR_WORKED_CASE: NewsvendorWorkedCaseReference =
+pub const SUI_GOSAVI_LIN_2010_GOSAVI_CASE_STUDY_WORKED_EXAMPLE: NewsvendorWorkedCaseReference =
     NewsvendorWorkedCaseReference {
-        source: "Gosavi (2020) case study based on Sui, Gosavi, and Lin (2010)",
+        source: "Gosavi, A. 'CASE STUDY FOR VENDOR-MANAGED INVENTORY (BASED ON SUI, GOSAVI, & LIN, 2010)', Missouri Univ. of Science and Technology, Sept 7, 2010 (instructor teaching case study / handout; PDF marked 'Copyrighted Material 2020')",
         url: "https://web.mst.edu/_disabled/gosavia/vmi_case_study.pdf",
         matlab_code_url: "https://web.mst.edu/_disabled/gosavia/vmi_newsvendor.m",
-        notes: "Public worked single-retailer single-product newsvendor example derived directly from the Sui/Gosavi/Lin paper. This is the cleanest public executable anchor currently available for the vendor-managed inventory family.",
+        literature_verified: false,
+        verification_source: "instructor_case_study_worked_example_reproduced_exactly; NOT a number printed in the peer-reviewed Sui/Gosavi/Lin (2010) EMJ paper",
+        notes: "Single-retailer single-product newsvendor worked example from Gosavi's instructor TEACHING CASE STUDY ('Worked out example with data from the paper'). The case study self-describes as class material ('As discussed in class ...') and states it is 'based on the journal article: Sui, Gosavi, and Lin (2010)'. The displayed order-up-to numbers (MDH=15, six-sigma=31.53, newsvendor=26.96) are Gosavi's own worked computation in the handout, NOT a results row printed in the peer-reviewed paper. This is the cleanest OPEN executable anchor available, but per the repo rule a handout number is NOT literature verification; it is kept as a labeled instructor worked example only.",
         customer_arrival_rate: 0.25,
         demand_size_low: 1.0,
         demand_size_high: 2.0,
@@ -341,7 +424,7 @@ pub const GIANNOCCARO_2010_NEWSVENDOR_WORKED_CASE: NewsvendorWorkedCaseReference
         displayed_newsvendor_order_up_to: 26.96,
     };
 
-pub const GIANNOCCARO_2010_CASE_DEFINITIONS: &[PaperExperimentCaseDefinition] = &[
+pub const SUI_GOSAVI_LIN_2010_CASE_DEFINITIONS: &[PaperExperimentCaseDefinition] = &[
     PaperExperimentCaseDefinition {
         case_id: 1,
         retailer_penalty_level: -1,
@@ -395,12 +478,17 @@ pub const GIANNOCCARO_2010_CASE_DEFINITIONS: &[PaperExperimentCaseDefinition] = 
 pub fn paper_experiment_case_definition(
     case_id: usize,
 ) -> Option<&'static PaperExperimentCaseDefinition> {
-    GIANNOCCARO_2010_CASE_DEFINITIONS
+    SUI_GOSAVI_LIN_2010_CASE_DEFINITIONS
         .iter()
         .find(|row| row.case_id == case_id)
 }
 
-pub fn build_giannoccaro_2010_case(case_id: usize) -> Option<PaperVendorManagedInventoryModel> {
+/// Build a repo-constructed structural interpretation of one Sui/Gosavi/Lin
+/// (2010) experiment case. NOTE: the 10-retailer/2-product parameter rows are a
+/// repo interpretation of the paper's structure, not transcriptions of a
+/// published table, and the resulting profit rows do not reproduce the paper's
+/// (paywalled) results table. Not literature-verified.
+pub fn build_sui_gosavi_lin_2010_case(case_id: usize) -> Option<PaperVendorManagedInventoryModel> {
     let row = paper_experiment_case_definition(case_id)?;
     let mut retailer_product_params = PAPER_BASELINE_RETAILER_PRODUCT_PARAMS.to_vec();
     for param in retailer_product_params.iter_mut() {
@@ -416,12 +504,9 @@ pub fn build_giannoccaro_2010_case(case_id: usize) -> Option<PaperVendorManagedI
     }
 
     Some(PaperVendorManagedInventoryModel {
-        // Identifier name is kept ("giannoccaro2010_*") to avoid a Python/binding break;
-        // the cited source is Sui, Gosavi, and Lin (2010). See GIANNOCCARO_2010_REFERENCE
-        // for the citation correction (this is NOT a Giannoccaro & Pontrandolfo paper).
-        name: "giannoccaro2010_truck_dispatch",
-        source: GIANNOCCARO_2010_REFERENCE.source,
-        url: GIANNOCCARO_2010_REFERENCE.url,
+        name: "sui_gosavi_lin_2010_truck_dispatch_repo_interpretation",
+        source: SUI_GOSAVI_LIN_2010_REFERENCE.source,
+        url: SUI_GOSAVI_LIN_2010_REFERENCE.url,
         num_retailers: 10,
         num_products: 2,
         retailer_product_params,
@@ -464,9 +549,9 @@ pub fn build_giannoccaro_2010_case(case_id: usize) -> Option<PaperVendorManagedI
 
 pub const PRIMARY_REFERENCE_INSTANCE: VendorManagedInventoryReferenceInstance =
     VendorManagedInventoryReferenceInstance {
-        name: "giannoccaro2010_style_single_retailer",
-        source: GIANNOCCARO_2010_REFERENCE.source,
-        url: GIANNOCCARO_2010_REFERENCE.url,
+        name: "sui_gosavi_lin_2010_style_single_retailer",
+        source: SUI_GOSAVI_LIN_2010_REFERENCE.source,
+        url: SUI_GOSAVI_LIN_2010_REFERENCE.url,
         periods: 24,
         demand_distribution_kind: "poisson",
         demand_mean: 2.5,
@@ -488,8 +573,8 @@ pub const PRIMARY_REFERENCE_INSTANCE: VendorManagedInventoryReferenceInstance =
     };
 
 pub const VERIFICATION_PROBLEM_INSTANCE: ExactVerificationReference = ExactVerificationReference {
-    source: GIANNOCCARO_2010_REFERENCE.source,
-    url: GIANNOCCARO_2010_REFERENCE.url,
+    source: SUI_GOSAVI_LIN_2010_REFERENCE.source,
+    url: SUI_GOSAVI_LIN_2010_REFERENCE.url,
     periods: 5,
     discount_factor: 0.99,
     initial_dc_on_hand: 4,

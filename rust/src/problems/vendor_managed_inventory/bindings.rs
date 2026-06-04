@@ -13,7 +13,7 @@ use crate::problems::vendor_managed_inventory::heuristics::{
     retailer_base_stock_shipment_quantity, simulate_policy, PolicySimulationSummary,
 };
 use crate::problems::vendor_managed_inventory::literature::references::{
-    build_giannoccaro_2010_case, GIANNOCCARO_2010_NEWSVENDOR_WORKED_CASE,
+    build_sui_gosavi_lin_2010_case, SUI_GOSAVI_LIN_2010_GOSAVI_CASE_STUDY_WORKED_EXAMPLE,
 };
 use crate::problems::vendor_managed_inventory::rollout::{
     paper_population_rollout, paper_rollout, population_rollout, rollout, rollout_from_demands,
@@ -105,13 +105,13 @@ fn simulation_summary_to_py(
 
 #[pyfunction]
 fn vendor_managed_inventory_newsvendor_worked_case_summary(py: Python<'_>) -> PyResult<PyObject> {
-    let summary = evaluate_newsvendor_worked_case(&GIANNOCCARO_2010_NEWSVENDOR_WORKED_CASE)?;
+    let summary = evaluate_newsvendor_worked_case(&SUI_GOSAVI_LIN_2010_GOSAVI_CASE_STUDY_WORKED_EXAMPLE)?;
     let dict = PyDict::new_bound(py);
-    dict.set_item("source", GIANNOCCARO_2010_NEWSVENDOR_WORKED_CASE.source)?;
-    dict.set_item("url", GIANNOCCARO_2010_NEWSVENDOR_WORKED_CASE.url)?;
+    dict.set_item("source", SUI_GOSAVI_LIN_2010_GOSAVI_CASE_STUDY_WORKED_EXAMPLE.source)?;
+    dict.set_item("url", SUI_GOSAVI_LIN_2010_GOSAVI_CASE_STUDY_WORKED_EXAMPLE.url)?;
     dict.set_item(
         "matlab_code_url",
-        GIANNOCCARO_2010_NEWSVENDOR_WORKED_CASE.matlab_code_url,
+        SUI_GOSAVI_LIN_2010_GOSAVI_CASE_STUDY_WORKED_EXAMPLE.matlab_code_url,
     )?;
     dict.set_item("mean_demand_rate", summary.mean_demand_rate)?;
     dict.set_item("demand_variance", summary.demand_variance)?;
@@ -130,7 +130,7 @@ fn vendor_managed_inventory_newsvendor_worked_case_summary(py: Python<'_>) -> Py
     dict.set_item("newsvendor_order_up_to", summary.newsvendor_order_up_to)?;
     dict.set_item(
         "displayed_newsvendor_order_up_to",
-        GIANNOCCARO_2010_NEWSVENDOR_WORKED_CASE.displayed_newsvendor_order_up_to,
+        SUI_GOSAVI_LIN_2010_GOSAVI_CASE_STUDY_WORKED_EXAMPLE.displayed_newsvendor_order_up_to,
     )?;
     Ok(dict.into_any().unbind().into())
 }
@@ -142,9 +142,9 @@ fn vendor_managed_inventory_paper_initial_policy_state(
     seed: u64,
 ) -> PyResult<Vec<f32>> {
     use rand::SeedableRng;
-    let model = build_giannoccaro_2010_case(case_id).ok_or_else(|| {
+    let model = build_sui_gosavi_lin_2010_case(case_id).ok_or_else(|| {
         PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
-            "unknown Giannoccaro 2010 case_id {}",
+            "unknown Sui/Gosavi/Lin 2010 case_id {}",
             case_id
         ))
     })?;

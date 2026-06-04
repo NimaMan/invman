@@ -16,7 +16,7 @@ use crate::problems::vendor_managed_inventory::env::{
 use crate::problems::vendor_managed_inventory::heuristics::{
     paper_allocate_with_trucks, paper_newsvendor_order_up_to_levels,
 };
-use crate::problems::vendor_managed_inventory::literature::references::build_giannoccaro_2010_case;
+use crate::problems::vendor_managed_inventory::literature::references::build_sui_gosavi_lin_2010_case;
 
 #[derive(Clone)]
 pub struct VendorManagedInventoryRolloutConfig {
@@ -231,9 +231,9 @@ pub fn paper_rollout(
     seed: u64,
 ) -> PyResult<f64> {
     validate_paper_config(config)?;
-    let model = build_giannoccaro_2010_case(config.case_id).ok_or_else(|| {
+    let model = build_sui_gosavi_lin_2010_case(config.case_id).ok_or_else(|| {
         PyValueError::new_err(format!(
-            "unknown Giannoccaro 2010 case_id {}",
+            "unknown Sui/Gosavi/Lin 2010 case_id {}",
             config.case_id
         ))
     })?;

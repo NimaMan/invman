@@ -1,3 +1,27 @@
+// ============================================================================
+// vendor_managed_inventory / verification / tests.rs
+//
+// OBJECTIVE
+//   Prove environment mechanics are correct, and re-run the ONE reproducible
+//   numerical anchor available to this family while stating its provenance
+//   HONESTLY per the repo rule.
+//
+// WHAT IS AND ISN'T LITERATURE-VERIFIED HERE (see references.rs header)
+//   - The peer-reviewed paper is Sui, Gosavi & Lin (2010), EMJ 22(4):44-53. Its
+//     results table is paywalled / not openly reproducible, so NO number printed
+//     in the peer-reviewed paper is re-run. literature_verified = FALSE.
+//   - `newsvendor_worked_case_reproduces_gosavi_instructor_case_study` re-runs
+//     evaluate_newsvendor_worked_case(...) and reproduces the Gosavi (2010)
+//     INSTRUCTOR TEACHING CASE STUDY worked example exactly (mu=0.375,
+//     sigma^2=0.5833, mu_cycle=15, sigma^2_cycle=30.36, MDH S=15,
+//     six-sigma S=31.53, newsvendor S=26.96). That is an instructor handout, not
+//     the peer-reviewed paper, so it is a labeled worked-example reproduction,
+//     NOT literature verification.
+//   - `literature_verified_flags_are_honest` is a drift guard: it asserts the
+//     references.rs flags stay FALSE so a future edit cannot silently overclaim
+//     peer-reviewed-paper verification.
+// ============================================================================
+
 use crate::problems::vendor_managed_inventory::env::{
     build_policy_state, initialize_state, step_state, terminal_salvage_credit,
 };
@@ -8,8 +32,8 @@ use crate::problems::vendor_managed_inventory::heuristics::{
     dc_reserve_base_stock_shipment_quantity, retailer_base_stock_shipment_quantity,
 };
 use crate::problems::vendor_managed_inventory::literature::references::{
-    GIANNOCCARO_2010_CASE_DEFINITIONS, GIANNOCCARO_2010_NEWSVENDOR_WORKED_CASE,
-    GIANNOCCARO_2010_REFERENCE, PRIMARY_REFERENCE_INSTANCE, VERIFICATION_PROBLEM_INSTANCE,
+    SUI_GOSAVI_LIN_2010_CASE_DEFINITIONS, SUI_GOSAVI_LIN_2010_GOSAVI_CASE_STUDY_WORKED_EXAMPLE,
+    SUI_GOSAVI_LIN_2010_REFERENCE, PRIMARY_REFERENCE_INSTANCE, VERIFICATION_PROBLEM_INSTANCE,
 };
 use crate::problems::vendor_managed_inventory::verification::newsvendor_case::{
     evaluate_newsvendor_worked_case, NewsvendorWorkedCaseSummary,
@@ -63,20 +87,59 @@ const WORKED_TRANSITION_CASE: WorkedTransitionCase = WorkedTransitionCase {
 #[test]
 fn literature_catalog_has_expected_shape() {
     assert_eq!(
-        GIANNOCCARO_2010_REFERENCE.benchmark_policies,
-        &["worked_newsvendor_calculation"]
+        SUI_GOSAVI_LIN_2010_REFERENCE.benchmark_policies,
+        &["gosavi_instructor_case_study_worked_newsvendor_calculation"]
     );
-    assert_eq!(GIANNOCCARO_2010_CASE_DEFINITIONS.len(), 8);
-    assert_eq!(GIANNOCCARO_2010_CASE_DEFINITIONS[0].case_id, 1);
+    assert_eq!(SUI_GOSAVI_LIN_2010_CASE_DEFINITIONS.len(), 8);
+    assert_eq!(SUI_GOSAVI_LIN_2010_CASE_DEFINITIONS[0].case_id, 1);
     assert_eq!(PRIMARY_REFERENCE_INSTANCE.dc_capacity, 10);
     assert_eq!(PRIMARY_REFERENCE_INSTANCE.benchmark_dc_reserve_quantity, 2);
     assert_eq!(VERIFICATION_PROBLEM_INSTANCE.max_shipment_quantity, 4);
 }
 
+/// Drift guard: the references.rs honesty flags must stay FALSE. No number
+/// printed in the peer-reviewed Sui/Gosavi/Lin (2010) paper is re-run by this
+/// family; only the Gosavi instructor teaching case study worked example is
+/// reproduced. This test fails loudly if a future edit silently flips a flag to
+/// claim peer-reviewed-paper literature verification.
 #[test]
-fn newsvendor_worked_case_matches_public_case_study_rounding() {
+fn literature_verified_flags_are_honest() {
+    assert!(
+        !SUI_GOSAVI_LIN_2010_REFERENCE.literature_verified,
+        "no peer-reviewed Sui/Gosavi/Lin (2010) paper number is reproduced; the flag must stay false"
+    );
+    assert!(
+        !SUI_GOSAVI_LIN_2010_GOSAVI_CASE_STUDY_WORKED_EXAMPLE.literature_verified,
+        "the reproduced numbers are from the Gosavi instructor case study handout, not the peer-reviewed paper; the flag must stay false"
+    );
+    // The source string must point at Sui/Gosavi/Lin (2010), not the prior
+    // mis-attribution to Giannoccaro/Pontrandolfo.
+    assert!(
+        SUI_GOSAVI_LIN_2010_REFERENCE
+            .source
+            .contains("Sui, Z., A. Gosavi, and L. Lin (2010)"),
+        "source string must correctly attribute DOI 10.1080/10429247.2010.11431878 to Sui/Gosavi/Lin"
+    );
+    assert!(
+        SUI_GOSAVI_LIN_2010_GOSAVI_CASE_STUDY_WORKED_EXAMPLE
+            .source
+            .contains("instructor teaching case study"),
+        "worked-example source must be labeled as the Gosavi instructor teaching case study"
+    );
+}
+
+/// Re-runs the family's newsvendor solver and reproduces the worked example
+/// printed in the Gosavi (2010) INSTRUCTOR TEACHING CASE STUDY
+/// ("CASE STUDY FOR VENDOR-MANAGED INVENTORY (BASED ON SUI, GOSAVI, & LIN,
+/// 2010)", p. with the "Worked out example with data from the paper"): displayed
+/// values mu=0.375, sigma^2=0.5833, mu_cycle=15, sigma^2_cycle=30.36,
+/// six-sigma S=31.53, newsvendor S=26.96. This reproduces the HANDOUT, NOT a
+/// number printed in the peer-reviewed paper, so it is a labeled worked-example
+/// reproduction, not literature verification (see references.rs header).
+#[test]
+fn newsvendor_worked_case_reproduces_gosavi_instructor_case_study() {
     let summary: NewsvendorWorkedCaseSummary =
-        evaluate_newsvendor_worked_case(&GIANNOCCARO_2010_NEWSVENDOR_WORKED_CASE)
+        evaluate_newsvendor_worked_case(&SUI_GOSAVI_LIN_2010_GOSAVI_CASE_STUDY_WORKED_EXAMPLE)
             .expect("worked case must evaluate");
 
     assert!((summary.mean_demand_rate - 0.375).abs() < 1e-12);
@@ -91,19 +154,19 @@ fn newsvendor_worked_case_matches_public_case_study_rounding() {
 
     assert!(
         (summary.cycle_demand_variance
-            - GIANNOCCARO_2010_NEWSVENDOR_WORKED_CASE.displayed_cycle_demand_variance)
+            - SUI_GOSAVI_LIN_2010_GOSAVI_CASE_STUDY_WORKED_EXAMPLE.displayed_cycle_demand_variance)
             .abs()
             < 0.01
     );
     assert!(
         (summary.six_sigma_order_up_to
-            - GIANNOCCARO_2010_NEWSVENDOR_WORKED_CASE.displayed_six_sigma_order_up_to)
+            - SUI_GOSAVI_LIN_2010_GOSAVI_CASE_STUDY_WORKED_EXAMPLE.displayed_six_sigma_order_up_to)
             .abs()
             < 0.01
     );
     assert!(
         (summary.newsvendor_order_up_to
-            - GIANNOCCARO_2010_NEWSVENDOR_WORKED_CASE.displayed_newsvendor_order_up_to)
+            - SUI_GOSAVI_LIN_2010_GOSAVI_CASE_STUDY_WORKED_EXAMPLE.displayed_newsvendor_order_up_to)
             .abs()
             < 0.05
     );

@@ -1,3 +1,35 @@
+// ============================================================================
+// vendor_managed_inventory / verification / newsvendor_case.rs
+//
+// OBJECTIVE
+//   Re-derive the compound-Poisson newsvendor worked example used by the
+//   vendor-managed-inventory family, so an in-crate test can reproduce it.
+//
+// ALGORITHM (matches the Gosavi instructor case-study derivation, which cites
+// Ross 2002 / Nahmias 2001):
+//   Inputs: customer arrival rate lambda; demand size d ~ UNIF(a,b); per-cycle
+//   time T discrete with support/probabilities; holding cost h; penalty p.
+//   1. Per-unit-time demand D = sum_{i=1..N} d_i is compound Poisson, so (Wald):
+//        mu      = lambda * (a+b)/2
+//        sigma^2 = lambda*(b-a)^2/12 + lambda*((a+b)/2)^2
+//   2. Cycle time moments: mu_C = E[T], sigma_C^2 = Var[T].
+//   3. Demand during a cycle (Nahmias 2001):
+//        mu_cycle    = mu * mu_C
+//        sigma_cycle^2 = mu_C*sigma^2 + mu^2*sigma_C^2
+//   4. Order-up-to levels:
+//        mean-demand heuristic (MDH): S = mu_cycle
+//        six-sigma:                   S = mu_cycle + 3*sigma_cycle
+//        newsvendor (normal approx):  critical ratio = p/(p+h),
+//                                     S = mu_cycle + Phi^{-1}(p/(p+h))*sigma_cycle
+//
+// PROVENANCE / HONESTY (see references.rs header)
+//   The numerical reference this reproduces is the Gosavi (2010) INSTRUCTOR
+//   TEACHING CASE STUDY worked example, not a number printed in the
+//   peer-reviewed Sui/Gosavi/Lin (2010) EMJ paper. Per the repo rule, an
+//   instructor/handout number is NOT literature verification; the reference
+//   carries literature_verified = false.
+// ============================================================================
+
 use pyo3::exceptions::PyValueError;
 use pyo3::PyResult;
 use statrs::distribution::{ContinuousCDF, Normal};
