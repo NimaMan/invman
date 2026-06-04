@@ -135,3 +135,62 @@ Ledger and per-run artifacts:
   commit, experiment, reference, budget, structure, mean_cost, best_heuristic,
   best_heuristic_name, gap, gap%, winner, description)
 - `outputs/autoresearch/<run_tag>/{logs,models}/` (CMA-ES logs + trained soft-tree)
+
+## Autoresearch outcome — setting 5 vs the VALUE-ITERATION OPTIMUM (run 2026-06-04)
+
+This is the joint-replenishment row that goes in the paper alongside the four existing
+learned-policy results. For the other 15 settings the literature gives only a heuristic
+comparator (MOQ); for **setting 5** it gives a STRONGER one the paper itself uses in its
+Figure 2: the **infinite-horizon discounted value-iteration optimum**. So setting 5 is the
+only Vanvuchelen instance on which we can report a true *optimality gap*, not just a relative
+gap to a heuristic. The headline is a learned policy that **closes 84% of the heuristic's gap
+to the optimum**.
+
+**Baseline (the floor).** Independent value iteration over the repo env cost/transition
+(`scripts/joint_replenishment/benchmark_vanvuchelen_settings.value_iteration_setting5`,
+gamma=0.99, converged at iter 2260, max delta 9.9e-09) reproduces the paper's published
+optimal action **q=(0,6) at state (5,0)** (VANVUCHELEN_2020_FIGURE3_ANCHOR). Rolled out under
+the standard eval protocol (200 periods, init inventory [0,0], 4096 paired-CRN demand paths),
+the **VI optimum mean discounted cost = 6347.108** (SEM 3.34). MOQ at the newsvendor target
+`S=(5,3)` costs **7593.655** (SEM 4.52), i.e. **+19.64% above optimal** — squarely inside the
+paper's Figure-2 "heuristics sit 4-25% above optimal" band. (DYN-OUT is dominated by MOQ.)
+
+**Action design + warm-start.** The policy is the depth-3 oblique soft tree over the
+`vector_quantity` action box (the `wide` box = 2*truck_capacity per item), scored end-to-end
+by `joint_replenishment_soft_tree_*_rollout`; the Rust env projects the raw per-item order onto
+the nearest full-truckload total ({0, M*V}) so every action is feasible by construction. CMA-ES
+is warm-started with `--warm_start_moq` (decoder-agnostic best-of-candidates seed of the CMA
+mean near MOQ behaviour), popsize 24 x 300 generations, train_seed_batch 12, sigma_init 1.5,
+on training seeds disjoint from the 1_000_000-based held-out block.
+
+**Result (paired CRN, held out).** The learned soft-tree mean discounted cost = **6546.176**
+(SEM 3.64):
+
+| policy | mean cost | vs VI optimum | vs MOQ |
+| --- | ---: | ---: | ---: |
+| VI optimum (baseline) | 6347.108 | — | -16.42% |
+| **learned soft-tree** | **6546.176** | **+3.14%** | **-13.79%** |
+| MOQ (strongest heuristic) | 7593.655 | +19.64% | — |
+
+- **Optimality gap of the learned policy: +3.14% above the VI optimum** — it **closes 84.0%
+  of MOQ's +19.64% optimality gap** toward the true optimum.
+- **vs MOQ: -13.79%, cheaper on all 4096/4096 paired paths** (the autoresearch ledger row at
+  2048 StdRng seeds reads -13.84%, the same win on the independent sampler). This is an honest,
+  unanimous beat of the strongest in-repo heuristic.
+- Learned is cheaper than the VI optimum on only **10/4096** paths (≈0.24%, expected ~0 since
+  VI is the discounted optimum) — confirming VI is the genuine floor and the +3.14% is a real
+  residual gap, not eval noise.
+
+**Honest scope.** The +3.14% optimality gap is a literature comparison against the paper's own
+value-iteration optimum (action verified against the published Figure-3 anchor). The VI policy
+is rolled out in Python because no Rust binding simulates an arbitrary tabular (I1,I2)->(q1,q2)
+map; the evaluator guards this by cross-checking MOQ rolled out in the SAME Python env against
+the Rust `joint_replenishment_policy_rollout_from_paths` and asserting max|diff| < 1e-6 (it is
+exactly 0.0) before trusting any VI number, and the learned policy is ALWAYS scored by the Rust
+binding. We do not claim to beat the optimum — we close most of the heuristic's gap to it.
+
+**Files:** runner `scripts/joint_replenishment/autoresearch_joint_replenishment.py`
+(`--budget full --warm_start_moq --reference vanvuchelen2020_small_scale_setting_5`);
+optimality-gap evaluator `scripts/joint_replenishment/evaluate_setting5_vs_vi_optimum.py`;
+artifact `outputs/autoresearch/joint_replenishment_autoresearch/setting5_vi_optimum_gap.json`;
+trained model under `.../joint_replenishment_autoresearch/joint_replenishment_autoresearch_full_vanvuchelen2020_small_scale_setting_5_d3_oblique_linear_t0.25_wide_moqws_s123/models/`.
