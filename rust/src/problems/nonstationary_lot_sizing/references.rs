@@ -1,5 +1,62 @@
 #![allow(dead_code)]
 
+// =============================================================================
+// nonstationary_lot_sizing / references.rs
+//
+// PURPOSE
+//   Source of truth for the literature instances carried for the single-item
+//   non-stationary stochastic lot-sizing problem with rolling forecasts
+//   (Dehaybe, Catanzaro, Chevalier 2024, EJOR 314(2):433-445,
+//    DOI 10.1016/j.ejor.2023.10.007).
+//
+// WHAT THE CARRIED NUMBERS ACTUALLY ARE  (read before trusting any flag)
+//   The per-instance `mean_cost`, `cost_std`, and `shortage_rate` values in
+//   LOST_SALES_FORECAST_BENCHMARKS are NOT printed in the peer-reviewed EJOR
+//   article. They are copied row-for-row from the author's PUBLIC COMPANION
+//   CODE testbed CSVs:
+//       data/single-item/scarf_testbed_DP_lostsales.csv      (rolling-DP rows)
+//       data/single-item/scarf_testbed_simple_lostsales.csv  (simple (s,S) rows)
+//   on branch `single-item` of https://github.com/HenriDeh/DRL_MMULS .
+//   Those CSVs are produced by `scripts/single-item/experiments/DP_solve
+//   lostsales.jl`, whose instance grid is
+//       Iterators.product([2,4,8], [5,10], [10,20,30], [true])    (LT, b, K, lostsales)
+//   i.e. lead times {2,4,8}, shortage {5,10}, setup {10,20,30}, CV=0.2, H=32.
+//   This grid is DIFFERENT from the article's reported experiment grid in
+//   `experiment_parameters_lostsales.jl`
+//       leadtimes [8,4,1,0], shortages_ls [50,75,100], setups [0,80,1280],
+//       CVs [0.1,0.3], horizons [16,8,4]   (defaults bold in the article's
+//       parameter table).
+//   So the rows we reproduce are author-testbed (reference-implementation)
+//   outputs, NOT a per-instance value printed in any article table or figure.
+//
+// LITERATURE-VERIFICATION STATUS  (repo rule: literature-verified == an in-crate
+//   test re-runs the env/solver and reproduces a number PRINTED IN A PAPER within
+//   a stated tolerance; a reference-implementation / author-CSV match does NOT
+//   count, nor does a self-consistent mechanics check).
+//   - Every reference instance carries `literature_verified: false`.
+//   - `verification_source` records WHAT each row is actually checked against
+//     ("henrideh_drl_mmuls_public_testbed_csv_reference_impl_not_paper_table").
+//   - The Section 4.2 worked transition is carried as an INTERNAL mechanics /
+//     self-consistency check of `step_state`; the EJOR full text was not
+//     accessible (paywalled; OA submitted version on the UCLouvain DIAL
+//     repository was unreachable), so we make NO claim that the period
+//     cost 130 / reward -130 is a value printed in the article. The flag stays
+//     false and `verification_source` says so.
+//
+// ALGORITHM (what the executable family computes for these references)
+//   1. build_forecast_path: deterministic rolling forecast path (constant /
+//      sinusoidal-seasonal / linear growth / decline) used as the mean demand
+//      signal feeding the env.
+//   2. simple (s,S): closed-form newsvendor-style levels from the lead-time
+//      demand distribution (heuristics::simple_ss).
+//   3. rolling (s,S): per-period Scarf-style finite-horizon DP over the rolling
+//      window, re-solved each period (heuristics::rolling_dp), discount 0.99,
+//      stationary tail of 32 periods.
+//   4. simulate_policy / simulate_periodic_s_s_policy: Monte-Carlo rollout of
+//      the chosen policy through `step_state`, returning mean cost + shortage
+//      rate, which the verifier compares to the author-testbed CSV row.
+// =============================================================================
+
 use std::f64::consts::PI;
 
 use crate::problems::nonstationary_lot_sizing::demand::DemandDistributionKind;
@@ -34,6 +91,11 @@ pub struct PublishedPolicyBenchmark {
 pub struct WorkedTransitionReference {
     pub source: &'static str,
     pub url: &'static str,
+    /// `false`: the period cost / reward below is an INTERNAL mechanics check of
+    /// `step_state`, not a value confirmed to be printed in the article.
+    pub literature_verified: bool,
+    /// What the worked transition is actually checked against.
+    pub verification_source: &'static str,
     pub forecast_horizon: usize,
     pub lead_time: usize,
     pub holding_cost: f64,
@@ -58,6 +120,11 @@ pub struct NonstationaryLotSizingReferenceInstance {
     pub name: &'static str,
     pub source: &'static str,
     pub url: &'static str,
+    /// `false`: the benchmark rows reproduce the author's PUBLIC TESTBED CSVs
+    /// (reference implementation), not a value printed in the EJOR article.
+    pub literature_verified: bool,
+    /// What each benchmark row is actually checked against.
+    pub verification_source: &'static str,
     pub forecast_id: usize,
     pub periods: usize,
     pub forecast_horizon: usize,
@@ -78,16 +145,20 @@ pub struct NonstationaryLotSizingReferenceInstance {
 pub struct VerificationProblemInstance {
     pub name: &'static str,
     pub reference_instance_name: &'static str,
+    /// `false`: the verifier reproduces the author's public testbed CSV row, not
+    /// a paper-printed number.
+    pub literature_verified: bool,
+    pub verification_source: &'static str,
     pub simulation_replications: usize,
     pub mean_cost_tolerance: f64,
     pub shortage_rate_tolerance: f64,
 }
 
 pub const DEHAYBE_2024_REFERENCE: PublishedBenchmarkReference = PublishedBenchmarkReference {
-    source: "Dehaybe et al. (2024), Tables 3-7 and Section 4.2",
+    source: "Dehaybe, Catanzaro & Chevalier (2024), EJOR 314(2):433-445",
     url: "https://doi.org/10.1016/j.ejor.2023.10.007",
     benchmark_policies: &["rolling_dp_s_s", "simple_s_s", "ppo"],
-    notes: "The paper (PPO is its DRL agent) defines the rolling-forecast single-item lot-sizing setting with fixed ordering cost, lead time, and backorder/lost-sales variants. Citation metadata (EJOR 314(2):433-445, 2024) confirmed via IDEAS/RePEc in the 2026 audit. The worked-transition numbers used by this crate are reproduced via the author's public testbed code (HenriDeh/DRL_MMULS), NOT independently confirmed against a printed Section 4.2 / Table 3-4 in the article during that audit (PDF inaccessible).",
+    notes: "Paper title: 'Deep Reinforcement Learning for inventory optimization with non-stationary uncertain demand'. It defines the single-item rolling-forecast lot-sizing MDP (holding cost, shortage cost, fixed setup cost, lead time, backorders OR lost sales) and reports DRL-vs-DP comparisons. HONEST STATUS: the EJOR full text was not accessible to this repo (paywalled; the OA submitted version on the UCLouvain DIAL repository was unreachable). We therefore do NOT carry any number confirmed to be printed in an article table or figure. The Section-4 worked transition is reproduced as an internal mechanics check only, and the per-instance benchmark rows are reproduced from the author's public companion-code testbed CSVs (see DRL_MMULS_SINGLE_ITEM_REFERENCE), not from an article table. literature_verified = false on every instance.",
 };
 
 pub const DRL_MMULS_SINGLE_ITEM_REFERENCE: PublishedBenchmarkReference =
@@ -95,7 +166,7 @@ pub const DRL_MMULS_SINGLE_ITEM_REFERENCE: PublishedBenchmarkReference =
         source: "HenriDeh/DRL_MMULS single-item branch",
         url: "https://github.com/HenriDeh/DRL_MMULS/tree/single-item",
         benchmark_policies: &["rolling_dp_s_s", "simple_s_s", "ppo"],
-        notes: "The single-item branch ships the forecast library and per-instance benchmark CSVs for the paper's fixed-forecast experiments. In that branch, the lost-sales rolling-DP benchmark is evaluated with Poisson demand while the simple baseline is evaluated with CVNormal demand.",
+        notes: "Author's public companion code for the EJOR article. The carried per-instance benchmark rows are copied EXACTLY from this repo's testbed CSVs (data/single-item/scarf_testbed_DP_lostsales.csv and scarf_testbed_simple_lostsales.csv), produced by scripts/single-item/experiments/'DP_solve lostsales.jl'. That script's grid is Iterators.product([2,4,8],[5,10],[10,20,30],[true]) with CV=0.2, horizon=32 -- the rows we reproduce are its (LT=2,b=5,K=10) family. In that branch the lost-sales rolling-DP benchmark is evaluated with Poisson demand and the simple (s,S) baseline with CVNormal demand. This is a REFERENCE-IMPLEMENTATION match, NOT a number printed in the peer-reviewed article; the article's reported experiment grid (experiment_parameters_lostsales.jl: leadtimes [8,4,1,0], shortages_ls [50,75,100], setups [0,80,1280], CVs [0.1,0.3], horizons [16,8,4]) differs from this testbed grid.",
     };
 
 pub const FORECAST_DEFINITIONS: [ForecastDefinition; 8] = [
@@ -144,6 +215,8 @@ pub const FORECAST_DEFINITIONS: [ForecastDefinition; 8] = [
 pub const WORKED_EXAMPLE_REFERENCE: WorkedTransitionReference = WorkedTransitionReference {
     source: DEHAYBE_2024_REFERENCE.source,
     url: DEHAYBE_2024_REFERENCE.url,
+    literature_verified: false,
+    verification_source: "internal_step_state_mechanics_self_consistency_not_a_paper_printed_number",
     forecast_horizon: 4,
     lead_time: 1,
     holding_cost: 1.0,
@@ -178,6 +251,9 @@ macro_rules! lost_sales_reference_instance {
             name: $name,
             source: DEHAYBE_2024_REFERENCE.source,
             url: DEHAYBE_2024_REFERENCE.url,
+            literature_verified: false,
+            verification_source:
+                "henrideh_drl_mmuls_public_testbed_csv_reference_impl_not_paper_table",
             forecast_id: $forecast_id,
             periods: 104,
             forecast_horizon: 32,
@@ -304,6 +380,9 @@ pub const VERIFICATION_PROBLEM_INSTANCE: VerificationProblemInstance =
     VerificationProblemInstance {
         name: "constant_10_rolling_dp_reference",
         reference_instance_name: PRIMARY_REFERENCE_INSTANCE_NAME,
+        literature_verified: false,
+        verification_source:
+            "henrideh_drl_mmuls_public_testbed_csv_reference_impl_not_paper_table",
         simulation_replications: 25_000,
         mean_cost_tolerance: 35.0,
         shortage_rate_tolerance: 0.01,

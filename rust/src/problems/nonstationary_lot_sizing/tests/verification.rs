@@ -1,3 +1,31 @@
+// =============================================================================
+// nonstationary_lot_sizing / tests/verification.rs
+//
+// WHAT THIS VERIFIER ACTUALLY ASSERTS (and what it does NOT)
+//   This file is the executable correctness anchor for the single-item
+//   non-stationary rolling-forecast lot-sizing family. Per the repo rule, a
+//   family is "literature-verified" ONLY when an in-crate test re-runs the
+//   env/solver and reproduces a number PRINTED IN A PAPER within a stated
+//   tolerance. NONE of these tests meet that bar, and they do not claim to:
+//
+//     * `policy_state_layout_*` and `worked_example_transition_is_internally_consistent`
+//       are INTERNAL mechanics / self-consistency checks of `build_policy_state`
+//       and `step_state`. The Section-4 worked transition reward -130 is
+//       recomputed from our own arithmetic; the EJOR article full text was not
+//       accessible, so we make NO claim the article prints -130.
+//
+//     * `simple_s_s_matches_author_testbed_csv_row_*` and
+//       `rolling_dp_matches_author_testbed_csv_row_*` re-run our env/solver and
+//       reproduce a row of the author's PUBLIC COMPANION-CODE testbed CSVs
+//       (HenriDeh/DRL_MMULS, branch single-item). That is a
+//       REFERENCE-IMPLEMENTATION match, NOT a paper-printed table value. The
+//       carried rows come from a testbed grid that differs from the article's
+//       reported experiment grid (see references.rs header).
+//
+//   `honest_status_flags_are_false` asserts the literature_verified flags stay
+//   false so the status cannot silently drift to an overclaim.
+// =============================================================================
+
 use crate::problems::nonstationary_lot_sizing::demand::DemandDistributionKind;
 use crate::problems::nonstationary_lot_sizing::env::{
     build_policy_state, initialize_state, step_state, NonstationaryLotSizingState,
@@ -61,9 +89,18 @@ fn policy_state_layout_matches_section_4_1() {
     assert_eq!(policy_state, vec![0.4, 0.8, 1.2, 1.6, -0.24, 0.56, 0.72]);
 }
 
+/// Internal mechanics / self-consistency check of `step_state` on the Section-4
+/// illustrative transition (h=1, b=10, K=100, LT=1, backorders). The reward -130
+/// is recomputed from our own cost arithmetic. This is NOT literature
+/// verification: the EJOR full text was not accessible, so we do not claim the
+/// article prints -130 (`WORKED_EXAMPLE_REFERENCE.literature_verified == false`).
 #[test]
-fn worked_example_transition_matches_section_4_2() {
+fn worked_example_transition_is_internally_consistent() {
     let worked = WORKED_EXAMPLE_REFERENCE;
+    assert!(
+        !worked.literature_verified,
+        "worked transition must stay flagged as a mechanics check, not a paper number"
+    );
     let state = NonstationaryLotSizingState {
         forecast_window: worked.initial_forecast_window.to_vec(),
         net_inventory: worked.initial_net_inventory,
@@ -116,9 +153,17 @@ fn simple_s_s_levels_follow_the_literature_formula() {
     assert!((s_up_to - 47.49338223338295).abs() < 1e-9);
 }
 
+/// Re-runs the env + simple (s,S) heuristic and reproduces the author's PUBLIC
+/// TESTBED CSV row (scarf_testbed_simple_lostsales.csv, LT=2/b=5/K=10 family)
+/// within tolerance. This is a reference-implementation match, NOT a
+/// paper-printed value (`literature_verified == false`).
 #[test]
-fn simple_s_s_matches_author_reference_row_within_tolerance() {
+fn simple_s_s_matches_author_testbed_csv_row_within_tolerance() {
     let instance = get_primary_reference_instance();
+    assert!(
+        !instance.literature_verified,
+        "benchmark row is author-testbed reference-impl, not a paper-printed number"
+    );
     let published = instance
         .published_simple_benchmark
         .expect("verification instance must include a simple benchmark");
@@ -167,9 +212,17 @@ fn simple_s_s_matches_author_reference_row_within_tolerance() {
     );
 }
 
+/// Re-runs the env + rolling Scarf DP (s,S) solver and reproduces the author's
+/// PUBLIC TESTBED CSV row (scarf_testbed_DP_lostsales.csv, LT=2/b=5/K=10
+/// constant-10 instance) within tolerance. This is a reference-implementation
+/// match, NOT a paper-printed value (`literature_verified == false`).
 #[test]
-fn rolling_dp_matches_author_reference_row_within_tolerance() {
+fn rolling_dp_matches_author_testbed_csv_row_within_tolerance() {
     let verification = VERIFICATION_PROBLEM_INSTANCE;
+    assert!(
+        !verification.literature_verified,
+        "rolling-DP row is author-testbed reference-impl, not a paper-printed number"
+    );
     let instance = get_reference_instance(verification.reference_instance_name)
         .expect("verification instance must exist");
     let published = instance
@@ -249,4 +302,40 @@ fn rolling_dp_matches_author_reference_row_within_tolerance() {
         published.shortage_rate,
         verification.shortage_rate_tolerance
     );
+}
+
+/// Drift guard for the family's HONEST verification status. Nothing in this
+/// family reproduces a number printed in the Dehaybe et al. (2024) EJOR
+/// article: the per-instance benchmark rows are reproduced from the author's
+/// public companion-code testbed CSVs (reference implementation), and the
+/// Section-4 worked transition is only an internal `step_state` mechanics
+/// check. This test fails if any literature_verified flag is flipped to true
+/// or any verification_source is silently changed, so the status cannot drift
+/// into an overclaim without an explicit code edit that re-runs a real
+/// paper-printed number.
+#[test]
+fn honest_status_flags_are_false() {
+    assert!(!WORKED_EXAMPLE_REFERENCE.literature_verified);
+    assert_eq!(
+        WORKED_EXAMPLE_REFERENCE.verification_source,
+        "internal_step_state_mechanics_self_consistency_not_a_paper_printed_number"
+    );
+    assert!(!VERIFICATION_PROBLEM_INSTANCE.literature_verified);
+    assert_eq!(
+        VERIFICATION_PROBLEM_INSTANCE.verification_source,
+        "henrideh_drl_mmuls_public_testbed_csv_reference_impl_not_paper_table"
+    );
+    for instance in list_reference_instances() {
+        assert!(
+            !instance.literature_verified,
+            "instance {} must stay literature_verified=false (author-testbed reference-impl, not a paper-printed number)",
+            instance.name
+        );
+        assert_eq!(
+            instance.verification_source,
+            "henrideh_drl_mmuls_public_testbed_csv_reference_impl_not_paper_table",
+            "instance {} verification_source drifted",
+            instance.name
+        );
+    }
 }
