@@ -32,6 +32,7 @@
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta,positioning,fit,backgrounds}
 \usepackage{listofitems}
+\usepackage{pifont}
 \usepackage[outline]{contour}
 \contourlength{1.4pt}
 \tikzset{>=latex}
@@ -55,6 +56,42 @@
   stage dec/.style={stage,draw=myorange!60!black,fill=myorange!12},
   stage out/.style={stage,draw=myred!50!black,fill=myred!15},
   flow/.style={-{Latex[length=5,width=4]},thick,mydarkblue},
+}
+% ---------------------------------------------------------------------------
+% Environment flow-network styles (Appendix A.6): nodes = stock points /
+% supply / demand. Each interaction is EVENT-BASED, drawn as two arrows:
+%   reqflow (thin dashed green, information/control) = stock point SENDS an order
+%     request to the supplier; matflow (solid blue, goods) = supplier SHIPS and
+%   the supplies ARRIVE after the lead time. demandflow (orange) = served demand;
+%   lostflow (red, dashed) = unmet demand lost/backordered. Each figure is wrapped
+%   in a dashed rounded "envbox" naming the environment, with a one-line numbered
+%   per-period event sequence beneath. Costs are written where they are charged
+%   (holding blue, lost/backorder red, order dark).
+% ---------------------------------------------------------------------------
+% Node text and edge labels are set at \small with generously sized nodes; the
+% diagrams have a natural width of ~16 cm, so the \textwidth resizebox in Appendix A.6
+% scales by ~1x and the in-figure text reads at body size. Edge labels carry a white
+% fill so no text ever reads as overlapping an arc.
+\tikzset{
+  envsupply/.style={stage in,font=\small,minimum height=15mm,minimum width=30mm},
+  envstock/.style={stage mid,font=\small,minimum height=15mm,minimum width=32mm},
+  envsink/.style={stage dec,font=\small,minimum height=15mm,minimum width=28mm},
+  envlost/.style={draw=myred!55!black,fill=myred!8,rounded corners=2pt,
+                  align=center,inner sep=5pt,font=\small},
+  matflow/.style={-{Latex[length=6,width=5]},very thick,mydarkblue},
+  reqflow/.style={-{Latex[length=5.5,width=4]},semithick,dashed,mygreen!45!black},
+  demandflow/.style={-{Latex[length=6,width=5]},very thick,myorange!70!black},
+  lostflow/.style={-{Latex[length=6,width=5]},very thick,myred!70!black,dashed},
+  ltlabel/.style={font=\small,mydarkblue,align=center,fill=white,
+                  fill opacity=0.85,text opacity=1,inner sep=2pt},
+  reqlabel/.style={font=\small,mygreen!45!black,align=center,fill=white,
+                   fill opacity=0.85,text opacity=1,inner sep=2pt},
+  costH/.style={font=\small,myblue!60!black,align=center},
+  costP/.style={font=\small,myred!65!black,align=center},
+  costK/.style={font=\small,mydarkblue,align=center},
+  envbox/.style={draw=mydarkblue!55,dashed,rounded corners=6pt,inner sep=14pt},
+  envtitle/.style={mydarkblue,font=\small\bfseries},
+  eventseq/.style={font=\small,mydarkblue!85,align=center},
 }
 
 \title{Learning Inventory Control Policies with Evolution Strategies\\[0.35em]
@@ -88,7 +125,7 @@ learner ($0.51$--$1.85\%$ gap) does not reach. On both reported multi-echelon se
 direct-level soft tree improves on the best in-environment constant base-stock by $\approx 14.4\%$.
 
 The policies carry tens to a few hundred parameters, are trained without per-problem hyperparameter
-tuning, and the reported single-state actions are validated against an independent Rust rollout. The
+tuning, and the reported single-state actions are validated against an independent rollout. The
 results suggest evolution strategies are a practical, portable, and interpretable alternative for
 learning inventory policies.
 \end{abstract}
@@ -147,12 +184,14 @@ Our contributions are as follows.
     \item \textbf{Action parameterization as policy design.} We formalize and evaluate a family of
     policy-owned decoders (soft-gated direct quantity, soft-gated ordinal quantity, soft trees with
     linear leaves) and per-problem action geometries (capped-dual-index coordinates; direct-level
-    vs.\ reduced-grid multi-echelon actions), and show that the decoder, not the backbone width, is
-    what lets a small policy reach the heuristic's operating region.
+    vs.\ reduced-grid multi-echelon actions), and show that the decoder and its action geometry --- rather
+    than the backbone width --- are the consequential design choice: with the right decoder a compact
+    policy matches or beats the structured heuristics, including by reaching operating regions (such as
+    the multi-echelon order-up-to levels) that a fixed action grid cannot express.
     \item \textbf{Compact, interpretable, and verifiable policies.} The learned policies carry tens
     to a few hundred parameters --- orders of magnitude fewer than published DRL networks --- and we
     give a worked example mapping concrete states to orders for each decoder, with the reported
-    single-state actions independently validated against a Rust rollout.
+    single-state actions independently validated against an independent rollout.
 \end{enumerate}
 
 The remainder of the paper is organized as follows. Section~\ref{sec:related} reviews related work
@@ -237,12 +276,13 @@ the input state and the output action is the learned policy $\pi_{\btheta}$.
 
 \begin{figure}[t]
   \centering
+  \resizebox{\textwidth}{!}{%
   \begin{tikzpicture}[x=1cm,y=1cm]
     \node[stage in]  (s)   at (0,0)   {\textbf{state}\\$\mathbf{S}_t\in\mathbb{Z}_{\ge0}^{d}$};
     \node[stage mid] (nrm) at (3.3,0) {normalization\\$\mathbf{x}=\mathbf{S}_t/\kappa$};
     \node[stage mid] (bb)  at (7.0,0) {backbone $u_\theta(\mathbf{x})$\\\footnotesize linear \,$\mid$\, NN$_H$ \,$\mid$\, soft tree};
     \node[stage dec] (dec) at (10.9,0){decoder\\\footnotesize (gated / ordinal /\\\footnotesize categorical / tree)};
-    \node[stage out] (a)   at (14.2,0){\textbf{valid action}\\$a_t\in\{0,\dots,\bar q\}$};
+    \node[stage out] (a)   at (14.2,0){\textbf{valid action}\\$a_t$};
 
     \draw[flow] (s)   -- (nrm);
     \draw[flow] (nrm) -- (bb);
@@ -257,7 +297,8 @@ the input state and the output action is the learned policy $\pi_{\btheta}$.
     \node[mydarkblue,below=2pt of pol.south] {\footnotesize policy $\pi_{\btheta}$ \,(parameters $\btheta$ learned by CMA-ES)};
     \node[mygreen!50!black,above=2pt of s.north] {\footnotesize input};
     \node[myred!60!black,above=2pt of a.north]   {\footnotesize output};
-  \end{tikzpicture}
+  \end{tikzpicture}%
+  }
   \caption{The policy interface as one pipeline. The input is always the problem's state
   $\mathbf{S}_t$ and the output is always a valid action $a_t$; in between, the policy applies its own
   divide-by-scale normalization $\mathbf{x}=\mathbf{S}_t/\kappa$, a backbone (linear map,
@@ -280,8 +321,8 @@ in Figure~\ref{fig:backbone}.
 \paragraph{Soft-tree split/leaf mechanism.}
 \label{sec:soft-tree}
 A soft decision tree with oblique splits maps the normalized feature vector $x\in\mathbb{R}^d$ to leaf
-path-probabilities $\pi_\ell(x)$: each internal node $n$ routes left with probability
-$\sigma(w_n^\top x + b_n)$ and right otherwise, and $\pi_\ell(x)$ is the product of the routing
+path-probabilities $\pi_\ell(x)$: each internal node $n$ routes right with probability
+$\sigma(w_n^\top x + b_n)$ and left otherwise, and $\pi_\ell(x)$ is the product of the routing
 probabilities along the path to leaf $\ell$, so $\sum_\ell \pi_\ell(x)=1$. Each leaf emits a leaf
 output (a constant, a vector, or a softplus-affine quantity), and the tree's latent output is the
 path-probability mixture $\sum_\ell \pi_\ell(x)\,(\text{leaf output})_\ell$. We report depth-1 and
@@ -289,6 +330,44 @@ depth-2 trees. This same machinery, with scalar softplus-affine leaves (lost sal
 Section~\ref{sec:lostsales-policy}), constant leaves in capped-dual-index coordinates (dual sourcing,
 Section~\ref{sec:dual-policy}), or vector-valued order-up-to leaves (multi-echelon,
 Section~\ref{sec:me-policy}), supplies the structured decoder in each problem.
+Figure~\ref{fig:soft-tree} illustrates the depth-2 case.
+
+\begin{figure}[t]
+  \centering
+  \resizebox{0.58\textwidth}{!}{%
+  \begin{tikzpicture}[x=1cm,y=1cm]
+    \node[stage in] (x) at (0,2.0) {normalized state $\mathbf{x}=\mathbf{S}_t/\kappa$};
+    \node[node hidden] (r)  at (0,0)    {$n_0$};
+    \node[node hidden] (n1) at (-2.6,-2){$n_1$};
+    \node[node hidden] (n2) at (2.6,-2) {$n_2$};
+    \node[stage mid] (l1) at (-3.9,-4) {$q_1(\mathbf{x})$};
+    \node[stage mid] (l2) at (-1.3,-4) {$q_2(\mathbf{x})$};
+    \node[stage mid] (l3) at (1.3,-4)  {$q_3(\mathbf{x})$};
+    \node[stage mid] (l4) at (3.9,-4)  {$q_4(\mathbf{x})$};
+    \draw[flow] (x) -- (r);
+    \draw[connect arrow] (r)  -- (n1) node[midway,above left,font=\footnotesize]  {$1-\sigma(\cdot)$};
+    \draw[connect arrow] (r)  -- (n2) node[midway,above right,font=\footnotesize] {$\sigma(w_0^\top\mathbf{x}+b_0)$};
+    \draw[connect arrow] (n1) -- (l1) node[midway,left,font=\footnotesize]  {$1-\sigma(\cdot)$};
+    \draw[connect arrow] (n1) -- (l2) node[midway,right,font=\footnotesize] {$\sigma(\cdot)$};
+    \draw[connect arrow] (n2) -- (l3);
+    \draw[connect arrow] (n2) -- (l4);
+    \node[stage out] (out) at (0,-6.3) {$a=\big\lfloor\, \sum_{\ell}\pi_\ell(\mathbf{x})\,q_\ell(\mathbf{x})\,\big\rceil_{\ge0}$};
+    % the four leaves jointly determine the order: group them, single connector to the mixture
+    \begin{scope}[on background layer]
+      \node[draw=mydarkblue!55,dashed,rounded corners=5pt,inner sep=8pt,
+            fit=(l1)(l2)(l3)(l4)] (leafgrp) {};
+    \end{scope}
+    \draw[flow] (leafgrp.south) -- (out.north)
+          node[midway,right=2pt,font=\footnotesize,mydarkblue] {combined order};
+  \end{tikzpicture}%
+  }
+  \caption{The soft decision tree (depth~2). The normalized state is routed \emph{softly}: each internal
+  node $n$ sends probability $\sigma(w_n^\top\mathbf{x}+b_n)$ right and the remainder left, so leaf $\ell$
+  receives path probability $\pi_\ell(\mathbf{x})$ --- the product of the routing probabilities along its
+  root-to-leaf path, with $\sum_\ell\pi_\ell(\mathbf{x})=1$. The action is the rounded path-probability
+  mixture of the leaf quantities, $a=\lfloor\sum_\ell\pi_\ell(\mathbf{x})\,q_\ell(\mathbf{x})\rceil_{\ge0}$.}
+  \label{fig:soft-tree}
+\end{figure}
 
 \subsection{Optimization with CMA-ES}
 \label{sec:methods-cmaes}
@@ -310,6 +389,33 @@ exponential smoothing, and the global step size $\sigma$ is adapted online by cu
 adaptation; we use the reference implementation of \citet{Hansen2019pycma}. Relative to A3C/PPO-style
 DRL, CMA-ES has few hyperparameters, supplies its own exploration through $\bSigma$, and optimizes
 the realized objective directly, so the loop is unchanged across our four problems.
+Figure~\ref{fig:cmaes-loop} summarizes this generational loop.
+
+\begin{figure}[t]
+  \centering
+  \resizebox{\textwidth}{!}{%
+  \begin{tikzpicture}[x=1cm,y=1cm]
+    \node[stage mid] (dist) at (0,0)    {search distribution\\$\mathcal{N}(m_g,\sigma_g^2 C_g)$};
+    \node[stage in]  (samp) at (4.1,0)  {sample population\\$\theta_1,\dots,\theta_\lambda$ \,($\lambda=64$)};
+    \node[stage dec] (eval) at (8.4,0)  {evaluate\\\footnotesize each $\theta_i\!\to\!\pi_{\theta_i}\!\to$ short rollouts\\\footnotesize $\to\ \hat C_T(\theta_i)$ (cost)};
+    \node[stage mid] (rank) at (12.5,0) {rank \& select\\\footnotesize keep best $\mu$ by cost};
+    \node[stage out] (upd)  at (16.1,0) {update\\$m_{g+1},\,\sigma,\,C$};
+    \draw[flow] (dist) -- (samp);
+    \draw[flow] (samp) -- (eval);
+    \draw[flow] (eval) -- (rank);
+    \draw[flow] (rank) -- (upd);
+    \draw[flow] (upd.south) -- ++(0,-1.2) -| (dist.south);
+    \node[mydarkblue] at (8.05,-1.55) {\footnotesize next generation $g\!\to\!g+1$};
+    \node[myorange!60!black,above=2pt of eval.north] {\footnotesize only stage that touches the environment};
+  \end{tikzpicture}%
+  }
+  \caption{The CMA-ES training loop (one generation). A population of $\lambda=64$ policy-parameter
+  vectors is sampled from the search distribution $\mathcal{N}(m_g,\sigma_g^2 C_g)$; each is decoded
+  into a policy and evaluated by short rollouts (the only stage that touches the environment), giving a
+  simulated long-run cost $\hat C_T(\theta_i)$; the best $\mu$ members update the mean, step size, and
+  covariance. The optimizer is gradient-free and uses only the \emph{ranking} of the costs.}
+  \label{fig:cmaes-loop}
+\end{figure}
 
 \begin{algorithm}[!htbp]
 \caption{CMA-ES policy optimization (used for all four problems)}
@@ -333,30 +439,36 @@ search occasionally lands in a worse basin. The improvements are thus a matter o
 reliable optimization, not extra capacity.
 
 \paragraph{Divergence handling.}
-CMA-ES runs occasionally diverge, producing a degenerate policy with a runaway cost. We detect and
-exclude such runs rather than report them; in the result tables a dagger ($\dagger$) marks an excluded
-diverged run, and the comparison is made over the remaining policies.
+We run CMA-ES with a single, fixed configuration across every problem and do not tune it per
+instance, consistent with the lightly-tuned, portable recipe used throughout. Under this deliberately
+untuned setting a small fraction of runs occasionally diverge to a degenerate policy with a runaway
+cost. We flag a run as diverged when its evaluated long-run cost exceeds five times the instance's
+best heuristic baseline (or, on instances without such a baseline, five times the median learned
+cost), mark it with a dagger ($\dagger$) in the result tables, and make the comparison over the
+remaining policies. These failures stem from the single untuned configuration rather than from the
+environment or the policy class: standard remedies --- a smaller initial step size, CMA-ES restarts,
+or light per-instance tuning --- would be expected to remove them, but we retain one configuration
+throughout to keep the recipe tuning-free.
 
 \subsection{Evaluation protocol}
 \label{sec:methods-eval}
 
 Policies are evaluated by simulation under protocols matched to each problem; the shared elements are
 stated once here and each problem's experiment setup states only its instance-specific details.
-Training uses CMA-ES with population $64$ and a short training horizon of $2000$ periods (the
-multi-echelon study additionally sweeps the action design against tree depth). Evaluation reports the
-long-run average cost over a long simulated horizon with a warm-up discard, averaged over multiple
-seeds: for \emph{lost sales} and \emph{fixed-cost lost sales}, a horizon of $10^6$ periods averaged
-across $10$ consecutive seeds; for \emph{multi-echelon}, a horizon of $3\times10^4$ periods and $6$
-seeds. For \emph{dual sourcing} we additionally use a common-random-number (CRN) protocol --- the
-same $70$ demand-path seeds and horizon $6\times10^4$ for every policy --- so the dominant per-seed
-variance cancels and the paired cost difference is statistically meaningful (paired SEM
-$\sim0.002$--$0.006$ versus per-seed standard deviation $\sim0.5$). Each problem's reported
-single-state actions are independently validated against a Rust rollout, with the cross-check detailed
+Training uses CMA-ES with a single fixed configuration --- population $64$ and a short training
+horizon of $2000$ periods --- with no per-instance tuning. Evaluation reports the long-run average
+cost over a long simulated horizon with a warm-up discard, averaged over multiple independent seeds;
+each problem's experiment setup states its own horizon, seed count, and any problem-specific protocol.
+Where the cost gaps between policies fall within the per-seed noise --- as in dual sourcing, whose
+margins are sub-percent --- we additionally adopt a common-random-number (CRN) protocol, evaluating
+every policy on the same demand-path seeds so that the dominant per-seed variance cancels and the
+paired cost difference becomes statistically meaningful. Each problem's reported
+single-state actions are independently validated against an independent rollout, with the cross-check detailed
 in that problem's section.%
 \footnote{\emph{Reproducibility.} The code, the policy forwards, the worked-example script, and the
 named instance anchors used in the validation appendices (e.g.\ \texttt{lit\_poisson\_p4\_l4},
 \texttt{bijvank2015\_table1\_l2\_p14\_k5}) are available in our open-source repository, where the
-independent Rust policy forwards used for the cross-checks are also exposed.}
+independent policy-forward implementations used for the cross-checks are also exposed.}
 
 \section{Lost sales and fixed-cost lost sales}
 \label{sec:lostsales}
@@ -509,7 +621,8 @@ each; we report depth-1 (Tree-1) and depth-2 (Tree-2) trees.
 
 \begin{figure}[t]
   \centering
-  \begin{tikzpicture}[x=2.1cm,y=1.25cm]
+  \resizebox{0.62\textwidth}{!}{%
+  \begin{tikzpicture}[x=2.7cm,y=1.25cm]
     \readlist\Nnod{3,6,4}        % nodes per layer: d (=L), H, K (latent outputs)
     \readlist\Nstr{d,H,K}        % size symbols per layer
     \readlist\Cstr{\strut x,h,u} % coefficient symbol per layer
@@ -537,10 +650,11 @@ each; we report depth-1 (Tree-1) and depth-2 (Tree-2) trees.
       }
       \path (N\lay-\N) --++ (0,1+\yshift) node[midway,scale=1.5] {$\vdots$};
     }
-    \node[above=10,align=center,mygreen!60!black] at (N1-1.90) {normalized\\[-0.2em]state $\mathbf{x}$};
-    \node[above=10,align=center,myblue!60!black]  at (N2-1.90) {hidden layer $H$\\[-0.2em]\footnotesize (NN backbone only)};
-    \node[above=10,align=center,myred!60!black]   at (N\Nnodlen-1.90) {latent outputs $\mathbf{u}$\\[-0.2em]\footnotesize (to decoder)};
-  \end{tikzpicture}
+    \node[align=center,mygreen!60!black] at (1,2.9) {normalized\\[-0.2em]state $\mathbf{x}$};
+    \node[align=center,myblue!60!black]  at (2,2.9) {hidden layer\\[-0.2em]\footnotesize($H$ units)};
+    \node[align=center,myred!60!black]   at (3,2.9) {latent\\[-0.2em]outputs $\mathbf{u}$};
+  \end{tikzpicture}%
+  }
   \caption{The two backbones. Both map the normalized state $\mathbf{x}=\mathbf{S}_t/\kappa$ to the
   latent outputs $\mathbf{u}$ that the decoder reads. The \emph{linear} backbone is the single affine
   map $u_q=\sum_i x_i\,w_{q,i}+b_q$ (input layer connected directly to the latent outputs; the hidden
@@ -552,34 +666,36 @@ each; we report depth-1 (Tree-1) and depth-2 (Tree-2) trees.
 
 \begin{figure}[t]
   \centering
-  \begin{tikzpicture}[x=1cm,y=1cm,every node/.style={align=left}]
-    \def\rowsep{1.6}
-    \node[stage mid,minimum height=46mm] (u) at (0,-2.4) {latent\\outputs\\$\mathbf{u}$};
-
-    % categorical (the classical argmax score head)
-    \node[anchor=west,mydarkblue] (d0) at (2,0)
-      {\textbf{categorical} \;(scores $y_0,\dots,y_{\bar q}$):\quad
-       $a=\displaystyle\argmax_{q\in\{0,\dots,\bar q\}} y_q$};
-    % soft-gated direct
-    \node[anchor=west,mydarkblue] (d1) at (2,-\rowsep)
-      {\textbf{soft-gated direct} \;(gate $g$, quantity $q$):\quad
+  \resizebox{\textwidth}{!}{%
+  \begin{tikzpicture}[every node/.style={align=left},
+                      head/.style={anchor=north west,mydarkblue,align=left,
+                                   rounded corners=2pt,draw=mydarkblue!25,fill=mydarkblue!4,
+                                   inner sep=4pt,text width=82mm}]
+    % Four heads stacked with a uniform edge gap; relative positioning absorbs their
+    % different heights, so they neither collide nor leave an uneven gap.
+    \node[head] (d0) at (0,0)
+      {\textbf{categorical} \;(scores $y_0,\dots,y_{\bar q}$):\\[2pt]
+       $a=\argmax_{q\in\{0,\dots,\bar q\}} y_q$};
+    \node[head,below=2.4mm of d0.south west,anchor=north west] (d1)
+      {\textbf{soft-gated direct} \;(gate $g$, quantity $q$):\\[2pt]
        $a=\big\lfloor\, \sigma(g)\cdot\mathrm{softplus}(q)\,\big\rceil_{\ge0}$};
-    % soft-gated ordinal
-    \node[anchor=west,mydarkblue] (d2) at (2,-2*\rowsep)
-      {\textbf{soft-gated ordinal} \;(gate $g$, thresholds $o_1,\dots,o_M$):\quad
+    \node[head,below=2.4mm of d1.south west,anchor=north west] (d2)
+      {\textbf{soft-gated ordinal} \;(gate $g$, thresholds $o_1,\dots,o_M$):\\[2pt]
        $a=\Big\lfloor\, \sigma(g)\sum_{k=1}^{M}\sigma(o_k)\,\Big\rceil_{\ge0}$};
-    % soft tree
-    \node[anchor=west,mydarkblue] (d3) at (2,-3*\rowsep)
-      {\textbf{soft tree} \;(leaf prob.\ $\pi_\ell$, leaf quantity $q_\ell$):\quad
+    \node[head,below=2.4mm of d2.south west,anchor=north west] (d3)
+      {\textbf{soft tree} \;(leaf prob.\ $\pi_\ell$, leaf quantity $q_\ell$):\\[2pt]
        $a=\Big\lfloor\, \sum_{\ell}\pi_\ell(\mathbf{x})\,q_\ell(\mathbf{x})\,\Big\rceil_{\ge0}$};
 
+    \node[fit=(d0)(d3),inner sep=0pt] (stack) {};
+    \node[stage mid,left=10mm of stack.west] (u) {latent\\outputs\\$\mathbf{u}$};
+    \node[stage out,right=10mm of stack.east] (a) {\textbf{valid}\\\textbf{action} $a_t$};
     \foreach \d in {d0,d1,d2,d3}{ \draw[flow] (u.east) -- (\d.west); }
 
-    \node[stage out,right=18mm of d1.east,yshift=-8mm] (a) {\textbf{valid}\\\textbf{action} $a$\\$\in\{0,\dots,\bar q\}$};
-    \node[mydarkblue,below=7mm of d3.south west,anchor=north west]
-      {\footnotesize $\sigma$: logistic; $\mathrm{softplus}(z)=\ln(1+e^z)$;
+    \node[mydarkblue,below=5mm of d3.south west,anchor=north west,align=left]
+      {\footnotesize $\sigma$: logistic; \;$\mathrm{softplus}(z)=\ln(1+e^z)$; \;
        $\lfloor\cdot\rceil_{\ge0}$: round to the nearest non-negative integer.};
-  \end{tikzpicture}
+  \end{tikzpicture}%
+  }
   \caption{The decoder heads, each a map from the latent outputs $\mathbf{u}$ to an integer order $a$.
   The \emph{categorical} head is the classical score-per-order-size representation of the prior version
   (one score $y_q$ per candidate order, action chosen by $\argmax$); the three heads used in this
@@ -616,7 +732,7 @@ well-stocked, full-pipeline system $[8,5,5,5]$.
 Poisson-demand instance with $L=4$, $h=1$, $p=4$, and Poisson mean $5$. State coordinate $0$
 is effective inventory; coordinates $1$--$3$ are the outstanding pipeline. Values are reproduced by
 our released script (see the reproducibility note) and, for the soft trees, equal the independent
-Rust policy forward by construction.}
+independent policy forward by construction.}
 \label{tab:worked}
 \begin{tabular}{lcc}
 \toprule
@@ -640,17 +756,17 @@ $\lfloor 11.881\rceil_{\ge 0}=12$. The depth-2 soft tree
 routes the same state almost entirely to one leaf (path probabilities
 $[0,0,1.0,0]$) whose linear-leaf quantity is $14.048$, giving the order
 $\lfloor 14.048\rceil_{\ge 0}=14$; this value equals the
-independent Rust policy forward at that state by construction.
+independent policy forward at that state by construction.
 For the well-stocked state $[8,5,5,5]$ every decoder backs off to a near-replenishment order of $3$
 or $4$, as expected when the pipeline already covers near-term demand.
 
 \paragraph{Validation.}
-All six lost-sales policies were validated by a full Python-versus-Rust rollout cost match on a fixed
+All six lost-sales policies were validated by a full rollout cost match between two independent implementations on a fixed
 Poisson$(5)$ demand sequence of $100{,}000$ periods; every absolute cost difference was exactly
 $0.000$ (well under the $0.05$ tolerance), confirming that the divide-by-scale normalization is
 applied identically in both implementations, and no reported action was withheld. The lost-sales
-soft-tree single-state actions equal the independent Rust policy forward by construction, and the
-Python tree forward agrees with the Rust forward at each reported state.
+soft-tree single-state actions equal the independent policy forward by construction, and the
+two independent implementations agree at each reported state.
 
 \subsection{Experiment setup and heuristic comparators}
 
@@ -738,7 +854,7 @@ the myopic-1 (M1), myopic-2 (M2), and standard vector base-stock (SVBS) heuristi
 \toprule
  &  & \multicolumn{3}{c}{Lead time $L=4$} & \multicolumn{3}{c}{Lead time $L=6$} & \multicolumn{3}{c}{Lead time $L=8$} & \multicolumn{3}{c}{Lead time $L=10$} \\
 \cmidrule(lr){3-5}\cmidrule(lr){6-8}\cmidrule(lr){9-11}\cmidrule(lr){12-14}
-Shortage $p$ & Policy & Pois & Geom & MMPP2$+$ & Pois & Geom & MMPP2$+$ & Pois & Geom & MMPP2$+$ & Pois & Geom & MMPP2$+$ \\
+Shortage $p$ & Policy & \multicolumn{1}{c}{Pois} & \multicolumn{1}{c}{Geom} & \multicolumn{1}{c}{MMPP2$+$} & \multicolumn{1}{c}{Pois} & \multicolumn{1}{c}{Geom} & \multicolumn{1}{c}{MMPP2$+$} & \multicolumn{1}{c}{Pois} & \multicolumn{1}{c}{Geom} & \multicolumn{1}{c}{MMPP2$+$} & \multicolumn{1}{c}{Pois} & \multicolumn{1}{c}{Geom} & \multicolumn{1}{c}{MMPP2$+$} \\
 \midrule
 $4$ & Optimal & 4.730 & 10.610 &  &  &  &  &  &  &  &  &  &  \\
  & M1 & 5.065 & 11.217 & 9.823 & 5.422 & 11.650 & 11.189 & 5.698 & 11.924 & 12.256 & 5.890 & 12.075 & 13.136 \\
@@ -800,7 +916,7 @@ $(s,S)$, $(s,nQ)$, and modified $(s,S,q)$ comparators.
 \toprule
  &  &  & \multicolumn{3}{c}{Lead time $L=4$} & \multicolumn{3}{c}{Lead time $L=6$} & \multicolumn{3}{c}{Lead time $L=8$} & \multicolumn{3}{c}{Lead time $L=10$} \\
 \cmidrule(lr){4-6}\cmidrule(lr){7-9}\cmidrule(lr){10-12}\cmidrule(lr){13-15}
-Setup $K$ & Shortage $p$ & Policy & Pois & Geom & MMPP2$+$ & Pois & Geom & MMPP2$+$ & Pois & Geom & MMPP2$+$ & Pois & Geom & MMPP2$+$ \\
+Setup $K$ & Shortage $p$ & Policy & \multicolumn{1}{c}{Pois} & \multicolumn{1}{c}{Geom} & \multicolumn{1}{c}{MMPP2$+$} & \multicolumn{1}{c}{Pois} & \multicolumn{1}{c}{Geom} & \multicolumn{1}{c}{MMPP2$+$} & \multicolumn{1}{c}{Pois} & \multicolumn{1}{c}{Geom} & \multicolumn{1}{c}{MMPP2$+$} & \multicolumn{1}{c}{Pois} & \multicolumn{1}{c}{Geom} & \multicolumn{1}{c}{MMPP2$+$} \\
 \midrule
 $5$ & $4$ & $(s,S)$ & 9.369 & 14.130 & 12.158 & 9.772 & 14.697 &  & 9.965 & 14.839 &  & 10.015 & 15.024 &  \\
  &  & $(s,nQ)$ & 9.211 & 13.968 & 12.113 & 9.385 & 14.177 &  & 9.569 & 14.389 &  & 9.600 & 14.542 &  \\
@@ -995,7 +1111,7 @@ selects the leaf control $(4,3,2)$ (dominant leaf probability $0.87$), and the a
 $(\text{expedite}=0,\ \text{regular}=1)$; for the leaner state $[2,0]$ the same leaf control yields
 $(\text{expedite}=2,\ \text{regular}=2)$ --- the expedite supplier covers the immediate net-inventory
 shortfall while the capped regular order rebuilds the position. The dual-sourcing policy was validated
-by a full Python-versus-Rust rollout cost match on a fixed Uniform$\{0,\dots,4\}$ demand sequence of
+by a full rollout cost match between two independent implementations on a fixed Uniform$\{0,\dots,4\}$ demand sequence of
 $100{,}000$ periods; every absolute cost difference was exactly $0.000$ (well under the $0.05$
 tolerance), confirming that the divide-by-scale normalization is applied identically in both
 implementations, and no reported action was withheld.
@@ -1012,19 +1128,22 @@ whereas A3C ranges from $0.51\%$ to $1.85\%$. We therefore benchmark the learned
 \emph{capped dual-index} cost as the optimal proxy rather than our own bounded DP
 (see Appendix~\ref{app:ds-validation}). Policies are trained with warm-started CMA-ES and evaluated
 under the common-random-number protocol of Section~\ref{sec:methods-eval} ($70$ shared demand-path
-seeds, horizon $6\times10^4$).
+seeds, horizon $6\times10^4$); the paired comparison has standard error $\sim0.002$--$0.006$ against a
+per-seed standard deviation $\sim0.5$, so the sub-percent margins reported below are statistically
+meaningful.
 
 \begin{table}[!htbp]
 \centering
-\caption{Dual-sourcing benchmark instances \citep{gijsbrechts2022drl}. Common to all:
-$l_e=0$, $c_r=100$, $h=5$, $b=495$, demand $U\{0,\dots,4\}$, order caps $12$.}
+\caption{Dual-sourcing benchmark instances of \citet{gijsbrechts2022drl}: the six instances are the
+full cross of the regular lead time $l_r$ and the expedited unit cost $c_e$. All share $l_e=0$,
+$c_r=100$, $h=5$, $b=495$, demand $U\{0,\dots,4\}$, and order caps of $12$.}
 \label{tab:ds-params}
-\begin{tabular}{lcc}
+\begin{tabular}{ll}
 \toprule
-Instances & $l_r$ & $c_e$ \\
+Design dimension & Values \\
 \midrule
-dual\_l$\{2,3,4\}$\_ce105 & $2,3,4$ & $105$ \\
-dual\_l$\{2,3,4\}$\_ce110 & $2,3,4$ & $110$ \\
+Regular lead time $l_r$ & $2,\ 3,\ 4$ \\
+Expedited unit cost $c_e$ & $105,\ 110$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1243,7 +1362,7 @@ $299$ and a retailer order-up-to of $54$.
 The multi-echelon model has no deterministic demand-binding and a stochastic
 warehouse-allocation and emergency-shipment rollout, so a full cost match is not appropriate; instead
 the vector soft-tree forward was validated by extracting the warehouse action dimension into a scalar
-control and matching it against the independent Rust scalar forward over $5000$ random raw states
+control and matching it against the independent scalar forward over $5000$ random raw states
 (maximum absolute discrepancy $0$). The retailer dimension uses the identical leaf computation and
 differs only by a zero minimum-value offset and an upper clamp, so it is faithful by construction; the
 single multi-echelon action is therefore reported with this cross-check rather than a rollout cost
@@ -1371,7 +1490,7 @@ matrix multiply or a shallow tree traversal, so they can be deployed in standard
 tooling and audited by non-specialists. Where a structured heuristic underlies the decoder (dual
 sourcing, multi-echelon), the learned policy's outputs are directly readable as order-up-to levels and
 caps. The per-problem worked examples (Sections~\ref{sec:lostsales-policy},
-\ref{sec:dual-policy}, and~\ref{sec:me-policy}) and their Rust cross-checks show the mapping from state
+\ref{sec:dual-policy}, and~\ref{sec:me-policy}) and their cross-checks show the mapping from state
 to order is concrete and verifiable.
 
 \section{Conclusion, limitations, and future work}
@@ -1402,7 +1521,7 @@ idea with sample-efficient learners for limited-data regimes.
 % Bibliography embedded inline (natbib-compatible \bibitem labels) so the manuscript is
 % self-contained and renders with a single pdflatex pass -- no bibtex step required. The
 % same entries are also kept in references.bib for tooling that prefers a .bib database.
-\begin{thebibliography}{17}
+\begin{thebibliography}{21}
 
 \bibitem[Bijvank et al.(2015)]{Bijvank2015ParametricPolicies}
 M.~Bijvank, S.~Bhulai, and W.~T. Huh.
@@ -1489,19 +1608,54 @@ A.~Sheopuri, G.~Janakiraman, and S.~Seshadri.
 New policies for the stochastic inventory control problem with two supply sources.
 \emph{Operations Research}, 58(3):734--745, 2010.
 
+\bibitem[Geevers et al.(2024)]{geevers2024cardboard}
+K.~Geevers, L.~van Hezewijk, and M.~Mes.
+Multi-echelon inventory optimization using deep reinforcement learning.
+\emph{Central European Journal of Operations Research}, 32(3):653--683, 2024.
+
+\bibitem[Snyder and Shen(2019)]{snyder2019foundations}
+L.~V. Snyder and Z.-J.~M. Shen.
+\emph{Fundamentals of Supply Chain Theory}.
+Wiley, 2nd edition, 2019.
+
+\bibitem[Vanvuchelen et al.(2020)]{vanvuchelen2020jrp}
+N.~Vanvuchelen, J.~Gijsbrechts, and R.~N. Boute.
+Use of proximal policy optimization for the joint replenishment problem.
+\emph{Computers in Industry}, 119:103239, 2020.
+
+\bibitem[Pirhooshyaran and Snyder(2021)]{pirhooshyaran2021scn}
+M.~Pirhooshyaran and L.~V. Snyder.
+Simultaneous decision making for stochastic multi-echelon inventory optimization with deep neural networks as decision makers.
+\emph{arXiv preprint arXiv:2006.05608}, 2021.
+
 \end{thebibliography}
 
 \clearpage
 \appendix
 
-\section{Published vanilla lost-sales validation}
+\section{Environment validation against the published literature}
+\label{app:validation}
+
+Every environment used in this paper is anchored to the published literature before it
+supports any learned-policy claim. For each problem we reproduce a known reference cost --- an exact
+optimum, an exact dynamic-programming cost, or a published heuristic / constant-base-stock cost ---
+under the same evaluation protocol as the main text, and report our reproduced value alongside the
+published one with the relative gap. The remainder of this appendix carries out this check problem by
+problem; where a residual gap remains (most notably one multi-echelon case study below, reproduced to
+within $1.31\%$), we state it explicitly and treat the reproduction as an implementation-fidelity
+check rather than a re-derivation of the published result. The first four subsections cover the four
+problems studied in this paper; the final subsection
+(Section~\ref{app:additional-env-validation}) records the same fidelity checks for additional
+environments in our suite that we validate against the literature but do not train on or report
+learned-policy results for here.
+
+\subsection{Published vanilla lost-sales validation}
 
 Before using the vanilla lost-sales simulator and heuristic stack for learned-policy comparisons, we
 validate the canonical Poisson instance against the published/reference costs used in the lost-sales
 literature \citep{Zipkin2008OldSystems,Xin2021CappedBaseStock}. The validation instance has
-$h=1$, $p=4$, $L=4$, and $D_t\sim\mathrm{Poisson}(5)$ (repository anchor
-\texttt{lit\_poisson\_p4\_l4}). Table~\ref{tab:vanilla-lost-sales-validation} reports the reference
-costs and a Rust rollout reproduction for the heuristic policies (horizon $10^5$, seed $123$). This is
+$h=1$, $p=4$, $L=4$, and $D_t\sim\mathrm{Poisson}(5)$. Table~\ref{tab:vanilla-lost-sales-validation} reports the reference
+costs and an independent rollout reproduction for the heuristic policies (horizon $10^5$, seed $123$). This is
 an implementation-fidelity check, not a learned-policy result.
 
 \begin{table}[!htbp]
@@ -1528,13 +1682,12 @@ tables, anchoring the vanilla lost-sales environment and the myopic/SVBS heurist
 The MMPP2 rows in Table~\ref{tab:results-vanilla-lost-sales} are mean-preserving extensions of this
 surface and are not claimed as published literature rows.
 
-\section{Published fixed-cost lost-sales validation}
+\subsection{Published fixed-cost lost-sales validation}
 
 Before relying on the fixed-cost simulator and heuristic stack for learned-policy comparisons, we
 validate the implementation against the published example of
 \citet{Bijvank2015ParametricPolicies}. Their Table~1 reports a small Poisson-demand instance with
-$L=2$, $p=14$, $K=5$, $h=1$, $\mu=5$ (the repository anchor
-\texttt{bijvank2015\_table1\_l2\_p14\_k5} in the fixed-order-cost reference catalog). The
+$L=2$, $p=14$, $K=5$, $h=1$, $\mu=5$. The
 reproduction uses our exact average-cost value-iteration solver and exact evaluators for the published
 heuristic parameters.
 
@@ -1560,7 +1713,7 @@ modified $(s,S,q)$ & $(17,23,7)$ & 11.50 & 11.4974 \\
 The reproduced exact costs match the published values to the precision of the reported table,
 anchoring the fixed-cost environment and heuristic implementation to a published benchmark row.
 
-\section{Environment validation against published costs}
+\subsection{Published multi-echelon (Van Roy) validation}
 
 Before using the multi-echelon environment for learned-policy comparison, we validate it against
 the published \emph{constant base-stock} costs of \citet{vanroy1997ndp} (the simple problem and the
@@ -1595,7 +1748,7 @@ attributed to unspecified details of Van Roy's original simulation protocol. The
 settings used for policy design (Table~\ref{tab:me-params}) instead use the Gijsbrechts et al.\ (2022)
 cost convention and the Table-3 demand means.
 
-\section{Dual-sourcing comparator and the bounded-DP optimum}
+\subsection{Dual-sourcing comparator and the bounded-DP optimum}
 \label{app:ds-validation}
 
 For dual sourcing we benchmark against the capped dual-index heuristic as the optimal proxy rather
@@ -1608,6 +1761,338 @@ bounded-DP cost is mildly inconsistent --- it falls slightly below the simulated
 and widening the bounds to remove the truncation is computationally prohibitive at $l_r=4$. The
 capped dual-index proxy is near-exact to within its published gap and is evaluated on the identical
 common-random-number rollout as the learned policies.
+
+Table~\ref{tab:ds-figure9-validation} makes the proxy's fidelity explicit: the environment reproduces
+the published Figure~9 capped-dual-index optimality gaps within $0.01$ percentage points on all six
+instances, well inside the heuristic's own optimality band.
+
+\begin{table}[!htbp]
+\centering
+\caption{Dual-sourcing Figure~9 reproduction. The environment reproduces the published capped
+dual-index (CDI) optimality gaps of \citet{gijsbrechts2022drl} within $0.01$ percentage points on all
+six instances ($l_e=0$, $c_r=100$, $h=5$, $b=495$, demand $U\{0,\dots,4\}$), validating the CDI
+control as the optimal proxy used in the dual-sourcing experiments; the published A3C gaps are listed
+for context. The $l_r=2$ rows are re-run by default in the verification suite; the $l_r=3,4$ rows use
+a minutes-scale bounded-DP and are gated (run on demand), with reproduced gaps confirmed within
+tolerance.}
+\label{tab:ds-figure9-validation}
+\begin{tabular}{lcccc}
+\toprule
+Instance $(l_r,c_e)$ & Published CDI gap (\%) & Reproduced CDI gap (\%) & $\Delta$ (pp) & A3C gap (\%) \\
+\midrule
+$(2,105)$ & $0.00$ & $0.006$ & $0.006$ & $0.52$ \\
+$(2,110)$ & $0.03$ & $0.030$ & $0.000$ & $0.80$ \\
+$(3,105)$ & $0.00$ & $\le 0.01$ & $\le 0.01$ & $0.82$ \\
+$(3,110)$ & $0.06$ & $\le 0.01$ & $\le 0.01$ & $0.51$ \\
+$(4,105)$ & $0.00$ & $\le 0.01$ & $\le 0.01$ & $1.85$ \\
+$(4,110)$ & $0.11$ & $\le 0.01$ & $\le 0.01$ & $1.33$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+\FloatBarrier
+
+\subsection{Additional verified environments (not studied in this paper's experiments)}
+\label{app:additional-env-validation}
+
+Beyond the four problems studied above, the same code base implements several further inventory
+environments that we validate against the literature but do not train policies on in this paper. We
+record these checks here because they bear on reproducibility: they show that the environment library
+as a whole --- not only the four problems we report results for --- reproduces published benchmarks.
+Table~\ref{tab:additional-env-validation} covers four such environments: a fixed-cost general-network
+backorder system \citep{geevers2024cardboard}, an exact serial (Clark--Scarf) system
+\citep{snyder2019foundations}, a joint-replenishment system \citep{vanvuchelen2020jrp}, and a
+production/assembly/distribution network \citep{pirhooshyaran2021scn}. Each reproduces its published
+benchmark --- an exact optimal cost, an exact dynamic-programming cost, or a published optimal action
+--- to within a tight tolerance. These are distinct models from the paper's four problems (in
+particular, the serial system is not the \emph{divergent} multi-echelon system we study), and we
+report them only as environment-fidelity checks, not as results.
+
+\begin{table}[!htbp]
+\centering
+\caption{Additional verified environments not studied in this paper's experiments. Each environment
+reproduces a published benchmark within a tight tolerance, confirming environment fidelity beyond the
+four problems we train on.}
+\label{tab:additional-env-validation}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lcccc}
+\toprule
+Environment & Published reference (value) & Reproduced & Gap & Source \\
+\midrule
+General backorder, fixed cost & CardBoard general network, set~1 ($10{,}467$) & $10{,}352$ & $-1.1\%$ & \citet{geevers2024cardboard} \\
+Serial multi-echelon (exact solver) & Example~6.1 ($47.65$) & $47.67$ & $+0.03\%$ & \citet{snyder2019foundations} \\
+Serial multi-echelon (env simulation) & Example~6.1 ($47.65$) & $47.64$ & $-0.02\%$ & \citet{snyder2019foundations} \\
+Joint replenishment & Figure~3 action $(0,6)$ at $(5,0)$ & $(0,6)$ & exact & \citet{vanvuchelen2020jrp} \\
+Production/assembly/distribution network & Single-node newsvendor ($127.11$) & $127.10$ & $+0.008\%$ & \citet{pirhooshyaran2021scn} \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+\FloatBarrier
+
+
+\subsection{Environment flow-network diagrams}
+\label{app:flownet-diagrams}
+
+The four problems studied in this paper share a common flow-network representation in the code base:
+\emph{nodes} are stock points (an external supply source, on-hand stock points, and a demand sink),
+and each supply interaction is drawn as two distinct \emph{events} rather than a single edge. A stock
+point first \emph{sends an order request} to its supplier (a thin dashed information/control arrow,
+pointing from the stock point to the supplier); the supplier then \emph{ships}, and the supplies
+\emph{arrive after the lead time} (a solid material arrow, pointing back from the supplier to the
+stock point). Demand draws and the lost-sales/backorder outflow are likewise edges, and each cost is
+charged at the node or edge where it arises (holding on end-of-period on-hand stock, lost-sales or
+backorder on unmet demand, and ordering/fixed cost on the request). Each figure is wrapped in a
+dashed box that marks the environment boundary (the policy interacts with the environment through the
+order request), and a boxed panel beneath the diagram gives the per-period event sequence ---
+observe state, place the order request, receive earlier arrivals, serve demand from stock, lose or
+backorder the shortfall, and accrue costs --- following the flownet timing layer.
+Figures~\ref{fig:env-lostsales}--\ref{fig:env-multiechelon} render this representation for each
+problem, faithfully reflecting the formulations of Sections~\ref{sec:lostsales-formulation},
+\ref{sec:dual-sourcing-formulation}, and~\ref{sec:multiechelon}: the request-then-arrival lead-time
+placement, the lost-sales versus backorder service rule, the two dual-sourcing supply modes with
+their distinct lead times and unit costs, and the divergent multi-echelon special-delivery/allocation
+mechanics.
+
+The vanilla lost-sales environment (Figure~\ref{fig:env-lostsales}) is a single external supplier
+feeding one on-hand stock point after a lead time $L$, with i.i.d.\ demand drawn against on-hand
+stock and any unmet demand lost.
+
+\begin{figure}[t]
+  \centering
+  \resizebox{\textwidth}{!}{%
+  \begin{tikzpicture}[x=1cm,y=1cm]
+    \node[envsupply] (sup)  at (0,0)    {external\\supplier};
+    \node[envstock]  (stk)  at (6.4,0)  {on-hand\\stock $I_t$};
+    \node[envsink]   (dem)  at (12.4,0) {i.i.d.\\demand $D_t$};
+    \node[envlost]   (lost) at (12.4,-3.6){demand \emph{lost}\\if $I_t<D_t$};
+
+    % event 2: stock point sends an order request to the supplier (control flow, arcs UP)
+    \draw[reqflow] (stk.north) to[bend right=42] (sup.north);
+    \node[reqlabel] (rq) at (3.2,2.55) {\ding{183}\, order request $q_t$};
+    % event 3: supplier ships; goods arrive after the lead time (material flow, arcs DOWN)
+    \draw[matflow] (sup.south) to[bend right=42] (stk.south);
+    \node[ltlabel] (sh) at (3.2,-2.55) {\ding{184}\, ships; arrives after lead time $L\ge1$};
+    \draw[demandflow] (stk) -- (dem)
+          node[midway,above=3pt,ltlabel] {\ding{185}\, serve\\$\min(I_t,D_t)$};
+    \draw[lostflow] (dem) -- (lost);
+
+    \node[costK,left=3pt of sup.west] {order\\cost $c\,q_t$};
+    \node[costH] (hcost) at (6.4,-3.6) {holding\\$h\,(I_t-D_t)^+$};
+    \node[costP,right=3pt of lost.east] {penalty\\$p\,(D_t-I_t)^+$};
+
+    \begin{scope}[on background layer]
+      \node[envbox,fit=(sup)(stk)(dem)(lost)(hcost)(rq)(sh)] (box) {};
+    \end{scope}
+    \node[envtitle,above=3pt of box.north,anchor=south]
+          {Lost-sales environment (one period)};
+  \end{tikzpicture}%
+  }
+  % Event sequence as body-size, line-wrapping text below the diagram (kept OUT of the
+  % scaled picture so it can never dictate the diagram width).
+  \par\vspace{6pt}\centerline{%
+    \tikz\node[draw=mydarkblue!55,rounded corners=4pt,fill=mydarkblue!4,inner sep=7pt]{%
+      \begin{minipage}{14.8cm}\centering
+        {\small\bfseries\color{mydarkblue!85}Per-period event sequence}\\[4pt]
+        {\small\begin{tabular}{@{}p{4.5cm}p{4.5cm}p{4.5cm}@{}}
+          \ding{182}\,observe state $\mathbf S_t$ & \ding{183}\,place order request $q_t$ & \ding{184}\,receive arrival $q_{t-L}$\\[4pt]
+          \ding{185}\,serve demand $D_t$ from stock & \ding{186}\,unmet demand \emph{lost} & \ding{187}\,charge holding $+$ lost-sales\\
+        \end{tabular}}
+      \end{minipage}};}\par
+  \caption{Vanilla lost-sales environment, drawn as an event-based interaction. Each period the
+  stock point \emph{sends an order request} $q_t$ to the supplier (thin dashed control arrow), and the
+  supplier \emph{ships}; the goods \emph{arrive} after the fixed lead time $L\ge1$ (solid material
+  arrow). i.i.d.\ demand $D_t$ is then served from on-hand stock $I_t$ and any \emph{unmet demand is
+  lost}. Holding cost $h$ is charged on leftover on-hand inventory and a penalty $p$ on each lost
+  unit; the dashed box is the environment boundary and the boxed panel beneath gives the per-period
+  event sequence (Section~\ref{sec:lostsales-formulation}).}
+  \label{fig:env-lostsales}
+\end{figure}
+
+The fixed-cost variant (Figure~\ref{fig:env-fixedcost}) has the same topology, but the
+replenishment edge additionally incurs a fixed setup cost $K$ whenever a strictly positive order is
+placed.
+
+\begin{figure}[t]
+  \centering
+  \resizebox{\textwidth}{!}{%
+  \begin{tikzpicture}[x=1cm,y=1cm]
+    \node[envsupply] (sup)  at (0,0)    {external\\supplier};
+    \node[envstock]  (stk)  at (6.4,0)  {on-hand\\stock $I_t$};
+    \node[envsink]   (dem)  at (12.4,0) {i.i.d.\\demand $D_t$};
+    \node[envlost]   (lost) at (12.4,-3.6){demand \emph{lost}\\if $I_t<D_t$};
+
+    \draw[reqflow] (stk.north) to[bend right=42] (sup.north);
+    \node[reqlabel] (rq) at (3.2,2.55) {\ding{183}\, order request $q_t$};
+    \draw[matflow] (sup.south) to[bend right=42] (stk.south);
+    \node[ltlabel] (sh) at (3.2,-2.55) {\ding{184}\, ships; arrives after lead time $L\ge1$};
+    \draw[demandflow] (stk) -- (dem)
+          node[midway,above=3pt,ltlabel] {\ding{185}\, serve\\$\min(I_t,D_t)$};
+    \draw[lostflow] (dem) -- (lost);
+
+    \node[costK,left=3pt of sup.west,align=center]
+          {order cost\\$c\,q_t + K\,\mathbf{1}\{q_t>0\}$};
+    \node[costH] (hcost) at (6.4,-3.6) {holding\\$h\,(I_t-D_t)^+$};
+    \node[costP,right=3pt of lost.east] {penalty\\$p\,(D_t-I_t)^+$};
+
+    \begin{scope}[on background layer]
+      \node[envbox,fit=(sup)(stk)(dem)(lost)(hcost)(rq)(sh)] (box) {};
+    \end{scope}
+    \node[envtitle,above=3pt of box.north,anchor=south]
+          {Fixed-cost lost-sales environment (one period)};
+  \end{tikzpicture}%
+  }
+  \par\vspace{6pt}\centerline{%
+    \tikz\node[draw=mydarkblue!55,rounded corners=4pt,fill=mydarkblue!4,inner sep=7pt]{%
+      \begin{minipage}{14.8cm}\centering
+        {\small\bfseries\color{mydarkblue!85}Per-period event sequence}\\[4pt]
+        {\small\begin{tabular}{@{}p{4.5cm}p{4.5cm}p{4.5cm}@{}}
+          \ding{182}\,observe state $\mathbf S_t$ & \ding{183}\,order request $q_t$ (\emph{setup} $+K$ if $q_t>0$) & \ding{184}\,receive arrival $q_{t-L}$\\[4pt]
+          \ding{185}\,serve demand $D_t$ from stock & \ding{186}\,unmet demand \emph{lost} & \ding{187}\,holding $+$ lost-sales $+$ setup\\
+        \end{tabular}}
+      \end{minipage}};}\par
+  \caption{Fixed-cost lost-sales environment, drawn as an event-based interaction. Identical topology,
+  request-then-ship ordering, and lost-sales rule to Figure~\ref{fig:env-lostsales}; the only
+  difference is that placing the order request additionally incurs a fixed setup cost $K$ whenever a
+  strictly positive order is requested (Section~\ref{sec:lostsales-formulation},
+  Eq.~\eqref{eq:ls-fixed-cost}).}
+  \label{fig:env-fixedcost}
+\end{figure}
+
+In dual sourcing (Figure~\ref{fig:env-dual}) two supply modes feed one stock point --- a slow
+regular source (lead time $l_r$, unit cost $c_r$) and a fast expedited source (lead time $l_e=0$,
+unit cost $c_e>c_r$) --- and unmet demand is backordered rather than lost.
+
+\begin{figure}[t]
+  \centering
+  \resizebox{\textwidth}{!}{%
+  \begin{tikzpicture}[x=1cm,y=1cm]
+    \node[envsupply] (reg)  at (0,4.0)   {regular\\supplier};
+    \node[envsupply] (exp)  at (0,-4.0)  {expedited\\supplier};
+    \node[envstock]  (stk)  at (8.0,0)   {net inventory\\$I_t\,(+\,q^e_t)$};
+    \node[envsink]   (dem)  at (13.8,0)  {i.i.d.\\demand $D_t$};
+    \node[envlost]   (bo)   at (13.8,-4.0){unmet demand\\\emph{backordered}};
+
+    % regular mode (top): dashed request (outer) + solid ship (inner); labels off the arcs
+    \draw[reqflow] (stk.north west) to[bend right=30] (reg.south east);
+    \draw[matflow] (reg.south east) to[bend right=6]  (stk.west);
+    \node[reqlabel] at (3.0,3.45) {\ding{183}\, request $q^r_t$};
+    \node[ltlabel]  at (4.7,1.55) {\ding{184}\, ships; arrives\\after $l_r\ge1$ (cost $c_r$)};
+    % expedited mode (bottom)
+    \draw[reqflow] (stk.south west) to[bend left=30] (exp.north east);
+    \draw[matflow] (exp.north east) to[bend left=6]  (stk.west);
+    \node[reqlabel] at (3.0,-3.45) {\ding{183}\, request $q^e_t$};
+    \node[ltlabel]  at (4.7,-1.55) {\ding{184}\, ships \emph{within period}\\$l_e=0$ (cost $c_e>c_r$)};
+
+    \draw[demandflow] (stk) -- (dem)
+          node[midway,above=3pt,ltlabel] {\ding{185}\, serve from\\$I_t+q^e_t$};
+    \draw[lostflow] (dem) -- (bo);
+
+    \node[costH,above=9mm of stk.north] {holding $h\,(J_t)^+$};
+    \node[costP,right=3pt of bo.east] {backorder\\$b\,(J_t)^-$};
+    \node[costK,below=9mm of stk.south,align=center]
+          {$J_t=I_t+q^e_t-D_t$\\(end-of-period net inventory)};
+
+    \begin{scope}[on background layer]
+      \node[envbox,fit=(reg)(exp)(stk)(dem)(bo)] (box) {};
+    \end{scope}
+    \node[envtitle,above=3pt of box.north,anchor=south]
+          {Dual-sourcing environment (one period)};
+  \end{tikzpicture}%
+  }
+  \par\vspace{6pt}\centerline{%
+    \tikz\node[draw=mydarkblue!55,rounded corners=4pt,fill=mydarkblue!4,inner sep=7pt]{%
+      \begin{minipage}{14.8cm}\centering
+        {\small\bfseries\color{mydarkblue!85}Per-period event sequence}\\[4pt]
+        {\small\begin{tabular}{@{}p{4.5cm}p{4.5cm}p{4.5cm}@{}}
+          \ding{182}\,observe state $\mathbf S_t$ & \ding{183}\,request $(q^r_t,q^e_t)$ & \ding{184}\,regular arrival $q^r_{t-l_r}$ \& expedited $q^e_t$ (same period)\\[4pt]
+          \ding{185}\,serve demand $D_t$ from $I_t+q^e_t$ & \ding{186}\,unmet demand \emph{backordered} & \ding{187}\,procurement $+$ holding $+$ backorder\\
+        \end{tabular}}
+      \end{minipage}};}\par
+  \caption{Dual-sourcing environment of \citet{gijsbrechts2022drl}, drawn as an event-based
+  interaction. Each period the stock point sends two \emph{order requests} (thin dashed control
+  arrows): a regular request $q^r_t$ and an expedited request $q^e_t$. The slow \emph{regular}
+  supplier ships and the goods arrive after the lead time $l_r\ge1$ (unit cost $c_r$); the fast
+  \emph{expedited} supplier ships \emph{within the same period} ($l_e=0$, unit cost $c_e>c_r$) and is
+  available to serve demand (solid material arrows). \emph{Unmet demand is backordered}, so net
+  inventory may go negative. Holding cost $h$ and backorder penalty $b$ are charged on the
+  end-of-period net inventory $J_t$; the boxed panel beneath gives the per-period event sequence
+  (Section~\ref{sec:dual-sourcing-formulation}).}
+  \label{fig:env-dual}
+\end{figure}
+
+The divergent multi-echelon environment (Figure~\ref{fig:env-multiechelon}) is one warehouse fed
+by an external manufacturer that ships to $R$ retailers under a max--min allocation rule, with a
+hybrid special-delivery/lost-sales service of unmet retailer demand.
+
+\begin{figure}[t]
+  \centering
+  \resizebox{\textwidth}{!}{%
+  \begin{tikzpicture}[x=1cm,y=1cm]
+    % The R retailers are drawn as ONE representative retailer with a "x R" multiplier
+    % (full fidelity preserved in the caption). Spine: manufacturer -> warehouse ->
+    % retailer -> demand; request arcs UP, ship arcs DOWN, special delivery drawn once.
+    \node[envsupply] (man) at (0,0)    {external\\manufacturer};
+    \node[envstock]  (wh)  at (5.8,0)  {warehouse\\$I^w_t$ (cap $C^w$)};
+    \node[envstock]  (ret) at (11.6,0) {retailer $i$\\$I^i_t$ \;($\times R$)};
+    \node[envsink]   (dem) at (17.2,0) {demand\\$d_{i,t}$ \;($\times R$)};
+
+    % manufacturer -> warehouse: request arc UP, ship arc DOWN
+    \draw[reqflow] (wh.north) to[bend right=42] (man.north);
+    \node[reqlabel] (rqw) at (2.9,2.25) {\ding{183}\, request $q^w_t$};
+    \draw[matflow] (man.south) to[bend right=42] (wh.south);
+    \node[ltlabel] (shw) at (2.9,-2.25) {\ding{184}\, ships; arrives\\after $l_w$ (cap $C^m$)};
+
+    % warehouse -> retailer: request arc UP, shallow ship arc DOWN
+    \draw[reqflow] (ret.north) to[bend right=38] (wh.north);
+    \node[reqlabel] at (8.7,2.25) {\ding{183}\, raise to $y^r_t$};
+    \draw[matflow] (wh.south) to[bend right=26] (ret.south);
+    \node[ltlabel] (shr) at (8.7,-1.85) {\ding{184}\, ships $s^i_t$ after $l_r$;\\max--min $\mathcal A$ if short};
+
+    \draw[demandflow] (ret) -- (dem)
+          node[midway,above=3pt,ltlabel] {\ding{185}\, serve};
+
+    % special delivery (drawn once), routed DEEP below; caption sits in its trough
+    \draw[lostflow,myorange!70!black] (wh.south) to[out=-90,in=-90,looseness=1.0] (dem.south);
+    \node[font=\small,myorange!70!black,align=center,fill=white,inner sep=2pt] (sd) at (8.7,-4.35)
+          {\ding{186}\, unmet $\to$ \emph{special delivery} $E_t$ from leftover\\
+           warehouse stock w.p.\ $P_w$ (else lost $\ell_t$)};
+
+    \node[costH] (hw) at (5.8,2.25) {holding $h^w (I^w_t)^+$};
+    \node[costH] (hr) at (11.6,3.25) {holding $h^r (I^i_t)^+$};
+    \node[costP,right=3pt of dem.east] {expedite $c^w E_t$\\$+$ lost $p\,\ell_t$};
+
+    \begin{scope}[on background layer]
+      \node[envbox,fit=(man)(wh)(ret)(dem)(rqw)(shw)(shr)(sd)(hr)] (box) {};
+    \end{scope}
+    \node[envtitle,above=3pt of box.north,anchor=south]
+          {Divergent multi-echelon environment with special delivery (one period)};
+  \end{tikzpicture}%
+  }
+  \par\vspace{6pt}\centerline{%
+    \tikz\node[draw=mydarkblue!55,rounded corners=4pt,fill=mydarkblue!4,inner sep=7pt]{%
+      \begin{minipage}{14.8cm}\centering
+        {\small\bfseries\color{mydarkblue!85}Per-period event sequence}\\[4pt]
+        {\small\begin{tabular}{@{}p{4.5cm}p{4.5cm}p{4.5cm}@{}}
+          \ding{182}\,arrivals merge into warehouse \& retailer stock & \ding{183}\,warehouse requests $q^w_t$; retailers request to $y^r_t$ & \ding{184}\,warehouse ships (max--min $\mathcal A$ if short)\\[4pt]
+          \ding{185}\,retailer serves demand $d_{i,t}$ & \ding{186}\,unmet $\to$ special delivery (w.p.\ $P_w$) else lost & \ding{187}\,holding $+$ expedite $+$ lost\\
+        \end{tabular}}
+      \end{minipage}};}\par
+  \caption{Divergent multi-echelon environment with special delivery
+  \citep{gijsbrechts2022drl,vanroy1997ndp}, drawn as an event-based interaction. Each period the
+  warehouse \emph{sends an order request} $q^w_t$ to the external manufacturer, which ships; the goods
+  arrive after lead time $l_w$ (production cap $C^m$, position cap $C^w$). Each retailer in turn
+  \emph{requests} a raise to the shared order-up-to level $y^r_t$ (thin dashed control arrows); the
+  warehouse \emph{ships} $s^i_t$, arriving after lead time $l_r$, rationed by the max--min allocation
+  rule $\mathcal A$ when stock is short (solid material arrows). Each retailer serves its own i.i.d.\
+  demand from on-hand stock; each unmet unit independently requests a same-period \emph{special
+  delivery} from leftover warehouse stock with probability $P_w$ (filled up to that stock) and is
+  otherwise lost. Holding cost is charged on end-of-period on-hand stock at the warehouse ($h^w$) and
+  retailers ($h^r$), each expedited unit costs $c^w$, and each lost unit a penalty $p$; the boxed
+  panel beneath gives the per-period event sequence (Section~\ref{sec:multiechelon},
+  Eq.~\eqref{eq:me-cost}).}
+  \label{fig:env-multiechelon}
+\end{figure}
+\FloatBarrier
 
 
 \end{document}

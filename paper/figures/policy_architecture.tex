@@ -11,9 +11,11 @@
 % Build:  pdflatex policy_architecture.tex   (or tectonic policy_architecture.tex)
 \documentclass[border=3pt,tikz]{standalone}
 \usepackage{amsmath}
+\usepackage{amssymb}
 \DeclareMathOperator*{\argmax}{arg\,max}
 \usepackage{tikz}
 \usepackage{listofitems}
+\usepackage{pifont}
 \usetikzlibrary{arrows.meta,positioning,fit,backgrounds}
 \usepackage[outline]{contour}
 \contourlength{1.4pt}
@@ -53,7 +55,7 @@
   \node[stage mid] (nrm) at (3.3,0){normalization\\$\mathbf{x}=\mathbf{S}_t/\kappa$};
   \node[stage mid] (bb)  at (7.0,0){backbone $u_\theta(\mathbf{x})$\\\footnotesize linear \,$\mid$\, NN$_H$ \,$\mid$\, soft tree};
   \node[stage dec] (dec) at (10.9,0){decoder\\\footnotesize (gated / ordinal /\\\footnotesize categorical / tree)};
-  \node[stage out] (a)   at (14.2,0){\textbf{valid action}\\$a_t\in\{0,\dots,\bar q\}$};
+  \node[stage out] (a)   at (14.2,0){\textbf{valid action}\\$a_t$};
 
   \draw[flow] (s)   -- (nrm);
   \draw[flow] (nrm) -- (bb);
@@ -75,7 +77,7 @@
 % PAGE 2 -- NN BACKBONE: state vector -> hidden layer -> latent outputs
 % (adapted from the prior version's neural-network figure)
 % =====================================================================
-\begin{tikzpicture}[x=2.2cm,y=1.4cm]
+\begin{tikzpicture}[x=2.7cm,y=1.4cm]
   \readlist\Nnod{3,6,4}        % nodes per layer: d (=L), H, K (latent outputs)
   \readlist\Nstr{d,H,K}        % size symbols per layer
   \readlist\Cstr{\strut x,h,u} % coefficient symbol per layer
@@ -103,9 +105,10 @@
     }
     \path (N\lay-\N) --++ (0,1+\yshift) node[midway,scale=1.5] {$\vdots$};
   }
-  \node[above=10,align=center,mygreen!60!black] at (N1-1.90) {normalized\\[-0.2em]state $\mathbf{x}$};
-  \node[above=10,align=center,myblue!60!black]  at (N2-1.90) {hidden layer $H$\\[-0.2em]\footnotesize (NN backbone; absent for linear)};
-  \node[above=10,align=center,myred!60!black]   at (N\Nnodlen-1.90) {latent outputs $\mathbf{u}$\\[-0.2em]\footnotesize (to decoder)};
+  % column captions at a single consistent height just above the tallest column
+  \node[align=center,mygreen!60!black] at (1,2.9) {normalized\\[-0.2em]state $\mathbf{x}$};
+  \node[align=center,myblue!60!black]  at (2,2.9) {hidden layer\\[-0.2em]\footnotesize($H$ units)};
+  \node[align=center,myred!60!black]   at (3,2.9) {latent\\[-0.2em]outputs $\mathbf{u}$};
 \end{tikzpicture}
 
 
@@ -113,32 +116,355 @@
 % PAGE 3 -- DECODER HEADS: latent outputs u -> integer order a
 % Each head is part of the policy; all map to a valid (non-negative integer) action.
 % =====================================================================
-\begin{tikzpicture}[x=1cm,y=1cm,every node/.style={align=left}]
-  \def\rowsep{1.6}
-  \node[stage mid,minimum height=46mm] (u) at (0,-2.4) {latent\\outputs\\$\mathbf{u}$};
-
-  % categorical (the classical argmax score head)
-  \node[anchor=west,mydarkblue] (d0) at (2,0)
-    {\textbf{categorical} \;(scores $y_0,\dots,y_{\bar q}$):\quad
-     $a=\displaystyle\argmax_{q\in\{0,\dots,\bar q\}} y_q$};
-  % soft-gated direct
-  \node[anchor=west,mydarkblue] (d1) at (2,-\rowsep)
-    {\textbf{soft-gated direct} \;(gate $g$, quantity $q$):\quad
+\begin{tikzpicture}[every node/.style={align=left},
+                    head/.style={anchor=north west,mydarkblue,align=left,
+                                 rounded corners=2pt,draw=mydarkblue!25,fill=mydarkblue!4,
+                                 inner sep=4pt,text width=82mm}]
+  % Four heads stacked with a uniform edge gap; relative positioning absorbs their
+  % different heights, so they neither collide nor leave an uneven gap.
+  \node[head] (d0) at (0,0)
+    {\textbf{categorical} \;(scores $y_0,\dots,y_{\bar q}$):\\[2pt]
+     $a=\argmax_{q\in\{0,\dots,\bar q\}} y_q$};
+  \node[head,below=2.4mm of d0.south west,anchor=north west] (d1)
+    {\textbf{soft-gated direct} \;(gate $g$, quantity $q$):\\[2pt]
      $a=\big\lfloor\, \sigma(g)\cdot\mathrm{softplus}(q)\,\big\rceil_{\ge0}$};
-  % soft-gated ordinal
-  \node[anchor=west,mydarkblue] (d2) at (2,-2*\rowsep)
-    {\textbf{soft-gated ordinal} \;(gate $g$, thresholds $o_1,\dots,o_M$):\quad
+  \node[head,below=2.4mm of d1.south west,anchor=north west] (d2)
+    {\textbf{soft-gated ordinal} \;(gate $g$, thresholds $o_1,\dots,o_M$):\\[2pt]
      $a=\Big\lfloor\, \sigma(g)\sum_{k=1}^{M}\sigma(o_k)\,\Big\rceil_{\ge0}$};
-  % soft tree
-  \node[anchor=west,mydarkblue] (d3) at (2,-3*\rowsep)
-    {\textbf{soft tree} \;(leaf prob.\ $\pi_\ell$, leaf quantity $q_\ell$):\quad
+  \node[head,below=2.4mm of d2.south west,anchor=north west] (d3)
+    {\textbf{soft tree} \;(leaf prob.\ $\pi_\ell$, leaf quantity $q_\ell$):\\[2pt]
      $a=\Big\lfloor\, \sum_{\ell}\pi_\ell(\mathbf{x})\,q_\ell(\mathbf{x})\,\Big\rceil_{\ge0}$};
 
+  % latent-outputs box (left) and valid-action box (right), vertically centred on the stack
+  \node[fit=(d0)(d3),inner sep=0pt] (stack) {};
+  \node[stage mid,left=10mm of stack.west] (u) {latent\\outputs\\$\mathbf{u}$};
+  \node[stage out,right=10mm of stack.east] (a) {\textbf{valid}\\\textbf{action} $a_t$};
   \foreach \d in {d0,d1,d2,d3}{ \draw[flow] (u.east) -- (\d.west); }
 
-  \node[stage out,right=18mm of d1.east,yshift=-8mm] (a) {\textbf{valid}\\\textbf{action} $a$\\$\in\{0,\dots,\bar q\}$};
-  \node[mydarkblue,below=7mm of d3.south west,anchor=north west]
-    {\footnotesize $\sigma$: logistic; $\mathrm{softplus}(z)=\ln(1+e^z)$; $\lfloor\cdot\rceil_{\ge0}$: round to nearest non-negative integer.};
+  \node[mydarkblue,below=5mm of d3.south west,anchor=north west,align=left]
+    {\footnotesize $\sigma$: logistic; \;$\mathrm{softplus}(z)=\ln(1+e^z)$; \;$\lfloor\cdot\rceil_{\ge0}$: round to nearest non-negative integer.};
+\end{tikzpicture}
+
+
+% =====================================================================
+% PAGE 4 -- CMA-ES TRAINING LOOP (generational optimization cycle)
+% =====================================================================
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \node[stage mid] (dist) at (0,0)    {search distribution\\$\mathcal{N}(m_g,\sigma_g^2 C_g)$};
+  \node[stage in]  (samp) at (4.1,0)  {sample population\\$\theta_1,\dots,\theta_\lambda$ \,($\lambda=64$)};
+  \node[stage dec] (eval) at (8.4,0)  {evaluate\\\footnotesize each $\theta_i\!\to\!\pi_{\theta_i}\!\to$ short rollouts\\\footnotesize $\to\ \hat C_T(\theta_i)$ (cost)};
+  \node[stage mid] (rank) at (12.5,0) {rank \& select\\\footnotesize keep best $\mu$ by cost};
+  \node[stage out] (upd)  at (16.1,0) {update\\$m_{g+1},\,\sigma,\,C$};
+  \draw[flow] (dist) -- (samp);
+  \draw[flow] (samp) -- (eval);
+  \draw[flow] (eval) -- (rank);
+  \draw[flow] (rank) -- (upd);
+  % return arrow: next generation
+  \draw[flow] (upd.south) -- ++(0,-1.2) -| (dist.south);
+  \node[mydarkblue] at (8.05,-1.55) {\footnotesize next generation $g\!\to\!g+1$};
+  % annotations
+  \node[myorange!60!black,above=2pt of eval.north] {\footnotesize only stage that touches the environment};
+  \node[mydarkblue,below=15mm of eval.south,anchor=north,align=center]
+    {\footnotesize Gradient-free: the update uses only the \emph{ranking} of the costs $\hat C_T(\theta_i)$, not their gradients.};
+\end{tikzpicture}
+
+
+% =====================================================================
+% PAGE 5 -- SOFT TREE (oblique soft decision tree with linear leaves)
+% =====================================================================
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \node[stage in] (x) at (0,2.0) {normalized state $\mathbf{x}=\mathbf{S}_t/\kappa$};
+  % internal (split) nodes
+  \node[node hidden] (r)  at (0,0)    {$n_0$};
+  \node[node hidden] (n1) at (-2.6,-2){$n_1$};
+  \node[node hidden] (n2) at (2.6,-2) {$n_2$};
+  % leaves (linear-leaf quantities)
+  \node[stage mid] (l1) at (-3.9,-4) {$q_1(\mathbf{x})$};
+  \node[stage mid] (l2) at (-1.3,-4) {$q_2(\mathbf{x})$};
+  \node[stage mid] (l3) at (1.3,-4)  {$q_3(\mathbf{x})$};
+  \node[stage mid] (l4) at (3.9,-4)  {$q_4(\mathbf{x})$};
+  % input to root
+  \draw[flow] (x) -- (r);
+  % oblique-split routing edges with probabilities
+  \draw[connect arrow] (r)  -- (n1) node[midway,above left,font=\footnotesize]  {$1-\sigma(\cdot)$};
+  \draw[connect arrow] (r)  -- (n2) node[midway,above right,font=\footnotesize] {$\sigma(w_0^\top\mathbf{x}+b_0)$};
+  \draw[connect arrow] (n1) -- (l1) node[midway,left,font=\footnotesize]  {$1-\sigma(\cdot)$};
+  \draw[connect arrow] (n1) -- (l2) node[midway,right,font=\footnotesize] {$\sigma(\cdot)$};
+  \draw[connect arrow] (n2) -- (l3);
+  \draw[connect arrow] (n2) -- (l4);
+  % output: path-probability mixture, rounded
+  \node[stage out] (out) at (0,-6.3) {$a=\big\lfloor\, \sum_{\ell}\pi_\ell(\mathbf{x})\,q_\ell(\mathbf{x})\,\big\rceil_{\ge0}$};
+  % the four leaves jointly determine the order: group them, single connector to the mixture
+  \begin{scope}[on background layer]
+    \node[draw=mydarkblue!55,dashed,rounded corners=5pt,inner sep=8pt,
+          fit=(l1)(l2)(l3)(l4)] (leafgrp) {};
+  \end{scope}
+  \draw[flow] (leafgrp.south) -- (out.north)
+        node[midway,right=2pt,font=\footnotesize,mydarkblue] {combined order};
+  \node[mydarkblue,below=3pt of out.south,align=center]
+    {\footnotesize Each leaf $\ell$ has path probability $\pi_\ell(\mathbf{x})=\prod(\text{routing probs on its root-to-leaf path})$, with $\sum_\ell\pi_\ell=1$;\\
+     the action is the soft mixture of the leaf quantities, rounded to a valid order.};
+\end{tikzpicture}
+
+
+% =====================================================================
+% ENVIRONMENT FLOW-NETWORK DIAGRAMS (one per paper problem).
+% Visual language reused from the policy figures above:
+%   - "stage in"   (green)  = external supply source / manufacturer
+%   - "stage mid"  (blue)   = on-hand stock point / warehouse / retailer
+%   - "stage dec"  (orange) = demand sink
+% Each interaction is EVENT-BASED, drawn as two distinct arrows:
+%   - "reqflow"  (thin dashed green, information/control) = the stock point SENDS
+%       an order *request* q_t to the supplier (request->supplier direction).
+%   - "matflow"  (solid blue, goods)                      = the supplier SHIPS;
+%       supplies ARRIVE after the lead time (supplier->stock direction).
+% "demandflow" (orange) = demand served from stock; "lostflow"/"boflow" (red,
+% dashed) = unmet demand lost or backordered.  Each figure is wrapped in a dashed
+% rounded "envbox" naming the environment, and a one-line numbered event sequence
+% is printed beneath the box (observe -> request -> arrive -> demand -> lose/
+% backorder -> cost), matching the flownet timing layer.
+% Costs are written in colour next to where they are charged:
+%   holding h (blue), lost-sales p / backorder b (red), order/fixed cost (dark).
+% =====================================================================
+% Node text and edge labels are deliberately set at \small (body-size after the
+% ~1x resizebox in the manuscript), with generously sized nodes so the text never
+% overflows. Edge labels carry a small white background fill so that, even if an
+% arc passes near them, the text reads cleanly (no text-on-arc collision).
+\tikzset{
+  envsupply/.style={stage in,font=\small,minimum height=15mm,minimum width=30mm},
+  envstock/.style={stage mid,font=\small,minimum height=15mm,minimum width=32mm},
+  envsink/.style={stage dec,font=\small,minimum height=15mm,minimum width=28mm},
+  envlost/.style={draw=myred!55!black,fill=myred!8,rounded corners=2pt,
+                  align=center,inner sep=5pt,font=\small},
+  matflow/.style={-{Latex[length=6,width=5]},very thick,mydarkblue},
+  reqflow/.style={-{Latex[length=5.5,width=4]},semithick,dashed,mygreen!45!black},
+  demandflow/.style={-{Latex[length=6,width=5]},very thick,myorange!70!black},
+  lostflow/.style={-{Latex[length=6,width=5]},very thick,myred!70!black,dashed},
+  ltlabel/.style={font=\small,mydarkblue,align=center,fill=white,
+                  fill opacity=0.85,text opacity=1,inner sep=2pt},
+  reqlabel/.style={font=\small,mygreen!45!black,align=center,fill=white,
+                   fill opacity=0.85,text opacity=1,inner sep=2pt},
+  costH/.style={font=\small,myblue!60!black,align=center},
+  costP/.style={font=\small,myred!65!black,align=center},
+  costK/.style={font=\small,mydarkblue,align=center},
+  envbox/.style={draw=mydarkblue!55,dashed,rounded corners=6pt,inner sep=14pt},
+  envtitle/.style={mydarkblue,font=\small\bfseries},
+  eventseq/.style={font=\small,mydarkblue!85,align=center},
+}
+
+% ---------------------------------------------------------------------
+% PAGE 6 -- VANILLA LOST SALES environment  (event-based)
+% stock REQUESTS q_t (dashed, up) -> supplier SHIPS; arrives after L (solid, down)
+% -> serve demand from on-hand -> unmet LOST.  All wrapped in an env box.
+% ---------------------------------------------------------------------
+\begin{tikzpicture}[x=1cm,y=1cm]
+  % Wide layout (~16 cm) so the manuscript resizebox is ~1x and labels stay body-size.
+  % Request arc bends UP and its label sits well above the apex; ship arc bends DOWN
+  % and its label sits well below the nadir -> generous arc/label separation.
+  \node[envsupply] (sup)  at (0,0)    {external\\supplier};
+  \node[envstock]  (stk)  at (6.4,0)  {on-hand\\stock $I_t$};
+  \node[envsink]   (dem)  at (12.4,0) {i.i.d.\\demand $D_t$};
+  \node[envlost]   (lost) at (12.4,-3.6){demand \emph{lost}\\if $I_t<D_t$};
+
+  % event 2: stock point sends an order request to the supplier (control flow, arcs UP)
+  \draw[reqflow] (stk.north) to[bend right=42] (sup.north);
+  \node[reqlabel] (rq) at (3.2,2.55) {\ding{183}\, order request $q_t$};
+  % event 3: supplier ships; goods arrive after the lead time (material flow, arcs DOWN)
+  \draw[matflow] (sup.south) to[bend right=42] (stk.south);
+  \node[ltlabel] (sh) at (3.2,-2.55) {\ding{184}\, ships; arrives after lead time $L\ge1$};
+  \draw[demandflow] (stk) -- (dem)
+        node[midway,above=3pt,ltlabel] {\ding{185}\, serve\\$\min(I_t,D_t)$};
+  \draw[lostflow] (dem) -- (lost);
+
+  \node[costK,left=3pt of sup.west] {order\\cost $c\,q_t$};
+  \node[costH] (hcost) at (6.4,-3.6) {holding\\$h\,(I_t-D_t)^+$};
+  \node[costP,right=3pt of lost.east] {penalty\\$p\,(D_t-I_t)^+$};
+
+  % environment boundary + name
+  \begin{scope}[on background layer]
+    \node[envbox,fit=(sup)(stk)(dem)(lost)(hcost)(rq)(sh)] (box) {};
+  \end{scope}
+  \node[envtitle,above=3pt of box.north,anchor=south]
+        {Lost-sales environment (one period)};
+\end{tikzpicture}
+
+% Event sequence as a separate, line-wrapping body-size block (NOT inside the scaled
+% picture, so it can never dictate the diagram width).
+\noindent\begin{tikzpicture}
+  \node[draw=mydarkblue!55,rounded corners=4pt,fill=mydarkblue!4,inner sep=7pt]{%
+    \begin{minipage}{14.8cm}\centering
+      {\small\bfseries\color{mydarkblue!85}Per-period event sequence}\\[4pt]
+      {\small\begin{tabular}{@{}p{4.5cm}p{4.5cm}p{4.5cm}@{}}
+        \ding{182}\,observe state $\mathbf S_t$ & \ding{183}\,place order request $q_t$ & \ding{184}\,receive arrival $q_{t-L}$\\[4pt]
+        \ding{185}\,serve demand $D_t$ from stock & \ding{186}\,unmet demand \emph{lost} & \ding{187}\,charge holding $+$ lost-sales\\
+      \end{tabular}}
+    \end{minipage}};
+\end{tikzpicture}
+
+
+% ---------------------------------------------------------------------
+% PAGE 7 -- FIXED-COST LOST SALES environment  (event-based)
+% same topology + events as vanilla; placing a positive request additionally
+% incurs a fixed setup cost K per order.
+% ---------------------------------------------------------------------
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \node[envsupply] (sup)  at (0,0)    {external\\supplier};
+  \node[envstock]  (stk)  at (6.4,0)  {on-hand\\stock $I_t$};
+  \node[envsink]   (dem)  at (12.4,0) {i.i.d.\\demand $D_t$};
+  \node[envlost]   (lost) at (12.4,-3.6){demand \emph{lost}\\if $I_t<D_t$};
+
+  \draw[reqflow] (stk.north) to[bend right=42] (sup.north);
+  \node[reqlabel] (rq) at (3.2,2.55) {\ding{183}\, order request $q_t$};
+  \draw[matflow] (sup.south) to[bend right=42] (stk.south);
+  \node[ltlabel] (sh) at (3.2,-2.55) {\ding{184}\, ships; arrives after lead time $L\ge1$};
+  \draw[demandflow] (stk) -- (dem)
+        node[midway,above=3pt,ltlabel] {\ding{185}\, serve\\$\min(I_t,D_t)$};
+  \draw[lostflow] (dem) -- (lost);
+
+  \node[costK,left=3pt of sup.west,align=center]
+        {order cost\\$c\,q_t + K\,\mathbf{1}\{q_t>0\}$};
+  \node[costH] (hcost) at (6.4,-3.6) {holding\\$h\,(I_t-D_t)^+$};
+  \node[costP,right=3pt of lost.east] {penalty\\$p\,(D_t-I_t)^+$};
+
+  \begin{scope}[on background layer]
+    \node[envbox,fit=(sup)(stk)(dem)(lost)(hcost)(rq)(sh)] (box) {};
+  \end{scope}
+  \node[envtitle,above=3pt of box.north,anchor=south]
+        {Fixed-cost lost-sales environment (one period)};
+\end{tikzpicture}
+
+\noindent\begin{tikzpicture}
+  \node[draw=mydarkblue!55,rounded corners=4pt,fill=mydarkblue!4,inner sep=7pt]{%
+    \begin{minipage}{14.8cm}\centering
+      {\small\bfseries\color{mydarkblue!85}Per-period event sequence}\\[4pt]
+      {\small\begin{tabular}{@{}p{4.5cm}p{4.5cm}p{4.5cm}@{}}
+        \ding{182}\,observe state $\mathbf S_t$ & \ding{183}\,order request $q_t$ (\emph{setup} $+K$ if $q_t>0$) & \ding{184}\,receive arrival $q_{t-L}$\\[4pt]
+        \ding{185}\,serve demand $D_t$ from stock & \ding{186}\,unmet demand \emph{lost} & \ding{187}\,holding $+$ lost-sales $+$ setup\\
+      \end{tabular}}
+    \end{minipage}};
+\end{tikzpicture}
+
+
+% ---------------------------------------------------------------------
+% PAGE 8 -- DUAL SOURCING environment  (event-based)
+% Two supply modes, each request+ship: regular (request q^r, ships after l_r>=1,
+% cost c_r) and expedited (request q^e, ships within period l_e=0, cost c_e>c_r).
+% Demand served from I_t+q^e_t; unmet demand BACKORDERED (net inventory can go neg.).
+% ---------------------------------------------------------------------
+\begin{tikzpicture}[x=1cm,y=1cm]
+  % Two supply modes on the left, fed into one stock point; demand and backorder
+  % on the right. Each mode has a dashed request arc (stock -> supplier, drawn on
+  % the OUTER side) and a solid ship arc (supplier -> stock, INNER). Request labels
+  % sit at the supplier end; ship labels sit in the clear gap between the two arcs.
+  \node[envsupply] (reg)  at (0,4.0)   {regular\\supplier};
+  \node[envsupply] (exp)  at (0,-4.0)  {expedited\\supplier};
+  \node[envstock]  (stk)  at (8.0,0)   {net inventory\\$I_t\,(+\,q^e_t)$};
+  \node[envsink]   (dem)  at (13.8,0)  {i.i.d.\\demand $D_t$};
+  \node[envlost]   (bo)   at (13.8,-4.0){unmet demand\\\emph{backordered}};
+
+  % regular mode (top)
+  \draw[reqflow] (stk.north west) to[bend right=30] (reg.south east);
+  \draw[matflow] (reg.south east) to[bend right=6]  (stk.west);
+  \node[reqlabel] at (3.0,3.45) {\ding{183}\, request $q^r_t$};
+  \node[ltlabel]  at (4.7,1.55) {\ding{184}\, ships; arrives\\after $l_r\ge1$ (cost $c_r$)};
+  % expedited mode (bottom)
+  \draw[reqflow] (stk.south west) to[bend left=30] (exp.north east);
+  \draw[matflow] (exp.north east) to[bend left=6]  (stk.west);
+  \node[reqlabel] at (3.0,-3.45) {\ding{183}\, request $q^e_t$};
+  \node[ltlabel]  at (4.7,-1.55) {\ding{184}\, ships \emph{within period}\\$l_e=0$ (cost $c_e>c_r$)};
+
+  \draw[demandflow] (stk) -- (dem)
+        node[midway,above=3pt,ltlabel] {\ding{185}\, serve from\\$I_t+q^e_t$};
+  \draw[lostflow] (dem) -- (bo);
+
+  \node[costH,above=9mm of stk.north] {holding $h\,(J_t)^+$};
+  \node[costP,right=3pt of bo.east] {backorder\\$b\,(J_t)^-$};
+  \node[costK,below=9mm of stk.south,align=center]
+        {$J_t=I_t+q^e_t-D_t$\\(end-of-period net inventory)};
+
+  \begin{scope}[on background layer]
+    \node[envbox,fit=(reg)(exp)(stk)(dem)(bo)] (box) {};
+  \end{scope}
+  \node[envtitle,above=3pt of box.north,anchor=south]
+        {Dual-sourcing environment (one period)};
+\end{tikzpicture}
+
+\noindent\begin{tikzpicture}
+  \node[draw=mydarkblue!55,rounded corners=4pt,fill=mydarkblue!4,inner sep=7pt]{%
+    \begin{minipage}{14.8cm}\centering
+      {\small\bfseries\color{mydarkblue!85}Per-period event sequence}\\[4pt]
+      {\small\begin{tabular}{@{}p{4.5cm}p{4.5cm}p{4.5cm}@{}}
+        \ding{182}\,observe state $\mathbf S_t$ & \ding{183}\,request $(q^r_t,q^e_t)$ & \ding{184}\,regular arrival $q^r_{t-l_r}$ \& expedited $q^e_t$ (same period)\\[4pt]
+        \ding{185}\,serve demand $D_t$ from $I_t+q^e_t$ & \ding{186}\,unmet demand \emph{backordered} & \ding{187}\,procurement $+$ holding $+$ backorder\\
+      \end{tabular}}
+    \end{minipage}};
+\end{tikzpicture}
+
+
+% ---------------------------------------------------------------------
+% PAGE 9 -- DIVERGENT MULTI-ECHELON environment  (event-based)
+% Each link is request+ship: warehouse requests q^w from manufacturer (ships,
+% arrives after l_w, cap C^m/C^w); retailers request to order-up-to y^r from the
+% warehouse, which ships after l_r rationed by max-min allocation A.  Demand
+% served at each retailer; unmet -> special delivery E_t from leftover warehouse
+% stock w.p. P_w, else lost ell_t.
+% ---------------------------------------------------------------------
+\begin{tikzpicture}[x=1cm,y=1cm]
+  % For readability the R retailers are drawn as ONE representative retailer carrying
+  % a "x R" multiplier (fidelity preserved in the caption). Horizontal spine:
+  % manufacturer -> warehouse -> retailer -> demand. Request arcs bend UP with labels
+  % above; ship arcs bend DOWN with labels below; the special-delivery arc is drawn
+  % once, low, from the warehouse to the demand sink.
+  \node[envsupply] (man) at (0,0)    {external\\manufacturer};
+  \node[envstock]  (wh)  at (5.8,0)  {warehouse\\$I^w_t$ (cap $C^w$)};
+  \node[envstock]  (ret) at (11.6,0) {retailer $i$\\$I^i_t$ \;($\times R$)};
+  \node[envsink]   (dem) at (17.2,0) {demand\\$d_{i,t}$ \;($\times R$)};
+
+  % manufacturer -> warehouse: request arc UP, ship arc DOWN
+  \draw[reqflow] (wh.north) to[bend right=42] (man.north);
+  \node[reqlabel] (rqw) at (2.9,2.25) {\ding{183}\, request $q^w_t$};
+  \draw[matflow] (man.south) to[bend right=42] (wh.south);
+  \node[ltlabel] (shw) at (2.9,-2.25) {\ding{184}\, ships; arrives\\after $l_w$ (cap $C^m$)};
+
+  % warehouse -> retailer: request arc UP, ship arc DOWN (shallow, so it clears the
+  % deep special-delivery arc below it)
+  \draw[reqflow] (ret.north) to[bend right=38] (wh.north);
+  \node[reqlabel] at (8.7,2.25) {\ding{183}\, raise to $y^r_t$};
+  \draw[matflow] (wh.south) to[bend right=26] (ret.south);
+  \node[ltlabel] (shr) at (8.7,-1.85) {\ding{184}\, ships $s^i_t$ after $l_r$;\\max--min $\mathcal A$ if short};
+
+  \draw[demandflow] (ret) -- (dem)
+        node[midway,above=3pt,ltlabel] {\ding{185}\, serve};
+
+  % special delivery (drawn once): leftover warehouse stock to unmet demand, routed
+  % DEEP below everything so it never crosses the ship arc or its label. The caption
+  % sits at the arc's lowest point, with a solid white fill so the arc reads as
+  % passing behind clean text rather than through it.
+  \draw[lostflow,myorange!70!black] (wh.south) to[out=-90,in=-90,looseness=1.0] (dem.south);
+  \node[font=\small,myorange!70!black,align=center,fill=white,inner sep=2pt] (sd) at (8.7,-4.35)
+        {\ding{186}\, unmet $\to$ \emph{special delivery} $E_t$ from leftover\\
+         warehouse stock w.p.\ $P_w$ (else lost $\ell_t$)};
+
+  \node[costH] (hw) at (5.8,2.25) {holding $h^w (I^w_t)^+$};
+  \node[costH] (hr) at (11.6,3.25) {holding $h^r (I^i_t)^+$};
+  \node[costP,right=3pt of dem.east] {expedite $c^w E_t$\\$+$ lost $p\,\ell_t$};
+
+  \begin{scope}[on background layer]
+    \node[envbox,fit=(man)(wh)(ret)(dem)(rqw)(shw)(shr)(sd)(hr)] (box) {};
+  \end{scope}
+  \node[envtitle,above=3pt of box.north,anchor=south]
+        {Divergent multi-echelon environment with special delivery (one period)};
+\end{tikzpicture}
+
+\noindent\begin{tikzpicture}
+  \node[draw=mydarkblue!55,rounded corners=4pt,fill=mydarkblue!4,inner sep=7pt]{%
+    \begin{minipage}{14.8cm}\centering
+      {\small\bfseries\color{mydarkblue!85}Per-period event sequence}\\[4pt]
+      {\small\begin{tabular}{@{}p{4.5cm}p{4.5cm}p{4.5cm}@{}}
+        \ding{182}\,arrivals merge into warehouse \& retailer stock & \ding{183}\,warehouse requests $q^w_t$; retailers request to $y^r_t$ & \ding{184}\,warehouse ships (max--min $\mathcal A$ if short)\\[4pt]
+        \ding{185}\,retailer serves demand $d_{i,t}$ & \ding{186}\,unmet $\to$ special delivery (w.p.\ $P_w$) else lost & \ding{187}\,holding $+$ expedite $+$ lost\\
+      \end{tabular}}
+    \end{minipage}};
 \end{tikzpicture}
 
 
