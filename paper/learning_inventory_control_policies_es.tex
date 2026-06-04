@@ -476,6 +476,107 @@ independent policy-forward implementations used for the cross-checks are also ex
 \subsection{Problem formulation}
 \label{sec:lostsales-formulation}
 
+Figures~\ref{fig:env-lostsales} and~\ref{fig:env-fixedcost} depict the vanilla and fixed-ordering-cost environments as flow networks --- the order request and its lead-time shipment, the demand draw, and where each cost is charged.
+
+\begin{figure}[t]
+  \centering
+  \resizebox{\textwidth}{!}{%
+  \begin{tikzpicture}[x=1cm,y=1cm]
+    \node[envsupply] (sup)  at (0,0)    {external\\supplier};
+    \node[envstock]  (stk)  at (6.4,0)  {on-hand\\stock $I_t$};
+    \node[envsink]   (dem)  at (12.4,0) {i.i.d.\\demand $D_t$};
+    \node[envlost]   (lost) at (12.4,-3.6){demand \emph{lost}\\if $I_t<D_t$};
+
+    % event 3: stock point sends an order request to the supplier (control flow, arcs UP)
+    \draw[reqflow] (stk.north) to[bend right=42] (sup.north);
+    \node[reqlabel] (rq) at (3.2,2.55) {\ding{184}\, order request $q_t$};
+    % event 1: a past order ships and arrives after the lead time (material flow, arcs DOWN);
+    % the arriving order $q_{t-L}$ is folded into on-hand stock before the controller observes
+    \draw[matflow] (sup.south) to[bend right=42] (stk.south);
+    \node[ltlabel] (sh) at (3.2,-2.55) {\ding{182}\, arrival $q_{t-L}$ (placed $L$ periods ago)};
+    \draw[demandflow] (stk) -- (dem)
+          node[midway,above=3pt,ltlabel] {\ding{185}\, serve\\$\min(I_t,D_t)$};
+    \draw[lostflow] (dem) -- (lost);
+
+    \node[costK,left=3pt of sup.west] (ck) {order\\cost $c\,q_t$};
+    \node[costH] (hcost) at (6.4,-3.6) {holding\\$h\,(I_t-D_t)^+$};
+    \node[costP,right=3pt of lost.east] (cp) {penalty\\$p\,(D_t-I_t)^+$};
+
+    \begin{scope}[on background layer]
+      \node[envbox,fit=(current bounding box)] (box) {};
+    \end{scope}
+    \node[envtitle,above=3pt of box.north,anchor=south]
+          {Lost-sales environment (one period)};
+  \end{tikzpicture}%
+  }
+  % Event sequence as body-size, line-wrapping text below the diagram (kept OUT of the
+  % scaled picture so it can never dictate the diagram width).
+  \par\vspace{6pt}\centerline{%
+    \tikz\node[draw=mydarkblue!55,rounded corners=4pt,fill=mydarkblue!4,inner sep=7pt]{%
+      \begin{minipage}{\dimexpr\linewidth-18pt\relax}\centering
+        {\small\bfseries\color{mydarkblue!85}Per-period event sequence}\\[4pt]
+        {\small\begin{tabular}{@{}p{4.5cm}p{4.5cm}p{4.5cm}@{}}
+          \ding{182}\,arrival $q_{t-L}$ joins on-hand stock & \ding{183}\,observe post-arrival state $\mathbf S_t$ & \ding{184}\,place order request $q_t$ (arrives in $L$)\\[4pt]
+          \ding{185}\,demand $D_t$ served from on-hand $I_t$ & \ding{186}\,unmet demand \emph{lost} & \ding{187}\,charge holding $+$ lost-sales\\
+        \end{tabular}}
+      \end{minipage}};}\par
+  \caption{Vanilla lost-sales environment, drawn as an event-based interaction. Each period the
+  stock point \emph{sends an order request} $q_t$ to the supplier (thin dashed control arrow), and the
+  supplier \emph{ships}; the goods \emph{arrive} after the fixed lead time $L\ge1$ (solid material
+  arrow). i.i.d.\ demand $D_t$ is then served from on-hand stock $I_t$ and any \emph{unmet demand is
+  lost}. Holding cost $h$ is charged on leftover on-hand inventory and a penalty $p$ on each lost
+  unit; the dashed box is the environment boundary and the boxed panel beneath gives the per-period
+  event sequence (Section~\ref{sec:lostsales-formulation}).}
+  \label{fig:env-lostsales}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \resizebox{\textwidth}{!}{%
+  \begin{tikzpicture}[x=1cm,y=1cm]
+    \node[envsupply] (sup)  at (0,0)    {external\\supplier};
+    \node[envstock]  (stk)  at (6.4,0)  {on-hand\\stock $I_t$};
+    \node[envsink]   (dem)  at (12.4,0) {i.i.d.\\demand $D_t$};
+    \node[envlost]   (lost) at (12.4,-3.6){demand \emph{lost}\\if $I_t<D_t$};
+
+    \draw[reqflow] (stk.north) to[bend right=42] (sup.north);
+    \node[reqlabel] (rq) at (3.2,2.55) {\ding{184}\, order request $q_t$};
+    \draw[matflow] (sup.south) to[bend right=42] (stk.south);
+    \node[ltlabel] (sh) at (3.2,-2.55) {\ding{182}\, arrival $q_{t-L}$ (placed $L$ periods ago)};
+    \draw[demandflow] (stk) -- (dem)
+          node[midway,above=3pt,ltlabel] {\ding{185}\, serve\\$\min(I_t,D_t)$};
+    \draw[lostflow] (dem) -- (lost);
+
+    \node[costK,left=3pt of sup.west,align=center]
+          {order cost\\$c\,q_t + K\,\mathbf{1}\{q_t>0\}$};
+    \node[costH] (hcost) at (6.4,-3.6) {holding\\$h\,(I_t-D_t)^+$};
+    \node[costP,right=3pt of lost.east] {penalty\\$p\,(D_t-I_t)^+$};
+
+    \begin{scope}[on background layer]
+      \node[envbox,fit=(current bounding box)] (box) {};
+    \end{scope}
+    \node[envtitle,above=3pt of box.north,anchor=south]
+          {Fixed-cost lost-sales environment (one period)};
+  \end{tikzpicture}%
+  }
+  \par\vspace{6pt}\centerline{%
+    \tikz\node[draw=mydarkblue!55,rounded corners=4pt,fill=mydarkblue!4,inner sep=7pt]{%
+      \begin{minipage}{\dimexpr\linewidth-18pt\relax}\centering
+        {\small\bfseries\color{mydarkblue!85}Per-period event sequence}\\[4pt]
+        {\small\begin{tabular}{@{}p{4.5cm}p{4.5cm}p{4.5cm}@{}}
+          \ding{182}\,arrival $q_{t-L}$ joins on-hand stock & \ding{183}\,observe post-arrival state $\mathbf S_t$ & \ding{184}\,place order $q_t$ (\emph{setup} $+K$ if $q_t>0$)\\[4pt]
+          \ding{185}\,demand $D_t$ served from on-hand $I_t$ & \ding{186}\,unmet demand \emph{lost} & \ding{187}\,holding $+$ lost-sales $+$ setup\\
+        \end{tabular}}
+      \end{minipage}};}\par
+  \caption{Fixed-cost lost-sales environment, drawn as an event-based interaction. Identical topology,
+  request-then-ship ordering, and lost-sales rule to Figure~\ref{fig:env-lostsales}; the only
+  difference is that placing the order request additionally incurs a fixed setup cost $K$ whenever a
+  strictly positive order is requested (Section~\ref{sec:lostsales-formulation},
+  Eq.~\eqref{eq:ls-fixed-cost}).}
+  \label{fig:env-fixedcost}
+\end{figure}
+
+
 We study single-item, periodic-review lost-sales inventory control and its fixed-ordering-cost
 variant. Demand and order quantities are integer, and demand is stationary. The controller seeks a
 stationary ordering policy that minimizes the long-run average cost.
@@ -564,6 +665,8 @@ with fixed cost $K\ge0$ and indicator $\mathbf{1}\{\cdot\}$, and the objective
 no longer optimal to order in every period, so an optimal policy must trade the setup cost against the
 holding and lost-sales costs, and it is precisely on this decision that the action parameterizations
 of Section~\ref{sec:lostsales-policy} differ most.
+
+\FloatBarrier
 
 \subsection{Policy functions}
 \label{sec:lostsales-policy}
@@ -989,6 +1092,69 @@ instance-best, underscoring that the decoder, not the optimizer, governs the ord
 \subsection{Problem formulation}
 \label{sec:dual-sourcing-formulation}
 
+Figure~\ref{fig:env-dual} depicts this environment as a flow network --- the regular and expedited supply modes, the demand draw, and where holding and backorder costs are charged.
+
+\begin{figure}[t]
+  \centering
+  \resizebox{\textwidth}{!}{%
+  \begin{tikzpicture}[x=1cm,y=1cm]
+    \node[envsupply] (reg)  at (0,4.0)   {regular\\supplier};
+    \node[envsupply] (exp)  at (0,-4.0)  {expedited\\supplier};
+    \node[envstock]  (stk)  at (8.0,0)   {net inventory\\$I_t\,(+\,q^e_t)$};
+    \node[envsink]   (dem)  at (13.8,0)  {i.i.d.\\demand $D_t$};
+    \node[envlost]   (bo)   at (13.8,-4.0){unmet demand\\\emph{backordered}};
+
+    % regular mode (top): dashed request (outer) + solid ship (inner); labels off the arcs.
+    % The regular order arrives at the START of the period (folded into I_t before the
+    % decision), so its arrival is event 1; the new regular request is event 3.
+    \draw[reqflow] (stk.north west) to[bend right=30] (reg.south east);
+    \draw[matflow] (reg.south east) to[bend right=6]  (stk.west);
+    \node[reqlabel] at (3.0,3.45) {\ding{184}\, request $q^r_t$};
+    \node[ltlabel]  at (4.7,1.55) {\ding{182}\, arrival $q^r_{t-l_r}$\\(into $I_t$; cost $c_r$)};
+    % expedited mode (bottom): requested now, arrives the SAME period (event 5)
+    \draw[reqflow] (stk.south west) to[bend left=30] (exp.north east);
+    \draw[matflow] (exp.north east) to[bend left=6]  (stk.west);
+    \node[reqlabel] at (3.0,-3.45) {\ding{184}\, request $q^e_t$};
+    \node[ltlabel]  at (4.7,-1.55) {\ding{185}\, arrives \emph{this period}\\$l_e=0$ (cost $c_e>c_r$)};
+
+    \draw[demandflow] (stk) -- (dem)
+          node[midway,above=3pt,ltlabel] {\ding{186}\, serve from\\$I_t+q^e_t$};
+    \draw[lostflow] (dem) -- (bo);
+
+    \node[costH,above=9mm of stk.north] {holding $h\,(J_t)^+$};
+    \node[costP,right=3pt of bo.east] {backorder\\$b\,(J_t)^-$};
+    \node[costK,below=9mm of stk.south,align=center]
+          {$J_t=I_t+q^e_t-D_t$\\(end-of-period net inventory)};
+
+    \begin{scope}[on background layer]
+      \node[envbox,fit=(current bounding box)] (box) {};
+    \end{scope}
+    \node[envtitle,above=3pt of box.north,anchor=south]
+          {Dual-sourcing environment (one period)};
+  \end{tikzpicture}%
+  }
+  \par\vspace{6pt}\centerline{%
+    \tikz\node[draw=mydarkblue!55,rounded corners=4pt,fill=mydarkblue!4,inner sep=7pt]{%
+      \begin{minipage}{\dimexpr\linewidth-18pt\relax}\centering
+        {\small\bfseries\color{mydarkblue!85}Per-period event sequence}\\[4pt]
+        {\small\begin{tabular}{@{}p{4.5cm}p{4.5cm}p{4.5cm}@{}}
+          \ding{182}\,regular arrival $q^r_{t-l_r}$ joins net inventory $I_t$ & \ding{183}\,observe state $\mathbf S_t$ & \ding{184}\,request $(q^r_t,q^e_t)$\\[4pt]
+          \ding{185}\,expedited $q^e_t$ arrives \emph{this period} & \ding{186}\,demand $D_t$ served from $I_t+q^e_t$; unmet \emph{backordered} & \ding{187}\,procurement $+$ holding $+$ backorder\\
+        \end{tabular}}
+      \end{minipage}};}\par
+  \caption{Dual-sourcing environment of \citet{gijsbrechts2022drl}, drawn as an event-based
+  interaction. Each period the stock point sends two \emph{order requests} (thin dashed control
+  arrows): a regular request $q^r_t$ and an expedited request $q^e_t$. The slow \emph{regular}
+  supplier ships and the goods arrive after the lead time $l_r\ge1$ (unit cost $c_r$); the fast
+  \emph{expedited} supplier ships \emph{within the same period} ($l_e=0$, unit cost $c_e>c_r$) and is
+  available to serve demand (solid material arrows). \emph{Unmet demand is backordered}, so net
+  inventory may go negative. Holding cost $h$ and backorder penalty $b$ are charged on the
+  end-of-period net inventory $J_t$; the boxed panel beneath gives the per-period event sequence
+  (Section~\ref{sec:dual-sourcing-formulation}).}
+  \label{fig:env-dual}
+\end{figure}
+
+
 We consider the single-item, periodic-review dual-sourcing inventory model of
 \citet{gijsbrechts2022drl}. Demand and order quantities are integer, and the objective is to
 minimize the long-run average cost, which consists of procurement, inventory-holding, and
@@ -1074,6 +1240,8 @@ Because demand is stationary, the system is stationary and we seek a well-perfor
 policy. As for the other problems, $\bar C(\btheta)$ is estimated by simulation: a finite-horizon
 average cost $\hat C_T(\btheta)$ with a warm-up period is used during training and a long horizon for
 evaluation, in line with the standard inventory-simulation protocol.
+
+\FloatBarrier
 
 \subsection{Policy}
 \label{sec:dual-policy}
@@ -1195,6 +1363,78 @@ Published A3C gap & 0.52\% & 0.80\% & 0.82\% & 0.51\% & 1.85\% & 1.33\% \\
 \label{sec:multiechelon}
 
 \subsection{Problem formulation}
+
+Figure~\ref{fig:env-multiechelon} depicts this environment as a flow network --- the warehouse and retailers, the order requests and shipments, the special delivery, and where each cost is charged.
+
+\begin{figure}[t]
+  \centering
+  \resizebox{\textwidth}{!}{%
+  \begin{tikzpicture}[x=1cm,y=1cm]
+    % The R retailers are drawn as ONE representative retailer with a "x R" multiplier
+    % (full fidelity preserved in the caption). Spine: manufacturer -> warehouse ->
+    % retailer -> demand; request arcs UP, ship arcs DOWN, special delivery drawn once.
+    \node[envsupply] (man) at (0,0)    {external\\manufacturer};
+    \node[envstock]  (wh)  at (5.8,0)  {warehouse\\$I^w_t$ (cap $C^w$)};
+    \node[envstock]  (ret) at (11.6,0) {retailer $i$\\$I^i_t$ \;($\times R$)};
+    \node[envsink]   (dem) at (17.2,0) {demand\\$d_{i,t}$ \;($\times R$)};
+
+    % manufacturer -> warehouse: ship/arrival arc DOWN (arrival merges into on-hand
+    % BEFORE ordering = event 1), new warehouse request arc UP = event 2
+    \draw[reqflow] (wh.north) to[bend right=42] (man.north);
+    \node[reqlabel] (rqw) at (2.9,2.25) {\ding{183}\, request $q^w_t$};
+    \draw[matflow] (man.south) to[bend right=42] (wh.south);
+    \node[ltlabel] (shw) at (2.9,-2.25) {\ding{182}\, arrival (placed $l_w$ ago,\\cap $C^m$) merges into stock};
+
+    % warehouse -> retailer: request arc UP (event 2), shallow ship arc DOWN (event 3)
+    \draw[reqflow] (ret.north) to[bend right=38] (wh.north);
+    \node[reqlabel] at (8.7,2.25) {\ding{183}\, raise to $y^r_t$};
+    \draw[matflow] (wh.south) to[bend right=26] (ret.south);
+    \node[ltlabel] (shr) at (8.7,-1.85) {\ding{184}\, ships $s^i_t$ after $l_r$;\\max--min $\mathcal A$ if short};
+
+    \draw[demandflow] (ret) -- (dem)
+          node[midway,above=3pt,ltlabel] {\ding{185}\, serve};
+
+    % special delivery (drawn once), routed DEEP below; caption sits in its trough
+    \draw[lostflow,myorange!70!black] (wh.south) to[out=-90,in=-90,looseness=1.0] (dem.south);
+    \node[font=\small,myorange!70!black,align=center,fill=white,inner sep=2pt] (sd) at (8.7,-4.35)
+          {\ding{186}\, unmet $\to$ \emph{special delivery} $E_t$ from leftover\\
+           warehouse stock w.p.\ $P_w$ (else lost $\ell_t$)};
+
+    \node[costH] (hw) at (5.8,2.25) {holding $h^w (I^w_t)^+$};
+    \node[costH] (hr) at (11.6,3.25) {holding $h^r (I^i_t)^+$};
+    \node[costP,right=3pt of dem.east] {expedite $c^w E_t$\\$+$ lost $p\,\ell_t$};
+
+    \begin{scope}[on background layer]
+      \node[envbox,fit=(current bounding box)] (box) {};
+    \end{scope}
+    \node[envtitle,above=3pt of box.north,anchor=south]
+          {Divergent multi-echelon environment with special delivery (one period)};
+  \end{tikzpicture}%
+  }
+  \par\vspace{6pt}\centerline{%
+    \tikz\node[draw=mydarkblue!55,rounded corners=4pt,fill=mydarkblue!4,inner sep=7pt]{%
+      \begin{minipage}{\dimexpr\linewidth-18pt\relax}\centering
+        {\small\bfseries\color{mydarkblue!85}Per-period event sequence}\\[4pt]
+        {\small\begin{tabular}{@{}p{4.5cm}p{4.5cm}p{4.5cm}@{}}
+          \ding{182}\,arrivals merge into warehouse \& retailer on-hand (before ordering) & \ding{183}\,warehouse orders $q^w_t$ (pre-shipment IP); retailers raise to $y^r_t$ & \ding{184}\,warehouse ships $s^i_t$ (max--min $\mathcal A$ if short)\\[4pt]
+          \ding{185}\,each retailer serves demand $d_{i,t}$ & \ding{186}\,unmet $\to$ special delivery from leftover stock (w.p.\ $P_w$) else lost & \ding{187}\,holding $+$ expedite $+$ lost\\
+        \end{tabular}}
+      \end{minipage}};}\par
+  \caption{Divergent multi-echelon environment with special delivery
+  \citep{gijsbrechts2022drl,vanroy1997ndp}, drawn as an event-based interaction. Each period the
+  warehouse \emph{sends an order request} $q^w_t$ to the external manufacturer, which ships; the goods
+  arrive after lead time $l_w$ (production cap $C^m$, position cap $C^w$). Each retailer in turn
+  \emph{requests} a raise to the shared order-up-to level $y^r_t$ (thin dashed control arrows); the
+  warehouse \emph{ships} $s^i_t$, arriving after lead time $l_r$, rationed by the max--min allocation
+  rule $\mathcal A$ when stock is short (solid material arrows). Each retailer serves its own i.i.d.\
+  demand from on-hand stock; each unmet unit independently requests a same-period \emph{special
+  delivery} from leftover warehouse stock with probability $P_w$ (filled up to that stock) and is
+  otherwise lost. Holding cost is charged on end-of-period on-hand stock at the warehouse ($h^w$) and
+  retailers ($h^r$), each expedited unit costs $c^w$, and each lost unit a penalty $p$; the boxed
+  panel beneath gives the per-period event sequence (Section~\ref{sec:multiechelon},
+  Eq.~\eqref{eq:me-cost}).}
+  \label{fig:env-multiechelon}
+\end{figure}
 
 We formalize the divergent two-echelon system as a discrete-time MDP under the long-run
 average-cost criterion, mirroring the lost-sales formulation above. A single capacitated
@@ -1318,6 +1558,8 @@ demand process, the objective is to minimize the long-run average expected cost
 As in the lost-sales problem this limit is estimated by the empirical average cost
 $\hat C_T(\btheta)=\tfrac1T\sum_{t=1}^{T}c_t$ over a long simulated horizon with a warm-up
 discarded, which is the quantity CMA-ES minimizes.
+
+\FloatBarrier
 
 \subsection{Policy}
 \label{sec:me-policy}
@@ -1827,271 +2069,6 @@ Production/assembly/distribution network & Single-node newsvendor ($127.11$) & $
 \end{tabular}%
 }
 \end{table}
-\FloatBarrier
-
-
-\subsection{Environment flow-network diagrams}
-\label{app:flownet-diagrams}
-
-The four problems studied in this paper share a common flow-network representation in the code base:
-\emph{nodes} are stock points (an external supply source, on-hand stock points, and a demand sink),
-and each supply interaction is drawn as two distinct \emph{events} rather than a single edge. A stock
-point first \emph{sends an order request} to its supplier (a thin dashed information/control arrow,
-pointing from the stock point to the supplier); the supplier then \emph{ships}, and the supplies
-\emph{arrive after the lead time} (a solid material arrow, pointing back from the supplier to the
-stock point). Demand draws and the lost-sales/backorder outflow are likewise edges, and each cost is
-charged at the node or edge where it arises (holding on end-of-period on-hand stock, lost-sales or
-backorder on unmet demand, and ordering/fixed cost on the request). Each figure is wrapped in a
-dashed box that marks the environment boundary (the policy interacts with the environment through the
-order request), and a boxed panel beneath the diagram gives the per-period event sequence ---
-observe state, place the order request, receive earlier arrivals, serve demand from stock, lose or
-backorder the shortfall, and accrue costs --- following the flownet timing layer.
-Figures~\ref{fig:env-lostsales}--\ref{fig:env-multiechelon} render this representation for each
-problem, faithfully reflecting the formulations of Sections~\ref{sec:lostsales-formulation},
-\ref{sec:dual-sourcing-formulation}, and~\ref{sec:multiechelon}: the request-then-arrival lead-time
-placement, the lost-sales versus backorder service rule, the two dual-sourcing supply modes with
-their distinct lead times and unit costs, and the divergent multi-echelon special-delivery/allocation
-mechanics.
-
-The vanilla lost-sales environment (Figure~\ref{fig:env-lostsales}) is a single external supplier
-feeding one on-hand stock point after a lead time $L$, with i.i.d.\ demand drawn against on-hand
-stock and any unmet demand lost.
-
-\begin{figure}[t]
-  \centering
-  \resizebox{\textwidth}{!}{%
-  \begin{tikzpicture}[x=1cm,y=1cm]
-    \node[envsupply] (sup)  at (0,0)    {external\\supplier};
-    \node[envstock]  (stk)  at (6.4,0)  {on-hand\\stock $I_t$};
-    \node[envsink]   (dem)  at (12.4,0) {i.i.d.\\demand $D_t$};
-    \node[envlost]   (lost) at (12.4,-3.6){demand \emph{lost}\\if $I_t<D_t$};
-
-    % event 2: stock point sends an order request to the supplier (control flow, arcs UP)
-    \draw[reqflow] (stk.north) to[bend right=42] (sup.north);
-    \node[reqlabel] (rq) at (3.2,2.55) {\ding{183}\, order request $q_t$};
-    % event 3: supplier ships; goods arrive after the lead time (material flow, arcs DOWN)
-    \draw[matflow] (sup.south) to[bend right=42] (stk.south);
-    \node[ltlabel] (sh) at (3.2,-2.55) {\ding{184}\, ships; arrives after lead time $L\ge1$};
-    \draw[demandflow] (stk) -- (dem)
-          node[midway,above=3pt,ltlabel] {\ding{185}\, serve\\$\min(I_t,D_t)$};
-    \draw[lostflow] (dem) -- (lost);
-
-    \node[costK,left=3pt of sup.west] (ck) {order\\cost $c\,q_t$};
-    \node[costH] (hcost) at (6.4,-3.6) {holding\\$h\,(I_t-D_t)^+$};
-    \node[costP,right=3pt of lost.east] (cp) {penalty\\$p\,(D_t-I_t)^+$};
-
-    \begin{scope}[on background layer]
-      \node[envbox,fit=(current bounding box)] (box) {};
-    \end{scope}
-    \node[envtitle,above=3pt of box.north,anchor=south]
-          {Lost-sales environment (one period)};
-  \end{tikzpicture}%
-  }
-  % Event sequence as body-size, line-wrapping text below the diagram (kept OUT of the
-  % scaled picture so it can never dictate the diagram width).
-  \par\vspace{6pt}\centerline{%
-    \tikz\node[draw=mydarkblue!55,rounded corners=4pt,fill=mydarkblue!4,inner sep=7pt]{%
-      \begin{minipage}{\dimexpr\linewidth-18pt\relax}\centering
-        {\small\bfseries\color{mydarkblue!85}Per-period event sequence}\\[4pt]
-        {\small\begin{tabular}{@{}p{4.5cm}p{4.5cm}p{4.5cm}@{}}
-          \ding{182}\,observe state $\mathbf S_t$ & \ding{183}\,place order request $q_t$ & \ding{184}\,receive arrival $q_{t-L}$\\[4pt]
-          \ding{185}\,serve demand $D_t$ from stock & \ding{186}\,unmet demand \emph{lost} & \ding{187}\,charge holding $+$ lost-sales\\
-        \end{tabular}}
-      \end{minipage}};}\par
-  \caption{Vanilla lost-sales environment, drawn as an event-based interaction. Each period the
-  stock point \emph{sends an order request} $q_t$ to the supplier (thin dashed control arrow), and the
-  supplier \emph{ships}; the goods \emph{arrive} after the fixed lead time $L\ge1$ (solid material
-  arrow). i.i.d.\ demand $D_t$ is then served from on-hand stock $I_t$ and any \emph{unmet demand is
-  lost}. Holding cost $h$ is charged on leftover on-hand inventory and a penalty $p$ on each lost
-  unit; the dashed box is the environment boundary and the boxed panel beneath gives the per-period
-  event sequence (Section~\ref{sec:lostsales-formulation}).}
-  \label{fig:env-lostsales}
-\end{figure}
-
-The fixed-cost variant (Figure~\ref{fig:env-fixedcost}) has the same topology, but the
-replenishment edge additionally incurs a fixed setup cost $K$ whenever a strictly positive order is
-placed.
-
-\begin{figure}[t]
-  \centering
-  \resizebox{\textwidth}{!}{%
-  \begin{tikzpicture}[x=1cm,y=1cm]
-    \node[envsupply] (sup)  at (0,0)    {external\\supplier};
-    \node[envstock]  (stk)  at (6.4,0)  {on-hand\\stock $I_t$};
-    \node[envsink]   (dem)  at (12.4,0) {i.i.d.\\demand $D_t$};
-    \node[envlost]   (lost) at (12.4,-3.6){demand \emph{lost}\\if $I_t<D_t$};
-
-    \draw[reqflow] (stk.north) to[bend right=42] (sup.north);
-    \node[reqlabel] (rq) at (3.2,2.55) {\ding{183}\, order request $q_t$};
-    \draw[matflow] (sup.south) to[bend right=42] (stk.south);
-    \node[ltlabel] (sh) at (3.2,-2.55) {\ding{184}\, ships; arrives after lead time $L\ge1$};
-    \draw[demandflow] (stk) -- (dem)
-          node[midway,above=3pt,ltlabel] {\ding{185}\, serve\\$\min(I_t,D_t)$};
-    \draw[lostflow] (dem) -- (lost);
-
-    \node[costK,left=3pt of sup.west,align=center]
-          {order cost\\$c\,q_t + K\,\mathbf{1}\{q_t>0\}$};
-    \node[costH] (hcost) at (6.4,-3.6) {holding\\$h\,(I_t-D_t)^+$};
-    \node[costP,right=3pt of lost.east] {penalty\\$p\,(D_t-I_t)^+$};
-
-    \begin{scope}[on background layer]
-      \node[envbox,fit=(current bounding box)] (box) {};
-    \end{scope}
-    \node[envtitle,above=3pt of box.north,anchor=south]
-          {Fixed-cost lost-sales environment (one period)};
-  \end{tikzpicture}%
-  }
-  \par\vspace{6pt}\centerline{%
-    \tikz\node[draw=mydarkblue!55,rounded corners=4pt,fill=mydarkblue!4,inner sep=7pt]{%
-      \begin{minipage}{\dimexpr\linewidth-18pt\relax}\centering
-        {\small\bfseries\color{mydarkblue!85}Per-period event sequence}\\[4pt]
-        {\small\begin{tabular}{@{}p{4.5cm}p{4.5cm}p{4.5cm}@{}}
-          \ding{182}\,observe state $\mathbf S_t$ & \ding{183}\,order request $q_t$ (\emph{setup} $+K$ if $q_t>0$) & \ding{184}\,receive arrival $q_{t-L}$\\[4pt]
-          \ding{185}\,serve demand $D_t$ from stock & \ding{186}\,unmet demand \emph{lost} & \ding{187}\,holding $+$ lost-sales $+$ setup\\
-        \end{tabular}}
-      \end{minipage}};}\par
-  \caption{Fixed-cost lost-sales environment, drawn as an event-based interaction. Identical topology,
-  request-then-ship ordering, and lost-sales rule to Figure~\ref{fig:env-lostsales}; the only
-  difference is that placing the order request additionally incurs a fixed setup cost $K$ whenever a
-  strictly positive order is requested (Section~\ref{sec:lostsales-formulation},
-  Eq.~\eqref{eq:ls-fixed-cost}).}
-  \label{fig:env-fixedcost}
-\end{figure}
-
-In dual sourcing (Figure~\ref{fig:env-dual}) two supply modes feed one stock point --- a slow
-regular source (lead time $l_r$, unit cost $c_r$) and a fast expedited source (lead time $l_e=0$,
-unit cost $c_e>c_r$) --- and unmet demand is backordered rather than lost.
-
-\begin{figure}[t]
-  \centering
-  \resizebox{\textwidth}{!}{%
-  \begin{tikzpicture}[x=1cm,y=1cm]
-    \node[envsupply] (reg)  at (0,4.0)   {regular\\supplier};
-    \node[envsupply] (exp)  at (0,-4.0)  {expedited\\supplier};
-    \node[envstock]  (stk)  at (8.0,0)   {net inventory\\$I_t\,(+\,q^e_t)$};
-    \node[envsink]   (dem)  at (13.8,0)  {i.i.d.\\demand $D_t$};
-    \node[envlost]   (bo)   at (13.8,-4.0){unmet demand\\\emph{backordered}};
-
-    % regular mode (top): dashed request (outer) + solid ship (inner); labels off the arcs
-    \draw[reqflow] (stk.north west) to[bend right=30] (reg.south east);
-    \draw[matflow] (reg.south east) to[bend right=6]  (stk.west);
-    \node[reqlabel] at (3.0,3.45) {\ding{183}\, request $q^r_t$};
-    \node[ltlabel]  at (4.7,1.55) {\ding{184}\, ships; arrives\\after $l_r\ge1$ (cost $c_r$)};
-    % expedited mode (bottom)
-    \draw[reqflow] (stk.south west) to[bend left=30] (exp.north east);
-    \draw[matflow] (exp.north east) to[bend left=6]  (stk.west);
-    \node[reqlabel] at (3.0,-3.45) {\ding{183}\, request $q^e_t$};
-    \node[ltlabel]  at (4.7,-1.55) {\ding{184}\, ships \emph{within period}\\$l_e=0$ (cost $c_e>c_r$)};
-
-    \draw[demandflow] (stk) -- (dem)
-          node[midway,above=3pt,ltlabel] {\ding{185}\, serve from\\$I_t+q^e_t$};
-    \draw[lostflow] (dem) -- (bo);
-
-    \node[costH,above=9mm of stk.north] {holding $h\,(J_t)^+$};
-    \node[costP,right=3pt of bo.east] {backorder\\$b\,(J_t)^-$};
-    \node[costK,below=9mm of stk.south,align=center]
-          {$J_t=I_t+q^e_t-D_t$\\(end-of-period net inventory)};
-
-    \begin{scope}[on background layer]
-      \node[envbox,fit=(current bounding box)] (box) {};
-    \end{scope}
-    \node[envtitle,above=3pt of box.north,anchor=south]
-          {Dual-sourcing environment (one period)};
-  \end{tikzpicture}%
-  }
-  \par\vspace{6pt}\centerline{%
-    \tikz\node[draw=mydarkblue!55,rounded corners=4pt,fill=mydarkblue!4,inner sep=7pt]{%
-      \begin{minipage}{\dimexpr\linewidth-18pt\relax}\centering
-        {\small\bfseries\color{mydarkblue!85}Per-period event sequence}\\[4pt]
-        {\small\begin{tabular}{@{}p{4.5cm}p{4.5cm}p{4.5cm}@{}}
-          \ding{182}\,observe state $\mathbf S_t$ & \ding{183}\,request $(q^r_t,q^e_t)$ & \ding{184}\,regular arrival $q^r_{t-l_r}$ \& expedited $q^e_t$ (same period)\\[4pt]
-          \ding{185}\,serve demand $D_t$ from $I_t+q^e_t$ & \ding{186}\,unmet demand \emph{backordered} & \ding{187}\,procurement $+$ holding $+$ backorder\\
-        \end{tabular}}
-      \end{minipage}};}\par
-  \caption{Dual-sourcing environment of \citet{gijsbrechts2022drl}, drawn as an event-based
-  interaction. Each period the stock point sends two \emph{order requests} (thin dashed control
-  arrows): a regular request $q^r_t$ and an expedited request $q^e_t$. The slow \emph{regular}
-  supplier ships and the goods arrive after the lead time $l_r\ge1$ (unit cost $c_r$); the fast
-  \emph{expedited} supplier ships \emph{within the same period} ($l_e=0$, unit cost $c_e>c_r$) and is
-  available to serve demand (solid material arrows). \emph{Unmet demand is backordered}, so net
-  inventory may go negative. Holding cost $h$ and backorder penalty $b$ are charged on the
-  end-of-period net inventory $J_t$; the boxed panel beneath gives the per-period event sequence
-  (Section~\ref{sec:dual-sourcing-formulation}).}
-  \label{fig:env-dual}
-\end{figure}
-
-The divergent multi-echelon environment (Figure~\ref{fig:env-multiechelon}) is one warehouse fed
-by an external manufacturer that ships to $R$ retailers under a max--min allocation rule, with a
-hybrid special-delivery/lost-sales service of unmet retailer demand.
-
-\begin{figure}[t]
-  \centering
-  \resizebox{\textwidth}{!}{%
-  \begin{tikzpicture}[x=1cm,y=1cm]
-    % The R retailers are drawn as ONE representative retailer with a "x R" multiplier
-    % (full fidelity preserved in the caption). Spine: manufacturer -> warehouse ->
-    % retailer -> demand; request arcs UP, ship arcs DOWN, special delivery drawn once.
-    \node[envsupply] (man) at (0,0)    {external\\manufacturer};
-    \node[envstock]  (wh)  at (5.8,0)  {warehouse\\$I^w_t$ (cap $C^w$)};
-    \node[envstock]  (ret) at (11.6,0) {retailer $i$\\$I^i_t$ \;($\times R$)};
-    \node[envsink]   (dem) at (17.2,0) {demand\\$d_{i,t}$ \;($\times R$)};
-
-    % manufacturer -> warehouse: request arc UP, ship arc DOWN
-    \draw[reqflow] (wh.north) to[bend right=42] (man.north);
-    \node[reqlabel] (rqw) at (2.9,2.25) {\ding{183}\, request $q^w_t$};
-    \draw[matflow] (man.south) to[bend right=42] (wh.south);
-    \node[ltlabel] (shw) at (2.9,-2.25) {\ding{184}\, ships; arrives\\after $l_w$ (cap $C^m$)};
-
-    % warehouse -> retailer: request arc UP, shallow ship arc DOWN
-    \draw[reqflow] (ret.north) to[bend right=38] (wh.north);
-    \node[reqlabel] at (8.7,2.25) {\ding{183}\, raise to $y^r_t$};
-    \draw[matflow] (wh.south) to[bend right=26] (ret.south);
-    \node[ltlabel] (shr) at (8.7,-1.85) {\ding{184}\, ships $s^i_t$ after $l_r$;\\max--min $\mathcal A$ if short};
-
-    \draw[demandflow] (ret) -- (dem)
-          node[midway,above=3pt,ltlabel] {\ding{185}\, serve};
-
-    % special delivery (drawn once), routed DEEP below; caption sits in its trough
-    \draw[lostflow,myorange!70!black] (wh.south) to[out=-90,in=-90,looseness=1.0] (dem.south);
-    \node[font=\small,myorange!70!black,align=center,fill=white,inner sep=2pt] (sd) at (8.7,-4.35)
-          {\ding{186}\, unmet $\to$ \emph{special delivery} $E_t$ from leftover\\
-           warehouse stock w.p.\ $P_w$ (else lost $\ell_t$)};
-
-    \node[costH] (hw) at (5.8,2.25) {holding $h^w (I^w_t)^+$};
-    \node[costH] (hr) at (11.6,3.25) {holding $h^r (I^i_t)^+$};
-    \node[costP,right=3pt of dem.east] {expedite $c^w E_t$\\$+$ lost $p\,\ell_t$};
-
-    \begin{scope}[on background layer]
-      \node[envbox,fit=(current bounding box)] (box) {};
-    \end{scope}
-    \node[envtitle,above=3pt of box.north,anchor=south]
-          {Divergent multi-echelon environment with special delivery (one period)};
-  \end{tikzpicture}%
-  }
-  \par\vspace{6pt}\centerline{%
-    \tikz\node[draw=mydarkblue!55,rounded corners=4pt,fill=mydarkblue!4,inner sep=7pt]{%
-      \begin{minipage}{\dimexpr\linewidth-18pt\relax}\centering
-        {\small\bfseries\color{mydarkblue!85}Per-period event sequence}\\[4pt]
-        {\small\begin{tabular}{@{}p{4.5cm}p{4.5cm}p{4.5cm}@{}}
-          \ding{182}\,arrivals merge into warehouse \& retailer stock & \ding{183}\,warehouse requests $q^w_t$; retailers request to $y^r_t$ & \ding{184}\,warehouse ships (max--min $\mathcal A$ if short)\\[4pt]
-          \ding{185}\,retailer serves demand $d_{i,t}$ & \ding{186}\,unmet $\to$ special delivery (w.p.\ $P_w$) else lost & \ding{187}\,holding $+$ expedite $+$ lost\\
-        \end{tabular}}
-      \end{minipage}};}\par
-  \caption{Divergent multi-echelon environment with special delivery
-  \citep{gijsbrechts2022drl,vanroy1997ndp}, drawn as an event-based interaction. Each period the
-  warehouse \emph{sends an order request} $q^w_t$ to the external manufacturer, which ships; the goods
-  arrive after lead time $l_w$ (production cap $C^m$, position cap $C^w$). Each retailer in turn
-  \emph{requests} a raise to the shared order-up-to level $y^r_t$ (thin dashed control arrows); the
-  warehouse \emph{ships} $s^i_t$, arriving after lead time $l_r$, rationed by the max--min allocation
-  rule $\mathcal A$ when stock is short (solid material arrows). Each retailer serves its own i.i.d.\
-  demand from on-hand stock; each unmet unit independently requests a same-period \emph{special
-  delivery} from leftover warehouse stock with probability $P_w$ (filled up to that stock) and is
-  otherwise lost. Holding cost is charged on end-of-period on-hand stock at the warehouse ($h^w$) and
-  retailers ($h^r$), each expedited unit costs $c^w$, and each lost unit a penalty $p$; the boxed
-  panel beneath gives the per-period event sequence (Section~\ref{sec:multiechelon},
-  Eq.~\eqref{eq:me-cost}).}
-  \label{fig:env-multiechelon}
-\end{figure}
 \FloatBarrier
 
 
