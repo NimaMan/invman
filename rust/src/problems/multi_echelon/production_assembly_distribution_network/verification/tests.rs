@@ -1,13 +1,14 @@
 use crate::problems::multi_echelon::production_assembly_distribution_network::env::{
     build_policy_state, initialize_state, step_state, supply_relation_count, NetworkInventoryGraph,
+    NetworkNodeMode,
 };
 use crate::problems::multi_echelon::production_assembly_distribution_network::finite_horizon_dp::{
     evaluate_named_heuristic, solve_optimal_policy,
 };
 use crate::problems::multi_echelon::production_assembly_distribution_network::heuristics::pairwise_base_stock_requests;
 use crate::problems::multi_echelon::production_assembly_distribution_network::literature::{
-    PIRHOOSHYARAN_2021_REFERENCE, PRIMARY_REFERENCE_INSTANCE, SERIAL_BENCHMARK_ROWS,
-    SINGLE_NODE_BENCHMARK_ROWS, VERIFICATION_PROBLEM_INSTANCE,
+    ExactVerificationReference, PIRHOOSHYARAN_2021_REFERENCE, PRIMARY_REFERENCE_INSTANCE,
+    SERIAL_BENCHMARK_ROWS, SINGLE_NODE_BENCHMARK_ROWS, VERIFICATION_PROBLEM_INSTANCE,
 };
 use crate::problems::multi_echelon::production_assembly_distribution_network::verification::fixtures::WORKED_TRANSITION_CASE;
 use crate::problems::multi_echelon::production_assembly_distribution_network::verification::literature_benchmarks::literature_benchmark_summary;
@@ -275,5 +276,90 @@ fn exact_dp_dominates_pairwise_base_stock() {
         "optimal={} pairwise_base_stock={}",
         optimal.discounted_cost,
         base_stock.discounted_cost
+    );
+}
+
+/// Literature verification (executing, env-native): the env's OWN finite-horizon DP reproduces a
+/// PUBLISHED Pirhooshyaran & Snyder (2021) Table 1 single-node newsvendor cost (h=10, p=30, L=1) by
+/// SIMULATING its step_state dynamics -- not by the closed-form newsvendor formula (that is the
+/// separate single_node_rows_match_analytical_newsvendor_values test). For the (mu=100, sigma=10)
+/// row the env DP at the published order-up-to level reproduces the published 127.11 to ~0.01%; the
+/// tiny residual is integer demand/OUL discretization (it vanishes as the scale grows).
+///
+/// SCOPE: this verifies the SINGLE-NODE mode only. The serial/network optimum 47.65 stays
+/// structurally unreachable by this env (eq. 5's local raw-material position lets finished goods
+/// accumulate); see serial_echelon_simulation.rs, and PRIMARY_REFERENCE_INSTANCE stays
+/// literature_verified=false. 47.65's verified home is the multi_echelon/serial family.
+#[test]
+fn single_node_newsvendor_cost_reproduced_by_exact_env_dp() {
+    use statrs::distribution::{ContinuousCDF, Normal};
+
+    let row = SINGLE_NODE_BENCHMARK_ROWS
+        .iter()
+        .find(|r| r.demand_mean == 100.0 && r.demand_stddev == 10.0)
+        .expect("Table 1 (mu=100, sigma=10) single-node row must exist");
+
+    // Discretize N(mu, sigma) onto integer demand over +-6 sigma via midpoint probability mass.
+    let dist = Normal::new(row.demand_mean, row.demand_stddev).expect("normal distribution");
+    let lo = (row.demand_mean - 6.0 * row.demand_stddev).floor().max(0.0) as u32;
+    let hi = (row.demand_mean + 6.0 * row.demand_stddev).ceil() as u32;
+    let mut support: Vec<u32> = Vec::new();
+    let mut probabilities: Vec<f64> = Vec::new();
+    for demand in lo..=hi {
+        support.push(demand);
+        probabilities.push(dist.cdf(demand as f64 + 0.5) - dist.cdf(demand as f64 - 0.5));
+    }
+    let total: f64 = probabilities.iter().sum();
+    for probability in probabilities.iter_mut() {
+        *probability /= total;
+    }
+    let order_up_to = row.published_analytical_oul.round() as usize; // 107
+
+    // One source node, one period, supply pipeline warmed to the published OUL so the newsvendor
+    // arrival meets demand (the order placed now arrives after the horizon, so cost = newsvendor at
+    // S*). The reference struct is 'static; build the runtime demand pmf and leak it (one-shot test).
+    // The reference struct holds 'static slices; leak the runtime-derived data (one-shot test).
+    let support: &'static [u32] = Box::leak(support.into_boxed_slice());
+    let probabilities: &'static [f64] = Box::leak(probabilities.into_boxed_slice());
+    let pipeline: &'static [usize] = Box::leak(vec![order_up_to].into_boxed_slice());
+    let lead_times: &'static [usize] = Box::leak(vec![row.lead_time].into_boxed_slice());
+    let holding_costs: &'static [f64] = Box::leak(vec![row.holding_cost].into_boxed_slice());
+    let backlog_costs: &'static [f64] = Box::leak(vec![row.shortage_cost].into_boxed_slice());
+    let base_stock_levels: &'static [usize] = Box::leak(vec![order_up_to].into_boxed_slice());
+    let reference = ExactVerificationReference {
+        source: PIRHOOSHYARAN_2021_REFERENCE.source,
+        url: PIRHOOSHYARAN_2021_REFERENCE.url,
+        literature_verified: true,
+        verification_source: "pirhooshyaran_table1_single_node_newsvendor_reproduced_by_env_dp",
+        periods: 1,
+        discount_factor: 1.0,
+        num_nodes: 1,
+        source_nodes: &[true],
+        node_modes: &[NetworkNodeMode::Single],
+        external_supplier_lead_times: lead_times,
+        edges: &[],
+        initial_finished_inventory: &[0],
+        initial_raw_inventory_by_relation: &[0],
+        initial_internal_backlog_by_edge: &[],
+        initial_external_backlog: &[0],
+        initial_supply_pipelines: Box::leak(vec![pipeline].into_boxed_slice()),
+        holding_costs,
+        backlog_costs,
+        demand_supports: Box::leak(vec![support].into_boxed_slice()),
+        demand_probabilities: Box::leak(vec![probabilities].into_boxed_slice()),
+        max_supply_requests: &[1],
+        base_stock_levels,
+        notes: "Table 1 single-node newsvendor case reproduced by env DP (test-constructed).",
+    };
+
+    let optimal = solve_optimal_policy(&reference).expect("exact DP must solve");
+    let published = row.published_analytical_average_cost;
+    let relative_gap = (optimal.discounted_cost - published).abs() / published;
+    assert!(
+        relative_gap < 0.01,
+        "env single-node DP cost {} should reproduce published Table-1 cost {} (rel gap {})",
+        optimal.discounted_cost,
+        published,
+        relative_gap
     );
 }
