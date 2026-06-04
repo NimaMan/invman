@@ -93,6 +93,7 @@ The next targets are the two additional Gijsbrechts (2022) problem classes:
 
 - dual sourcing: `program_dual_sourcing.md`, `dual_sourcing_policy_search/README.md`, `../scripts/dual_sourcing/autoresearch_dual_sourcing.py`
 - multi echelon: `program_multi_echelon.md`, `../scripts/multi_echelon/autoresearch_multi_echelon.py`
+- general-backorder-fixed-cost (Geevers set-1 general network): `program_general_backorder_fixed_cost.md`, `../scripts/general_backorder_fixed_cost/autoresearch_general_backorder_fixed_cost.py`. Learned depth-2 constant-leaf `node_base_stock_targets`, warm-started at the published levels `[82,100,64,83,35x5]`, beats the constant node-base-stock benchmark (repo `~10,355`, published `10,467`) by `-22.4%` (held-out `8,034.8 +/- 17.6`, 2,000 CRN seeds) and lands `679` below the published PPO best `8,714`; robust across two CMA seeds (`8,034.8` and `7,590.7`).
 
 Current smoke results:
 
