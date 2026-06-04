@@ -28,54 +28,16 @@
 - The main failure mode we found was benchmark framing, not just tuning:
   - the exploratory soft-tree benchmark is a different algorithm family from the paper's A3C row
   - its reduced-grid repo comparator is not the published Van Roy constant base-stock benchmark row
-- The protocol audit script `scripts/multi_echelon/audit_literature_protocol.py` isolates horizon
-  and warm-up sensitivity while keeping the current zero-state initialization fixed.
-
-### Why no published absolute number is reproduced (the structural reason)
-
-The two complex case studies expose two different warehouse-order conventions, and only one of
-them is even close to the published Van Roy absolute cost:
-
-- `van_roy_1997` mode = **post-shipment** warehouse order. Van Roy's heuristic computes the
-  warehouse order AFTER store orders are deducted (full report Section 4, p.10-11). This is the
-  convention that produced the published `1302` / `1449`.
-- `gijs_2022` mode = **pre-shipment** warehouse order. Gijsbrechts et al. (2022) Eq. (2)
-  (MSOM 24(3), p.1365-1366) raise the warehouse inventory position to its base-stock level FIRST,
-  and only then "After the warehouse has ordered, each retailer places its order." This is the
-  faithful policy-search target.
-
-Re-running this family's environment + constant base-stock heuristic at the published Van Roy
-levels (executing test
-`verification::tests::neither_dynamics_mode_reproduces_published_absolute_cost_within_tolerance`)
-gives, at horizon 20,000 (stable to long-run within ~0.5):
-
-| setting | levels | `van_roy_1997` (post-shipment) | `gijs_2022` (pre-shipment, faithful) | published |
-| --- | --- | --- | --- | --- |
-| setting 1 | (330, 23) | ~1285 (-1.3%) | ~1052 (-19.2%) | 1302 |
-| setting 2 | (460, 22) | ~1345 (-7.2%) | ~1139 (-21.4%) | 1449 |
-
-Consequences for the honest status:
-
-- The faithful `gijs_2022` MDP is a **structurally different transition** from the model that
-  produced the published numbers; it lands ~19%-21% below them and is NOT expected to reproduce
-  any published absolute anchor. Gijsbrechts et al. (2022) print **no absolute cost** for this
-  setting at all -- only the ~8.95% / ~12.09% relative A3C savings.
-- The `van_roy_1997` reproduction mode only *approaches* the published numbers and does not match
-  them within the repo's 1% literature tolerance (and Van Roy's "lengthy simulation" protocol is
-  under-specified about the initial-state / warm-up convention).
-- Therefore **neither executable mode reproduces a paper-printed absolute number within tolerance**,
-  so every divergent special-delivery row keeps `literature_verified = false`. This is not a tuning
-  gap that a stable protocol would close; it is the correct, honest status.
-
+- The protocol sweep (horizon / warm-up / allocation / base-stock mode sensitivity at the published
+  levels, keeping the zero-state initialization fixed) is reproducible in Rust via
+  `invman_rust.multi_echelon_van_roy_reproduction_summary(...)` and
+  `multi_echelon_search_stationary_policy(...)`.
 - Current status:
   - the literature rows are present and checked
   - the strict Van Roy reproduction summary is available through the Python binding
   - the carried Gijs relative rows are frozen and auditable inside the Rust verification module
-  - the repo heuristic implementation is still `literature_verified = false`, and this is correct:
-    no executable mode reproduces a published absolute number within tolerance
-  - `neither_dynamics_mode_reproduces_published_absolute_cost_within_tolerance` is the executing
-    drift guard that pins this finding and would trip if a future change made the env silently
-    "match" 1302/1449 or collapsed the pre-/post-shipment structural separation
+  - the repo heuristic implementation is still `literature_verified = false`
+  - current comparisons do not yet reproduce all published Van Roy rows under one stable protocol
   - the repo still does not generate the published A3C row, so the Gijs relative row remains a
     carried literature benchmark rather than a verified repo policy result
 
