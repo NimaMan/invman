@@ -118,6 +118,24 @@ Rules for `references.rs`:
   - repo-native benchmark values
   - deterministic worked-example values used only for correctness testing
 
+## What counts as "literature-verified"
+
+A family (or a reference instance's `literature_verified = true` flag) is **literature-verified
+only when an in-crate test RE-RUNS the env** — and at least one benchmark heuristic/solver — **and
+asserts the freshly computed cost / policy / action reproduces a number printed in a paper, within a
+stated tolerance.** "Our run reproduces the published number" is the bar.
+
+- A **frozen snapshot** test — one that only asserts a carried table of constants equals the same
+  published constants (`assert_eq!(CARRIED_TABLE, [the_published_literals])`) — is **NOT
+  verification**. It is at most a drift-guard, and must be paired with an executing reproduction
+  test that actually drives the env.
+- **Self-consistency** with our own DP/MDP, or **matching another code library** (e.g. `stockpyl`),
+  is a reference-implementation match, **not** literature verification — record it as `partial`.
+- Set `literature_verified = true` only when such an executing reproduction test passes. Otherwise
+  keep it `false` and state the honest status (reference-impl / figure-only / structurally
+  unreachable by this MDP / distinct MDP). It is correct and expected for some envs to stay
+  `false` with an honest characterization (negative) test instead.
+
 ## Problem-Space Backbone
 
 `src/problems/core/` is the FlowNet layer above the executable problem modules.
