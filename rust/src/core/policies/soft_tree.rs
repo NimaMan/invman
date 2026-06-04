@@ -385,6 +385,98 @@ pub fn action_vector_from_flat_params(
     Ok(project_action_value(&action_value, action_spec))
 }
 
+/// Continuous-valued soft-tree action head.
+///
+/// Identical to `action_vector_from_flat_params` up to the final projection: it
+/// returns the soft mixture of per-leaf outputs as CONTINUOUS `f32` values (after
+/// the same per-dimension min + span/softplus leaf transform), WITHOUT the integer
+/// rounding/clipping that `project_action_value` applies. This is the head used by
+/// envs whose decisions are genuinely continuous (serial echelon base-stock levels;
+/// the ameliorating purchase volume), so a learned policy can express a fractional
+/// order-up-to level rather than being quantised to the nearest integer.
+///
+/// `min_values`/`max_values` are interpreted as f32 bounds: for `Constant` and
+/// `SigmoidLinear` leaves the output is `min + sigmoid(leaf) * (max - min)`
+/// (bounded to `[min, max]`); for `Linear` leaves the output is
+/// `min + softplus(leaf)` (lower-bounded at `min`, unbounded above), matching the
+/// integer head's leaf transform so the same warm-start encoding applies.
+pub fn action_vector_continuous_from_flat_params(
+    state: &[f32],
+    flat_params: &[f32],
+    input_dim: usize,
+    depth: usize,
+    temperature: f32,
+    split_type: SoftTreeSplitType,
+    leaf_type: SoftTreeLeafType,
+    min_values: &[f32],
+    max_values: &[f32],
+) -> PyResult<Vec<f32>> {
+    if temperature <= 0.0 {
+        return Err(PyValueError::new_err("temperature must be positive"));
+    }
+    let action_dim = min_values.len();
+    if action_dim == 0 {
+        return Err(PyValueError::new_err(
+            "continuous action head requires at least one dimension",
+        ));
+    }
+    if max_values.len() != action_dim {
+        return Err(PyValueError::new_err(
+            "min_values and max_values must have the same length",
+        ));
+    }
+    let (weights_end, bias_end, num_leaves) =
+        validate_soft_tree_flat_params(flat_params.len(), input_dim, depth, leaf_type, action_dim)?;
+    if state.len() != input_dim {
+        return Err(PyValueError::new_err(format!(
+            "state length {} does not match input_dim {}",
+            state.len(),
+            input_dim
+        )));
+    }
+
+    let split_weights = &flat_params[..weights_end];
+    let split_bias = &flat_params[weights_end..bias_end];
+    let leaf_probs = soft_tree_leaf_probabilities(
+        state,
+        split_weights,
+        split_bias,
+        depth,
+        temperature,
+        split_type,
+    );
+
+    let mut action_value = vec![0.0f32; action_dim];
+    for (leaf_idx, leaf_prob) in leaf_probs.iter().enumerate() {
+        let leaf_output = leaf_output_from_flat_params(
+            state,
+            flat_params,
+            input_dim,
+            bias_end,
+            num_leaves,
+            leaf_idx,
+            leaf_type,
+            action_dim,
+        );
+        for action_idx in 0..action_dim {
+            let min_value = min_values[action_idx];
+            let scaled = match leaf_type {
+                SoftTreeLeafType::Constant | SoftTreeLeafType::SigmoidLinear => {
+                    let span = max_values[action_idx] - min_value;
+                    min_value + (1.0 / (1.0 + (-leaf_output[action_idx]).exp())) * span
+                }
+                SoftTreeLeafType::Linear => {
+                    let raw = leaf_output[action_idx];
+                    let softplus = raw.max(0.0) + (-(raw.abs())).exp().ln_1p();
+                    min_value + softplus
+                }
+            };
+            action_value[action_idx] += leaf_prob * scaled;
+        }
+    }
+    Ok(action_value)
+}
+
 pub fn uncapped_scalar_action_from_flat_params(
     state: &[f32],
     flat_params: &[f32],

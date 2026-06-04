@@ -2,6 +2,11 @@ use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
 
 use crate::core::policies::soft_tree::{build_action_spec, parse_leaf_type, parse_split_type};
+use crate::problems::ameliorating_inventory::average_profit_blending_env::AverageProfitBlendingConfig;
+use crate::problems::ameliorating_inventory::average_profit_rollout::{
+    population_rollout as average_profit_population_rollout, rollout as average_profit_rollout,
+    AverageProfitRolloutConfig,
+};
 use crate::problems::ameliorating_inventory::demand::{
     parse_demand_distribution_kind, DemandModel,
 };
@@ -368,6 +373,250 @@ fn ameliorating_inventory_two_dimensional_order_up_to_order(
     )
 }
 
+// ============================================================================
+// FAITHFUL average-profit env (Pahr & Grunow 2025) soft-tree rollout bindings.
+//
+// These target `average_profit_blending_env.rs` (long-run AVERAGE PROFIT), NOT the
+// reduced discounted-cost `env.rs` above. The controllable action is the scalar
+// purchase volume; the per-period reward is the env's expected profit. The Python
+// caller passes the full env config (LP-dataset fields plus the demand/sales/price
+// processes that the LP bound does not use) so the rollout dynamics exactly match
+// `step_state`.
+// ============================================================================
+
+#[allow(clippy::too_many_arguments)]
+fn build_average_profit_config(
+    num_ages: usize,
+    num_products: usize,
+    target_ages: Vec<usize>,
+    max_inventory: f64,
+    evaporation: f64,
+    decay_mean: Vec<f64>,
+    decay_cov: Vec<f64>,
+    holding_costs: f64,
+    outdating_costs: f64,
+    decay_salvage: Vec<f64>,
+    allow_blending: bool,
+    blending_range: Option<usize>,
+    price_mean: f64,
+    price_std: f64,
+    price_truncation: f64,
+    demand_means: Vec<f64>,
+    demand_covs: Vec<f64>,
+    sales_means: Vec<f64>,
+    sales_covs: Vec<f64>,
+    correlation_demand_salesprice: Vec<f64>,
+    production_step_size: f64,
+    sales_bound: Vec<f64>,
+    expected_revenue: Vec<Vec<f64>>,
+    initial_inventory: Vec<f64>,
+    depth: usize,
+    temperature: f32,
+    split_type: &str,
+    leaf_type: &str,
+    periods: usize,
+    warm_up: usize,
+) -> PyResult<AverageProfitRolloutConfig> {
+    let env = AverageProfitBlendingConfig {
+        num_ages,
+        num_products,
+        target_ages,
+        max_inventory,
+        evaporation,
+        decay_mean,
+        decay_cov,
+        holding_costs,
+        outdating_costs,
+        decay_salvage,
+        allow_blending,
+        blending_range,
+        price_mean,
+        price_std,
+        price_truncation,
+        demand_means,
+        demand_covs,
+        sales_means,
+        sales_covs,
+        correlation_demand_salesprice,
+        production_step_size,
+        sales_bound,
+        expected_revenue,
+    };
+    Ok(AverageProfitRolloutConfig {
+        env,
+        initial_inventory,
+        depth,
+        temperature,
+        split_type: parse_split_type(split_type)?,
+        leaf_type: parse_leaf_type(leaf_type)?,
+        periods,
+        warm_up,
+    })
+}
+
+/// Single faithful average-profit rollout: mean per-period profit after warm-up.
+#[pyfunction]
+#[pyo3(signature = (
+    flat_params,
+    num_ages,
+    num_products,
+    target_ages,
+    max_inventory,
+    evaporation,
+    decay_mean,
+    decay_cov,
+    holding_costs,
+    outdating_costs,
+    decay_salvage,
+    allow_blending,
+    blending_range,
+    price_mean,
+    price_std,
+    price_truncation,
+    demand_means,
+    demand_covs,
+    sales_means,
+    sales_covs,
+    correlation_demand_salesprice,
+    production_step_size,
+    sales_bound,
+    expected_revenue,
+    initial_inventory,
+    depth,
+    periods,
+    warm_up,
+    seed=1234,
+    temperature=0.25,
+    split_type="oblique",
+    leaf_type="constant"
+))]
+#[allow(clippy::too_many_arguments)]
+fn ameliorating_inventory_average_profit_soft_tree_rollout(
+    flat_params: Vec<f32>,
+    num_ages: usize,
+    num_products: usize,
+    target_ages: Vec<usize>,
+    max_inventory: f64,
+    evaporation: f64,
+    decay_mean: Vec<f64>,
+    decay_cov: Vec<f64>,
+    holding_costs: f64,
+    outdating_costs: f64,
+    decay_salvage: Vec<f64>,
+    allow_blending: bool,
+    blending_range: Option<usize>,
+    price_mean: f64,
+    price_std: f64,
+    price_truncation: f64,
+    demand_means: Vec<f64>,
+    demand_covs: Vec<f64>,
+    sales_means: Vec<f64>,
+    sales_covs: Vec<f64>,
+    correlation_demand_salesprice: Vec<f64>,
+    production_step_size: f64,
+    sales_bound: Vec<f64>,
+    expected_revenue: Vec<Vec<f64>>,
+    initial_inventory: Vec<f64>,
+    depth: usize,
+    periods: usize,
+    warm_up: usize,
+    seed: u64,
+    temperature: f32,
+    split_type: &str,
+    leaf_type: &str,
+) -> PyResult<f64> {
+    let config = build_average_profit_config(
+        num_ages, num_products, target_ages, max_inventory, evaporation, decay_mean, decay_cov,
+        holding_costs, outdating_costs, decay_salvage, allow_blending, blending_range, price_mean,
+        price_std, price_truncation, demand_means, demand_covs, sales_means, sales_covs,
+        correlation_demand_salesprice, production_step_size, sales_bound, expected_revenue,
+        initial_inventory, depth, temperature, split_type, leaf_type, periods, warm_up,
+    )?;
+    average_profit_rollout(&flat_params, &config, seed)
+}
+
+/// Paired population rollout for the faithful average-profit env. This is the
+/// CMA-ES scoring binding (mean per-period profit per (params, seed) pair).
+#[pyfunction]
+#[pyo3(signature = (
+    params_batch,
+    num_ages,
+    num_products,
+    target_ages,
+    max_inventory,
+    evaporation,
+    decay_mean,
+    decay_cov,
+    holding_costs,
+    outdating_costs,
+    decay_salvage,
+    allow_blending,
+    blending_range,
+    price_mean,
+    price_std,
+    price_truncation,
+    demand_means,
+    demand_covs,
+    sales_means,
+    sales_covs,
+    correlation_demand_salesprice,
+    production_step_size,
+    sales_bound,
+    expected_revenue,
+    initial_inventory,
+    depth,
+    periods,
+    warm_up,
+    seeds,
+    temperature=0.25,
+    split_type="oblique",
+    leaf_type="constant"
+))]
+#[allow(clippy::too_many_arguments)]
+fn ameliorating_inventory_average_profit_soft_tree_population_rollout(
+    params_batch: Vec<Vec<f32>>,
+    num_ages: usize,
+    num_products: usize,
+    target_ages: Vec<usize>,
+    max_inventory: f64,
+    evaporation: f64,
+    decay_mean: Vec<f64>,
+    decay_cov: Vec<f64>,
+    holding_costs: f64,
+    outdating_costs: f64,
+    decay_salvage: Vec<f64>,
+    allow_blending: bool,
+    blending_range: Option<usize>,
+    price_mean: f64,
+    price_std: f64,
+    price_truncation: f64,
+    demand_means: Vec<f64>,
+    demand_covs: Vec<f64>,
+    sales_means: Vec<f64>,
+    sales_covs: Vec<f64>,
+    correlation_demand_salesprice: Vec<f64>,
+    production_step_size: f64,
+    sales_bound: Vec<f64>,
+    expected_revenue: Vec<Vec<f64>>,
+    initial_inventory: Vec<f64>,
+    depth: usize,
+    periods: usize,
+    warm_up: usize,
+    seeds: Vec<u64>,
+    temperature: f32,
+    split_type: &str,
+    leaf_type: &str,
+) -> PyResult<Vec<f64>> {
+    let config = build_average_profit_config(
+        num_ages, num_products, target_ages, max_inventory, evaporation, decay_mean, decay_cov,
+        holding_costs, outdating_costs, decay_salvage, allow_blending, blending_range, price_mean,
+        price_std, price_truncation, demand_means, demand_covs, sales_means, sales_covs,
+        correlation_demand_salesprice, production_step_size, sales_bound, expected_revenue,
+        initial_inventory, depth, temperature, split_type, leaf_type, periods, warm_up,
+    )?;
+    average_profit_population_rollout(&params_batch, &config, &seeds)
+}
+
 pub fn register_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(
         ameliorating_inventory_soft_tree_rollout,
@@ -392,6 +641,14 @@ pub fn register_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     )?)?;
     m.add_function(wrap_pyfunction!(
         ameliorating_inventory_two_dimensional_order_up_to_order,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        ameliorating_inventory_average_profit_soft_tree_rollout,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        ameliorating_inventory_average_profit_soft_tree_population_rollout,
         m
     )?)?;
     Ok(())

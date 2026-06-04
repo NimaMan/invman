@@ -24,6 +24,7 @@
 //     bindings but is no longer the canonical formulation.
 
 pub mod average_profit_blending_env;
+pub mod average_profit_rollout;
 pub mod bindings;
 pub mod demand;
 pub mod env;

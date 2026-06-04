@@ -11,7 +11,9 @@
 //! Pirhooshyaran & Snyder (2021) general supply-network model (per-node production
 //! steps and pipeline holding) and does NOT reduce to this textbook serial system.
 
+pub mod bindings;
 pub mod echelon_base_stock;
 pub mod env;
 pub mod exact;
+pub mod rollout;
 pub mod verification;
