@@ -91,17 +91,30 @@ inventory-feedback regime.
 
 Headline (full budget; depth-2 oblique LINEAR-leaf soft tree, 465 params, temperature 0.25,
 `vector_quantity` action over the 3 supply relations, warm-started at flow=5; CMA-ES
-popsize 24, generations 60, train_seed_batch 96, paired CRN; held-out 4000 paths;
-commit 01c657a; ~89 s train on 2 rayon cores):
+popsize 24, generations 60, train_seed_batch 96, paired CRN; held-out 4000 paths).
+**Refreshed 2026-06-04 against install commit 2bb8df8 — reproduces the committed headline exactly.**
+Full tracked ledger:
+`scripts/production_assembly_distribution_network/RESULTS_case3_learned_vs_own_best_heuristic.md`.
 
-- best pairwise base-stock (held-out, OUL = [8, 7, 9]): **60.24 / period** (research baseline,
-  NOT an optimum). On the 2000-path screening block it locks at 59.65 ± 0.39; the difference is
-  CRN block variance.
-- learned soft-tree (held-out): **57.25 ± 0.22 / period** (gen-0 flow warm-start was 70.85).
-- gap: **−2.99 cost / −4.96 % (learned BEATS the env's own best pairwise base-stock)**, robustly
-  outside the held-out stderr (~0.22), and **reproduced across CMA seeds and depth {2,3}**:
-  depth2-seed123 −4.0 %, depth2-seed321 −7.9 %, depth3-seed123 −3.0 % (every config wins by
-  >3 % at ~0.2-0.25 stderr).
+The env's own best pairwise base-stock gate is **identical across all runs** (deterministic grid
+search): OUL = [8, 7, 9], held-out **60.2399 / period** (search-block 60.7236) — a research
+baseline, NOT an optimum. On the 2000-path screening block it locks at ~59.65 ± 0.39; the
+difference is CRN block variance. The SAME held-out block scores both policies (paired / like-for-like).
+
+| config | learned held-out ± SEM | gate (best pairwise BS) | gap % | winner |
+|---|---|---|---|---|
+| depth2 oblique linear, seed 123 | **57.250 ± 0.216** | 60.240 (OUL [8,7,9]) | **−4.96 %** | learned |
+| depth2 oblique linear, seed 321 | **54.958 ± 0.232** | 60.240 (OUL [8,7,9]) | **−8.77 %** | learned |
+| depth3 oblique linear, seed 123 | **57.849 ± 0.246** | 60.240 (OUL [8,7,9]) | **−3.97 %** | learned |
+
+Gen-0 (flow warm-start) held-out = 70.85 ± 0.61 for all configs; CMA-ES refines outward to the
+base-stock-beating regime. The gap is **robustly outside the held-out stderr** (≥ 9 SEM on the
+closest config) and **reproduced across 2 CMA seeds and depth {2,3}** (every config wins by > 3.9 %).
+Each full run is ~16-21 s on 4 rayon cores on the shared box.
+
+The single verified literature anchor for this family is the single-node newsvendor cost **127.11**
+(Table 1, μ=100/σ=10/h=10/p=30/L=1/T=2), reproduced by the env's exact DP to within <1 % (≈127.10);
+that verifies env DYNAMICS, not this case3 result.
 
 WHY it beats the heuristic: the pairwise base-stock policy uses LOCAL raw-position feedback
 only; the learned linear-leaf direct-quantity policy can additionally read finished inventory,
