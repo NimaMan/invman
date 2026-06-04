@@ -212,7 +212,11 @@ pub fn step_state(
     }
 
     let mut warehouse_ending_inventory = available_warehouse_inventory - total_shipments;
-    let mut holding_cost = holding_cost_warehouse * warehouse_ending_inventory.max(0) as f64;
+    // Warehouse holding is charged on the POST-emergency on-hand inventory: Kaynov et al. (2024)
+    // Eq. 6 reduces I_0(t+1) by the emergency shipments, so holding must be assessed after the
+    // retailer loop below deducts them. For lost-sales and backorder there are no emergency
+    // shipments, so warehouse_ending_inventory is unchanged and this matches the prior behavior.
+    let mut holding_cost = 0.0;
     let mut shortage_cost = 0.0;
     let mut emergency_shipments = vec![0usize; num_retailers];
     let mut unmet_demand = vec![0usize; num_retailers];
@@ -262,6 +266,9 @@ pub fn step_state(
         };
         retailer_ending_inventory.push(ending_inventory);
     }
+
+    // Post-emergency warehouse holding (see the note where holding_cost is initialized).
+    holding_cost += holding_cost_warehouse * warehouse_ending_inventory.max(0) as f64;
 
     let period_cost = holding_cost + shortage_cost;
     Ok(OneWarehouseMultiRetailerStepOutcome {

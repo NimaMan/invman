@@ -133,9 +133,10 @@ fn allocation_and_base_stock_orders_match_named_heuristic_evaluators() {
 
     assert_eq!(action, proportional_eval.first_action);
     assert_eq!(action, min_shortage_eval.first_action);
-    assert_eq!(
-        proportional.iter().sum::<usize>(),
-        min_shortage.iter().sum::<usize>()
+    // Proportional now floors (Kaynov Eq. 8, remainder stays at the warehouse), so it ships no more
+    // than the exhausting min-shortage allocation.
+    assert!(
+        proportional.iter().sum::<usize>() <= min_shortage.iter().sum::<usize>()
     );
     assert!(
         proportional.iter().sum::<usize>()
@@ -144,11 +145,15 @@ fn allocation_and_base_stock_orders_match_named_heuristic_evaluators() {
 }
 
 #[test]
-fn proportional_allocation_uses_all_available_inventory_when_orders_exceed_supply() {
+fn proportional_allocation_floors_per_kaynov_eq_8_and_leaves_remainder_at_warehouse() {
+    // Kaynov et al. (2024) Eq. (8): q_i = floor(a_i * available / sum a_j); the remainder is NOT
+    // redistributed to retailers, it stays at the warehouse. For available=5, orders=[4,4,4]
+    // (total 12): floor(4*5/12)=1 each -> [1,1,1], summing to 3, with 2 units retained.
     let shipments =
         proportional_shipments(5, &[4, 4, 4]).expect("proportional allocation must compute");
-    assert_eq!(shipments.iter().sum::<usize>(), 5);
-    assert_eq!(shipments, vec![2, 2, 1]);
+    assert_eq!(shipments, vec![1, 1, 1]);
+    assert_eq!(shipments.iter().sum::<usize>(), 3);
+    assert!(shipments.iter().sum::<usize>() <= 5);
 }
 
 #[test]

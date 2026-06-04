@@ -38,44 +38,15 @@ pub fn proportional_shipments(
         return Ok(vec![0; retailer_orders.len()]);
     }
 
-    let mut shipments = retailer_orders
+    // Paper-faithful proportional rationing: Kaynov et al. (2024) Eq. (8) ships the FLOOR
+    // q_i = floor(a_i * (I_0 + q_0) / sum_j a_j) and leaves the remainder AT THE WAREHOUSE (it is
+    // not redistributed to retailers). The earlier repo behavior exhausted the warehouse by
+    // distributing the leftover units; that was a repo choice, not the paper's rule, and it made
+    // the backorder/partial-backorder benchmark rows too cheap.
+    let shipments = retailer_orders
         .iter()
         .map(|order| order.saturating_mul(available_inventory) / total_orders)
         .collect::<Vec<_>>();
-    let allocated = shipments.iter().sum::<usize>();
-    let mut remaining = available_inventory.saturating_sub(allocated);
-
-    if remaining > 0 {
-        let mut remainders = retailer_orders
-            .iter()
-            .enumerate()
-            .filter_map(|(retailer_idx, order)| {
-                if shipments[retailer_idx] >= *order {
-                    return None;
-                }
-                let numerator = order.saturating_mul(available_inventory);
-                let remainder = numerator % total_orders;
-                Some((retailer_idx, remainder, *order))
-            })
-            .collect::<Vec<_>>();
-
-        remainders.sort_by(|lhs, rhs| {
-            rhs.1
-                .cmp(&lhs.1)
-                .then_with(|| rhs.2.cmp(&lhs.2))
-                .then_with(|| lhs.0.cmp(&rhs.0))
-        });
-
-        for (retailer_idx, _, _) in remainders.into_iter() {
-            if remaining == 0 {
-                break;
-            }
-            if shipments[retailer_idx] < retailer_orders[retailer_idx] {
-                shipments[retailer_idx] += 1;
-                remaining -= 1;
-            }
-        }
-    }
 
     Ok(shipments)
 }
