@@ -146,3 +146,9 @@ common-random-number block; the keep/discard gate is the in-repo tuned heuristic
   `../scripts/vendor_managed_inventory/autoresearch_vendor_managed_inventory.py`. Losing/tying the
   tuned base-stock on ~4/5 reduced single-retailer instances (self-consistent env, no published
   anchor). Levers: tree structure, action design, CMA-ES warm-start at the base-stock control.
+- **perishable inventory** — `program_perishable_inventory.md`,
+  `../scripts/perishable_inventory/autoresearch_perishable_inventory.py`. On the two exact-verified
+  De Moor (2022) / Farrington (2025) m=2/L=1 instances the warm-started depth-2 soft tree **beats**
+  the in-repo base-stock gate by 1.16% (FIFO) / 0.82% (LIFO) at full budget, landing within noise of
+  the analytic VI optimum. Lever: the softplus base-stock encoding of the scalar order head over the
+  age-state + CMA-ES warm-start at the published best base-stock; validation-block model selection.

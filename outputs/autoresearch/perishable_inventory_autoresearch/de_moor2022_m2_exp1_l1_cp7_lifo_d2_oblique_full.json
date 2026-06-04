@@ -1,0 +1,68 @@
+{
+  "family": "perishable_inventory",
+  "benchmark": "autoresearch_perishable_inventory",
+  "commit": "01c657a",
+  "reference_instance": "de_moor2022_m2_exp1_l1_cp7_lifo",
+  "issuing_policy": "lifo",
+  "shelf_life": 2,
+  "lead_time": 1,
+  "gamma": 0.99,
+  "budget": "full",
+  "config": {
+    "depth": 2,
+    "temperature": 0.25,
+    "split_type": "oblique",
+    "leaf_type": "linear",
+    "sigma_init": 0.75,
+    "warm_start": true,
+    "popsize": 24,
+    "generations": 120,
+    "search_seeds": 64,
+    "val_seeds": 512,
+    "eval_seeds": 2048,
+    "seed": 123,
+    "horizon": 465,
+    "input_dim": 2,
+    "num_params": 21,
+    "train_seconds": 9.1
+  },
+  "baselines": {
+    "vi_optimum_analytic": -1552.9907529265774,
+    "vi_optimum_rounded": -1553,
+    "matches_published_vi": true,
+    "published_vi_mean_return": -1553,
+    "exact_best_base_stock_level": 5,
+    "matches_published_base_stock_level": true,
+    "matches_published_policy_table": true,
+    "base_stock_gate_level": 5,
+    "base_stock_gate_return": -1565.9832820647414,
+    "base_stock_gate_sem": 1.3805655606187752,
+    "base_stock_search_argmin_level": 5,
+    "base_stock_candidate_evals": {
+      "5": -1565.9832820647414
+    }
+  },
+  "warm_start_gen0": {
+    "encoded_base_stock_level": 5,
+    "gen0_mean_return": -1565.652598526331,
+    "reproduces_gate_within_sem": true
+  },
+  "learned": {
+    "source": "gen_best@8_val_selected",
+    "selection_val_return": -1553.2431653645938,
+    "cma_incumbent_val_return": -1560.5752615756264,
+    "mean_return": -1553.1607732479827,
+    "std_return": 62.23260120184537,
+    "sem_return": 1.375159197521967,
+    "final_gen_best_train_return": -1418.3045520498615
+  },
+  "result": {
+    "gap_vs_vi_optimum": -0.17002032140521806,
+    "gap_vs_vi_optimum_pct": -0.010947928768076593,
+    "gap_vs_base_stock_gate": 12.822508816758727,
+    "gap_vs_base_stock_gate_pct": 0.8188151791666838,
+    "paired_sem": 1.948595413546869,
+    "verdict": "beats"
+  },
+  "description": "full: depth-2 oblique linear, warm-started at base-stock S=5, validation-block selection (LIFO verification)"
+}
