@@ -1,6 +1,6 @@
 """
 Autoresearch runner for the FAITHFUL average-profit ameliorating-inventory env
-(rust/src/problems/ameliorating_inventory/average_profit_blending_env.rs, the
+(src/problems/ameliorating_inventory/average_profit_blending_env.rs, the
 Pahr & Grunow 2025 model).
 
 OBJECTIVE
@@ -68,10 +68,13 @@ import invman_rust
 from invman.cmaes import CMAES
 
 
-DATASET_DIR = (
-    PACKAGE_ROOT / "rust" / "src" / "problems" / "ameliorating_inventory"
-    / "practical" / "datasets"
-)
+def _resolve_dataset_dir() -> Path:
+    """LP dataset dir in the root-level Rust source tree."""
+    rel = ("problems", "ameliorating_inventory", "practical", "datasets")
+    return PACKAGE_ROOT.joinpath("src", *rel)
+
+
+DATASET_DIR = _resolve_dataset_dir()
 
 # Env-only fields (demand / sales-price / correlation / decay CoV) are NOT in the
 # perfect-information LP dataset; they come from the companion config.json and are
