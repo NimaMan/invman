@@ -1,0 +1,195 @@
+schema_version: 1
+problem: one_warehouse_multi_retailer
+registry_owner: src/problems/one_warehouse_multi_retailer
+source_of_truth:
+  - src/problems/one_warehouse_multi_retailer/references.rs
+  - src/problems/one_warehouse_multi_retailer/literature/README.md
+  - scripts/one_warehouse_multi_retailer/PPO_GAP_FOLLOWUP_2026_06_05.md
+entries:
+  - id: kaynov2024_instance12_partial_backorder_ppo_gap
+    problem: one_warehouse_multi_retailer
+    instance_name: kaynov2024_instance_12
+    roles:
+      - primary_literature_validation
+      - table_only_literature_anchor
+      - repo_native_benchmark
+      - paper_benchmark_anchor
+    status:
+      verification: table_only
+      comparator_type: published_heuristics
+      paper_status: usable_with_caveat
+      last_reviewed: "2026-06-05"
+    source:
+      citation: "Kaynov et al. (2024), Deep Reinforcement Learning for One-Warehouse Multi-Retailer inventory management, IJPE 267:109088"
+      citation_keys:
+        - kaynov2024owmr
+        - vanroy1997ndp
+        - gijsbrechts2022drl
+        - nahmias1994partial
+        - federgruen1984multilocation
+      url: https://doi.org/10.1016/j.ijpe.2023.109088
+      table: "Kaynov et al. (2024), Table 2 / Table A.3, partial-backorder instance 12"
+      numbers: "Published echelon base-stock proportional, echelon base-stock min-shortage, and PPO 100-period costs."
+      source_notes:
+        - "The source table reports negative reward; this registry promotes positive cost by negating the carried reward rows in references.rs."
+        - "The published rows are table-only in this repo: the current simulator approximately reproduces their scale but not the exact table values."
+        - "Published PPO is a cross-policy comparator, not the in-repo gate used for current learned-policy promotion."
+    instance:
+      reference_path: src/problems/one_warehouse_multi_retailer/references.rs
+      reference_const: TABLE_A3_INSTANCES
+      verification_reference_const: VERIFICATION_PROBLEM_INSTANCE
+      parameters:
+        customer_behavior: partial_backorder
+        benchmark_periods: 100
+        benchmark_replications: 1000
+        warehouse_lead_time: 2
+        retailer_lead_times:
+          - 1
+          - 1
+          - 1
+        demand_models:
+          - rounded_normal_mean1_std5
+          - rounded_normal_mean5_std1
+          - poisson_mean0p5
+        holding_cost_warehouse: 0.5
+        holding_cost_retailers:
+          - 1.0
+          - 1.0
+          - 1.0
+        penalty_costs_retailers:
+          - 9.0
+          - 9.0
+          - 9.0
+        emergency_shipment_probability: 0.8
+    published_numbers:
+      objective: 100_period_mean_cost
+      sign: lower_is_better
+      rows:
+        - row_id: published_proportional_mean_cost
+          label: "Echelon base-stock + proportional"
+          policy_id: echelon_base_stock_proportional
+          metric: mean_cost
+          value: 1402.38
+          value_kind: scalar
+          params:
+            allocation_policy: proportional
+            source_mean_reward: -1402.38
+            source_standard_error: 1.44
+            source_relative_gap_percent: 0.0
+          source_ref:
+            citation_key: kaynov2024owmr
+            table: "Table A.3"
+            row: "Instance 12, echelon base-stock proportional"
+            column: "mean reward"
+          verification_status: table_only
+          notes: "Stored in references.rs as published_proportional_benchmark with negative reward convention."
+        - row_id: published_min_shortage_mean_cost
+          label: "Echelon base-stock + min-shortage"
+          policy_id: echelon_base_stock_min_shortage
+          metric: mean_cost
+          value: 1406.43
+          value_kind: scalar
+          params:
+            allocation_policy: min_shortage
+            source_mean_reward: -1406.43
+            source_standard_error: 1.45
+            source_relative_gap_percent: 0.29
+          source_ref:
+            citation_key: kaynov2024owmr
+            table: "Table A.3"
+            row: "Instance 12, echelon base-stock min-shortage"
+            column: "mean reward"
+          verification_status: table_only
+          notes: "Stored in references.rs as published_min_shortage_benchmark with negative reward convention."
+        - row_id: published_ppo_mean_cost
+          label: PPO
+          policy_id: ppo
+          metric: mean_cost
+          value: 1118.92
+          value_kind: scalar
+          params:
+            source_mean_reward: -1118.92
+            source_standard_error: 4.51
+            source_relative_gap_percent: -20.21
+          source_ref:
+            citation_key: kaynov2024owmr
+            table: "Table A.3"
+            row: "Instance 12, PPO"
+            column: "mean reward"
+          verification_status: table_only
+          notes: "Published PPO remains lower cost than the current repo-native learned policy."
+      source_numbers_not_promoted:
+        - "Kaynov Table A.3 standard errors and relative gap percentages are kept in row params for provenance; headline comparisons use positive mean cost."
+    repo_verification:
+      test: null
+      command: null
+      tolerance: null
+      reproduced_rows: []
+      table_only_rows:
+        - published_proportional_mean_cost
+        - published_min_shortage_mean_cost
+        - published_ppo_mean_cost
+      artifact: src/problems/one_warehouse_multi_retailer/literature/README.md
+    repo_baseline_gate:
+      policy: "Current repo-native gate is grid-searched echelon base-stock under the better held-out allocation; current learned frontier is a decoupled target soft tree with augmented state."
+      script: scripts/one_warehouse_multi_retailer/run_asymmetric_learned_vs_gate.py
+      eval: "100-period costs; held-out CRN block with 4096 paths; gate_search_paths=64; training under min_shortage; deployment picks the best held-out allocation."
+      latest_report: scripts/one_warehouse_multi_retailer/PPO_GAP_FOLLOWUP_2026_06_05.md
+      rows:
+        - row_id: repo_tuned_gate_mean_cost
+          policy_id: echelon_base_stock_grid_search
+          metric: mean_cost
+          value: 1169.5904541015625
+          value_kind: scalar
+          params:
+            allocation_policy: proportional
+            heldout_paths: 4096
+          source_ref:
+            artifact: scripts/one_warehouse_multi_retailer/PPO_GAP_FOLLOWUP_2026_06_05.md
+            row: "Absolute-state augmented result"
+        - row_id: repo_best_learned_mean_cost
+          policy_id: soft_tree_echelon_targets_with_alloc_targets
+          metric: mean_cost
+          value: 1139.5526123046875
+          value_kind: scalar
+          params:
+            depth: 2
+            split_type: axis_aligned
+            leaf_type: linear
+            policy_state_mode: absolute_augmented
+            policy_action_mode: echelon_targets_with_alloc_targets
+            train_allocation: min_shortage
+            deployed_allocation: proportional
+            same_seed: true
+            train_seed_batch: 16
+            es_population: 24
+            training_episodes: 200
+            sigma_init: 0.00125
+          source_ref:
+            artifact: scripts/one_warehouse_multi_retailer/PPO_GAP_FOLLOWUP_2026_06_05.md
+            row: "Absolute-state augmented result"
+        - row_id: repo_best_learned_vs_published_ppo_pct
+          policy_id: soft_tree_echelon_targets_with_alloc_targets
+          metric: learned_vs_published_ppo_pct
+          value: -1.84397564657772
+          value_kind: derived
+          params:
+            derived_from:
+              - repo_best_learned_mean_cost
+              - published_ppo_mean_cost
+            formula: "(published_ppo_cost - learned_cost) / published_ppo_cost * 100"
+          source_ref:
+            artifact: scripts/one_warehouse_multi_retailer/PPO_GAP_FOLLOWUP_2026_06_05.md
+            row: "Absolute-state augmented result"
+      notes: "The repo-native learned policy beats the tuned in-repo gate beyond paired SEM but still trails published PPO."
+    paper_link:
+      section: "paper/sections/one_warehouse_multi_retailer.tex::sec:owmr"
+      claim: "OWMR learned-policy results should be framed as repo-native gate improvements while published PPO remains the stronger published learned comparator."
+      caveats:
+        - "The Kaynov table rows are table-only; the repo heuristic protocol does not bit-reproduce them."
+        - "The current best learned policy does not beat published PPO."
+        - "The repo gate uses a mean-filled initial pipeline and held-out CRN protocol that differ from unspecified source-table details."
+    unknowns:
+      - "Kaynov's exact initial-state convention and base-stock search grid are not fully specified in the accessible source text."
+      - "No current repo command re-derives the published PPO row."
+      - "No current repo-native policy beats the published PPO cost for this instance."

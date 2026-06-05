@@ -13,6 +13,7 @@ Schema: `docs/benchmarks/baseline_registry_schema.md`.
 | Vanilla lost sales | `src/problems/lost_sales/vanilla/literature/baselines.yaml` | Zipkin (2008) Table 3(a), canonical `vanilla_l4_p4_poisson5`; mixed executable heuristic rows and table-only optimal/CBS rows. |
 | Lost sales with fixed order cost | `src/problems/lost_sales/fixed_order_cost/literature/baselines.yaml` | Bijvank et al. (2015) Table 1 strict verifier plus repo-native canonical `lit_pois_mu5_l4_p4_k5` gate. |
 | Perishable inventory | `src/problems/perishable_inventory/literature/baselines.yaml` | De Moor/Farrington exact `m=2,L=1` slice plus one table-only `m=4,L=2` medium/practical anchor; other Scenario A rows remain in `references.rs` until explicitly promoted. |
+| One-warehouse multi-retailer | `src/problems/one_warehouse_multi_retailer/literature/baselines.yaml` | Kaynov et al. (2024) instance 12 table-only proportional/min-shortage/PPO rows plus the repo-native tuned gate and current learned frontier. |
 
 ## Rules
 
@@ -40,3 +41,7 @@ Schema: `docs/benchmarks/baseline_registry_schema.md`.
   Only the listed `m=4,L=2` row is promoted as a table-only anchor here; remaining
   Scenario A constants stay in `references.rs` unless a future registry update
   adds row-level source locators and verifier status.
+- One-warehouse multi-retailer is `table_only` for published Kaynov costs because
+  the current repo protocol approximately reproduces the rows but does not
+  bit-match them. The registry still records the repo-native gate and current
+  learned frontier so PPO-gap work has a stable comparator ledger.

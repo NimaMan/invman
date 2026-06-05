@@ -108,8 +108,10 @@ from invman.es_mp import train  # noqa: E402
 
 # Same disjoint CRN blocks + allocation anchors as autoresearch_*.py.
 SEARCH_SEED_START = 500_000
+TRAIN_SEED_START = 600_000
 HOLDOUT_SEED_START = 900_000
 ALLOC_SEED_SEARCH = 700_000
+ALLOC_SEED_TRAIN = 750_000
 ALLOC_SEED_HOLDOUT = 800_000
 
 # Same budgets as the autoresearch runner.
@@ -283,15 +285,17 @@ def _warm_start_flat_params(model, target_vector):
 
 def _training_namespace(reference, budget, leaf_type, mode, train_allocation, seed,
                         sigma_init, out_root, depth, split_type, temperature,
-                        policy_state_mode="normalized", same_seed=False):
+                        policy_state_mode="normalized", same_seed=False,
+                        train_on_fixed_paths=False):
     sigma_tag = f"{float(sigma_init):g}".replace(".", "p")
     same_seed_tag = "_crn" if same_seed else ""
+    fixed_paths_tag = "_fixedpaths" if train_on_fixed_paths else ""
     state_tag = "" if policy_state_mode == "normalized" else f"_{policy_state_mode}"
     run_name = (
         f"asym_{reference['name']}_{mode}_{leaf_type}"
         f"_d{depth}_{split_type}_t{temperature:g}{state_tag}_pop{budget['es_population']}"
         f"_gen{budget['training_episodes']}_batch{budget['train_seed_batch']}"
-        f"_{train_allocation}{same_seed_tag}_sig{sigma_tag}_seed{seed}"
+        f"_{train_allocation}{same_seed_tag}{fixed_paths_tag}_sig{sigma_tag}_seed{seed}"
     )
     return SimpleNamespace(
         training_method="cma",
@@ -323,6 +327,33 @@ def _eval_allocs(reference, model, flat, policy_action_mode, allocations, holdou
             "sem": float(costs.std() / np.sqrt(costs.size)),
         }
     return out
+
+
+def _get_fixed_path_population_fitness(
+    reference,
+    model,
+    allocation,
+    policy_action_mode,
+    train_paths,
+    alloc_seed,
+):
+    def inner(_model, args, model_params_batch, seeds):
+        del _model, args, seeds
+        out = []
+        for idx, params in enumerate(model_params_batch):
+            costs = _soft_tree_on_paths(
+                reference,
+                model,
+                params,
+                allocation,
+                policy_action_mode,
+                train_paths,
+                alloc_seed,
+            )
+            out.append((-float(costs.mean()), idx))
+        return out
+
+    return inner
 
 
 def _resolve_budget(budget_name, training_episodes=None, es_population=None,
@@ -532,7 +563,8 @@ def run_one(reference, budget_name, leaf_type, policy_action_mode, train_allocat
             direct_order_gate_init=False,
             depth=2, temperature=0.10, split_type="axis_aligned",
             training_episodes=None, es_population=None, train_seed_batch=None,
-            holdout_paths=None, policy_state_mode="normalized", same_seed=False):
+            holdout_paths=None, policy_state_mode="normalized", same_seed=False,
+            train_on_fixed_paths=False):
     budget = _resolve_budget(
         budget_name,
         training_episodes=training_episodes,
@@ -558,6 +590,13 @@ def run_one(reference, budget_name, leaf_type, policy_action_mode, train_allocat
     # ---- CRN blocks ----
     search_paths = _sample_demand_paths(reference, n_gate_search, SEARCH_SEED_START)
     holdout_paths = _sample_demand_paths(reference, budget["holdout_paths"], HOLDOUT_SEED_START)
+    fixed_train_paths = None
+    if train_on_fixed_paths:
+        fixed_train_paths = _sample_demand_paths(
+            reference,
+            int(budget["train_seed_batch"]),
+            TRAIN_SEED_START,
+        )
 
     # ---- gate (parallel grid; cached argmin per instance/budget/alloc-set) ----
     # The gate grid is the dominant cost and is identical across learned configs for a
@@ -606,7 +645,8 @@ def run_one(reference, budget_name, leaf_type, policy_action_mode, train_allocat
     train_args = _training_namespace(
         reference, budget, leaf_type, policy_action_mode, train_allocation, seed,
         sigma_init, out_root, depth, split_type, temperature,
-        policy_state_mode=policy_state_mode, same_seed=same_seed
+        policy_state_mode=policy_state_mode, same_seed=same_seed,
+        train_on_fixed_paths=train_on_fixed_paths
     )
     # Warm-start reproduces the gate as a base-stock TARGET, so it is meaningful
     # for target-based geometries. direct_orders emits raw orders, not a target.
@@ -644,14 +684,24 @@ def run_one(reference, budget_name, leaf_type, policy_action_mode, train_allocat
 
     # ---- train ----
     t_train = time.time()
+    population_fitness = (
+        _get_fixed_path_population_fitness(
+            reference,
+            model,
+            train_allocation,
+            policy_action_mode,
+            fixed_train_paths,
+            ALLOC_SEED_TRAIN,
+        )
+        if fixed_train_paths is not None
+        else _get_population_fitness(model, reference, train_allocation, policy_action_mode)
+    )
     trained_model, fitness_hist = train(
         model=model,
         get_model_fitness=_get_model_fitness(
             model, reference, train_allocation, policy_action_mode
         ),
-        get_population_fitness=_get_population_fitness(
-            model, reference, train_allocation, policy_action_mode
-        ),
+        get_population_fitness=population_fitness,
         args=train_args,
         same_seed=bool(same_seed),
     )
@@ -784,6 +834,10 @@ def run_one(reference, budget_name, leaf_type, policy_action_mode, train_allocat
         "training_episodes": budget["training_episodes"],
         "es_population": budget["es_population"],
         "train_seed_batch": budget["train_seed_batch"],
+        "train_on_fixed_paths": bool(train_on_fixed_paths),
+        "train_path_count": (0 if fixed_train_paths is None else len(fixed_train_paths)),
+        "train_seed_start": (None if fixed_train_paths is None else TRAIN_SEED_START),
+        "train_alloc_seed": (None if fixed_train_paths is None else ALLOC_SEED_TRAIN),
         "gate_best_allocation": gate_best_alloc,
         "gate_warehouse_level": gate_best["warehouse_base_stock_level"],
         "gate_retailer_levels": gate_best["retailer_base_stock_levels"],
@@ -874,6 +928,9 @@ def parse_args():
                    help="Override the budget's held-out path count for bounded screens.")
     p.add_argument("--same_seed", action="store_true",
                    help="Use common random numbers within each CMA-ES population batch.")
+    p.add_argument("--train_on_fixed_paths", action="store_true",
+                   help="Optimize each CMA-ES population on a fixed explicit demand-path block. "
+                        "Uses train_seed_batch as the number of training paths.")
     p.add_argument("--output_json", default=None)
     return p.parse_args()
 
@@ -903,11 +960,13 @@ def main():
         holdout_paths=parsed.holdout_paths,
         policy_state_mode=parsed.policy_state_mode,
         same_seed=parsed.same_seed,
+        train_on_fixed_paths=parsed.train_on_fixed_paths,
     )
 
+    train_mode = "fixedpaths" if parsed.train_on_fixed_paths else "sampled"
     line = (
         f"{result['instance']} [{mode}/{parsed.leaf_type}/d{parsed.depth}/"
-        f"{parsed.split_type}/t{parsed.temperature:g}/{parsed.policy_state_mode}/{parsed.budget}]: "
+        f"{parsed.split_type}/t{parsed.temperature:g}/{parsed.policy_state_mode}/{train_mode}/{parsed.budget}]: "
         f"learned {result['learned_cost']:.2f} (+/-{result['learned_sem']:.2f}, {result['deployed_allocation']}) "
         f"vs gate {result['gate_cost']:.2f} (+/-{result['gate_sem']:.2f}, {result['gate_best_allocation']}) "
         f"=> {result['gap_pct_vs_gate']:+.2f}% | paired {result['paired_diff_mean']:+.2f}+/-{result['paired_diff_sem']:.2f} "
@@ -919,7 +978,7 @@ def main():
     out_path = parsed.output_json or str(
         out_root / (
             f"{result['instance']}_{mode}_{parsed.leaf_type}_d{parsed.depth}"
-            f"_{parsed.split_type}_t{parsed.temperature:g}_{parsed.policy_state_mode}_{parsed.budget}.json"
+            f"_{parsed.split_type}_t{parsed.temperature:g}_{parsed.policy_state_mode}_{train_mode}_{parsed.budget}.json"
         )
     )
     # numpy arrays are not JSON-serializable; the result dict already holds floats only.

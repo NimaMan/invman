@@ -21,6 +21,8 @@ exact commands and metrics.
 - `--init_params_npy` for CMA-ES restart/refinement from a saved policy
 - `--direct_order_gate_init`, a near-gate raw-order initializer for `direct_orders` + linear leaf
 - `--same_seed` to use common random numbers within each CMA-ES population batch
+- `--train_on_fixed_paths` to score each CMA-ES population on the same explicit
+  demand-path block, using `train_seed_batch` as the number of fixed training paths
 - `published_ppo_cost` and `learned_vs_published_ppo_pct` JSON aliases for simple PPO-gap scans
 - `trained_model_params_npy` in JSON so promoted policies can be resumed without reconstructing paths
 - `echelon_targets_with_alloc_targets`, a decoupled target mode with separate retailer order
@@ -199,6 +201,51 @@ Result:
 This is the current best repo-native result for `kaynov2024_instance_12`. It improves the
 decoupled normalized-state checkpoint by `0.3358` cost units and still leaves `20.6326` cost units
 to the published PPO number.
+
+## Fixed-path objective result
+
+The next bounded lever was to train each CMA-ES population on a fixed explicit CRN path block
+instead of resampling by seed inside the population evaluator. This reduces within-generation
+ranking noise but can overfit the small training block, so the headline still comes from the same
+4096-path held-out CRN block.
+
+Command:
+
+```bash
+RAYON_NUM_THREADS=2 OMP_NUM_THREADS=2 \
+python scripts/one_warehouse_multi_retailer/run_asymmetric_learned_vs_gate.py \
+  --reference kaynov2024_instance_12 \
+  --budget full \
+  --policy_action_mode echelon_targets_with_alloc_targets \
+  --policy_state_mode absolute_augmented \
+  --leaf_type linear \
+  --warm_start_at_best_base_stock \
+  --init_params_npy outputs/one_warehouse_multi_retailer/asymmetric_learned/models/asym_kaynov2024_instance_12_echelon_targets_with_alloc_targets_linear_d2_axis_aligned_t0.1_absolute_augmented_pop24_gen200_batch16_min_shortage_crn_sig0p00125_seed721_527_200/model_params.npy \
+  --sigma_init 0.001 \
+  --gate_search_paths 64 \
+  --training_episodes 200 \
+  --es_population 24 \
+  --train_seed_batch 16 \
+  --holdout_paths 4096 \
+  --train_allocation min_shortage \
+  --train_on_fixed_paths \
+  --seed 722 \
+  --output_json outputs/one_warehouse_multi_retailer/asymmetric_learned/kaynov2024_instance_12_echelon_targets_with_alloc_targets_absolute_augmented_fixedpaths_restart_sigma0.001_seed722.json
+```
+
+Result:
+
+- learned `1139.5526 +/- 2.1648`, deployed `init_params_anchor`, evaluated under proportional
+- trained `xbest` held-out cost `1140.9027`, so deployment fell back to the loaded incumbent
+- gate `1169.5905 +/- 2.0548`
+- paired gate - learned `+30.0378 +/- 0.9453`
+- published PPO `1118.92`
+- gap vs PPO `-1.8440%`
+- fixed training paths: `16`, demand seed start `600000`, allocation seed `750000`
+
+This did not improve the frontier. It is useful limiting evidence that fixed-path ranking alone is
+not enough; with only 16 fixed training paths it improved the training objective but overfit relative
+to the held-out block.
 
 ## Negative / limiting evidence
 
