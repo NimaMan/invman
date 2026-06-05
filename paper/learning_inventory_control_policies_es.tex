@@ -1787,8 +1787,8 @@ issuing rule, the outdating of the oldest leftover stock, and where each cost is
     % youngest bucket (event 5, placed L periods ago; for L=1 it arrives next period).
     \draw[reqflow] (stk.north) to[bend right=34] (sup.north);
     \node[reqlabel] at (3.3,2.05) {\ding{183}\, order $q_t\!\le\!\bar q$};
-    \draw[matflow] (sup.south) to[bend right=22] (stk.west);
-    \node[ltlabel]  at (3.5,-1.55) {\ding{187}\, arrival (placed $L$ ago)\\enters youngest bucket; cost $c\,q$};
+    \draw[matflow] (sup.east) -- (stk.west)
+          node[midway,below=4pt,ltlabel] {\ding{187}\, arrival (placed $L$ ago)\\enters youngest bucket; cost $c\,q$};
 
     \draw[demandflow] (stk) -- (dem)
           node[midway,above=4pt,ltlabel] {\ding{185}\, serve\\\textbf{FIFO} oldest-first\\\textbf{LIFO} youngest-first};
