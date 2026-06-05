@@ -41,7 +41,11 @@ lower-noise CRN refinement:
 4. restart that model with `sigma_init=0.01`, again under `train_allocation=min_shortage`,
    producing `1140.3179`;
 5. restart that model with `sigma_init=0.005`, `--same_seed`, and `train_seed_batch=16`,
-   producing `1140.1962`.
+   producing `1140.1962`;
+6. restart that model with `sigma_init=0.0025`, `--same_seed`, and `train_seed_batch=16`,
+   producing `1140.0686`;
+7. restart that model with `sigma_init=0.00125`, `--same_seed`, and `train_seed_batch=16`,
+   producing `1140.0393`.
 
 Best command:
 
@@ -53,8 +57,8 @@ python scripts/one_warehouse_multi_retailer/run_asymmetric_learned_vs_gate.py \
   --policy_action_mode echelon_targets \
   --leaf_type linear \
   --warm_start_at_best_base_stock \
-  --init_params_npy outputs/one_warehouse_multi_retailer/asymmetric_learned/models/asym_kaynov2024_instance_12_echelon_targets_linear_d2_axis_aligned_t0.1_pop24_gen300_batch8_min_shortage_sig0p01_seed705_228_300/model_params.npy \
-  --sigma_init 0.005 \
+  --init_params_npy outputs/one_warehouse_multi_retailer/asymmetric_learned/models/asym_kaynov2024_instance_12_echelon_targets_linear_d2_axis_aligned_t0.1_pop24_gen200_batch16_min_shortage_crn_sig0p0025_seed717_228_200/model_params.npy \
+  --sigma_init 0.00125 \
   --gate_search_paths 64 \
   --training_episodes 200 \
   --es_population 24 \
@@ -62,21 +66,21 @@ python scripts/one_warehouse_multi_retailer/run_asymmetric_learned_vs_gate.py \
   --holdout_paths 4096 \
   --train_allocation min_shortage \
   --same_seed \
-  --seed 716 \
-  --output_json outputs/one_warehouse_multi_retailer/asymmetric_learned/kaynov2024_instance_12_echelon_targets_linear_restart_batch16_same_seed_sigma0.005_seed716.json
+  --seed 718 \
+  --output_json outputs/one_warehouse_multi_retailer/asymmetric_learned/kaynov2024_instance_12_echelon_targets_linear_restart_from_crn_sigma0.0025_sigma0.00125_seed718.json
 ```
 
 Result:
 
-- learned `1140.1962 +/- 2.1794`, deployed `trained_xbest`, evaluated under proportional
+- learned `1140.0393 +/- 2.1746`, deployed `trained_xbest`, evaluated under proportional
 - gate `1169.5905 +/- 2.0548`
-- paired gate - learned `+29.3943 +/- 0.9502`
-- gap vs gate `+2.5132%`
+- paired gate - learned `+29.5511 +/- 0.9431`
+- gap vs gate `+2.5266%`
 - published PPO `1118.92`
-- gap vs PPO `-1.9015%`
+- gap vs PPO `-1.8875%`
 
-This improves the prior best (`1154.0874`) by `13.8912` cost units and closes the PPO gap from
-`3.1430%` to `1.9015%`, but does not beat PPO.
+This improves the prior best (`1154.0874`) by `14.0481` cost units and closes the PPO gap from
+`3.1430%` to `1.8875%`, but does not beat PPO.
 
 ## Negative / limiting evidence
 
@@ -181,6 +185,18 @@ Held-out trained `xbest` was worse (`1140.7797`), so deployment fell back to the
 `1140.3179`. The frontier is still moving, but improvements are now sub-unit and training noise is
 large enough that CRN training (`--same_seed`) and smaller sigma values are the next bounded levers.
 
+Two lower-noise CRN refinements from the `1140.1962` model still improved, but the gains are now
+small:
+
+- `sigma_init=0.0025`, `--same_seed`, `train_seed_batch=16`, seed `717`: trained `xbest`
+  improved to `1140.0686`.
+- `sigma_init=0.00125`, `--same_seed`, `train_seed_batch=16`, seed `718`: trained `xbest`
+  improved to `1140.0393`.
+
+The second run gained only `0.0293` cost units over the previous checkpoint, while the remaining
+PPO gap is still `21.12` cost units. This is the clearest evidence so far that the current
+`echelon_targets` depth-2 local neighborhood is close to saturated.
+
 Random-sequential training from the gate anchor:
 
 ```bash
@@ -215,15 +231,22 @@ simple direct-order affine warm start as a useful path.
 The useful new lever is not raw direct orders or random-sequential training. It is a small-sigma
 CMA-ES restart chain from the incumbent `echelon_targets` policy while training under
 `min_shortage` and deploying under the better held-out allocation. The improvement is real on the
-4096-path held-out block (`+29.39 +/- 0.95` vs gate), but still leaves `21.28` cost units to
+4096-path held-out block (`+29.55 +/- 0.94` vs gate), but still leaves `21.12` cost units to
 published PPO.
 
-Next high-yield experiment: continue from the new `1140.1962` model with smaller CRN local restarts,
-not from the older proportional incumbent:
+Next high-yield experiment: stop relying on smaller local restarts alone. The current
+`echelon_targets` action emits the same retailer target vector for ordering and for min-shortage
+rationing. The Rust rollout already carries a `retailer_target_inventory_positions` hook, so the
+next code-side candidate is a new action mode that emits separate order targets and allocation
+targets.
 
-- start from `outputs/one_warehouse_multi_retailer/asymmetric_learned/models/asym_kaynov2024_instance_12_echelon_targets_linear_d2_axis_aligned_t0.1_pop24_gen200_batch16_min_shortage_sig0p005_seed716_228_200/model_params.npy`
-- keep `train_allocation=min_shortage`
-- test `sigma_init` in `{0.0025, 0.005}` with `--same_seed`, `pop24 x 200-300`, and `train_seed_batch=16`
-- if local CRN gains stall, stop treating the current `echelon_targets` parameterization as sufficient and implement either a depth-3 lift or separate allocation targets
-- use 4096 held-out paths and select by paired improvement beyond SEM
-- only promote a restart if it beats `1140.1962`; longer runs have already shown regression risk
+- proposed mode: `echelon_targets_with_alloc_targets`
+- action dimension: `1 + 2K` controls: warehouse order-up-to target, K retailer order targets,
+  and K retailer allocation targets
+- order logic: use the first `K+1` controls with `echelon_base_stock_orders`
+- rationing logic: pass the second K retailer controls as `retailer_target_inventory_positions`
+  for `min_shortage`
+- warm start: initialize order targets and allocation targets both from the incumbent/gate retailer
+  targets so the old policy remains representable
+- first bounded screen: depth 2, linear leaves, `--same_seed`, `sigma_init=0.005`,
+  `train_seed_batch=16`, 4096 held-out paths, promote only if it beats `1140.0393`
