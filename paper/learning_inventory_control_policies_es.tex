@@ -2716,8 +2716,8 @@ are charged.
 
     \draw[reqflow] (wh.north) to[bend right=30] (sup.north);
     \node[reqlabel] at (2.9,1.9) {\ding{183}\, warehouse order};
-    \draw[matflow] (sup.south) to[bend right=22] (wh.west);
-    \node[ltlabel]  at (3.0,-1.5) {\ding{185}\, receipt (placed $L_w$ ago)};
+    \draw[matflow] (sup.east) -- (wh.west)
+          node[midway,below=4pt,ltlabel] {\ding{185}\, receipt (placed $L_w$ ago)};
 
     \draw[matflow] (wh.east) to[bend left=10]  (r1.west);
     \draw[matflow] (wh.east) -- (r2.west);
@@ -2980,8 +2980,8 @@ where purchase cost and holding are charged against sales revenue.
 
     \draw[reqflow] (stk.north) to[bend right=32] (sup.north);
     \node[reqlabel] at (3.3,2.0) {\ding{183}\, purchase $a^P_t$};
-    \draw[matflow] (sup.south) to[bend right=22] (stk.west);
-    \node[ltlabel]  at (3.4,-1.55) {\ding{184}\, enters youngest class;\\cost $P_t\,a^P_t$};
+    \draw[matflow] (sup.east) -- (stk.west)
+          node[midway,below=4pt,ltlabel] {\ding{184}\, enters youngest class;\\cost $P_t\,a^P_t$};
 
     \draw[demandflow] (stk) -- (prod)
           node[midway,above=4pt,ltlabel] {\ding{186}\, blending LP issues\\aged stock to products\\(mean age $\ge$ target)};
@@ -3472,7 +3472,7 @@ idea with sample-efficient learners for limited-data regimes.
 % Bibliography embedded inline (natbib-compatible \bibitem labels) so the manuscript is
 % self-contained and renders with a single pdflatex pass -- no bibtex step required. The
 % same entries are also kept in references.bib for tooling that prefers a .bib database.
-\begin{thebibliography}{24}
+\begin{thebibliography}{23}
 
 \bibitem[Bijvank et al.(2015)]{Bijvank2015ParametricPolicies}
 M.~Bijvank, S.~Bhulai, and W.~T. Huh.
@@ -3569,11 +3569,6 @@ L.~V. Snyder and Z.-J.~M. Shen.
 \emph{Fundamentals of Supply Chain Theory}.
 Wiley, 2nd edition, 2019.
 
-\bibitem[Vanvuchelen et al.(2020)]{vanvuchelen2020jrp}
-N.~Vanvuchelen, J.~Gijsbrechts, and R.~N. Boute.
-Use of proximal policy optimization for the joint replenishment problem.
-\emph{Computers in Industry}, 119:103239, 2020.
-
 \bibitem[Pirhooshyaran and Snyder(2021)]{pirhooshyaran2021scn}
 M.~Pirhooshyaran and L.~V. Snyder.
 Simultaneous decision making for stochastic multi-echelon inventory optimization with deep neural networks as decision makers.
@@ -3616,10 +3611,7 @@ general-network backorder, and serial multi-echelon), and then the
 production/assembly/distribution network, whose only published anchor is the single-node newsvendor
 cost: it is a faithful but \emph{not} literature-verified environment at the network level, so its
 validation is a single-node fidelity check rather than a published-number reproduction of the
-Section~\ref{sec:pirhoo} result (Section~\ref{app:pirhoo-validation}). The final subsection
-(Section~\ref{app:additional-env-validation}) records the same kind of fidelity check for the one
-further environment in our suite that we validate against the literature but do \emph{not} train or
-report a learned policy on in this paper. The two remaining studied
+Section~\ref{sec:pirhoo} result (Section~\ref{app:pirhoo-validation}). The two remaining studied
 problems are anchored differently and therefore do not appear as published-number rows here: the
 one-warehouse multi-retailer and ameliorating-inventory results are reported against a tuned
 in-environment heuristic gate (with, for ameliorating inventory, a perfect-information upper bound
@@ -3904,57 +3896,5 @@ heuristic is not a published optimum. Second, the textbook serial optimum $47.65
 raw-material position (and excludes finished goods), so $47.65$ is structurally unreachable here and we
 do not use it as a comparator. The single-node reduction above is therefore the only published anchor
 we claim for this environment, and it holds.
-
-\subsection{Additional verified environment (not studied in this paper's experiments)}
-\label{app:additional-env-validation}
-
-The per-problem subsections above complete the literature validation for the studied problems,
-including the single-node fidelity check for the production/assembly/distribution network. For
-completeness we record here the one further inventory environment that we implement and validate
-against the literature but on which we do \emph{not} train a policy or report a learned-policy result
-in this paper: the joint-replenishment system of \citet{vanvuchelen2020jrp}. We note it only because
-it bears on reproducibility --- our environment reproduces a published benchmark beyond the problems
-we train on.
-
-Before treating the joint-replenishment environment as faithful, we validate it against the one exact,
-executable quantity that \citet{vanvuchelen2020jrp} state in prose. Their paper reports per-setting
-optimality gaps only as a figure (Figure~2), so there is no published absolute optimal-cost table to
-match; the single exact result they state is an \emph{optimal action}. For their small-scale
-setting~5 (two items, truck capacity $V=6$, major order cost $K=75$, minor order costs $k=[40,10]$,
-holding $h=[1,1]$, penalty $b=[19,19]$, demand $U[0,5]$ and $U[0,3]$, discount $\gamma=0.99$), they
-state that in state $(I_1,I_2)=(5,0)$ the optimal policy ships exactly one full truckload to item~2 ---
-the action $q=(0,6)$ --- whereas both of their heuristics instead order $q=(2,4)$
-\citep{vanvuchelen2020jrp}. Running infinite-horizon value iteration over the environment's \emph{own}
-one-period cost and transition reproduces this published optimal action exactly ($q=(0,6)$ at state
-$(5,0)$), and the same value iteration confirms it is strictly cheaper than the heuristic action
-$q=(2,4)$. As a hand-checkable cost anchor, the environment evaluates the published optimal action at a
-worked demand $d=(2,4)$ to a one-period cost of $90$ (major $75$ $+$ minor $10$ on the single ordered
-item, plus holding $5$ on the resulting inventory $(3,2)$), matching the paper's cost convention.
-
-\begin{table}[!htbp]
-\centering
-\caption{Reproduction of the \citet{vanvuchelen2020jrp} Figure~3 joint-replenishment anchor
-(small-scale setting~5). The environment reproduces the published optimal action by independent
-value iteration over its own dynamics, and evaluates that action to the published cost convention at a
-worked demand. \citet{vanvuchelen2020jrp} report no absolute optimal-cost table (per-setting gaps
-appear only as a figure), so the published anchor is an optimal action rather than a cost.}
-\label{tab:additional-env-validation}
-\begin{tabular}{lcc}
-\toprule
-Quantity & Published & Reproduced \\
-\midrule
-Optimal action at state $(5,0)$ & $(0,6)$ & $(0,6)$ (env value iteration) \\
-Heuristic action at state $(5,0)$ & $(2,4)$ & $(2,4)$ (strictly costlier) \\
-One-period cost at $q=(0,6)$, $d=(2,4)$ & --- & $90$ (env cost convention) \\
-\bottomrule
-\end{tabular}
-\end{table}
-\FloatBarrier
-
-This is a verified environment we deliberately do \emph{not} study as a learned-policy result in this
-paper: we report no dedicated problem section, no training, and no learned-versus-heuristic comparison
-for joint replenishment. It appears here solely as an environment-fidelity check, confirming that our
-implementation reproduces the published Vanvuchelen et al.\ optimal action under its own dynamics.
-
 
 \end{document}
