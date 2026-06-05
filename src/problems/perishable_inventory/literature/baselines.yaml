@@ -1,0 +1,278 @@
+schema_version: 1
+problem: perishable_inventory
+registry_owner: src/problems/perishable_inventory
+source_of_truth:
+  - src/problems/perishable_inventory/references.rs
+  - src/problems/perishable_inventory/tests/verification.rs
+  - src/problems/perishable_inventory/literature/README.md
+entries:
+  - id: de_moor2022_m2_exp1_l1_cp7_lifo_exact_slice
+    problem: perishable_inventory
+    instance_name: de_moor2022_m2_exp1_l1_cp7_lifo
+    roles:
+      - verification_problem_instance
+      - paper_exact_slice
+      - published_optimum
+      - published_heuristic_validation
+    status:
+      verification: strict_literature_verified
+      comparator_type: published_exact_optimum
+      paper_status: ready
+      last_reviewed: "2026-06-05"
+    source:
+      citation: "De Moor, Gijsbrechts, and Boute (2022), EJOR 301(2):535-545; Farrington, Wong, Li, and Utley (2025), Annals of Operations Research 349(3):1609-1638"
+      url: https://doi.org/10.1007/s10479-025-06551-6
+      table: "Farrington et al. (2025) Table 3; De Moor et al. (2022) m=2 experiment 1 policy table"
+      numbers: "Rounded value-iteration mean return, best base-stock level, and 9x9 optimal-policy table."
+      source_notes:
+        - "The repo labels the De Moor optimal-policy table as Figure 3, but the exact figure number was not independently confirmed because the EJOR full text is paywalled."
+        - "Farrington Table 3 reports value-iteration return -1553 with standard deviation 61; only the rounded mean return is promoted as an executable comparator row."
+    instance:
+      reference_path: src/problems/perishable_inventory/references.rs
+      reference_const: SCENARIO_A_REFERENCE_INSTANCES
+      verification_reference_const: VERIFICATION_EXP1
+      parameters:
+        demand_mean: 4.0
+        demand_cov: 0.50
+        shelf_life: 2
+        lead_time: 1
+        shortage_cost: 5.0
+        holding_cost: 1.0
+        waste_cost: 7.0
+        procurement_cost: 3.0
+        max_order_size: 10
+        issuing_policy: lifo
+        horizon: 465
+        eval_horizon: 365
+    published_numbers:
+      objective: discounted_return
+      sign: higher_is_better
+      rows:
+        - label: value_iteration_mean_return
+          policy_id: value_iteration
+          metric: rounded_mean_return
+          value: -1553
+          params: null
+          verification_status: strict_literature_verified
+          notes: "Exact MDP re-derives the rounded published mean return."
+        - label: best_base_stock_level
+          policy_id: base_stock
+          metric: base_stock_level
+          value: 5
+          params:
+            S: 5
+          verification_status: strict_literature_verified
+          notes: "Exact MDP search recovers the published base-stock level."
+        - label: optimal_policy_table
+          policy_id: value_iteration
+          metric: policy_table_9x9
+          value: stored_in_reference_const
+          params: null
+          verification_status: strict_literature_verified
+          notes: "The 9x9 table is stored in DE_MOOR_M2_EXP1_FIGURE3_POLICY and re-derived exactly by test."
+      source_numbers_not_promoted:
+        - "Farrington Table 3 reports return standard deviation 61; this registry does not promote std as a reproduced comparator metric."
+    repo_verification:
+      test: "src/problems/perishable_inventory/tests/verification.rs::m2_base_stock_levels_match_de_moor_figure_3 and ::m2_optimal_policies_match_de_moor_figure_3_and_2025_returns"
+      command: cargo test m2_
+      tolerance: "exact equality for base-stock level, policy table, and rounded integer mean return"
+      reproduced_rows:
+        - value_iteration
+        - best_base_stock_level
+        - optimal_policy_table
+      table_only_rows: []
+      artifact: src/problems/perishable_inventory/verification/README.md
+    repo_baseline_gate:
+      policy: "Exact value iteration versus tuned base_stock, bsp_low_ew, and CMA-ES soft tree."
+      script: scripts/perishable_inventory/run_exact_slice_benchmark.py
+      eval: "gamma=0.99; exact analytic MDP row plus Monte-Carlo heuristic/soft-tree rows; see report for seeds and estimator caveat."
+      latest_report: src/problems/perishable_inventory/experiments/reports/exact_slice_report.md
+      notes: "Gap-to-exact mixes analytic and Monte-Carlo estimators; gap-to-best-heuristic is the apples-to-apples gate."
+    paper_link:
+      section: "paper/sections/perishable_inventory.tex::sec:perishable and appendix app:perishable-validation"
+      claim: "Exact LIFO m=2/L=1 perishable slice reproduces De Moor/Farrington anchors."
+      caveats:
+        - "Estimator caveat applies when comparing exact analytic return against Monte-Carlo heuristic and learned rows."
+        - "Exact De Moor figure number remains unconfirmed; the policy table substance is verified."
+    unknowns:
+      - "Exact De Moor figure number for the optimal-policy table is not independently confirmed."
+
+  - id: de_moor2022_m2_exp2_l1_cp7_fifo_primary_exact_slice
+    problem: perishable_inventory
+    instance_name: de_moor2022_m2_exp2_l1_cp7_fifo
+    roles:
+      - primary_reference_instance
+      - verification_problem_instance
+      - paper_exact_slice
+      - published_optimum
+      - published_heuristic_validation
+    status:
+      verification: strict_literature_verified
+      comparator_type: published_exact_optimum
+      paper_status: ready
+      last_reviewed: "2026-06-05"
+    source:
+      citation: "De Moor, Gijsbrechts, and Boute (2022), EJOR 301(2):535-545; Farrington, Wong, Li, and Utley (2025), Annals of Operations Research 349(3):1609-1638"
+      url: https://doi.org/10.1007/s10479-025-06551-6
+      table: "Farrington et al. (2025) Table 3; De Moor et al. (2022) m=2 experiment 2 policy table"
+      numbers: "Rounded value-iteration mean return, best base-stock level, and 9x9 optimal-policy table."
+      source_notes:
+        - "Primary perishable reference instance in src/problems/perishable_inventory/references.rs."
+        - "Farrington Table 3 reports value-iteration return -1457 with standard deviation 59; only the rounded mean return is promoted as an executable comparator row."
+    instance:
+      reference_path: src/problems/perishable_inventory/references.rs
+      reference_const: PRIMARY_REFERENCE_INSTANCE_NAME
+      verification_reference_const: VERIFICATION_EXP2
+      parameters:
+        demand_mean: 4.0
+        demand_cov: 0.50
+        shelf_life: 2
+        lead_time: 1
+        shortage_cost: 5.0
+        holding_cost: 1.0
+        waste_cost: 7.0
+        procurement_cost: 3.0
+        max_order_size: 10
+        issuing_policy: fifo
+        horizon: 465
+        eval_horizon: 365
+    published_numbers:
+      objective: discounted_return
+      sign: higher_is_better
+      rows:
+        - label: value_iteration_mean_return
+          policy_id: value_iteration
+          metric: rounded_mean_return
+          value: -1457
+          params: null
+          verification_status: strict_literature_verified
+          notes: "Exact MDP re-derives the rounded published mean return."
+        - label: best_base_stock_level
+          policy_id: base_stock
+          metric: base_stock_level
+          value: 7
+          params:
+            S: 7
+          verification_status: strict_literature_verified
+          notes: "Exact MDP search recovers the published base-stock level."
+        - label: optimal_policy_table
+          policy_id: value_iteration
+          metric: policy_table_9x9
+          value: stored_in_reference_const
+          params: null
+          verification_status: strict_literature_verified
+          notes: "The 9x9 table is stored in DE_MOOR_M2_EXP2_FIGURE3_POLICY and re-derived exactly by test."
+      source_numbers_not_promoted:
+        - "Farrington Table 3 reports return standard deviation 59; this registry does not promote std as a reproduced comparator metric."
+    repo_verification:
+      test: "src/problems/perishable_inventory/tests/verification.rs::m2_base_stock_levels_match_de_moor_figure_3 and ::m2_optimal_policies_match_de_moor_figure_3_and_2025_returns"
+      command: cargo test m2_
+      tolerance: "exact equality for base-stock level, policy table, and rounded integer mean return"
+      reproduced_rows:
+        - value_iteration
+        - best_base_stock_level
+        - optimal_policy_table
+      table_only_rows: []
+      artifact: src/problems/perishable_inventory/verification/README.md
+    repo_baseline_gate:
+      policy: "Exact value iteration versus tuned base_stock, bsp_low_ew, and CMA-ES soft tree."
+      script: scripts/perishable_inventory/run_exact_slice_benchmark.py
+      eval: "gamma=0.99; exact analytic MDP row plus Monte-Carlo heuristic/soft-tree rows; see report for seeds and estimator caveat."
+      latest_report: src/problems/perishable_inventory/experiments/reports/exact_slice_report.md
+      notes: "Current report has soft-tree rows and the best-heuristic gate for the primary FIFO instance."
+    paper_link:
+      section: "paper/sections/perishable_inventory.tex::sec:perishable and appendix app:perishable-validation"
+      claim: "Primary FIFO m=2/L=1 perishable slice reproduces De Moor/Farrington anchors."
+      caveats:
+        - "Estimator caveat applies when comparing exact analytic return against Monte-Carlo heuristic and learned rows."
+    unknowns:
+      - "Exact De Moor figure number for the optimal-policy table is not independently confirmed."
+
+  - id: de_moor2022_m4_exp6_l2_cp7_fifo_table_only_practical
+    problem: perishable_inventory
+    instance_name: de_moor2022_m4_exp6_l2_cp7_fifo
+    roles:
+      - table_only_literature_anchor
+      - practical_benchmark_instance
+      - paper_medium_slice
+    status:
+      verification: table_only
+      comparator_type: repo_native_practical_trace
+      paper_status: context_only
+      last_reviewed: "2026-06-05"
+    source:
+      citation: "Farrington, Wong, Li, and Utley (2025), Annals of Operations Research 349(3):1609-1638, Table 3"
+      url: https://doi.org/10.1007/s10479-025-06551-6
+      table: "Farrington et al. (2025) Table 3, Scenario A m=4 experiment 6"
+      numbers: "Value-iteration and best base-stock mean returns are stored in references.rs but are not re-derived by the current exact summary cap."
+      source_notes:
+        - "The current exact MDP summary caps at 2000 states; this m=4/L=2 row is table-only."
+        - "The practical benchmark uses a repo-curated semi-real grocery-like trace and this reference instance's cost/dynamics parameters."
+    instance:
+      reference_path: src/problems/perishable_inventory/references.rs
+      reference_const: SCENARIO_A_REFERENCE_INSTANCES
+      verification_reference_const: null
+      parameters:
+        demand_mean: 4.0
+        demand_cov: 0.50
+        shelf_life: 4
+        lead_time: 2
+        shortage_cost: 5.0
+        holding_cost: 1.0
+        waste_cost: 7.0
+        procurement_cost: 3.0
+        max_order_size: 10
+        issuing_policy: fifo
+        horizon: 465
+        eval_horizon: 365
+    published_numbers:
+      objective: discounted_return
+      sign: higher_is_better
+      rows:
+        - label: value_iteration_mean_return
+          policy_id: value_iteration
+          metric: rounded_mean_return
+          value: -1432
+          params: null
+          verification_status: table_only
+          notes: "Stored from Farrington Table 3; not re-derived by current repo tests."
+        - label: best_base_stock_mean_return
+          policy_id: base_stock
+          metric: rounded_mean_return
+          value: -1453
+          params: null
+          verification_status: table_only
+          notes: "Stored from Farrington Table 3; not re-derived by current repo tests."
+        - label: optimality_gap_pct
+          policy_id: base_stock
+          metric: optimality_gap_pct
+          value: 1.44
+          params: null
+          verification_status: table_only
+          notes: "Stored from Farrington Table 3; not re-derived by current repo tests."
+      source_numbers_not_promoted:
+        - "Farrington Table 3 reports value-iteration std 55 and base-stock std 58; these are stored in references.rs but not promoted as executable metrics."
+    repo_verification:
+      test: null
+      command: null
+      tolerance: null
+      reproduced_rows: []
+      table_only_rows:
+        - value_iteration
+        - base_stock
+        - optimality_gap_pct
+      artifact: src/problems/perishable_inventory/literature/README.md
+    repo_baseline_gate:
+      policy: "Repo-native practical trace gate for base_stock and bsp_low_ew."
+      script: scripts/perishable_inventory/run_practical_benchmark.py
+      eval: "grocery_like_daily_trace train/test split; deterministic trace search; see practical report."
+      latest_report: src/problems/perishable_inventory/practical/reports/README.md
+      notes: "The practical report is not a literature reproduction and should not be cited as Farrington Table 3 verification."
+    paper_link:
+      section: "paper/sections/perishable_inventory.tex::sec:perishable-results"
+      claim: "Medium perishable slice is used for practical/reporting context, while exact claims stay on the m=2/L=1 slice."
+      caveats:
+        - "Published Scenario A row is table-only."
+        - "Practical trace metrics are repo-native and use a different demand trace from the published Scenario A simulation."
+    unknowns:
+      - "No current repo verifier re-derives the m=4/L=2 published Table 3 returns."

@@ -1,0 +1,107 @@
+schema_version: 1
+problem: lost_sales_vanilla
+registry_owner: src/problems/lost_sales/vanilla
+source_of_truth:
+  - src/problems/lost_sales/vanilla/literature/references.rs
+  - src/problems/lost_sales/vanilla/reference_costs.rs
+  - src/problems/lost_sales/vanilla/heuristics/mod.rs
+entries:
+  - id: zipkin2008_table3a_l4_poisson5
+    problem: lost_sales_vanilla
+    instance_name: vanilla_l4_p4_poisson5
+    roles:
+      - primary_reference_instance
+      - verification_problem_instance
+      - published_heuristic_validation
+      - paper_benchmark_anchor
+    status:
+      verification: partial
+      comparator_type: mixed_published_optimum_and_heuristics
+      paper_status: usable_with_caveat
+      last_reviewed: "2026-06-05"
+    source:
+      citation: "Zipkin (2008), Old and New Methods for Lost-Sales Inventory Systems, Operations Research 56(5):1256-1263"
+      url: https://doi.org/10.1287/opre.1070.0471
+      table: "Table 3(a), Poisson, penalty p=4, lead-time column 4, p.1261"
+      numbers: "Optimal, Myopic, Myopic-2, Standard vector base-stock, and Better vector base-stock average costs."
+      source_notes:
+        - "Poisson mean lambda=5 is restated by Gijsbrechts et al. (2022), Management Science 68(3), p.11."
+        - "The carried capped_base_stock value equals Zipkin's Better vector base-stock row; Xin (2021) is corroborating but not the load-bearing source."
+    instance:
+      reference_path: src/problems/lost_sales/vanilla/literature/references.rs
+      reference_const: PRIMARY_REFERENCE_INSTANCE
+      verification_reference_const: VERIFICATION_PROBLEM_INSTANCE
+      parameters:
+        lead_time: 4
+        demand_distribution: poisson
+        demand_mean: 5.0
+        holding_cost: 1.0
+        shortage_cost: 4.0
+        procurement_cost: 0.0
+        fixed_order_cost: 0.0
+    published_numbers:
+      objective: steady_state_mean_cost
+      sign: lower_is_better
+      rows:
+        - label: Optimal
+          policy_id: optimal
+          metric: mean_cost
+          value: 4.73
+          params: null
+          verification_status: table_only
+          notes: "Published DP value; not produced by the current heuristic rollout verifier."
+        - label: Myopic
+          policy_id: myopic1
+          metric: mean_cost
+          value: 5.06
+          params: null
+          verification_status: strict_literature_verified
+          notes: "Re-derived by live env plus heuristic rollout."
+        - label: Myopic-2
+          policy_id: myopic2
+          metric: mean_cost
+          value: 4.82
+          params: null
+          verification_status: strict_literature_verified
+          notes: "Re-derived by live env plus heuristic rollout; current executable heuristic gate."
+        - label: Standard vector base-stock
+          policy_id: svbs
+          metric: mean_cost
+          value: 5.83
+          params: null
+          verification_status: strict_literature_verified
+          notes: "Re-derived by live env plus heuristic rollout."
+        - label: Better vector base-stock
+          policy_id: better_vector_base_stock
+          metric: mean_cost
+          value: 4.80
+          params: null
+          verification_status: table_only
+          notes: "Stored in reference_costs.rs as capped_base_stock; not re-derived by the current verifier."
+    repo_verification:
+      test: src/problems/lost_sales/vanilla/heuristics/mod.rs::tests::vanilla_heuristic_mean_costs_match_literature_numbers
+      command: cargo test vanilla_heuristic_mean_costs_match_literature_numbers
+      tolerance: "absolute mean-cost tolerance 0.12"
+      reproduced_rows:
+        - myopic1
+        - myopic2
+        - svbs
+      table_only_rows:
+        - optimal
+        - better_vector_base_stock
+      artifact: src/problems/lost_sales/vanilla/literature/README.md
+    repo_baseline_gate:
+      policy: "Myopic-2 is the executable published heuristic gate; optimal and Better vector base-stock are table anchors."
+      script: scripts/lost_sales/validate_reference_instance.py
+      eval: "CLI defaults: reference=vanilla_l4_p4_poisson5, horizon=100000, seed=123, num_seeds=3; unit test uses horizon=100000 and seed=123."
+      latest_report: docs/benchmarks/lost_sales_l4_refresh.md
+      notes: "Learned-policy refresh rows in the latest report are repo-native and should not be treated as published literature numbers."
+    paper_link:
+      section: "paper/learning_inventory_control_policies_es.tex::sec:lostsales-results-vanilla and appendix table tab:vanilla-lost-sales-validation"
+      claim: "Canonical vanilla lost-sales environment and Myopic/SVBS heuristic stack are anchored to Zipkin Table 3(a)."
+      caveats:
+        - "The optimal 4.73 row is table-only in the current repo verifier."
+        - "The Better vector base-stock / capped-base-stock 4.80 row is table-only in the current repo verifier."
+    unknowns:
+      - "No current repo command in this registry re-derives the published optimal 4.73 DP row."
+      - "No current repo command in this registry re-derives the Better vector base-stock 4.80 row."

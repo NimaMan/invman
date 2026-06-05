@@ -51,11 +51,10 @@ PROTOCOL (matches autoresearch_*.py / benchmark_learned_vs_heuristic.py)
   re-score each argmin on the held-out block, take the better allocation.
 - Learned: train via invman.es_mp.train + the population-rollout binding; score
   the trained xbest on the SAME held-out block under both allocations; headline =
-  better allocation. For symmetric_echelon_targets, ALSO warm-start CMA-ES at the
-  gate (W, R) and deploy the better of {trained xbest, warm-start anchor} (the
-  honest floor). For echelon_targets / direct_orders the warm-start helper only
-  supports control_dim==2, so there is NO gen-0 anchor and the deployed policy is
-  the trained xbest alone (reported as a caveat).
+  better allocation. For symmetric_echelon_targets and echelon_targets, warm-start
+  CMA-ES at the gate target vector and deploy the better of {trained xbest,
+  warm-start anchor} (the honest floor). direct_orders emits raw orders rather than
+  target positions, so it has no gate-reproducing anchor.
 - WIN RULE: learned beats gate only if (gate_cost - learned_cost) exceeds the
   paired-difference SEM. Otherwise tie/lose.
 
@@ -278,8 +277,12 @@ def _warm_start_flat_params(model, target_vector):
     return flat.tolist(), True
 
 
-def _training_namespace(reference, budget, leaf_type, mode, seed, sigma_init, out_root):
-    run_name = f"asym_{reference['name']}_{mode}_{leaf_type}_pop{budget['es_population']}"
+def _training_namespace(reference, budget, leaf_type, mode, seed, sigma_init, out_root,
+                        depth, split_type, temperature):
+    run_name = (
+        f"asym_{reference['name']}_{mode}_{leaf_type}"
+        f"_d{depth}_{split_type}_t{temperature:g}_pop{budget['es_population']}"
+    )
     return SimpleNamespace(
         training_method="cma",
         sigma_init=float(sigma_init),
@@ -312,9 +315,98 @@ def _eval_allocs(reference, model, flat, policy_action_mode, allocations, holdou
     return out
 
 
+def _resolve_budget(budget_name, training_episodes=None, es_population=None,
+                    train_seed_batch=None, holdout_paths=None):
+    budget = dict(BUDGETS[budget_name])
+    if training_episodes is not None:
+        budget["training_episodes"] = int(training_episodes)
+    if es_population is not None:
+        budget["es_population"] = int(es_population)
+    if train_seed_batch is not None:
+        budget["train_seed_batch"] = int(train_seed_batch)
+    if holdout_paths is not None:
+        budget["holdout_paths"] = int(holdout_paths)
+    return budget
+
+
+def _load_init_params(path, expected_size):
+    if path is None:
+        return None
+    params = np.asarray(np.load(path), dtype=np.float32).reshape(-1)
+    if params.size != int(expected_size):
+        raise ValueError(
+            f"init_params_npy has {params.size} params, expected {expected_size}"
+        )
+    return params.tolist()
+
+
+def _direct_order_gate_init_flat_params(model, reference, gate_best):
+    """Approximate the echelon-base-stock gate in direct_orders mode.
+
+    direct_orders emits raw quantities, so it cannot exactly represent the
+    target-position gate. For a linear leaf, initialize every leaf to the same
+    affine order-up-to approximation over the normalized rollout features:
+      q_w ~= softplus(W - W * total_echelon_position / scale)
+      q_i ~= softplus(R_i - W * retailer_position_i / scale)
+    The rollout scale is not exposed as a feature, so W is used as a local scale
+    proxy. This gives CMA-ES a near-gate raw-order starting point rather than a
+    random one; held-out evaluation decides whether it is useful.
+    """
+    if str(model.leaf_type) != "linear" or int(model.control_dim) != len(reference["retailer_lead_times"]) + 1:
+        return None
+    flat = np.asarray(model.get_model_flat_params(), dtype=np.float32).copy()
+    num_leaves = 2 ** int(model.depth)
+    action_dim = int(model.control_dim)
+    input_dim = int(model.input_dim)
+    bias_block = num_leaves * action_dim
+    weights_block = num_leaves * action_dim * input_dim
+    if weights_block + bias_block > flat.size:
+        return None
+
+    w_level = float(gate_best["warehouse_base_stock_level"])
+    r_levels = [float(v) for v in gate_best["retailer_base_stock_levels"]]
+    scale_proxy = max(w_level, 1.0)
+    weights_start = flat.size - weights_block - bias_block
+    bias_start = flat.size - bias_block
+    weights = np.zeros((num_leaves, action_dim, input_dim), dtype=np.float32)
+    bias = np.zeros((num_leaves, action_dim), dtype=np.float32)
+
+    total_position_idx = input_dim - 2
+    bias[:, 0] = w_level
+    weights[:, 0, total_position_idx] = -scale_proxy
+
+    warehouse_lead_time = int(reference["warehouse_lead_time"])
+    num_retailers = len(reference["retailer_lead_times"])
+    retailer_inventory_start = 1 + warehouse_lead_time
+    retailer_pipeline_start = retailer_inventory_start + num_retailers
+    pipeline_idx = retailer_pipeline_start
+    for retailer_idx, (target, lead_time) in enumerate(zip(r_levels, reference["retailer_lead_times"])):
+        action_idx = retailer_idx + 1
+        bias[:, action_idx] = target
+        weights[:, action_idx, retailer_inventory_start + retailer_idx] = -scale_proxy
+        for offset in range(int(lead_time)):
+            weights[:, action_idx, pipeline_idx + offset] = -scale_proxy
+        pipeline_idx += int(lead_time)
+
+    flat[weights_start:weights_start + weights_block] = weights.reshape(-1)
+    flat[bias_start:] = bias.reshape(-1)
+    return flat.tolist()
+
+
 def run_one(reference, budget_name, leaf_type, policy_action_mode, train_allocation,
-            seed, sigma_init, warm_start, workers, out_root, gate_search_paths=None):
-    budget = BUDGETS[budget_name]
+            seed, sigma_init, warm_start, workers, out_root, gate_search_paths=None,
+            init_params_npy=None,
+            direct_order_gate_init=False,
+            depth=2, temperature=0.10, split_type="axis_aligned",
+            training_episodes=None, es_population=None, train_seed_batch=None,
+            holdout_paths=None):
+    budget = _resolve_budget(
+        budget_name,
+        training_episodes=training_episodes,
+        es_population=es_population,
+        train_seed_batch=train_seed_batch,
+        holdout_paths=holdout_paths,
+    )
     K = len(reference["retailer_lead_times"])
     # Gate-search path count: the base-stock cost surface is smooth, so the grid
     # ARGMIN is stable with far fewer search paths; the honest held-out comparison
@@ -372,13 +464,14 @@ def run_one(reference, budget_name, leaf_type, policy_action_mode, train_allocat
 
     # ---- build + (optionally) warm-start the soft-tree ----
     model = common.build_soft_tree_model(
-        reference, depth=2, temperature=0.10, split_type="axis_aligned",
+        reference, depth=depth, temperature=temperature, split_type=split_type,
         leaf_type=leaf_type, policy_action_mode=policy_action_mode,
     )
     warm_flat = None
     warm_started = False
     train_args = _training_namespace(
-        reference, budget, leaf_type, policy_action_mode, seed, sigma_init, out_root
+        reference, budget, leaf_type, policy_action_mode, seed, sigma_init, out_root,
+        depth, split_type, temperature
     )
     # Warm-start reproduces the gate as a base-stock TARGET, so it is meaningful for
     # the target-based geometries (symmetric_echelon_targets: [W, mean(R)];
@@ -394,6 +487,14 @@ def run_one(reference, budget_name, leaf_type, policy_action_mode, train_allocat
         warm_flat, warm_started = _warm_start_flat_params(model, target_vector)
         if warm_started:
             train_args.cma_x0 = warm_flat
+    init_flat = _load_init_params(init_params_npy, len(model.get_model_flat_params()))
+    if init_flat is not None:
+        train_args.cma_x0 = init_flat
+    direct_init_flat = None
+    if direct_order_gate_init and policy_action_mode == "direct_orders":
+        direct_init_flat = _direct_order_gate_init_flat_params(model, reference, gate_best)
+        if direct_init_flat is not None:
+            train_args.cma_x0 = direct_init_flat
 
     # ---- train ----
     t_train = time.time()
@@ -425,20 +526,58 @@ def run_one(reference, budget_name, leaf_type, policy_action_mode, train_allocat
             reference, model, warm_flat, policy_action_mode, eval_allocs, holdout_paths
         )
         anchor_best_alloc = min(anchor_eval, key=lambda a: anchor_eval[a]["mean"])
+    init_eval = None
+    init_best_alloc = None
+    if init_flat is not None:
+        init_eval = _eval_allocs(
+            reference, model, init_flat, policy_action_mode, eval_allocs, holdout_paths
+        )
+        init_best_alloc = min(init_eval, key=lambda a: init_eval[a]["mean"])
+    direct_init_eval = None
+    direct_init_best_alloc = None
+    if direct_init_flat is not None:
+        direct_init_eval = _eval_allocs(
+            reference, model, direct_init_flat, policy_action_mode, eval_allocs, holdout_paths
+        )
+        direct_init_best_alloc = min(direct_init_eval, key=lambda a: direct_init_eval[a]["mean"])
 
     trained_cost = learned_eval[learned_best_alloc]["mean"]
-    if anchor_eval is not None and anchor_eval[anchor_best_alloc]["mean"] < trained_cost:
-        learned_cost = anchor_eval[anchor_best_alloc]["mean"]
-        deployed_alloc = anchor_best_alloc
-        deployed_costs = anchor_eval[anchor_best_alloc]["costs"]
-        deployed_policy = "warm_start_anchor"
-        deployed_sem = anchor_eval[anchor_best_alloc]["sem"]
-    else:
-        learned_cost = trained_cost
-        deployed_alloc = learned_best_alloc
-        deployed_costs = learned_eval[learned_best_alloc]["costs"]
-        deployed_policy = "trained_xbest"
-        deployed_sem = learned_eval[learned_best_alloc]["sem"]
+    candidates = [
+        (
+            trained_cost,
+            learned_best_alloc,
+            learned_eval[learned_best_alloc]["costs"],
+            "trained_xbest",
+            learned_eval[learned_best_alloc]["sem"],
+        )
+    ]
+    if anchor_eval is not None:
+        candidates.append((
+            anchor_eval[anchor_best_alloc]["mean"],
+            anchor_best_alloc,
+            anchor_eval[anchor_best_alloc]["costs"],
+            "warm_start_anchor",
+            anchor_eval[anchor_best_alloc]["sem"],
+        ))
+    if init_eval is not None:
+        candidates.append((
+            init_eval[init_best_alloc]["mean"],
+            init_best_alloc,
+            init_eval[init_best_alloc]["costs"],
+            "init_params_anchor",
+            init_eval[init_best_alloc]["sem"],
+        ))
+    if direct_init_eval is not None:
+        candidates.append((
+            direct_init_eval[direct_init_best_alloc]["mean"],
+            direct_init_best_alloc,
+            direct_init_eval[direct_init_best_alloc]["costs"],
+            "direct_order_gate_init_anchor",
+            direct_init_eval[direct_init_best_alloc]["sem"],
+        ))
+    learned_cost, deployed_alloc, deployed_costs, deployed_policy, deployed_sem = min(
+        candidates, key=lambda item: item[0]
+    )
 
     # ---- paired-difference SEM on the SAME held-out block (same allocation as the
     # deployed policy so the rationing rule is held fixed in the paired test) ----
@@ -473,9 +612,14 @@ def run_one(reference, budget_name, leaf_type, policy_action_mode, train_allocat
         "symmetric": common.is_symmetric_retailer_case(reference),
         "budget": budget_name,
         "leaf_type": leaf_type,
+        "depth": int(depth),
+        "temperature": float(temperature),
+        "split_type": split_type,
         "policy_action_mode": policy_action_mode,
         "train_allocation": train_allocation,
         "warm_started": warm_started,
+        "init_params_npy": None if init_params_npy is None else str(init_params_npy),
+        "direct_order_gate_init": bool(direct_init_flat is not None),
         "deployed_policy": deployed_policy,
         "deployed_allocation": deployed_alloc,
         "seed": seed,
@@ -483,6 +627,9 @@ def run_one(reference, budget_name, leaf_type, policy_action_mode, train_allocat
         "gate_search_paths": n_gate_search,
         "search_paths": budget["search_paths"],
         "holdout_paths": budget["holdout_paths"],
+        "training_episodes": budget["training_episodes"],
+        "es_population": budget["es_population"],
+        "train_seed_batch": budget["train_seed_batch"],
         "gate_best_allocation": gate_best_alloc,
         "gate_warehouse_level": gate_best["warehouse_base_stock_level"],
         "gate_retailer_levels": gate_best["retailer_base_stock_levels"],
@@ -497,6 +644,12 @@ def run_one(reference, budget_name, leaf_type, policy_action_mode, train_allocat
         "trained_cost": trained_cost,
         "trained_best_allocation": learned_best_alloc,
         "anchor_cost": (None if anchor_eval is None else anchor_eval[anchor_best_alloc]["mean"]),
+        "init_cost": (None if init_eval is None else init_eval[init_best_alloc]["mean"]),
+        "init_best_allocation": init_best_alloc,
+        "direct_order_gate_init_cost": (
+            None if direct_init_eval is None else direct_init_eval[direct_init_best_alloc]["mean"]
+        ),
+        "direct_order_gate_init_best_allocation": direct_init_best_alloc,
         "learned_cost": learned_cost,
         "learned_sem": deployed_sem,
         "learned_by_allocation": {a: {"mean": v["mean"], "sem": v["sem"]} for a, v in learned_eval.items()},
@@ -519,6 +672,9 @@ def parse_args():
     p.add_argument("--reference", required=True)
     p.add_argument("--budget", choices=sorted(BUDGETS), default="full")
     p.add_argument("--leaf_type", choices=["constant", "linear"], default="linear")
+    p.add_argument("--depth", type=int, default=2)
+    p.add_argument("--temperature", type=float, default=0.10)
+    p.add_argument("--split_type", choices=["oblique", "axis_aligned"], default="axis_aligned")
     p.add_argument("--policy_action_mode",
                    choices=["symmetric_echelon_targets", "echelon_targets", "direct_orders"],
                    default=None,
@@ -530,11 +686,23 @@ def parse_args():
     p.add_argument("--warm_start_at_best_base_stock", action="store_true")
     p.add_argument("--seed", type=int, default=123)
     p.add_argument("--sigma_init", type=float, default=1.5)
+    p.add_argument("--init_params_npy", default=None,
+                   help="Optional model_params.npy to use as CMA-ES x0 for restart/refinement runs.")
+    p.add_argument("--direct_order_gate_init", action="store_true",
+                   help="For direct_orders + linear leaf, initialize x0 as an approximate raw-order gate.")
     p.add_argument("--workers", type=int, default=4)
     p.add_argument("--gate_search_paths", type=int, default=None,
                    help="Override the gate grid-search path count (held-out re-score "
                         "stays at the full budget). Use a smaller value for the large "
                         "K=10 instances whose 256-path search grid is multi-hour.")
+    p.add_argument("--training_episodes", type=int, default=None,
+                   help="Override the budget's CMA-ES generation count for bounded screens.")
+    p.add_argument("--es_population", type=int, default=None,
+                   help="Override the budget's CMA-ES population for bounded screens.")
+    p.add_argument("--train_seed_batch", type=int, default=None,
+                   help="Override the budget's per-candidate training seed batch.")
+    p.add_argument("--holdout_paths", type=int, default=None,
+                   help="Override the budget's held-out path count for bounded screens.")
     p.add_argument("--output_json", default=None)
     return p.parse_args()
 
@@ -555,10 +723,18 @@ def main():
         reference, parsed.budget, parsed.leaf_type, mode, parsed.train_allocation,
         parsed.seed, parsed.sigma_init, parsed.warm_start_at_best_base_stock,
         parsed.workers, out_root, gate_search_paths=parsed.gate_search_paths,
+        init_params_npy=parsed.init_params_npy,
+        direct_order_gate_init=parsed.direct_order_gate_init,
+        depth=parsed.depth, temperature=parsed.temperature, split_type=parsed.split_type,
+        training_episodes=parsed.training_episodes,
+        es_population=parsed.es_population,
+        train_seed_batch=parsed.train_seed_batch,
+        holdout_paths=parsed.holdout_paths,
     )
 
     line = (
-        f"{result['instance']} [{mode}/{parsed.leaf_type}/{parsed.budget}]: "
+        f"{result['instance']} [{mode}/{parsed.leaf_type}/d{parsed.depth}/"
+        f"{parsed.split_type}/t{parsed.temperature:g}/{parsed.budget}]: "
         f"learned {result['learned_cost']:.2f} (+/-{result['learned_sem']:.2f}, {result['deployed_allocation']}) "
         f"vs gate {result['gate_cost']:.2f} (+/-{result['gate_sem']:.2f}, {result['gate_best_allocation']}) "
         f"=> {result['gap_pct_vs_gate']:+.2f}% | paired {result['paired_diff_mean']:+.2f}+/-{result['paired_diff_sem']:.2f} "
@@ -568,7 +744,10 @@ def main():
     print("RESULT_LINE: " + line, flush=True)
 
     out_path = parsed.output_json or str(
-        out_root / f"{result['instance']}_{mode}_{parsed.leaf_type}_{parsed.budget}.json"
+        out_root / (
+            f"{result['instance']}_{mode}_{parsed.leaf_type}_d{parsed.depth}"
+            f"_{parsed.split_type}_t{parsed.temperature:g}_{parsed.budget}.json"
+        )
     )
     # numpy arrays are not JSON-serializable; the result dict already holds floats only.
     Path(out_path).write_text(json.dumps(result, indent=2, default=float), encoding="utf-8")

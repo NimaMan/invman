@@ -1,0 +1,159 @@
+schema_version: 1
+problem: lost_sales_fixed_order_cost
+registry_owner: src/problems/lost_sales/fixed_order_cost
+source_of_truth:
+  - src/problems/lost_sales/fixed_order_cost/literature/references.rs
+  - src/problems/lost_sales/fixed_order_cost/verification/tests.rs
+  - docs/benchmarks/fixed_cost_l4_refresh.md
+entries:
+  - id: bijvank2015_table1_l2_p14_k5
+    problem: lost_sales_fixed_order_cost
+    instance_name: bijvank2015_table1_l2_p14_k5
+    roles:
+      - primary_literature_validation
+      - verification_problem_instance
+      - published_optimum
+      - published_heuristic_validation
+    status:
+      verification: strict_literature_verified
+      comparator_type: mixed_published_optimum_and_heuristics
+      paper_status: ready
+      last_reviewed: "2026-06-05"
+    source:
+      citation: "Bijvank, Bhulai, and Huh (2015), Parametric replenishment policies for inventory systems with lost sales and fixed order cost, EJOR 241(2):381-390"
+      url: https://www.math.vu.nl/~sbhulai/publications/ejor2015b.pdf
+      table: "Table 1 validation instance"
+      numbers: "Optimal average cost and best (s,S), (s,nQ), and modified (s,S,q) rows."
+      source_notes:
+        - "The reference row is R=1, L=2, h=1, p=14, K=5 with Poisson demand mean 5."
+    instance:
+      reference_path: src/problems/lost_sales/fixed_order_cost/literature/references.rs
+      reference_const: BIJVANK_2015_TABLE1_REFERENCE
+      verification_reference_const: BIJVANK_2015_TABLE1_REFERENCE
+      parameters:
+        review_periods: 1
+        lead_time: 2
+        demand_distribution: poisson
+        demand_mean_per_review_period: 5.0
+        holding_cost: 1.0
+        shortage_cost: 14.0
+        fixed_order_cost: 5.0
+    published_numbers:
+      objective: long_run_average_cost
+      sign: lower_is_better
+      rows:
+        - label: Optimal DP
+          policy_id: optimal_dp
+          metric: mean_cost
+          value: 11.46
+          params: null
+          verification_status: strict_literature_verified
+          notes: "Exact average-cost value iteration reproduces this row at inventory-position cap 24."
+        - label: "(s,S)"
+          policy_id: s_s
+          metric: mean_cost
+          value: 11.62
+          params:
+            s: 17
+            S: 23
+          verification_status: strict_literature_verified
+          notes: "Exact policy evaluator reproduces the published parameters and cost."
+        - label: "(s,nQ)"
+          policy_id: s_nq
+          metric: mean_cost
+          value: 11.56
+          params:
+            s: 17
+            q: 7
+          verification_status: strict_literature_verified
+          notes: "Exact policy evaluator reproduces the published parameters and cost."
+        - label: "modified (s,S,q)"
+          policy_id: modified_s_s_q
+          metric: mean_cost
+          value: 11.50
+          params:
+            s: 17
+            S: 23
+            q: 7
+          verification_status: strict_literature_verified
+          notes: "Exact policy evaluator reproduces the published parameters and cost."
+    repo_verification:
+      test: src/problems/lost_sales/fixed_order_cost/verification/tests.rs::literature_row_is_matched_tightly_once_cap_is_large_enough
+      command: cargo test literature_row_is_matched_tightly_once_cap_is_large_enough
+      tolerance: "absolute mean-cost tolerance < 0.01 at inventory-position cap 24"
+      reproduced_rows:
+        - optimal_dp
+        - s_s
+        - s_nq
+        - modified_s_s_q
+      table_only_rows: []
+      artifact: src/problems/lost_sales/fixed_order_cost/verification/README.md
+    repo_baseline_gate:
+      policy: "Exact DP optimum and exact evaluation of the three published parametric policies."
+      script: scripts/lost_sales_fixed_order_cost/validate_known_optimum.py
+      eval: "reference_instance=bijvank2015_table1_l2_p14_k5, position_upper_bound=24"
+      latest_report: src/problems/lost_sales/fixed_order_cost/verification/README.md
+      notes: "This entry gates literature fidelity, not learned-policy performance on the larger grid."
+    paper_link:
+      section: "paper/learning_inventory_control_policies_es.tex::sec:lostsales-results-fixed-cost and appendix table tab:fixed-cost-validation"
+      claim: "Fixed-order-cost simulator, exact solver, and parametric heuristic evaluators reproduce Bijvank et al. Table 1."
+      caveats:
+        - "The larger fixed-cost grids are not covered by this strict literature row."
+    unknowns: []
+
+  - id: fixed_cost_l4_p4_k5_poisson5_repo_native_gate
+    problem: lost_sales_fixed_order_cost
+    instance_name: lit_pois_mu5_l4_p4_k5
+    roles:
+      - repo_native_benchmark
+      - paper_benchmark_anchor
+    status:
+      verification: repo_native
+      comparator_type: repo_native_heuristics
+      paper_status: usable_with_caveat
+      last_reviewed: "2026-06-05"
+    source:
+      citation: "Repo-native canonical fixed-order-cost lost-sales benchmark; family inspired by Bijvank et al. (2015)."
+      url: null
+      table: null
+      numbers: "Long-run heuristic and learned-policy anchors from the checked-in refresh note."
+      source_notes:
+        - "The literature does not publish a clean exact-cost table for this specific L=4, p=4, K=5 instance."
+    instance:
+      reference_path: src/problems/lost_sales/fixed_order_cost/experiments/mod.rs
+      reference_const: null
+      verification_reference_const: null
+      parameters:
+        lead_time: 4
+        demand_distribution: poisson
+        demand_mean_per_review_period: 5.0
+        holding_cost: 1.0
+        shortage_cost: 4.0
+        fixed_order_cost: 5.0
+    published_numbers:
+      objective: long_run_average_cost
+      sign: lower_is_better
+      rows: []
+      source_numbers_not_promoted:
+        - "No precise published per-instance value is claimed for this canonical repo-native gate."
+    repo_verification:
+      test: null
+      command: null
+      tolerance: null
+      reproduced_rows: []
+      table_only_rows: []
+      artifact: docs/benchmarks/fixed_cost_l4_refresh.md
+    repo_baseline_gate:
+      policy: "Best current heuristic anchor is modified (s,S,q) with params s=22, S=30, q=8 and mean cost 9.17436."
+      script: scripts/lost_sales_fixed_order_cost/benchmark_canonical_suite.py
+      eval: "docs/benchmarks/fixed_cost_l4_refresh.md reports evaluation horizon 1000000, eval_seeds=10, warm-up 20 percent."
+      latest_report: docs/benchmarks/fixed_cost_l4_refresh.md
+      notes: "Learned-policy rows in the report are repo-native comparator rows and should not be promoted as literature values."
+    paper_link:
+      section: "paper/generated/fixed_cost_canonical_table.tex and paper/learning_inventory_control_policies_es.tex::sec:lostsales-results-fixed-cost"
+      claim: "Canonical fixed-cost policy-design comparison on L=4, p=4, K=5, Poisson mean 5."
+      caveats:
+        - "Repo-native gate only; no published exact comparator is encoded for this specific instance."
+        - "The nn_categorical_quantity row in docs/benchmarks/fixed_cost_l4_refresh.md is explicitly provisional."
+    unknowns:
+      - "No current strict literature verifier for this specific L=4, p=4, K=5 instance."
