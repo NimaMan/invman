@@ -277,11 +277,14 @@ def _warm_start_flat_params(model, target_vector):
     return flat.tolist(), True
 
 
-def _training_namespace(reference, budget, leaf_type, mode, seed, sigma_init, out_root,
-                        depth, split_type, temperature):
+def _training_namespace(reference, budget, leaf_type, mode, train_allocation, seed,
+                        sigma_init, out_root, depth, split_type, temperature):
+    sigma_tag = f"{float(sigma_init):g}".replace(".", "p")
     run_name = (
         f"asym_{reference['name']}_{mode}_{leaf_type}"
         f"_d{depth}_{split_type}_t{temperature:g}_pop{budget['es_population']}"
+        f"_gen{budget['training_episodes']}_batch{budget['train_seed_batch']}"
+        f"_{train_allocation}_sig{sigma_tag}_seed{seed}"
     )
     return SimpleNamespace(
         training_method="cma",
@@ -470,8 +473,8 @@ def run_one(reference, budget_name, leaf_type, policy_action_mode, train_allocat
     warm_flat = None
     warm_started = False
     train_args = _training_namespace(
-        reference, budget, leaf_type, policy_action_mode, seed, sigma_init, out_root,
-        depth, split_type, temperature
+        reference, budget, leaf_type, policy_action_mode, train_allocation, seed,
+        sigma_init, out_root, depth, split_type, temperature
     )
     # Warm-start reproduces the gate as a base-stock TARGET, so it is meaningful for
     # the target-based geometries (symmetric_echelon_targets: [W, mean(R)];
