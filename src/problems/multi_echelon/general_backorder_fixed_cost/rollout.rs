@@ -2,7 +2,7 @@ use pyo3::exceptions::PyValueError;
 use pyo3::PyResult;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
-use rand_distr::{Distribution, Poisson};
+use rand_distr::Poisson;
 use rayon::prelude::*;
 
 use crate::core::policies::soft_tree::{
@@ -15,8 +15,9 @@ use crate::problems::multi_echelon::general_backorder_fixed_cost::env::{
     GeneralBackorderFixedCostState,
 };
 use crate::problems::multi_echelon::general_backorder_fixed_cost::heuristics::{
-    node_base_stock_orders, BenchmarkOrderRoutingMode,
+    node_base_stock_orders, sample_period_demands, BenchmarkOrderRoutingMode,
 };
+use crate::problems::multi_echelon::general_backorder_fixed_cost::references::DemandMode;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PolicyFeatureMode {
@@ -38,6 +39,9 @@ pub struct GeneralBackorderFixedCostRolloutConfig {
     pub warm_up_periods: usize,
     pub network: GeneralBackorderFixedCostNetwork,
     pub retailer_demand_mean: f64,
+    pub demand_mode: DemandMode,
+    pub demand_alpha_min: f64,
+    pub demand_alpha_max: f64,
     pub warehouse_holding_costs: Vec<f64>,
     pub retailer_holding_costs: Vec<f64>,
     pub warehouse_backorder_costs: Vec<f64>,
@@ -226,9 +230,14 @@ pub fn rollout(
     })?;
     let mut total_cost = 0.0;
     for period_idx in 0..config.periods {
-        let realized_demands = (0..config.network.num_retailers)
-            .map(|_| demand_distribution.sample(&mut rng) as usize)
-            .collect::<Vec<_>>();
+        let realized_demands = sample_period_demands(
+            &mut rng,
+            config.network.num_retailers,
+            config.demand_mode,
+            &demand_distribution,
+            config.demand_alpha_min,
+            config.demand_alpha_max,
+        )?;
         let decision = advance_to_decision_state(
             &config.network,
             &state,

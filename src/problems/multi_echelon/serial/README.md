@@ -68,6 +68,31 @@ Status: **PARTIAL** — be precise about which block is verified against what:
 This is the pre-training correctness gate: before any learned policy is trained on `env.rs`, the
 env is shown to reproduce the literature optimum under the known-optimal policy.
 
+### Diversifying instances (2026-06-05): more stages, Normal + Poisson
+
+To broaden the learned-policy benchmark beyond the single 3-stage Example 6.1, three additional
+serial instances from Snyder & Shen / `stockpyl` are carried (all downstream `L_1 = 1`, the faithful
+regime). They are **reference-implementation-verified** (matched to `stockpyl.ssm_serial`), NOT
+separately published-paper anchors, so the comparator is the in-repo exact solver value (still a
+proven Clark-Scarf optimum -> match-only). Each is asserted in `verification.rs` (exact solver value
++ env-sim reproduction under the exact echelon levels):
+
+| instance        | demand        | install. holding (d->u) | echelon holding (d->u) | L           | p  | exact C\*  |
+|-----------------|---------------|-------------------------|------------------------|-------------|----|------------|
+| 2-stage Normal  | Normal(100,15)| [2, 1]                  | [1, 1]                 | [1,1]       | 15 | 166.2705   |
+| 5-stage Normal  | Normal(32,5.657) | [3.5,2.5,1.5,1.0,0.5] | [1,1,0.5,0.5,0.5]      | [1,1,1,1,1] | 12 | 225.8672   |
+| 5-stage Poisson | Poisson(32)   | [3.5,2.5,1.5,1.0,0.5]   | [1,1,0.5,0.5,0.5]      | [1,1,1,1,1] | 12 | 226.8458   |
+
+Convention note: installation (local) holding is highest at the most-downstream stage (value added
+downstream), so the env `holding_cost` (downstream->upstream) is decreasing; the echelon holding
+costs the solver consumes are the installation-cost differences and are positive. The 2-stage matches
+`stockpyl problem_6_1`; the 5-stage Normal/Poisson are `stockpyl problem_6_2a`/`problem_6_2b` scaled
+x0.5 and time-rescaled to unit lead time (mean 64->32, penalty 24->12, holding x0.5). The exact
+Poisson optimum is exposed to Python via `multi_echelon_serial_exact_poisson_solution` (alongside the
+Normal `multi_echelon_serial_exact_normal_solution`), and the soft-tree rollout now accepts
+`demand_kind="normal"|"poisson"` (`rollout.rs`, `bindings.rs`) so the Poisson instance trains under
+the same protocol with discrete-count demand.
+
 ### Independent re-verification (2026-05-31)
 
 The published numbers AND the `stockpyl.ssm_serial` reference values that `exact.rs` claims to

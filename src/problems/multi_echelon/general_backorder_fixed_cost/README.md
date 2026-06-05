@@ -157,3 +157,67 @@ WINDOW CAVEAT: the repo evaluates the benchmark over periods 50..100 (`benchmark
 `benchmark_warm_up_periods=50`, a 50-warm-up + 50-eval window). The open thesis instead uses a
 50-period planning horizon with a 25-period warm-up (Sec. 5.6 / 6.6). The 50+50 window is the repo's
 own protocol choice, not a value quoted from the paper; the set-1 reproduction is robust to it.
+
+## General-network DIVERGENT instance (Kunnumkal & Topaloglu) — VERIFIED
+
+A second verified row for this family, added 2026-06-05. Reference name
+`kunnumkal_topaloglu_divergent`. This is the Kunnumkal & Topaloglu (2011) divergent base case as
+reported in the open Geevers (2020) thesis (essay.utwente.nl/85432, Ch. 5).
+
+DISAMBIGUATION: this is **not** the 4-warehouse / 5-retailer CardBoard network of set 1/2/3, and it
+is **distinct** from the paper's Section-6 Gijsbrechts/Van-Roy "divergent special-delivery" model.
+Call it the **general-network divergent (Kunnumkal–Topaloglu)** instance.
+
+- topology: 1 supplier → 1 warehouse → 3 identical retailers (3 unit-weight edges, so routing is
+  degenerate — the whole order goes down the single edge);
+- costs: the SAME K&T-2011 costs as set 1 (warehouse holding `0.6`, retailer holding `1.0`, retailer
+  backorder `19.0`, no warehouse backorder);
+- lead time: constant `1` everywhere;
+- demand: Poisson(α) with **α ~ Uniform[5,15] resampled every period per retailer** (nonstationary
+  mean); warehouse demand = sum of retailer demands;
+- protocol: horizon 50, 25-period warm-up applied to a 75-period run (`benchmark_periods=75`,
+  `benchmark_warm_up_periods=25`), 1000 replications;
+- published constant node-base-stock benchmark `4,059` at levels `[warehouse 124, retailers 30/30/30]`
+  (confirmed open); published DRL `3,724` (cross-protocol context, not a head-to-head beat).
+
+### Env change supporting this instance (the `demand_mode` flag)
+
+The simulator/rollout previously used a single fixed Poisson mean. A `DemandMode` selector now lives
+on the reference instance (`demand_mode`, `demand_alpha_min`, `demand_alpha_max`):
+
+- `fixed_poisson` — every retailer draws `Poisson(retailer_demand_mean)` every period. This is the
+  byte-for-byte original path; **sets 1/2/3 keep it** and set 1 still reproduces ~10,355.
+- `resampled_uniform_poisson` — every period and retailer first draws a fresh
+  `α ~ Uniform[demand_alpha_min, demand_alpha_max]`, then draws `Poisson(α)` (nonstationary mean).
+  Only the divergent instance uses it.
+
+The single branch point is `heuristics::sample_period_demands`, used by both the benchmark simulator
+(`simulate_node_base_stock_policy*`) and the policy `rollout`.
+
+### Verification (executing)
+
+`tests::verification::divergent_kt_benchmark_reproduces_published_cost` re-runs the env's constant
+node-base-stock gate at `[124,30,30,30]` under `resampled_uniform_poisson` and the thesis protocol
+(1000 reps) and asserts the mean is within 5% of the published `4,059`.
+
+| instance                       | published | repo (mean) | gap%   | retailer fill | status                      |
+|--------------------------------|----------:|------------:|-------:|--------------:|-----------------------------|
+| kunnumkal_topaloglu_divergent  | 4059      | ~3,931      | -3.0%  | ~98.6%        | reproduced within tolerance |
+
+(3 seeds × 1000 reps; same direction/magnitude as set 1's -1.1% simulator residual.) This is why
+`literature_verified = true` for this instance.
+
+### Learned-policy result (full budget, 2000 held-out CRN seeds)
+
+`scripts/general_backorder_fixed_cost/autoresearch_general_backorder_fixed_cost.py
+--reference kunnumkal_topaloglu_divergent --budget full` (node-base-stock-targets soft tree,
+warm-started at `[124,30,30,30]`, depth-2 oblique constant leaf):
+
+| seed | warm-start gen0 | learned held-out | vs repo heuristic (3,930) | vs published 4,059 | vs published DRL 3,724 | verdict |
+|-----:|----------------:|-----------------:|--------------------------:|-------------------:|-----------------------:|---------|
+| 123  | 3,913.5         | **2,469.1 ± 7.6**| -1,461 (-37.2%)           | -1,590             | -1,255                 | beats   |
+| 777  | 3,913.5         | **2,477.9 ± 8.0**| -1,453 (-37.0%)           | -1,581             | -1,246                 | beats   |
+
+Both seeds beat the reproduced constant node-base-stock benchmark by ~37% (≫ 2× SEM, genuine
+out-of-sample) and land below the published DRL 3,724. The DRL number is cross-protocol context, not
+a like-for-like beat; the gate is the repo's own reproduced constant base-stock benchmark.

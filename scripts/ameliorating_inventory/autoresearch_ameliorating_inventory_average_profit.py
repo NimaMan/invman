@@ -102,6 +102,36 @@ INSTANCES = {
         correlation=[0.5, 0.5],
         decay_cov_value=0.8,
     ),
+    # spirits_0002: companion variant identical to spirits_0001 except blending is
+    # ENABLED (allowBlending=true). The env-only fields are byte-identical to
+    # spirits_0001's companion config.json (verified). Published bound is the same
+    # value as spirits_0001 (1991.9344...): with this instance's optimal LP issuance
+    # already drawing only from age classes >= target, enabling blending does not
+    # tighten the perfect-information bound. The win is on the env, not the bound.
+    "spirits_0002": dict(
+        dataset_file="spirits_0002_perfect_information_lp.txt",
+        published_bound=1991.9344293376805,
+        demand_means=[10.0, 7.0, 5.0],
+        demand_covs=[0.25, 0.25, 0.25],
+        sales_means=[250.0, 350.0, 500.0],
+        sales_covs=[0.1, 0.1, 0.1],
+        correlation=[0.5, 0.5, 0.5],
+        decay_cov_value=0.8,
+    ),
+    # spirits_1002: processing-capacity-constrained variant (blending ON,
+    # maxInventory=30 vs 50). Env-only fields identical to spirits_0001's config.
+    # Published bound 1663.8888... is tighter than spirits_0002 because the lower
+    # per-age capacity binds the steady-state inventory.
+    "spirits_1002": dict(
+        dataset_file="spirits_1002_perfect_information_lp.txt",
+        published_bound=1663.8888177082856,
+        demand_means=[10.0, 7.0, 5.0],
+        demand_covs=[0.25, 0.25, 0.25],
+        sales_means=[250.0, 350.0, 500.0],
+        sales_covs=[0.1, 0.1, 0.1],
+        correlation=[0.5, 0.5, 0.5],
+        decay_cov_value=0.8,
+    ),
 }
 
 BUDGETS = {

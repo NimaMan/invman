@@ -58,19 +58,85 @@ import invman_rust
 from invman.cmaes import CMAES
 
 
-# Snyder & Shen Example 6.1, env-config convention (downstream -> upstream):
-#   installation (local) holding [7,4,2]; echelon holding [3,2,2]; lead [1,1,2];
-#   penalty 37.12; Normal(5,1). Published optimum 47.65.
+# All instances use the env-config convention (downstream -> upstream): node index 0
+# is the most downstream (customer-facing) stage. `installation_holding` is the local
+# (installation) holding cost per stage (what the env charges); `echelon_holding` is the
+# Clark-Scarf echelon holding cost the exact solver consumes; `demand_kind` selects the
+# exact solver + the env-sim demand sampler (continuous Normal vs discrete Poisson).
+#
+# Snyder & Shen Example 6.1 (the originally carried PUBLISHED anchor): 3-stage,
+# installation holding [7,4,2], echelon holding [3,2,2], lead [1,1,2], penalty 37.12,
+# Normal(5,1). Published optimum 47.65.
 EX6_1 = dict(
     name="snyder_shen_example_6_1",
+    demand_kind="normal",
     installation_holding=[7.0, 4.0, 2.0],   # downstream -> upstream
     echelon_holding=[3.0, 2.0, 2.0],        # downstream -> upstream
     lead_time=[1, 1, 2],                    # downstream -> upstream
     penalty=37.12,
     demand_mean=5.0,
     demand_std=1.0,
-    published_optimum=47.65,
+    published_optimum=47.65,                # PUBLISHED textbook value
+    level_ceiling=60.0,                     # >> optimum ~22.7
 )
+
+# Diversifying instances from Snyder & Shen / stockpyl (more stages, Normal + Poisson).
+# These are NOT separately published optima; the comparator is the exact Clark-Scarf
+# solver value (stockpyl-reference-verified), so `published_optimum=None` and the gap is
+# reported vs the exact solver optimum (still a PROVEN optimum -> match-only).
+
+# 2-stage, Normal(100,15): installation holding [2,1] (d->u), echelon holding [1,1],
+# lead [1,1], penalty 15. (stockpyl problem_6_1.)
+TWO_STAGE_NORMAL = dict(
+    name="serial_2stage_normal",
+    demand_kind="normal",
+    installation_holding=[2.0, 1.0],
+    echelon_holding=[1.0, 1.0],
+    lead_time=[1, 1],
+    penalty=15.0,
+    demand_mean=100.0,
+    demand_std=15.0,
+    published_optimum=None,
+    level_ceiling=320.0,                    # >> upstream echelon level ~228
+)
+
+# 5-stage, Normal(32, 5.657): installation (local) holding is highest at the most
+# downstream stage (value added downstream), d->u = [3.5,2.5,1.5,1.0,0.5] (equivalently
+# u->d [0.5,1,1.5,2.5,3.5]); echelon holding [1,1,0.5,0.5,0.5]; lead [1,1,1,1,1];
+# penalty 12. (stockpyl problem_6_2a, scaled x0.5 / time-rescaled to L=1.)
+FIVE_STAGE_NORMAL = dict(
+    name="serial_5stage_normal",
+    demand_kind="normal",
+    installation_holding=[3.5, 2.5, 1.5, 1.0, 0.5],
+    echelon_holding=[1.0, 1.0, 0.5, 0.5, 0.5],
+    lead_time=[1, 1, 1, 1, 1],
+    penalty=12.0,
+    demand_mean=32.0,
+    demand_std=5.657,
+    published_optimum=None,
+    level_ceiling=260.0,                    # >> upstream echelon level ~174
+)
+
+# 5-stage, Poisson(32): same holding/leads/penalty as the 5-stage Normal.
+# (stockpyl problem_6_2b, scaled.) demand_std is the Poisson sqrt(mean) for the
+# warm-fill / solver grid; the env-sim samples discrete Poisson counts.
+FIVE_STAGE_POISSON = dict(
+    name="serial_5stage_poisson",
+    demand_kind="poisson",
+    installation_holding=[3.5, 2.5, 1.5, 1.0, 0.5],
+    echelon_holding=[1.0, 1.0, 0.5, 0.5, 0.5],
+    lead_time=[1, 1, 1, 1, 1],
+    penalty=12.0,
+    demand_mean=32.0,
+    demand_std=float(np.sqrt(32.0)),
+    published_optimum=None,
+    level_ceiling=260.0,                    # >> upstream echelon level ~174
+)
+
+INSTANCES = {
+    inst["name"]: inst
+    for inst in (EX6_1, TWO_STAGE_NORMAL, FIVE_STAGE_NORMAL, FIVE_STAGE_POISSON)
+}
 
 BUDGETS = {
     # popsize, generations, eval_periods, eval_seeds
@@ -95,6 +161,18 @@ def _git_short_commit() -> str:
 
 
 def exact_solution(inst: dict) -> dict:
+    """Exact Clark-Scarf optimum (cost + echelon levels). Dispatch on demand family:
+    Normal uses the continuous-grid solver, Poisson the discrete (integer-grid) solver.
+    Both are the in-repo solver verified against the stockpyl reference implementation."""
+    if inst["demand_kind"] == "poisson":
+        return dict(
+            invman_rust.multi_echelon_serial_exact_poisson_solution(
+                echelon_holding=inst["echelon_holding"],
+                lead_time=inst["lead_time"],
+                penalty=inst["penalty"],
+                demand_mean=inst["demand_mean"],
+            )
+        )
     return dict(
         invman_rust.multi_echelon_serial_exact_normal_solution(
             echelon_holding=inst["echelon_holding"],
@@ -138,6 +216,7 @@ def rollout_kwargs(inst, levels, level_min, level_max, depth, temperature,
         holding_cost=inst["installation_holding"],
         lead_time=inst["lead_time"],
         penalty=float(inst["penalty"]),
+        demand_kind=str(inst["demand_kind"]),
         demand_mean=float(inst["demand_mean"]),
         demand_std=float(inst["demand_std"]),
         warm_start_levels=list(map(float, levels)),
@@ -195,6 +274,8 @@ def train(kw_train, x0, popsize, generations, sigma_init, seed):
 def parse_args():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--run_tag", default="multi_echelon_serial_autoresearch")
+    p.add_argument("--instance", choices=sorted(INSTANCES), default="snyder_shen_example_6_1",
+                   help="which serial instance to run (same design/protocol for all)")
     p.add_argument("--budget", choices=sorted(BUDGETS), default="screening")
     p.add_argument("--description", default="warm-started Clark-Scarf direct-level soft tree")
     p.add_argument("--depth", type=int, default=1)
@@ -204,8 +285,8 @@ def parse_args():
                    help="constant leaves: each decodes a fixed echelon level (warm-start encoding)")
     p.add_argument("--sigma_init", type=float, default=0.30,
                    help="small sigma confines the search to a Clark-Scarf neighbourhood")
-    p.add_argument("--level_ceiling", type=float, default=60.0,
-                   help="physical echelon-level cap (>> the optimum ~22.7)")
+    p.add_argument("--level_ceiling", type=float, default=None,
+                   help="physical echelon-level cap; default is the per-instance ceiling")
     p.add_argument("--no_warm_start", action="store_true")
     p.add_argument("--seed", type=int, default=20250604)
     p.add_argument("--popsize", type=int, default=None)
@@ -222,17 +303,21 @@ def main():
     generations = parsed.generations or budget["generations"]
     n_eval = parsed.eval_seeds or budget["eval_seeds"]
 
-    inst = EX6_1
+    inst = INSTANCES[parsed.instance]
     n = len(inst["lead_time"])
     input_dim = 2 * n + 1
+    ceiling = float(parsed.level_ceiling) if parsed.level_ceiling is not None else float(inst["level_ceiling"])
     level_min = [0.0] * n
-    level_max = [float(parsed.level_ceiling)] * n
+    level_max = [ceiling] * n
 
-    # --- baseline: the Clark-Scarf optimum (exact solver + published anchor) ---
+    # --- baseline: the Clark-Scarf optimum (exact solver; published anchor if any) ---
     sol = exact_solution(inst)
     exact_levels = list(map(float, sol["echelon_base_stock_levels"]))  # d -> u
     exact_cost = float(sol["optimal_cost"])
-    published = float(inst["published_optimum"])
+    # The comparator is the PROVEN optimum. When a separately published value exists
+    # (Example 6.1) we report against it; otherwise the exact solver value IS the proven
+    # optimum and the gap is reported against it (still match-only).
+    published = float(inst["published_optimum"]) if inst["published_optimum"] is not None else exact_cost
 
     # disjoint CRN blocks
     eval_seeds = [parsed.seed + 1_000_000 + i for i in range(n_eval)]
@@ -295,6 +380,8 @@ def main():
         "benchmark": "autoresearch_multi_echelon_serial",
         "commit": _git_short_commit(),
         "reference_instance": inst["name"],
+        "demand_kind": inst["demand_kind"],
+        "num_stages": n,
         "budget": parsed.budget,
         "config": {
             "depth": parsed.depth,
@@ -303,7 +390,7 @@ def main():
             "leaf_type": parsed.leaf_type,
             "sigma_init": parsed.sigma_init,
             "warm_start": not parsed.no_warm_start,
-            "level_ceiling": parsed.level_ceiling,
+            "level_ceiling": ceiling,
             "popsize": popsize,
             "generations": generations,
             "train_periods": budget["train_periods"],

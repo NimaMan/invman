@@ -11,8 +11,8 @@ use crate::problems::multi_echelon::general_backorder_fixed_cost::heuristics::{
     simulate_node_base_stock_policy_with_mode,
 };
 use crate::problems::multi_echelon::general_backorder_fixed_cost::references::{
-    reference_instance_by_name, GeneralBackorderFixedCostReferenceInstance, GEEVERS_2023_REFERENCE,
-    LITERATURE_REFERENCE_INSTANCES, PRIMARY_REFERENCE_INSTANCE,
+    parse_demand_mode, reference_instance_by_name, GeneralBackorderFixedCostReferenceInstance,
+    GEEVERS_2023_REFERENCE, LITERATURE_REFERENCE_INSTANCES, PRIMARY_REFERENCE_INSTANCE,
 };
 use crate::problems::multi_echelon::general_backorder_fixed_cost::rollout::{
     build_initial_state, parse_policy_action_mode, parse_policy_feature_mode, population_rollout,
@@ -68,6 +68,9 @@ fn reference_to_py(
         "retail_edges",
         retail_edge_rows_to_py(py, reference.retail_edges)?,
     )?;
+    dict.set_item("demand_mode", reference.demand_mode)?;
+    dict.set_item("demand_alpha_min", reference.demand_alpha_min)?;
+    dict.set_item("demand_alpha_max", reference.demand_alpha_max)?;
     dict.set_item("retailer_demand_mean", reference.retailer_demand_mean)?;
     dict.set_item(
         "warehouse_holding_costs",
@@ -132,6 +135,9 @@ fn rollout_config(
         warm_up_periods: reference.benchmark_warm_up_periods,
         network: build_network(reference),
         retailer_demand_mean: reference.retailer_demand_mean,
+        demand_mode: parse_demand_mode(reference.demand_mode)?,
+        demand_alpha_min: reference.demand_alpha_min,
+        demand_alpha_max: reference.demand_alpha_max,
         warehouse_holding_costs: reference.warehouse_holding_costs.to_vec(),
         retailer_holding_costs: reference.retailer_holding_costs.to_vec(),
         warehouse_backorder_costs: reference.warehouse_backorder_costs.to_vec(),

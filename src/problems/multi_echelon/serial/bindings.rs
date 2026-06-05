@@ -16,13 +16,28 @@ use crate::problems::multi_echelon::serial::exact::{
     solve_serial_clark_scarf, GridParams, SerialDemand, SerialStage,
 };
 use crate::problems::multi_echelon::serial::rollout::{
-    population_rollout, rollout, SerialRolloutConfig,
+    population_rollout, rollout, SerialDemandKind, SerialRolloutConfig,
 };
 
+/// Parse the Python `demand_kind` string ("normal" | "poisson") into the rollout enum.
+/// Defaults must be supplied by the caller; an unknown value is a hard error so an
+/// instance is never silently simulated under the wrong demand family.
+fn parse_demand_kind(demand_kind: &str) -> PyResult<SerialDemandKind> {
+    match demand_kind.to_ascii_lowercase().as_str() {
+        "normal" => Ok(SerialDemandKind::Normal),
+        "poisson" => Ok(SerialDemandKind::Poisson),
+        other => Err(pyo3::exceptions::PyValueError::new_err(format!(
+            "demand_kind must be 'normal' or 'poisson', got '{other}'"
+        ))),
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
 fn build_rollout_config(
     holding_cost: Vec<f64>,
     lead_time: Vec<usize>,
     penalty: f64,
+    demand_kind: &str,
     demand_mean: f64,
     demand_std: f64,
     warm_start_levels: Vec<f64>,
@@ -41,6 +56,7 @@ fn build_rollout_config(
             lead_time,
             penalty,
         },
+        demand_kind: parse_demand_kind(demand_kind)?,
         demand_mean,
         demand_std,
         warm_start_levels,
@@ -73,7 +89,8 @@ fn build_rollout_config(
     seed=1234,
     temperature=0.25,
     split_type="oblique",
-    leaf_type="constant"
+    leaf_type="constant",
+    demand_kind="normal"
 ))]
 #[allow(clippy::too_many_arguments)]
 fn multi_echelon_serial_soft_tree_rollout(
@@ -93,11 +110,13 @@ fn multi_echelon_serial_soft_tree_rollout(
     temperature: f32,
     split_type: &str,
     leaf_type: &str,
+    demand_kind: &str,
 ) -> PyResult<f64> {
     let config = build_rollout_config(
         holding_cost,
         lead_time,
         penalty,
+        demand_kind,
         demand_mean,
         demand_std,
         warm_start_levels,
@@ -132,7 +151,8 @@ fn multi_echelon_serial_soft_tree_rollout(
     seeds,
     temperature=0.25,
     split_type="oblique",
-    leaf_type="constant"
+    leaf_type="constant",
+    demand_kind="normal"
 ))]
 #[allow(clippy::too_many_arguments)]
 fn multi_echelon_serial_soft_tree_population_rollout(
@@ -152,11 +172,13 @@ fn multi_echelon_serial_soft_tree_population_rollout(
     temperature: f32,
     split_type: &str,
     leaf_type: &str,
+    demand_kind: &str,
 ) -> PyResult<Vec<f64>> {
     let config = build_rollout_config(
         holding_cost,
         lead_time,
         penalty,
+        demand_kind,
         demand_mean,
         demand_std,
         warm_start_levels,
@@ -221,6 +243,53 @@ fn multi_echelon_serial_exact_normal_solution<'py>(
     Ok(dict)
 }
 
+/// Exact Clark-Scarf solver helper for POISSON demand: returns the optimal echelon
+/// base-stock levels (downstream -> upstream) and the exact discrete optimal cost.
+/// `echelon_holding` and `lead_time` are downstream -> upstream. The discrete recursion
+/// is exact (integer grid), matching `stockpyl.ssm_serial`. Used by the Python runner to
+/// warm-start the policy at the optimum and report the MATCH baseline for the Poisson
+/// instance.
+#[pyfunction]
+#[pyo3(signature = (echelon_holding, lead_time, penalty, demand_mean))]
+fn multi_echelon_serial_exact_poisson_solution<'py>(
+    py: Python<'py>,
+    echelon_holding: Vec<f64>,
+    lead_time: Vec<usize>,
+    penalty: f64,
+    demand_mean: f64,
+) -> PyResult<Bound<'py, PyDict>> {
+    if echelon_holding.len() != lead_time.len() {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "echelon_holding and lead_time must have the same length",
+        ));
+    }
+    let stages: Vec<SerialStage> = echelon_holding
+        .iter()
+        .zip(lead_time.iter())
+        .map(|(h, l)| SerialStage {
+            echelon_holding_cost: *h,
+            lead_time: *l,
+        })
+        .collect();
+    let solution = solve_serial_clark_scarf(
+        &stages,
+        penalty,
+        SerialDemand::Poisson { mean: demand_mean },
+        GridParams::default(),
+    );
+    let dict = PyDict::new_bound(py);
+    dict.set_item(
+        "echelon_base_stock_levels",
+        solution.echelon_base_stock_levels,
+    )?;
+    dict.set_item(
+        "local_base_stock_levels_upstream_to_downstream",
+        solution.local_base_stock_levels_upstream_to_downstream,
+    )?;
+    dict.set_item("optimal_cost", solution.optimal_cost)?;
+    Ok(dict)
+}
+
 pub fn register_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(multi_echelon_serial_soft_tree_rollout, m)?)?;
     m.add_function(wrap_pyfunction!(
@@ -229,6 +298,10 @@ pub fn register_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     )?)?;
     m.add_function(wrap_pyfunction!(
         multi_echelon_serial_exact_normal_solution,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        multi_echelon_serial_exact_poisson_solution,
         m
     )?)?;
     Ok(())

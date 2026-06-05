@@ -87,6 +87,86 @@ mod tests {
         assert!(rel_err(r3.average_cost, 72.043543) < 0.02, "N3 sim {:.4} vs 72.044", r3.average_cost);
     }
 
+    /// Additional Snyder & Shen / stockpyl serial instances added to diversify the
+    /// learned-policy benchmark (more stages, Normal + Poisson demand). Each asserts the
+    /// in-repo exact solver reproduces the stockpyl reference optimum and that the env
+    /// simulation under the exact echelon levels reproduces it (downstream L_1 = 1).
+    ///
+    /// Local (installation) holding costs are stated downstream -> upstream; the exact
+    /// `solve_from_local_costs` expects them upstream -> downstream, hence the reversal.
+    #[test]
+    fn env_simulation_reproduces_two_stage_normal() {
+        // 2-stage, Normal(100,15), local holding [2,1] (downstream->upstream),
+        // L=[1,1], penalty 15 (stockpyl problem_6_1).
+        let demand = SerialDemand::Normal { mean: 100.0, std: 15.0 };
+        // local upstream->downstream = [1,2].
+        let exact = solve_from_local_costs(&[1.0, 2.0], &[1, 1], 15.0, demand, GridParams::default());
+        let config = SerialConfig { holding_cost: vec![2.0, 1.0], lead_time: vec![1, 1], penalty: 15.0 };
+        let r = simulate(&config, demand, &exact.echelon_base_stock_levels, 400_000, 5_000, 17);
+        assert!(
+            rel_err(r.average_cost, exact.optimal_cost) < 0.005,
+            "2-stage Normal sim {:.4} vs exact {:.4}",
+            r.average_cost,
+            exact.optimal_cost
+        );
+    }
+
+    #[test]
+    fn env_simulation_reproduces_five_stage_normal() {
+        // 5-stage, Normal(32, 5.657), L=[1,1,1,1,1], penalty 12 (stockpyl problem_6_2a
+        // scaled x0.5 / time-rescaled to L=1). Installation (local) holding is highest at
+        // the most-downstream stage (value added downstream): downstream->upstream
+        // [3.5,2.5,1.5,1.0,0.5], i.e. upstream->downstream [0.5,1,1.5,2.5,3.5]; the
+        // resulting echelon holding [1,1,0.5,0.5,0.5] matches stockpyl's echelon costs and
+        // gives C* = 225.8672 (NOT a published paper number; stockpyl-reference-derived).
+        let demand = SerialDemand::Normal { mean: 32.0, std: 5.657 };
+        let exact = solve_from_local_costs(
+            &[0.5, 1.0, 1.5, 2.5, 3.5], &[1, 1, 1, 1, 1], 12.0, demand, GridParams::default());
+        assert!(
+            rel_err(exact.optimal_cost, 225.8672) < 0.001,
+            "5-stage Normal exact {:.4} should be 225.8672",
+            exact.optimal_cost
+        );
+        let config = SerialConfig {
+            holding_cost: vec![3.5, 2.5, 1.5, 1.0, 0.5],
+            lead_time: vec![1, 1, 1, 1, 1],
+            penalty: 12.0,
+        };
+        let r = simulate(&config, demand, &exact.echelon_base_stock_levels, 400_000, 5_000, 17);
+        assert!(
+            rel_err(r.average_cost, exact.optimal_cost) < 0.005,
+            "5-stage Normal sim {:.4} vs exact {:.4}",
+            r.average_cost,
+            exact.optimal_cost
+        );
+    }
+
+    #[test]
+    fn env_simulation_reproduces_five_stage_poisson() {
+        // 5-stage, Poisson(32), same holding/leads/penalty as the 5-stage Normal
+        // (stockpyl problem_6_2b scaled). Echelon holding [1,1,0.5,0.5,0.5], C* = 226.8458.
+        let demand = SerialDemand::Poisson { mean: 32.0 };
+        let exact = solve_from_local_costs(
+            &[0.5, 1.0, 1.5, 2.5, 3.5], &[1, 1, 1, 1, 1], 12.0, demand, GridParams::default());
+        assert!(
+            rel_err(exact.optimal_cost, 226.8458) < 0.001,
+            "5-stage Poisson exact {:.4} should be 226.8458",
+            exact.optimal_cost
+        );
+        let config = SerialConfig {
+            holding_cost: vec![3.5, 2.5, 1.5, 1.0, 0.5],
+            lead_time: vec![1, 1, 1, 1, 1],
+            penalty: 12.0,
+        };
+        let r = simulate(&config, demand, &exact.echelon_base_stock_levels, 400_000, 5_000, 3);
+        assert!(
+            rel_err(r.average_cost, exact.optimal_cost) < 0.01,
+            "5-stage Poisson sim {:.4} vs exact {:.4}",
+            r.average_cost,
+            exact.optimal_cost
+        );
+    }
+
     /// The exact solver and the env simulation agree (decomposition vs simulation), an
     /// internal cross-check independent of the published rounding.
     #[test]

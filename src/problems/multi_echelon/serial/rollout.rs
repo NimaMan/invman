@@ -44,7 +44,7 @@ use pyo3::exceptions::PyValueError;
 use pyo3::PyResult;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
-use rand_distr::{Distribution, Normal as RNormal};
+use rand_distr::{Distribution, Normal as RNormal, Poisson as RPoisson};
 use rayon::prelude::*;
 
 use crate::core::policies::soft_tree::{
@@ -55,9 +55,21 @@ use crate::problems::multi_echelon::serial::env::{
     SerialConfig,
 };
 
+/// Which i.i.d. per-period demand the rollout samples at the most-downstream stage.
+/// Mirrors the two distributions the exact solver supports (`exact.rs::SerialDemand`).
+/// The literature serial instances use either continuous Normal or discrete Poisson
+/// demand; the env-sim must sample the SAME family the exact solver optimized against
+/// (Normal: continuous, no rounding; Poisson: discrete counts).
+#[derive(Clone, Copy, PartialEq)]
+pub enum SerialDemandKind {
+    Normal,
+    Poisson,
+}
+
 #[derive(Clone)]
 pub struct SerialRolloutConfig {
     pub config: SerialConfig,
+    pub demand_kind: SerialDemandKind,
     pub demand_mean: f64,
     pub demand_std: f64,
     /// Echelon base-stock levels (downstream -> upstream) used ONLY to warm-fill the
@@ -125,13 +137,32 @@ pub fn rollout(flat_params: &[f32], config: &SerialRolloutConfig, seed: u64) -> 
     let mut state =
         initialize_at_echelon_levels(&config.config, &config.warm_start_levels, config.demand_mean);
     let mut rng = StdRng::seed_from_u64(seed);
-    let normal = RNormal::new(config.demand_mean, config.demand_std.max(1e-12))
-        .map_err(|e| PyValueError::new_err(format!("invalid demand normal: {e}")))?;
+    // Build whichever demand sampler the instance uses. Normal: continuous (no
+    // rounding), matching what the exact solver optimizes against. Poisson: discrete
+    // integer counts with rate `demand_mean` (the exact solver uses the same Poisson).
+    let normal = match config.demand_kind {
+        SerialDemandKind::Normal => Some(
+            RNormal::new(config.demand_mean, config.demand_std.max(1e-12))
+                .map_err(|e| PyValueError::new_err(format!("invalid demand normal: {e}")))?,
+        ),
+        SerialDemandKind::Poisson => None,
+    };
+    let poisson = match config.demand_kind {
+        SerialDemandKind::Poisson => Some(
+            RPoisson::new(config.demand_mean.max(1e-9))
+                .map_err(|e| PyValueError::new_err(format!("invalid demand poisson: {e}")))?,
+        ),
+        SerialDemandKind::Normal => None,
+    };
 
     let (mut total, mut counted) = (0.0f64, 0usize);
     for t in 0..config.periods {
-        // 1. continuous Normal demand (env drops rounding).
-        let d = normal.sample(&mut rng).max(0.0);
+        // 1. per-period demand, sampled from the instance's distribution. Normal is
+        //    continuous (env drops rounding); Poisson is a discrete count.
+        let d = match config.demand_kind {
+            SerialDemandKind::Normal => normal.as_ref().unwrap().sample(&mut rng).max(0.0),
+            SerialDemandKind::Poisson => poisson.as_ref().unwrap().sample(&mut rng),
+        };
         // 2. consume on the post-demand state, charge cost.
         let outcome = consume(&config.config, &mut state, d);
         // 3. decode echelon levels from the post-demand policy state.

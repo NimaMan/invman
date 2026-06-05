@@ -194,6 +194,18 @@ pub const SPIRITS_0001_DATASET: &str =
 pub const PORT_WINE_DATASET: &str =
     include_str!("practical/datasets/port_wine_perfect_information_lp.txt");
 
+/// Embedded spirits_0002 dataset (= spirits_0001 with blending ENABLED).
+/// Price/demand/sales params are identical to spirits_0001, so the
+/// expected_revenue/slope tables are byte-identical (companion
+/// expected_revenue.json md5 matches across the three spirits instances).
+pub const SPIRITS_0002_DATASET: &str =
+    include_str!("practical/datasets/spirits_0002_perfect_information_lp.txt");
+
+/// Embedded spirits_1002 dataset (= spirits_0002 with maxInventory 30, the
+/// processing-capacity-constrained companion variant).
+pub const SPIRITS_1002_DATASET: &str =
+    include_str!("practical/datasets/spirits_1002_perfect_information_lp.txt");
+
 /// Convenience: parse the spirits_0001 verification anchor.
 pub fn load_spirits_0001() -> LoadedLpDataset {
     parse_lp_dataset(SPIRITS_0001_DATASET)
@@ -202,4 +214,14 @@ pub fn load_spirits_0001() -> LoadedLpDataset {
 /// Convenience: parse the port_wine verification anchor.
 pub fn load_port_wine() -> LoadedLpDataset {
     parse_lp_dataset(PORT_WINE_DATASET)
+}
+
+/// Convenience: parse the spirits_0002 (blending ON) verification anchor.
+pub fn load_spirits_0002() -> LoadedLpDataset {
+    parse_lp_dataset(SPIRITS_0002_DATASET)
+}
+
+/// Convenience: parse the spirits_1002 (capacity-constrained) verification anchor.
+pub fn load_spirits_1002() -> LoadedLpDataset {
+    parse_lp_dataset(SPIRITS_1002_DATASET)
 }

@@ -27,7 +27,9 @@ fn benchmark_network() -> GeneralBackorderFixedCostNetwork {
 
 #[test]
 fn literature_catalog_matches_paper_rows() {
-    assert_eq!(LITERATURE_REFERENCE_INSTANCES.len(), 3);
+    // 3 CardBoard-Company rows (set 1/2/3) + the general-network divergent (Kunnumkal-Topaloglu)
+    // instance.
+    assert_eq!(LITERATURE_REFERENCE_INSTANCES.len(), 4);
     assert_eq!(
         LITERATURE_REFERENCE_INSTANCES[0].published_benchmark_cost,
         10_467.0
@@ -48,6 +50,17 @@ fn literature_catalog_matches_paper_rows() {
         LITERATURE_REFERENCE_INSTANCES[1].benchmark_base_stock_levels,
         GEEVERS_SET23_BASE_STOCK_LEVELS
     );
+    // The three CardBoard rows keep the fixed-Poisson demand process; the divergent instance is
+    // the only one using the resampled per-period mean. This guards the set-1 path against a
+    // demand-mode regression.
+    assert_eq!(LITERATURE_REFERENCE_INSTANCES[0].demand_mode, "fixed_poisson");
+    assert_eq!(LITERATURE_REFERENCE_INSTANCES[1].demand_mode, "fixed_poisson");
+    assert_eq!(LITERATURE_REFERENCE_INSTANCES[2].demand_mode, "fixed_poisson");
+    let divergent = reference_instance_by_name("kunnumkal_topaloglu_divergent")
+        .expect("divergent instance must exist");
+    assert_eq!(divergent.demand_mode, "resampled_uniform_poisson");
+    assert_eq!(divergent.published_benchmark_cost, 4_059.0);
+    assert_eq!(divergent.benchmark_base_stock_levels, &[124, 30, 30, 30]);
 }
 
 #[test]
@@ -191,5 +204,33 @@ fn set1_benchmark_reproduces_geevers_published_cost() {
     assert!(
         gap < 0.05,
         "set 1 mean cost {mean} has gap {gap} vs published {published} (>5%)"
+    );
+}
+
+/// Literature verification (executing) for the general-network DIVERGENT instance
+/// (Kunnumkal & Topaloglu 2011 base case, via the open Geevers 2020 thesis Ch. 5): re-run the
+/// env's constant node-base-stock gate at the published levels [warehouse 124, retailers 30/30/30]
+/// under the new resampled-uniform-Poisson demand mode (alpha ~ Uniform[5,15] per period per
+/// retailer) and the thesis protocol (75-period run, 25 warm-up, 1000 reps) and assert the mean
+/// reproduces the published benchmark 4,059. This is what justifies flipping
+/// kunnumkal_topaloglu_divergent.literature_verified once it holds within tolerance.
+#[test]
+fn divergent_kt_benchmark_reproduces_published_cost() {
+    let reference = reference_instance_by_name("kunnumkal_topaloglu_divergent")
+        .expect("divergent instance must exist");
+    let costs = simulate_node_base_stock_policy(
+        reference,
+        reference.benchmark_base_stock_levels,
+        reference.benchmark_replications,
+        1234,
+    )
+    .unwrap();
+    assert_eq!(costs.len(), reference.benchmark_replications);
+    let mean = costs.iter().sum::<f64>() / costs.len() as f64;
+    let published = 4_059.0_f64;
+    let gap = (mean - published).abs() / published;
+    assert!(
+        gap < 0.05,
+        "divergent K&T mean cost {mean} has gap {gap} vs published {published} (>5%)"
     );
 }

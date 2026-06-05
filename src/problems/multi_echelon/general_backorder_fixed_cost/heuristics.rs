@@ -12,7 +12,41 @@ use crate::problems::multi_echelon::general_backorder_fixed_cost::env::{
     retailer_total_inventory_positions, validate_network, warehouse_inventory_positions,
     GeneralBackorderFixedCostNetwork, GeneralBackorderFixedCostState,
 };
-use crate::problems::multi_echelon::general_backorder_fixed_cost::references::GeneralBackorderFixedCostReferenceInstance;
+use crate::problems::multi_echelon::general_backorder_fixed_cost::references::{
+    parse_demand_mode, DemandMode, GeneralBackorderFixedCostReferenceInstance,
+};
+
+/// Sample one period's realized customer demand for every retailer.
+///
+/// `FixedPoisson`: each retailer draws `Poisson(fixed_mean)` -- the original set-1/2/3 behaviour.
+/// `ResampledUniformPoisson`: each retailer first draws a fresh mean
+/// `alpha ~ Uniform[alpha_min, alpha_max]` THIS period, then draws `Poisson(alpha)`
+/// (nonstationary, per-retailer mean). The two paths consume the rng differently, so this is the
+/// single place that branches on the demand mode; the fixed path must stay identical to the
+/// pre-change code so set 1 keeps reproducing ~10,355.
+pub fn sample_period_demands(
+    rng: &mut StdRng,
+    num_retailers: usize,
+    mode: DemandMode,
+    fixed_distribution: &Poisson<f64>,
+    alpha_min: f64,
+    alpha_max: f64,
+) -> PyResult<Vec<usize>> {
+    match mode {
+        DemandMode::FixedPoisson => Ok((0..num_retailers)
+            .map(|_| fixed_distribution.sample(rng) as usize)
+            .collect()),
+        DemandMode::ResampledUniformPoisson => (0..num_retailers)
+            .map(|_| {
+                let alpha = rng.gen_range(alpha_min..=alpha_max);
+                let per_period = Poisson::new(alpha).map_err(|err| {
+                    PyValueError::new_err(format!("invalid resampled Poisson mean {alpha}: {err}"))
+                })?;
+                Ok(per_period.sample(rng) as usize)
+            })
+            .collect(),
+    }
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BenchmarkOrderRoutingMode {
@@ -229,6 +263,7 @@ pub fn simulate_node_base_stock_policy_with_mode(
 ) -> PyResult<Vec<f64>> {
     let network = build_network(reference);
     validate_network(&network)?;
+    let demand_mode = parse_demand_mode(reference.demand_mode)?;
     let demand_distribution = Poisson::new(reference.retailer_demand_mean).map_err(|err| {
         PyValueError::new_err(format!(
             "invalid Poisson mean {}: {err}",
@@ -241,9 +276,14 @@ pub fn simulate_node_base_stock_policy_with_mode(
         let mut state = initialize_zero_state(&network)?;
         let mut total_cost = 0.0;
         for period_idx in 0..reference.benchmark_periods {
-            let realized_demands = (0..reference.num_retailers)
-                .map(|_| demand_distribution.sample(&mut rng) as usize)
-                .collect::<Vec<_>>();
+            let realized_demands = sample_period_demands(
+                &mut rng,
+                reference.num_retailers,
+                demand_mode,
+                &demand_distribution,
+                reference.demand_alpha_min,
+                reference.demand_alpha_max,
+            )?;
             let decision = advance_to_decision_state(
                 &network,
                 &state,
@@ -284,6 +324,7 @@ pub fn simulate_node_base_stock_policy_audit_with_mode(
 ) -> PyResult<SimulationAuditSummary> {
     let network = build_network(reference);
     validate_network(&network)?;
+    let demand_mode = parse_demand_mode(reference.demand_mode)?;
     let demand_distribution = Poisson::new(reference.retailer_demand_mean).map_err(|err| {
         PyValueError::new_err(format!(
             "invalid Poisson mean {}: {err}",
@@ -306,9 +347,14 @@ pub fn simulate_node_base_stock_policy_audit_with_mode(
         let mut total_warehouse_backorder_cost = 0.0;
         let mut total_customer_backorder_cost = 0.0;
         for period_idx in 0..reference.benchmark_periods {
-            let realized_demands = (0..reference.num_retailers)
-                .map(|_| demand_distribution.sample(&mut rng) as usize)
-                .collect::<Vec<_>>();
+            let realized_demands = sample_period_demands(
+                &mut rng,
+                reference.num_retailers,
+                demand_mode,
+                &demand_distribution,
+                reference.demand_alpha_min,
+                reference.demand_alpha_max,
+            )?;
             let decision = advance_to_decision_state(
                 &network,
                 &state,

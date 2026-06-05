@@ -91,7 +91,10 @@ import numpy as np
 
 import invman_rust as ir
 
-REFERENCE_NAME = "geevers2023_general_set1"
+DEFAULT_REFERENCE_NAME = "geevers2023_general_set1"
+# Set from --reference in main(); the population/eval helpers read it as a module global so the
+# same binding calls work for any reference instance (set 1 or the divergent K&T instance).
+REFERENCE_NAME = DEFAULT_REFERENCE_NAME
 ACTION_MODE = "vector_quantity"
 POLICY_FEATURE_MODE = "compact_summary"
 POLICY_ACTION_MODE = "node_base_stock_targets"
@@ -121,6 +124,9 @@ def parse_args() -> argparse.Namespace:
         description="Autoresearch loop for the Geevers set-1 general-network learned policy."
     )
     parser.add_argument("--run_tag", default="general_backorder_fixed_cost_autoresearch")
+    parser.add_argument("--reference", default=DEFAULT_REFERENCE_NAME,
+                        help="Reference instance name (e.g. geevers2023_general_set1 or "
+                             "kunnumkal_topaloglu_divergent).")
     parser.add_argument("--budget", choices=sorted(BUDGETS), default="screening")
     parser.add_argument("--description", required=True)
     parser.add_argument("--depth", type=int, default=2)
@@ -233,6 +239,8 @@ def paired_eval(flat_params, input_dim, depth, min_values, max_values, leaf_type
 
 def main() -> None:
     parsed = parse_args()
+    global REFERENCE_NAME
+    REFERENCE_NAME = parsed.reference
     budget = BUDGETS[parsed.budget]
     sigma_init = parsed.sigma_init if parsed.sigma_init is not None else budget["sigma_init"]
 
@@ -241,7 +249,9 @@ def main() -> None:
     num_retailers = ref["num_retailers"]
     levels = list(ref["benchmark_base_stock_levels"])
     published_benchmark = float(ref["published_benchmark_cost"])
-    published_ppo_best = float(ref["published_ppo_best_cost"])
+    # PPO best may be absent (None) for some instances; carry NaN so downstream gaps stay defined.
+    _ppo = ref["published_ppo_best_cost"]
+    published_ppo_best = float(_ppo) if _ppo is not None else float("nan")
 
     min_values, max_values = build_action_bounds(num_warehouses, num_retailers)
     depth = parsed.depth

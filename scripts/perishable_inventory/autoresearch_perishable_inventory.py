@@ -306,6 +306,9 @@ def train_warm_started(reference, kw, *, x0, popsize, generations, sigma_init, s
 
 def parse_args():
     p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument("--mp_num_processors", type=int, default=None,
+                   help="CPU worker cap (consumed by configure_process_cpu_limits_from_argv "
+                        "before invman_rust import; accepted here so strict parsing does not reject it)")
     p.add_argument("--run_tag", default="perishable_inventory_autoresearch")
     p.add_argument("--reference", default=PRIMARY_REFERENCE)
     p.add_argument("--budget", choices=sorted(BUDGETS), default="screening")

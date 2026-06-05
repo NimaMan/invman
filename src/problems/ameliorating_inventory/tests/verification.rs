@@ -116,6 +116,56 @@ fn port_wine_perfect_information_upper_bound_reproduces_published_max_reward() {
     );
 }
 
+/// COMPANION ADDITION: spirits_0002 is spirits_0001 with BLENDING ENABLED.
+/// Re-solve its perfect-information LP and reproduce the published upper bound
+/// from problem_configurations/spirits_0002/upper_bound.json.
+#[test]
+fn spirits_0002_blending_upper_bound_reproduces_published_max_reward() {
+    use crate::problems::ameliorating_inventory::lp_dataset_loader::load_spirits_0002;
+    let LoadedLpDataset { inputs, anchor } = load_spirits_0002();
+    assert!(inputs.allow_blending, "spirits_0002 must have blending enabled");
+    assert!((inputs.max_inventory - 50.0).abs() < 1e-12);
+    let solution = solve_upper_bound(&inputs);
+    let gap = (solution.max_reward - anchor.max_reward).abs();
+    println!(
+        "spirits_0002 perfect-information LP: re-solved max_reward = {:.10}, \
+         published = {:.10}, gap = {:.3e}",
+        solution.max_reward, anchor.max_reward, gap
+    );
+    assert!(
+        gap < 1e-3,
+        "re-solved upper bound {} must reproduce published {} within 1e-3 (gap {})",
+        solution.max_reward,
+        anchor.max_reward,
+        gap
+    );
+}
+
+/// COMPANION ADDITION: spirits_1002 is the processing-capacity-constrained
+/// variant (blending ON, maxInventory = 30). Re-solve its perfect-information
+/// LP and reproduce problem_configurations/spirits_1002/upper_bound.json.
+#[test]
+fn spirits_1002_capacity_upper_bound_reproduces_published_max_reward() {
+    use crate::problems::ameliorating_inventory::lp_dataset_loader::load_spirits_1002;
+    let LoadedLpDataset { inputs, anchor } = load_spirits_1002();
+    assert!(inputs.allow_blending, "spirits_1002 must have blending enabled");
+    assert!((inputs.max_inventory - 30.0).abs() < 1e-12);
+    let solution = solve_upper_bound(&inputs);
+    let gap = (solution.max_reward - anchor.max_reward).abs();
+    println!(
+        "spirits_1002 perfect-information LP: re-solved max_reward = {:.10}, \
+         published = {:.10}, gap = {:.3e}",
+        solution.max_reward, anchor.max_reward, gap
+    );
+    assert!(
+        gap < 1e-3,
+        "re-solved upper bound {} must reproduce published {} within 1e-3 (gap {})",
+        solution.max_reward,
+        anchor.max_reward,
+        gap
+    );
+}
+
 /// MECHANICS CHECK: the faithful average-profit env runs a long trajectory and
 /// its realised average profit stays at or below the perfect-information upper
 /// bound (the bound's defining property), and the step accounting is internally
