@@ -15,7 +15,7 @@ use crate::problems::one_warehouse_multi_retailer::env::{
 };
 use crate::problems::one_warehouse_multi_retailer::heuristics::echelon_base_stock_orders;
 use crate::problems::one_warehouse_multi_retailer::references::ExactVerificationReference;
-use crate::problems::one_warehouse_multi_retailer::rollout::PolicyActionMode;
+use crate::problems::one_warehouse_multi_retailer::rollout::{PolicyActionMode, PolicyStateMode};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 struct ExactStateKey {
@@ -40,6 +40,7 @@ pub struct ExactSoftTreeConfig {
     pub action_spec: SoftTreeActionSpec,
     pub allocation_policy: AllocationPolicy,
     pub policy_action_mode: PolicyActionMode,
+    pub policy_state_mode: PolicyStateMode,
     pub temperature: f32,
     pub split_type: SoftTreeSplitType,
     pub leaf_type: SoftTreeLeafType,
@@ -303,6 +304,7 @@ fn heuristic_action(
 fn build_policy_state(
     state: &OneWarehouseMultiRetailerState,
     total_periods: usize,
+    mode: PolicyStateMode,
 ) -> PyResult<Vec<f32>> {
     validate_state(state)?;
     let total_system_position = warehouse_echelon_inventory_position(state)?;
@@ -320,16 +322,20 @@ fn build_policy_state(
         )
         .max(1) as f32;
 
-    let mut features = Vec::with_capacity(
-        1 + state.warehouse_pipeline.len()
-            + state.retailer_inventory.len()
-            + state
-                .retailer_pipeline
-                .iter()
-                .map(|pipeline| pipeline.len())
-                .sum::<usize>()
-            + 2,
-    );
+    let normalized_dim = 1
+        + state.warehouse_pipeline.len()
+        + state.retailer_inventory.len()
+        + state
+            .retailer_pipeline
+            .iter()
+            .map(|pipeline| pipeline.len())
+            .sum::<usize>()
+        + 2;
+    let augmented_dim = normalized_dim + 2 + state.retailer_inventory.len();
+    let mut features = Vec::with_capacity(match mode {
+        PolicyStateMode::Normalized => normalized_dim,
+        PolicyStateMode::AbsoluteAugmented => augmented_dim,
+    });
     features.push(state.warehouse_inventory as f32 / scale);
     features.extend(
         state
@@ -353,6 +359,15 @@ fn build_policy_state(
         (total_periods.saturating_sub(state.period) as f32) / total_periods as f32
     };
     features.push(remaining_fraction);
+    if mode == PolicyStateMode::AbsoluteAugmented {
+        features.push(scale);
+        features.push(total_system_position as f32);
+        features.extend(
+            retailer_inventory_positions(state)?
+                .iter()
+                .map(|value| *value as f32),
+        );
+    }
     Ok(features)
 }
 
@@ -361,7 +376,7 @@ fn soft_tree_action(
     reference: &ExactVerificationReference,
     config: &ExactSoftTreeConfig,
 ) -> PyResult<(Vec<usize>, Option<Vec<usize>>)> {
-    let policy_state = build_policy_state(state, reference.periods)?;
+    let policy_state = build_policy_state(state, reference.periods, config.policy_state_mode)?;
     if policy_state.len() != config.input_dim {
         return Err(PyValueError::new_err(
             "soft tree input_dim does not match the policy-state dimension",

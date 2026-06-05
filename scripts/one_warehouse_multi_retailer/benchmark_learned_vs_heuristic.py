@@ -245,6 +245,7 @@ def _soft_tree_on_paths(
             split_type=str(model.split_type),
             leaf_type=str(model.leaf_type),
             allowed_values=model.allowed_values,
+            policy_state_mode=str(getattr(model, "state_feature_mode", "normalized")),
         )
         costs.append(float(cost))
     return np.asarray(costs, dtype=np.float64)

@@ -28,6 +28,7 @@ A `Policy` carries only policy-defining fields:
   - action bounds: control_dim, control_mode, min_values, max_values,
                    allowed_values, max_order_size, action_adapter
   - input transform: state_normalizer, state_scale
+  - optional problem-specific state feature mode: state_feature_mode
 Problem/env fields (demand, costs, lead time, horizon, seed) are NOT stored here;
 they are read from `args` at fitness-evaluation time.
 
@@ -72,6 +73,7 @@ class Policy:
     # Input normalization.
     state_normalizer: str = "identity"
     state_scale: float | None = None
+    state_feature_mode: str = "normalized"
 
     # Soft-tree architecture.
     depth: int | None = None

@@ -23,8 +23,8 @@ use crate::problems::one_warehouse_multi_retailer::references::{
     TABLE_A3_INSTANCES, VERIFICATION_PROBLEM_INSTANCE,
 };
 use crate::problems::one_warehouse_multi_retailer::rollout::{
-    build_initial_state, parse_policy_action_mode, population_rollout, rollout, rollout_from_paths,
-    OneWarehouseMultiRetailerRolloutConfig,
+    build_initial_state, parse_policy_action_mode, parse_policy_state_mode, population_rollout,
+    rollout, rollout_from_paths, OneWarehouseMultiRetailerRolloutConfig,
 };
 
 fn allocation_policy_to_str(
@@ -301,6 +301,7 @@ fn build_rollout_config(
     split_type: &str,
     leaf_type: &str,
     allowed_values: Option<Vec<Vec<usize>>>,
+    policy_state_mode: &str,
 ) -> PyResult<OneWarehouseMultiRetailerRolloutConfig> {
     Ok(OneWarehouseMultiRetailerRolloutConfig {
         input_dim,
@@ -317,6 +318,7 @@ fn build_rollout_config(
         emergency_shipment_probability,
         discount_factor,
         policy_action_mode: parse_policy_action_mode(policy_action_mode)?,
+        policy_state_mode: parse_policy_state_mode(policy_state_mode)?,
         temperature,
         split_type: parse_split_type(split_type)?,
         leaf_type: parse_leaf_type(leaf_type)?,
@@ -352,7 +354,8 @@ fn build_rollout_config(
     temperature=0.25,
     split_type="oblique",
     leaf_type="linear",
-    allowed_values=None
+    allowed_values=None,
+    policy_state_mode="normalized"
 ))]
 fn one_warehouse_multi_retailer_soft_tree_rollout(
     flat_params: Vec<f32>,
@@ -383,6 +386,7 @@ fn one_warehouse_multi_retailer_soft_tree_rollout(
     split_type: &str,
     leaf_type: &str,
     allowed_values: Option<Vec<Vec<usize>>>,
+    policy_state_mode: &str,
 ) -> PyResult<f64> {
     let demand_models = build_demand_models(demand_kinds, demand_param1, demand_param2)?;
     let initial_state = build_initial_state(
@@ -412,6 +416,7 @@ fn one_warehouse_multi_retailer_soft_tree_rollout(
         split_type,
         leaf_type,
         allowed_values,
+        policy_state_mode,
     )?;
     rollout(&flat_params, &config, &initial_state, seed)
 }
@@ -445,7 +450,8 @@ fn one_warehouse_multi_retailer_soft_tree_rollout(
     temperature=0.25,
     split_type="oblique",
     leaf_type="linear",
-    allowed_values=None
+    allowed_values=None,
+    policy_state_mode="normalized"
 ))]
 fn one_warehouse_multi_retailer_soft_tree_population_rollout(
     params_batch: Vec<Vec<f32>>,
@@ -476,6 +482,7 @@ fn one_warehouse_multi_retailer_soft_tree_population_rollout(
     split_type: &str,
     leaf_type: &str,
     allowed_values: Option<Vec<Vec<usize>>>,
+    policy_state_mode: &str,
 ) -> PyResult<Vec<f64>> {
     let demand_models = build_demand_models(demand_kinds, demand_param1, demand_param2)?;
     let initial_state = build_initial_state(
@@ -505,6 +512,7 @@ fn one_warehouse_multi_retailer_soft_tree_population_rollout(
         split_type,
         leaf_type,
         allowed_values,
+        policy_state_mode,
     )?;
     population_rollout(&params_batch, &config, &initial_state, &seeds)
 }
@@ -535,7 +543,8 @@ fn one_warehouse_multi_retailer_soft_tree_population_rollout(
     temperature=0.25,
     split_type="oblique",
     leaf_type="linear",
-    allowed_values=None
+    allowed_values=None,
+    policy_state_mode="normalized"
 ))]
 fn one_warehouse_multi_retailer_soft_tree_rollout_from_paths(
     flat_params: Vec<f32>,
@@ -563,6 +572,7 @@ fn one_warehouse_multi_retailer_soft_tree_rollout_from_paths(
     split_type: &str,
     leaf_type: &str,
     allowed_values: Option<Vec<Vec<usize>>>,
+    policy_state_mode: &str,
 ) -> PyResult<f64> {
     let demand_models = vec![
         DemandModel {
@@ -599,6 +609,7 @@ fn one_warehouse_multi_retailer_soft_tree_rollout_from_paths(
         split_type,
         leaf_type,
         allowed_values,
+        policy_state_mode,
     )?;
     rollout_from_paths(&flat_params, &config, &initial_state, &demands, seed)
 }
@@ -788,7 +799,8 @@ fn one_warehouse_multi_retailer_exact_evaluate_echelon_base_stock(
     temperature=0.25,
     split_type="oblique",
     leaf_type="linear",
-    allowed_values=None
+    allowed_values=None,
+    policy_state_mode="normalized"
 ))]
 fn one_warehouse_multi_retailer_exact_evaluate_soft_tree(
     py: Python<'_>,
@@ -804,6 +816,7 @@ fn one_warehouse_multi_retailer_exact_evaluate_soft_tree(
     split_type: &str,
     leaf_type: &str,
     allowed_values: Option<Vec<Vec<usize>>>,
+    policy_state_mode: &str,
 ) -> PyResult<PyObject> {
     let evaluation = evaluate_soft_tree_policy(
         &VERIFICATION_PROBLEM_INSTANCE,
@@ -814,6 +827,7 @@ fn one_warehouse_multi_retailer_exact_evaluate_soft_tree(
             action_spec: build_action_spec(action_mode, min_values, max_values, allowed_values)?,
             allocation_policy: parse_allocation_policy(allocation_policy)?,
             policy_action_mode: parse_policy_action_mode(policy_action_mode)?,
+            policy_state_mode: parse_policy_state_mode(policy_state_mode)?,
             temperature,
             split_type: parse_split_type(split_type)?,
             leaf_type: parse_leaf_type(leaf_type)?,
@@ -822,6 +836,7 @@ fn one_warehouse_multi_retailer_exact_evaluate_soft_tree(
     let dict = PyDict::new_bound(py);
     dict.set_item("allocation_policy", allocation_policy)?;
     dict.set_item("policy_action_mode", policy_action_mode)?;
+    dict.set_item("policy_state_mode", policy_state_mode)?;
     dict.set_item("discounted_cost", evaluation.discounted_cost)?;
     dict.set_item("first_action", evaluation.first_action)?;
     Ok(dict.into_any().unbind().into())

@@ -27,6 +27,10 @@ exact commands and metrics.
   targets and retailer allocation targets
 - automatic embedding of an old `echelon_targets` checkpoint into the decoupled mode by copying
   retailer target outputs into both target blocks
+- `--policy_state_mode absolute_augmented`, which keeps the normalized state features and appends
+  the per-state scale, raw total echelon inventory position, and raw retailer inventory positions
+- checkpoint embedding from normalized-state soft-tree params into augmented-state params by zeroing
+  the newly added input-feature weights
 
 When `--init_params_npy` is used, deployment selects the best held-out candidate among trained
 `xbest`, the loaded initializer, and the gate anchor.
@@ -141,9 +145,60 @@ Result:
 - published PPO `1118.92`
 - gap vs PPO `-1.8740%`
 
-This is the current best repo-native result for `kaynov2024_instance_12`. It improves the saturated
-same-mode checkpoint by only `0.0309` cost units and still leaves `20.9684` cost units to the
-published PPO number.
+This improved the saturated same-mode checkpoint by only `0.0309` cost units and still left
+`20.9684` cost units to the published PPO number. It is now superseded by the augmented-state
+result below.
+
+## Absolute-state augmented result
+
+The first follow-up from the decoupled target plateau was to expose absolute magnitude to the tree.
+The default policy state still uses the old normalized layout, but `--policy_state_mode
+absolute_augmented` appends:
+
+- the normalization scale used by the normalized features,
+- raw total system echelon inventory position,
+- raw retailer inventory positions.
+
+The old normalized `372`-parameter checkpoint is embedded into the `527`-parameter augmented model
+by copying all old split/leaf weights into the first normalized feature columns and setting weights
+for the new absolute features to zero. This preserves the incumbent before CMA-ES starts.
+
+Best command:
+
+```bash
+RAYON_NUM_THREADS=2 OMP_NUM_THREADS=2 \
+python scripts/one_warehouse_multi_retailer/run_asymmetric_learned_vs_gate.py \
+  --reference kaynov2024_instance_12 \
+  --budget full \
+  --policy_action_mode echelon_targets_with_alloc_targets \
+  --policy_state_mode absolute_augmented \
+  --leaf_type linear \
+  --warm_start_at_best_base_stock \
+  --init_params_npy outputs/one_warehouse_multi_retailer/asymmetric_learned/models/asym_kaynov2024_instance_12_echelon_targets_with_alloc_targets_linear_d2_axis_aligned_t0.1_pop24_gen200_batch16_min_shortage_crn_sig0p0025_seed720_372_200/model_params.npy \
+  --sigma_init 0.00125 \
+  --gate_search_paths 64 \
+  --training_episodes 200 \
+  --es_population 24 \
+  --train_seed_batch 16 \
+  --holdout_paths 4096 \
+  --train_allocation min_shortage \
+  --same_seed \
+  --seed 721 \
+  --output_json outputs/one_warehouse_multi_retailer/asymmetric_learned/kaynov2024_instance_12_echelon_targets_with_alloc_targets_absolute_augmented_restart_from_normalized_sigma0.00125_seed721.json
+```
+
+Result:
+
+- learned `1139.5526 +/- 2.1648`, deployed `trained_xbest`, evaluated under proportional
+- gate `1169.5905 +/- 2.0548`
+- paired gate - learned `+30.0378 +/- 0.9453`
+- gap vs gate `+2.5682%`
+- published PPO `1118.92`
+- gap vs PPO `-1.8440%`
+
+This is the current best repo-native result for `kaynov2024_instance_12`. It improves the
+decoupled normalized-state checkpoint by `0.3358` cost units and still leaves `20.6326` cost units
+to the published PPO number.
 
 ## Negative / limiting evidence
 
@@ -297,7 +352,9 @@ CMA-ES restart chain from the incumbent `echelon_targets` policy while training 
 4096-path held-out block (`+29.70 +/- 0.94` vs gate), but still leaves `20.97` cost units to
 published PPO.
 
-Decoupling order targets from allocation targets is valid and slightly useful, but the first two
-full restarts gained only `0.0309` cost units over the saturated same-mode checkpoint. The next
-high-yield path should be more capacity or a materially different policy/training objective, not
-only smaller local restarts of this depth-2 tree.
+Decoupling order targets from allocation targets is valid but only slightly useful under the old
+normalized state. Exposing absolute magnitude is also valid and more useful than one more
+same-mode restart, but the first augmented run still gained only `0.3358` cost units while the PPO
+gap remains `20.6326` cost units. The next high-yield path should be residual/windowed targets,
+learned allocation priorities, fixed-CRN objective training, or a PPO-style direct-order policy,
+not only smaller local restarts of this depth-2 tree.

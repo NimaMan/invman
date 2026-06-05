@@ -27,6 +27,12 @@ pub enum PolicyActionMode {
     SymmetricEchelonTargets,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PolicyStateMode {
+    Normalized,
+    AbsoluteAugmented,
+}
+
 #[derive(Clone)]
 pub struct OneWarehouseMultiRetailerRolloutConfig {
     pub input_dim: usize,
@@ -43,6 +49,7 @@ pub struct OneWarehouseMultiRetailerRolloutConfig {
     pub emergency_shipment_probability: f64,
     pub discount_factor: f64,
     pub policy_action_mode: PolicyActionMode,
+    pub policy_state_mode: PolicyStateMode,
     pub temperature: f32,
     pub split_type: SoftTreeSplitType,
     pub leaf_type: SoftTreeLeafType,
@@ -52,6 +59,16 @@ pub struct OneWarehouseMultiRetailerRolloutConfig {
 pub struct PolicyAction {
     pub orders: Vec<usize>,
     pub retailer_target_inventory_positions: Option<Vec<usize>>,
+}
+
+pub fn parse_policy_state_mode(value: &str) -> PyResult<PolicyStateMode> {
+    match value {
+        "normalized" | "default" => Ok(PolicyStateMode::Normalized),
+        "absolute_augmented" | "augmented" | "absolute" => Ok(PolicyStateMode::AbsoluteAugmented),
+        other => Err(PyValueError::new_err(format!(
+            "unsupported policy_state_mode '{other}'; expected 'normalized' or 'absolute_augmented'"
+        ))),
+    }
 }
 
 pub fn parse_policy_action_mode(value: &str) -> PyResult<PolicyActionMode> {
@@ -111,19 +128,11 @@ fn validate_config(
             "symmetric_echelon_targets requires at least one retailer",
         ));
     }
-    let expected_input_dim = 1
-        + initial_state.warehouse_pipeline.len()
-        + num_retailers
-        + initial_state
-            .retailer_pipeline
-            .iter()
-            .map(|pipeline| pipeline.len())
-            .sum::<usize>()
-        + 2;
+    let expected_input_dim = expected_policy_input_dim(initial_state, config.policy_state_mode);
     if config.input_dim != expected_input_dim {
         return Err(PyValueError::new_err(format!(
-            "input_dim {} does not match expected {}",
-            config.input_dim, expected_input_dim
+            "input_dim {} does not match expected {} for {:?}",
+            config.input_dim, expected_input_dim, config.policy_state_mode
         )));
     }
     if !(0.0..=1.0).contains(&config.discount_factor) {
@@ -142,9 +151,32 @@ fn validate_config(
     Ok(())
 }
 
+fn normalized_policy_input_dim(state: &OneWarehouseMultiRetailerState) -> usize {
+    1 + state.warehouse_pipeline.len()
+        + state.retailer_inventory.len()
+        + state
+            .retailer_pipeline
+            .iter()
+            .map(|pipeline| pipeline.len())
+            .sum::<usize>()
+        + 2
+}
+
+pub fn expected_policy_input_dim(
+    state: &OneWarehouseMultiRetailerState,
+    mode: PolicyStateMode,
+) -> usize {
+    let normalized_dim = normalized_policy_input_dim(state);
+    match mode {
+        PolicyStateMode::Normalized => normalized_dim,
+        PolicyStateMode::AbsoluteAugmented => normalized_dim + 2 + state.retailer_inventory.len(),
+    }
+}
+
 fn build_policy_state(
     state: &OneWarehouseMultiRetailerState,
     total_periods: usize,
+    mode: PolicyStateMode,
 ) -> PyResult<Vec<f32>> {
     validate_state(state)?;
     let total_system_position = warehouse_echelon_inventory_position(state)?;
@@ -162,16 +194,7 @@ fn build_policy_state(
         )
         .max(1) as f32;
 
-    let mut features = Vec::with_capacity(
-        1 + state.warehouse_pipeline.len()
-            + state.retailer_inventory.len()
-            + state
-                .retailer_pipeline
-                .iter()
-                .map(|pipeline| pipeline.len())
-                .sum::<usize>()
-            + 2,
-    );
+    let mut features = Vec::with_capacity(expected_policy_input_dim(state, mode));
     features.push(state.warehouse_inventory as f32 / scale);
     features.extend(
         state
@@ -195,6 +218,15 @@ fn build_policy_state(
         (total_periods.saturating_sub(state.period) as f32) / total_periods as f32
     };
     features.push(remaining_fraction);
+    if mode == PolicyStateMode::AbsoluteAugmented {
+        features.push(scale);
+        features.push(total_system_position as f32);
+        features.extend(
+            retailer_inventory_positions(state)?
+                .iter()
+                .map(|value| *value as f32),
+        );
+    }
     Ok(features)
 }
 
@@ -203,7 +235,7 @@ fn action_vector(
     state: &OneWarehouseMultiRetailerState,
     config: &OneWarehouseMultiRetailerRolloutConfig,
 ) -> PyResult<Vec<usize>> {
-    let policy_state = build_policy_state(state, config.periods)?;
+    let policy_state = build_policy_state(state, config.periods, config.policy_state_mode)?;
     action_vector_from_flat_params(
         &policy_state,
         flat_params,

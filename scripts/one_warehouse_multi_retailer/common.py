@@ -54,6 +54,7 @@ def exact_evaluate_soft_tree(
     split_type: str,
     leaf_type: str,
     allowed_values=None,
+    policy_state_mode: str = "normalized",
 ) -> dict:
     return dict(
         invman_rust.one_warehouse_multi_retailer_exact_evaluate_soft_tree(
@@ -69,6 +70,7 @@ def exact_evaluate_soft_tree(
             split_type=str(split_type),
             leaf_type=str(leaf_type),
             allowed_values=allowed_values,
+            policy_state_mode=str(policy_state_mode),
         )
     )
 
@@ -228,6 +230,23 @@ def benchmark_periods(reference: dict) -> int:
 
 def benchmark_replications(reference: dict) -> int:
     return 1 if is_exact_reference(reference) else int(reference["benchmark_replications"])
+
+
+def policy_state_input_dim(reference: dict, policy_state_mode: str = "normalized") -> int:
+    normalized_dim = (
+        1
+        + int(reference["warehouse_lead_time"])
+        + len(reference["retailer_lead_times"])
+        + sum(int(value) for value in reference["retailer_lead_times"])
+        + 2
+    )
+    if policy_state_mode in ("normalized", "default"):
+        return normalized_dim
+    if policy_state_mode in ("absolute_augmented", "augmented", "absolute"):
+        return normalized_dim + 2 + len(reference["retailer_lead_times"])
+    raise ValueError(
+        f"unsupported policy_state_mode '{policy_state_mode}'; expected normalized or absolute_augmented"
+    )
 
 
 def is_symmetric_retailer_case(reference: dict) -> bool:
@@ -514,7 +533,9 @@ def build_soft_tree_model(
     split_type: str,
     leaf_type: str,
     policy_action_mode: str = "direct_orders",
+    policy_state_mode: str = "normalized",
 ) -> Policy:
+    input_dim = policy_state_input_dim(reference, policy_state_mode)
     if policy_action_mode == "symmetric_echelon_targets":
         if not is_symmetric_retailer_case(reference):
             raise ValueError("symmetric_echelon_targets requires a symmetric retailer reference")
@@ -530,11 +551,7 @@ def build_soft_tree_model(
             retailer_levels = list(range(int(retailer_lower), int(retailer_upper) + 1))
         return Policy(
             backbone="soft_tree",
-            input_dim=1
-            + int(reference["warehouse_lead_time"])
-            + len(reference["retailer_lead_times"])
-            + sum(int(value) for value in reference["retailer_lead_times"])
-            + 2,
+            input_dim=input_dim,
             control_dim=2,
             control_mode="discrete_grid",
             min_values=[int(warehouse_levels[0]), int(retailer_levels[0])],
@@ -546,6 +563,7 @@ def build_soft_tree_model(
             leaf_type=str(leaf_type),
             state_normalizer="identity",
             state_scale=None,
+            state_feature_mode=str(policy_state_mode),
         )
 
     if is_exact_reference(reference):
@@ -563,11 +581,7 @@ def build_soft_tree_model(
         control_dim = len(reference["retailer_lead_times"]) + 1
     return Policy(
         backbone="soft_tree",
-        input_dim=1
-        + int(reference["warehouse_lead_time"])
-        + len(reference["retailer_lead_times"])
-        + sum(int(value) for value in reference["retailer_lead_times"])
-        + 2,
+        input_dim=input_dim,
         control_dim=control_dim,
         control_mode="vector_quantity",
         min_values=[0] * control_dim,
@@ -579,6 +593,7 @@ def build_soft_tree_model(
         leaf_type=str(leaf_type),
         state_normalizer="identity",
         state_scale=None,
+        state_feature_mode=str(policy_state_mode),
     )
 
 
@@ -630,6 +645,7 @@ def soft_tree_rollout_kwargs(
         "split_type": str(model.split_type),
         "leaf_type": str(model.leaf_type),
         "allowed_values": model.allowed_values,
+        "policy_state_mode": str(getattr(model, "state_feature_mode", "normalized")),
     }
 
 

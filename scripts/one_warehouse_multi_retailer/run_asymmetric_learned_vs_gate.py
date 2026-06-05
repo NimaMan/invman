@@ -283,12 +283,13 @@ def _warm_start_flat_params(model, target_vector):
 
 def _training_namespace(reference, budget, leaf_type, mode, train_allocation, seed,
                         sigma_init, out_root, depth, split_type, temperature,
-                        same_seed=False):
+                        policy_state_mode="normalized", same_seed=False):
     sigma_tag = f"{float(sigma_init):g}".replace(".", "p")
     same_seed_tag = "_crn" if same_seed else ""
+    state_tag = "" if policy_state_mode == "normalized" else f"_{policy_state_mode}"
     run_name = (
         f"asym_{reference['name']}_{mode}_{leaf_type}"
-        f"_d{depth}_{split_type}_t{temperature:g}_pop{budget['es_population']}"
+        f"_d{depth}_{split_type}_t{temperature:g}{state_tag}_pop{budget['es_population']}"
         f"_gen{budget['training_episodes']}_batch{budget['train_seed_batch']}"
         f"_{train_allocation}{same_seed_tag}_sig{sigma_tag}_seed{seed}"
     )
@@ -338,54 +339,116 @@ def _resolve_budget(budget_name, training_episodes=None, es_population=None,
     return budget
 
 
-def _expand_echelon_params_with_alloc_targets(params, model, reference):
-    """Embed a K+1 echelon-target soft tree into the 1+2K decoupled target mode.
+def _expand_soft_tree_params_to_model(params, model, old_input_dim, old_action_dim, action_map):
+    """Embed an older soft-tree layout into the current model layout.
 
-    The old policy emits [W, r_1, ..., r_K]. The new policy emits
-    [W, order_r_1, ..., order_r_K, alloc_r_1, ..., alloc_r_K]. Copying the old
-    retailer target outputs into both blocks preserves the incumbent behavior
-    when min_shortage uses the learned target positions.
+    New input features get zero weights, so a normalized-state checkpoint can be
+    used as the starting point for an augmented-state run. action_map maps each
+    new action index to the old action index whose weights/bias should be copied.
     """
-    num_retailers = len(reference["retailer_lead_times"])
-    old_action_dim = num_retailers + 1
-    new_action_dim = 1 + 2 * num_retailers
-    if int(model.control_dim) != new_action_dim:
-        return None
     flat = np.asarray(params, dtype=np.float32).reshape(-1)
     num_leaves = 2 ** int(model.depth)
-    input_dim = int(model.input_dim)
-    prefix = ((2 ** int(model.depth)) - 1) * input_dim + ((2 ** int(model.depth)) - 1)
+    num_internal = (2 ** int(model.depth)) - 1
+    new_input_dim = int(model.input_dim)
+    new_action_dim = int(model.control_dim)
+    old_input_dim = int(old_input_dim)
+    old_action_dim = int(old_action_dim)
+    if len(action_map) != new_action_dim or any(idx >= old_action_dim for idx in action_map):
+        return None
+
+    old_prefix = num_internal * old_input_dim + num_internal
+    new_prefix = num_internal * new_input_dim + num_internal
     leaf_type = str(model.leaf_type)
+    if old_input_dim > new_input_dim:
+        return None
+
+    expected_new = len(model.get_model_flat_params())
+    new_flat = np.zeros(expected_new, dtype=np.float32)
+    old_split_end = num_internal * old_input_dim
+    new_split_end = num_internal * new_input_dim
+    if flat.size < old_prefix:
+        return None
+    if num_internal:
+        old_split = flat[:old_split_end].reshape(num_internal, old_input_dim)
+        new_split = np.zeros((num_internal, new_input_dim), dtype=np.float32)
+        new_split[:, :old_input_dim] = old_split
+        new_flat[:new_split_end] = new_split.reshape(-1)
+        new_flat[new_split_end:new_prefix] = flat[old_split_end:old_prefix]
+
     if leaf_type == "constant":
-        expected_old = prefix + num_leaves * old_action_dim
+        expected_old = old_prefix + num_leaves * old_action_dim
         if flat.size != expected_old:
             return None
-        old_tail = flat[prefix:].reshape(num_leaves, old_action_dim)
+        old_tail = flat[old_prefix:].reshape(num_leaves, old_action_dim)
         new_tail = np.empty((num_leaves, new_action_dim), dtype=np.float32)
-        new_tail[:, :old_action_dim] = old_tail
-        new_tail[:, old_action_dim:] = old_tail[:, 1:]
-        return np.concatenate([flat[:prefix], new_tail.reshape(-1)]).astype(np.float32)
+        for new_idx, old_idx in enumerate(action_map):
+            new_tail[:, new_idx] = old_tail[:, old_idx]
+        new_flat[new_prefix:] = new_tail.reshape(-1)
+        return new_flat
 
-    weights_len_old = num_leaves * old_action_dim * input_dim
+    weights_len_old = num_leaves * old_action_dim * old_input_dim
     bias_len_old = num_leaves * old_action_dim
-    expected_old = prefix + weights_len_old + bias_len_old
+    expected_old = old_prefix + weights_len_old + bias_len_old
     if flat.size != expected_old:
         return None
-    old_weights = flat[prefix:prefix + weights_len_old].reshape(
-        num_leaves, old_action_dim, input_dim
+    old_weights = flat[old_prefix:old_prefix + weights_len_old].reshape(
+        num_leaves, old_action_dim, old_input_dim
     )
-    old_bias = flat[prefix + weights_len_old:].reshape(num_leaves, old_action_dim)
-    new_weights = np.empty((num_leaves, new_action_dim, input_dim), dtype=np.float32)
-    new_bias = np.empty((num_leaves, new_action_dim), dtype=np.float32)
-    new_weights[:, :old_action_dim, :] = old_weights
-    new_weights[:, old_action_dim:, :] = old_weights[:, 1:, :]
-    new_bias[:, :old_action_dim] = old_bias
-    new_bias[:, old_action_dim:] = old_bias[:, 1:]
-    return np.concatenate([
-        flat[:prefix],
-        new_weights.reshape(-1),
-        new_bias.reshape(-1),
-    ]).astype(np.float32)
+    old_bias = flat[old_prefix + weights_len_old:].reshape(num_leaves, old_action_dim)
+    new_weights = np.zeros((num_leaves, new_action_dim, new_input_dim), dtype=np.float32)
+    new_bias = np.zeros((num_leaves, new_action_dim), dtype=np.float32)
+    for new_idx, old_idx in enumerate(action_map):
+        new_weights[:, new_idx, :old_input_dim] = old_weights[:, old_idx, :]
+        new_bias[:, new_idx] = old_bias[:, old_idx]
+    new_weights_len = num_leaves * new_action_dim * new_input_dim
+    new_flat[new_prefix:new_prefix + new_weights_len] = new_weights.reshape(-1)
+    new_flat[new_prefix + new_weights_len:] = new_bias.reshape(-1)
+    return new_flat
+
+
+def _expand_echelon_params_with_alloc_targets(params, model, reference):
+    """Embed older target soft trees into the 1+2K decoupled target mode."""
+    expanded = _expand_init_params_for_model(
+        params,
+        model,
+        reference,
+        policy_action_mode="echelon_targets_with_alloc_targets",
+    )
+    return None if expanded is None else np.asarray(expanded, dtype=np.float32)
+
+
+def _expand_init_params_for_model(params, model, reference, policy_action_mode):
+    num_retailers = len(reference["retailer_lead_times"])
+    new_input_dim = int(model.input_dim)
+    new_action_dim = int(model.control_dim)
+    normalized_input_dim = common.policy_state_input_dim(reference, "normalized")
+    input_candidates = [new_input_dim]
+    if normalized_input_dim != new_input_dim:
+        input_candidates.append(normalized_input_dim)
+
+    action_candidates = [(new_action_dim, list(range(new_action_dim)))]
+    if policy_action_mode == "echelon_targets_with_alloc_targets":
+        old_action_dim = num_retailers + 1
+        if old_action_dim != new_action_dim:
+            action_candidates.append(
+                (
+                    old_action_dim,
+                    list(range(old_action_dim)) + list(range(1, old_action_dim)),
+                )
+            )
+
+    for old_input_dim in input_candidates:
+        for old_action_dim, action_map in action_candidates:
+            expanded = _expand_soft_tree_params_to_model(
+                params,
+                model,
+                old_input_dim=old_input_dim,
+                old_action_dim=old_action_dim,
+                action_map=action_map,
+            )
+            if expanded is not None and expanded.size == len(model.get_model_flat_params()):
+                return expanded.tolist()
+    return None
 
 
 def _load_init_params(path, expected_size, model=None, reference=None, policy_action_mode=None):
@@ -395,13 +458,13 @@ def _load_init_params(path, expected_size, model=None, reference=None, policy_ac
     if params.size == int(expected_size):
         return params.tolist()
     if (
-        policy_action_mode == "echelon_targets_with_alloc_targets"
+        policy_action_mode is not None
         and model is not None
         and reference is not None
     ):
-        expanded = _expand_echelon_params_with_alloc_targets(params, model, reference)
-        if expanded is not None and expanded.size == int(expected_size):
-            return expanded.tolist()
+        expanded = _expand_init_params_for_model(params, model, reference, policy_action_mode)
+        if expanded is not None and len(expanded) == int(expected_size):
+            return expanded
     if params.size != int(expected_size):
         raise ValueError(
             f"init_params_npy has {params.size} params, expected {expected_size}"
@@ -440,7 +503,8 @@ def _direct_order_gate_init_flat_params(model, reference, gate_best):
     weights = np.zeros((num_leaves, action_dim, input_dim), dtype=np.float32)
     bias = np.zeros((num_leaves, action_dim), dtype=np.float32)
 
-    total_position_idx = input_dim - 2
+    normalized_input_dim = common.policy_state_input_dim(reference, "normalized")
+    total_position_idx = normalized_input_dim - 2
     bias[:, 0] = w_level
     weights[:, 0, total_position_idx] = -scale_proxy
 
@@ -468,7 +532,7 @@ def run_one(reference, budget_name, leaf_type, policy_action_mode, train_allocat
             direct_order_gate_init=False,
             depth=2, temperature=0.10, split_type="axis_aligned",
             training_episodes=None, es_population=None, train_seed_batch=None,
-            holdout_paths=None, same_seed=False):
+            holdout_paths=None, policy_state_mode="normalized", same_seed=False):
     budget = _resolve_budget(
         budget_name,
         training_episodes=training_episodes,
@@ -535,12 +599,14 @@ def run_one(reference, budget_name, leaf_type, policy_action_mode, train_allocat
     model = common.build_soft_tree_model(
         reference, depth=depth, temperature=temperature, split_type=split_type,
         leaf_type=leaf_type, policy_action_mode=policy_action_mode,
+        policy_state_mode=policy_state_mode,
     )
     warm_flat = None
     warm_started = False
     train_args = _training_namespace(
         reference, budget, leaf_type, policy_action_mode, train_allocation, seed,
-        sigma_init, out_root, depth, split_type, temperature, same_seed=same_seed
+        sigma_init, out_root, depth, split_type, temperature,
+        policy_state_mode=policy_state_mode, same_seed=same_seed
     )
     # Warm-start reproduces the gate as a base-stock TARGET, so it is meaningful
     # for target-based geometries. direct_orders emits raw orders, not a target.
@@ -700,6 +766,7 @@ def run_one(reference, budget_name, leaf_type, policy_action_mode, train_allocat
         "depth": int(depth),
         "temperature": float(temperature),
         "split_type": split_type,
+        "policy_state_mode": policy_state_mode,
         "policy_action_mode": policy_action_mode,
         "train_allocation": train_allocation,
         "warm_started": warm_started,
@@ -767,6 +834,11 @@ def parse_args():
     p.add_argument("--depth", type=int, default=2)
     p.add_argument("--temperature", type=float, default=0.10)
     p.add_argument("--split_type", choices=["oblique", "axis_aligned"], default="axis_aligned")
+    p.add_argument("--policy_state_mode",
+                   choices=["normalized", "absolute_augmented"],
+                   default="normalized",
+                   help="State features for learned soft trees. absolute_augmented appends scale, "
+                        "raw total echelon position, and raw retailer inventory positions.")
     p.add_argument("--policy_action_mode",
                    choices=[
                        "symmetric_echelon_targets",
@@ -829,12 +901,13 @@ def main():
         es_population=parsed.es_population,
         train_seed_batch=parsed.train_seed_batch,
         holdout_paths=parsed.holdout_paths,
+        policy_state_mode=parsed.policy_state_mode,
         same_seed=parsed.same_seed,
     )
 
     line = (
         f"{result['instance']} [{mode}/{parsed.leaf_type}/d{parsed.depth}/"
-        f"{parsed.split_type}/t{parsed.temperature:g}/{parsed.budget}]: "
+        f"{parsed.split_type}/t{parsed.temperature:g}/{parsed.policy_state_mode}/{parsed.budget}]: "
         f"learned {result['learned_cost']:.2f} (+/-{result['learned_sem']:.2f}, {result['deployed_allocation']}) "
         f"vs gate {result['gate_cost']:.2f} (+/-{result['gate_sem']:.2f}, {result['gate_best_allocation']}) "
         f"=> {result['gap_pct_vs_gate']:+.2f}% | paired {result['paired_diff_mean']:+.2f}+/-{result['paired_diff_sem']:.2f} "
@@ -846,7 +919,7 @@ def main():
     out_path = parsed.output_json or str(
         out_root / (
             f"{result['instance']}_{mode}_{parsed.leaf_type}_d{parsed.depth}"
-            f"_{parsed.split_type}_t{parsed.temperature:g}_{parsed.budget}.json"
+            f"_{parsed.split_type}_t{parsed.temperature:g}_{parsed.policy_state_mode}_{parsed.budget}.json"
         )
     )
     # numpy arrays are not JSON-serializable; the result dict already holds floats only.

@@ -15,6 +15,7 @@ use crate::problems::one_warehouse_multi_retailer::references::{
 };
 use crate::problems::one_warehouse_multi_retailer::rollout::{
     policy_action_from_tree, OneWarehouseMultiRetailerRolloutConfig, PolicyActionMode,
+    PolicyStateMode,
 };
 
 fn nested_pipeline_vec(pipelines: &[&[usize]]) -> Vec<Vec<usize>> {
@@ -193,6 +194,7 @@ fn symmetric_echelon_target_mode_expands_shared_retailer_target() {
         emergency_shipment_probability: reference.emergency_shipment_probability,
         discount_factor: reference.discount_factor,
         policy_action_mode: PolicyActionMode::SymmetricEchelonTargets,
+        policy_state_mode: PolicyStateMode::Normalized,
         temperature: 0.1,
         split_type: crate::core::policies::soft_tree::SoftTreeSplitType::AxisAligned,
         leaf_type: crate::core::policies::soft_tree::SoftTreeLeafType::Constant,
@@ -256,6 +258,7 @@ fn echelon_target_mode_can_decouple_order_and_allocation_targets() {
         emergency_shipment_probability: reference.emergency_shipment_probability,
         discount_factor: reference.discount_factor,
         policy_action_mode: PolicyActionMode::EchelonTargetsWithAllocTargets,
+        policy_state_mode: PolicyStateMode::Normalized,
         temperature: 0.1,
         split_type: crate::core::policies::soft_tree::SoftTreeSplitType::AxisAligned,
         leaf_type: crate::core::policies::soft_tree::SoftTreeLeafType::Constant,
@@ -266,6 +269,69 @@ fn echelon_target_mode_can_decouple_order_and_allocation_targets() {
     ];
     let action = policy_action_from_tree(&flat_params, &state, &config)
         .expect("decoupled target action must compute");
+    assert_eq!(action.retailer_target_inventory_positions, Some(vec![1, 3]));
+    assert_eq!(
+        action.orders,
+        echelon_base_stock_orders(&state, 3, &[2, 5]).expect("orders must compute")
+    );
+}
+
+#[test]
+fn augmented_policy_state_mode_keeps_action_semantics() {
+    let reference = VERIFICATION_PROBLEM_INSTANCE;
+    let state = initialize_state(
+        reference.initial_warehouse_inventory,
+        reference.initial_warehouse_pipeline,
+        reference.initial_retailer_inventory,
+        &nested_pipeline_vec(reference.initial_retailer_pipeline),
+    )
+    .expect("state must build");
+    let normalized_dim = 1
+        + state.warehouse_pipeline.len()
+        + state.retailer_inventory.len()
+        + state
+            .retailer_pipeline
+            .iter()
+            .map(|pipeline| pipeline.len())
+            .sum::<usize>()
+        + 2;
+    let config = OneWarehouseMultiRetailerRolloutConfig {
+        input_dim: normalized_dim + 2 + state.retailer_inventory.len(),
+        depth: 1,
+        action_spec: build_action_spec(
+            "discrete_grid",
+            vec![0, 0, 0, 0, 0],
+            vec![6, 4, 10, 2, 6],
+            Some(vec![
+                vec![0, 3, 6],
+                vec![0, 2, 4],
+                vec![0, 5, 10],
+                vec![0, 1, 2],
+                vec![0, 3, 6],
+            ]),
+        )
+        .expect("action spec must build"),
+        periods: reference.periods,
+        demand_models: vec![],
+        allocation_policy:
+            crate::problems::one_warehouse_multi_retailer::allocation::AllocationPolicy::MinShortage,
+        retailer_target_inventory_positions: None,
+        holding_cost_warehouse: reference.holding_cost_warehouse,
+        holding_cost_retailers: reference.holding_cost_retailers.to_vec(),
+        penalty_costs_retailers: reference.penalty_costs_retailers.to_vec(),
+        customer_behavior: reference.customer_behavior,
+        emergency_shipment_probability: reference.emergency_shipment_probability,
+        discount_factor: reference.discount_factor,
+        policy_action_mode: PolicyActionMode::EchelonTargetsWithAllocTargets,
+        policy_state_mode: PolicyStateMode::AbsoluteAugmented,
+        temperature: 0.1,
+        split_type: crate::core::policies::soft_tree::SoftTreeSplitType::AxisAligned,
+        leaf_type: crate::core::policies::soft_tree::SoftTreeLeafType::Constant,
+    };
+    let mut flat_params = vec![0.0; config.input_dim + 1]; // split weights + bias
+    flat_params.extend(vec![0.0; 10]); // two leaves x five controls
+    let action = policy_action_from_tree(&flat_params, &state, &config)
+        .expect("augmented-state action must compute");
     assert_eq!(action.retailer_target_inventory_positions, Some(vec![1, 3]));
     assert_eq!(
         action.orders,

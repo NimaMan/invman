@@ -3,3 +3,4 @@ python-dotenv
 scikit-learn
 scipy
 cma
+PyYAML
