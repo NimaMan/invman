@@ -23,6 +23,7 @@ use crate::problems::one_warehouse_multi_retailer::heuristics::echelon_base_stoc
 pub enum PolicyActionMode {
     DirectOrders,
     EchelonTargets,
+    EchelonTargetsWithAllocTargets,
     SymmetricEchelonTargets,
 }
 
@@ -59,11 +60,14 @@ pub fn parse_policy_action_mode(value: &str) -> PyResult<PolicyActionMode> {
         "echelon_targets" | "echelon_base_stock_targets" | "targets" => {
             Ok(PolicyActionMode::EchelonTargets)
         }
+        "echelon_targets_with_alloc_targets"
+        | "echelon_base_stock_targets_with_alloc_targets"
+        | "targets_with_alloc_targets" => Ok(PolicyActionMode::EchelonTargetsWithAllocTargets),
         "symmetric_echelon_targets" | "symmetric_targets" | "shared_retailer_targets" => {
             Ok(PolicyActionMode::SymmetricEchelonTargets)
         }
         other => Err(PyValueError::new_err(format!(
-            "unsupported policy_action_mode '{other}'; expected 'direct_orders', 'echelon_targets', or 'symmetric_echelon_targets'"
+            "unsupported policy_action_mode '{other}'; expected 'direct_orders', 'echelon_targets', 'echelon_targets_with_alloc_targets', or 'symmetric_echelon_targets'"
         ))),
     }
 }
@@ -92,6 +96,7 @@ fn validate_config(
     }
     let expected_action_dim = match config.policy_action_mode {
         PolicyActionMode::DirectOrders | PolicyActionMode::EchelonTargets => num_retailers + 1,
+        PolicyActionMode::EchelonTargetsWithAllocTargets => 1 + 2 * num_retailers,
         PolicyActionMode::SymmetricEchelonTargets => 2,
     };
     if config.action_spec.action_dim != expected_action_dim {
@@ -127,6 +132,7 @@ fn validate_config(
     if config.allocation_policy == AllocationPolicy::MinShortage
         && config.retailer_target_inventory_positions.is_none()
         && config.policy_action_mode != PolicyActionMode::EchelonTargets
+        && config.policy_action_mode != PolicyActionMode::EchelonTargetsWithAllocTargets
         && config.policy_action_mode != PolicyActionMode::SymmetricEchelonTargets
     {
         return Err(PyValueError::new_err(
@@ -230,6 +236,23 @@ pub fn policy_action_from_tree(
             Ok(PolicyAction {
                 orders: echelon_base_stock_orders(state, actions[0], &actions[1..])?,
                 retailer_target_inventory_positions: Some(actions[1..].to_vec()),
+            })
+        }
+        PolicyActionMode::EchelonTargetsWithAllocTargets => {
+            let num_retailers = state.retailer_inventory.len();
+            if actions.len() != 1 + 2 * num_retailers {
+                return Err(PyValueError::new_err(
+                    "echelon target mode with allocation targets requires warehouse, retailer order targets, and retailer allocation targets",
+                ));
+            }
+            let order_targets_end = 1 + num_retailers;
+            Ok(PolicyAction {
+                orders: echelon_base_stock_orders(
+                    state,
+                    actions[0],
+                    &actions[1..order_targets_end],
+                )?,
+                retailer_target_inventory_positions: Some(actions[order_targets_end..].to_vec()),
             })
         }
         PolicyActionMode::SymmetricEchelonTargets => {

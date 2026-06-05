@@ -555,6 +555,12 @@ def build_soft_tree_model(
         max_values = [int(bounds["warehouse"][1])] + [
             int(upper) for _, upper in bounds["retailers"]
         ]
+    if policy_action_mode == "echelon_targets_with_alloc_targets":
+        retailer_max_values = max_values[1:]
+        max_values = [max_values[0]] + retailer_max_values + retailer_max_values
+        control_dim = 1 + 2 * len(reference["retailer_lead_times"])
+    else:
+        control_dim = len(reference["retailer_lead_times"]) + 1
     return Policy(
         backbone="soft_tree",
         input_dim=1
@@ -562,9 +568,9 @@ def build_soft_tree_model(
         + len(reference["retailer_lead_times"])
         + sum(int(value) for value in reference["retailer_lead_times"])
         + 2,
-        control_dim=len(reference["retailer_lead_times"]) + 1,
+        control_dim=control_dim,
         control_mode="vector_quantity",
-        min_values=[0] * (len(reference["retailer_lead_times"]) + 1),
+        min_values=[0] * control_dim,
         max_values=max_values,
         allowed_values=None,
         depth=int(depth),

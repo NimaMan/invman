@@ -34,6 +34,10 @@ gate. The per-retailer geometries the binding actually supports are:
   - echelon_targets  (control_dim = K+1): W target + per-retailer echelon
     base-stock TARGETS. Generalizes the gate to asymmetric retailers; supports
     BOTH proportional and min_shortage allocation (provides target positions).
+  - echelon_targets_with_alloc_targets (control_dim = 1+2K): W target,
+    per-retailer order targets, and separate per-retailer allocation targets.
+    This preserves the gate when the two target blocks are equal but lets
+    min_shortage rationing learn different priorities than replenishment.
   - direct_orders    (control_dim = K+1): raw per-retailer order quantities.
     Per-retailer but does NOT supply target positions -> min_shortage is
     UNSUPPORTED (proportional / random_sequential only).
@@ -334,10 +338,70 @@ def _resolve_budget(budget_name, training_episodes=None, es_population=None,
     return budget
 
 
-def _load_init_params(path, expected_size):
+def _expand_echelon_params_with_alloc_targets(params, model, reference):
+    """Embed a K+1 echelon-target soft tree into the 1+2K decoupled target mode.
+
+    The old policy emits [W, r_1, ..., r_K]. The new policy emits
+    [W, order_r_1, ..., order_r_K, alloc_r_1, ..., alloc_r_K]. Copying the old
+    retailer target outputs into both blocks preserves the incumbent behavior
+    when min_shortage uses the learned target positions.
+    """
+    num_retailers = len(reference["retailer_lead_times"])
+    old_action_dim = num_retailers + 1
+    new_action_dim = 1 + 2 * num_retailers
+    if int(model.control_dim) != new_action_dim:
+        return None
+    flat = np.asarray(params, dtype=np.float32).reshape(-1)
+    num_leaves = 2 ** int(model.depth)
+    input_dim = int(model.input_dim)
+    prefix = ((2 ** int(model.depth)) - 1) * input_dim + ((2 ** int(model.depth)) - 1)
+    leaf_type = str(model.leaf_type)
+    if leaf_type == "constant":
+        expected_old = prefix + num_leaves * old_action_dim
+        if flat.size != expected_old:
+            return None
+        old_tail = flat[prefix:].reshape(num_leaves, old_action_dim)
+        new_tail = np.empty((num_leaves, new_action_dim), dtype=np.float32)
+        new_tail[:, :old_action_dim] = old_tail
+        new_tail[:, old_action_dim:] = old_tail[:, 1:]
+        return np.concatenate([flat[:prefix], new_tail.reshape(-1)]).astype(np.float32)
+
+    weights_len_old = num_leaves * old_action_dim * input_dim
+    bias_len_old = num_leaves * old_action_dim
+    expected_old = prefix + weights_len_old + bias_len_old
+    if flat.size != expected_old:
+        return None
+    old_weights = flat[prefix:prefix + weights_len_old].reshape(
+        num_leaves, old_action_dim, input_dim
+    )
+    old_bias = flat[prefix + weights_len_old:].reshape(num_leaves, old_action_dim)
+    new_weights = np.empty((num_leaves, new_action_dim, input_dim), dtype=np.float32)
+    new_bias = np.empty((num_leaves, new_action_dim), dtype=np.float32)
+    new_weights[:, :old_action_dim, :] = old_weights
+    new_weights[:, old_action_dim:, :] = old_weights[:, 1:, :]
+    new_bias[:, :old_action_dim] = old_bias
+    new_bias[:, old_action_dim:] = old_bias[:, 1:]
+    return np.concatenate([
+        flat[:prefix],
+        new_weights.reshape(-1),
+        new_bias.reshape(-1),
+    ]).astype(np.float32)
+
+
+def _load_init_params(path, expected_size, model=None, reference=None, policy_action_mode=None):
     if path is None:
         return None
     params = np.asarray(np.load(path), dtype=np.float32).reshape(-1)
+    if params.size == int(expected_size):
+        return params.tolist()
+    if (
+        policy_action_mode == "echelon_targets_with_alloc_targets"
+        and model is not None
+        and reference is not None
+    ):
+        expanded = _expand_echelon_params_with_alloc_targets(params, model, reference)
+        if expanded is not None and expanded.size == int(expected_size):
+            return expanded.tolist()
     if params.size != int(expected_size):
         raise ValueError(
             f"init_params_npy has {params.size} params, expected {expected_size}"
@@ -420,8 +484,8 @@ def run_one(reference, budget_name, leaf_type, policy_action_mode, train_allocat
     # keeping the held-out re-score (and the learned training/eval) at full budget.
     n_gate_search = int(gate_search_paths) if gate_search_paths else int(budget["search_paths"])
 
-    # echelon_targets / symmetric_echelon_targets support both allocations;
-    # direct_orders cannot supply min_shortage target positions.
+    # target-based modes support both allocations; direct_orders cannot supply
+    # min_shortage target positions.
     if policy_action_mode == "direct_orders":
         eval_allocs = ["proportional"]
     else:
@@ -478,21 +542,32 @@ def run_one(reference, budget_name, leaf_type, policy_action_mode, train_allocat
         reference, budget, leaf_type, policy_action_mode, train_allocation, seed,
         sigma_init, out_root, depth, split_type, temperature, same_seed=same_seed
     )
-    # Warm-start reproduces the gate as a base-stock TARGET, so it is meaningful for
-    # the target-based geometries (symmetric_echelon_targets: [W, mean(R)];
-    # echelon_targets: [W, r_1, ..., r_K]). direct_orders emits raw orders, not a
-    # target, so warm-start does not apply there.
-    if warm_start and policy_action_mode in ("symmetric_echelon_targets", "echelon_targets"):
+    # Warm-start reproduces the gate as a base-stock TARGET, so it is meaningful
+    # for target-based geometries. direct_orders emits raw orders, not a target.
+    if warm_start and policy_action_mode in (
+        "symmetric_echelon_targets",
+        "echelon_targets",
+        "echelon_targets_with_alloc_targets",
+    ):
         w_level = gate_best["warehouse_base_stock_level"]
         r_levels = gate_best["retailer_base_stock_levels"]
         if policy_action_mode == "symmetric_echelon_targets":
             target_vector = [w_level, int(round(float(np.mean(r_levels))))]
+        elif policy_action_mode == "echelon_targets_with_alloc_targets":
+            retailer_targets = [int(v) for v in r_levels]
+            target_vector = [w_level] + retailer_targets + retailer_targets
         else:
             target_vector = [w_level] + [int(v) for v in r_levels]
         warm_flat, warm_started = _warm_start_flat_params(model, target_vector)
         if warm_started:
             train_args.cma_x0 = warm_flat
-    init_flat = _load_init_params(init_params_npy, len(model.get_model_flat_params()))
+    init_flat = _load_init_params(
+        init_params_npy,
+        len(model.get_model_flat_params()),
+        model=model,
+        reference=reference,
+        policy_action_mode=policy_action_mode,
+    )
     if init_flat is not None:
         train_args.cma_x0 = init_flat
     direct_init_flat = None
@@ -693,7 +768,12 @@ def parse_args():
     p.add_argument("--temperature", type=float, default=0.10)
     p.add_argument("--split_type", choices=["oblique", "axis_aligned"], default="axis_aligned")
     p.add_argument("--policy_action_mode",
-                   choices=["symmetric_echelon_targets", "echelon_targets", "direct_orders"],
+                   choices=[
+                       "symmetric_echelon_targets",
+                       "echelon_targets",
+                       "echelon_targets_with_alloc_targets",
+                       "direct_orders",
+                   ],
                    default=None,
                    help="Default: the per-retailer geometry for the reference "
                         "(echelon_targets for asymmetric, symmetric_echelon_targets for symmetric).")

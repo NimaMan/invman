@@ -383,6 +383,19 @@ fn soft_tree_action(
             echelon_base_stock_orders(state, controls[0], &controls[1..])?,
             Some(controls[1..].to_vec()),
         )),
+        PolicyActionMode::EchelonTargetsWithAllocTargets => {
+            let num_retailers = state.retailer_inventory.len();
+            if controls.len() != 1 + 2 * num_retailers {
+                return Err(PyValueError::new_err(
+                    "echelon target mode with allocation targets requires warehouse, retailer order targets, and retailer allocation targets",
+                ));
+            }
+            let order_targets_end = 1 + num_retailers;
+            Ok((
+                echelon_base_stock_orders(state, controls[0], &controls[1..order_targets_end])?,
+                Some(controls[order_targets_end..].to_vec()),
+            ))
+        }
         PolicyActionMode::SymmetricEchelonTargets => {
             if controls.len() != 2 {
                 return Err(PyValueError::new_err(

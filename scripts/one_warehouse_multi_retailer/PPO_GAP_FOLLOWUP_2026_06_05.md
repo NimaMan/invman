@@ -23,14 +23,18 @@ exact commands and metrics.
 - `--same_seed` to use common random numbers within each CMA-ES population batch
 - `published_ppo_cost` and `learned_vs_published_ppo_pct` JSON aliases for simple PPO-gap scans
 - `trained_model_params_npy` in JSON so promoted policies can be resumed without reconstructing paths
+- `echelon_targets_with_alloc_targets`, a decoupled target mode with separate retailer order
+  targets and retailer allocation targets
+- automatic embedding of an old `echelon_targets` checkpoint into the decoupled mode by copying
+  retailer target outputs into both target blocks
 
 When `--init_params_npy` is used, deployment selects the best held-out candidate among trained
 `xbest`, the loaded initializer, and the gate anchor.
 
-## Best new result
+## Best same-mode restart result
 
-The best policy found in this follow-up is a small-sigma restart chain followed by one
-lower-noise CRN refinement:
+The best policy found before adding a new action geometry was a small-sigma restart chain followed
+by lower-noise CRN refinement:
 
 1. restart the old proportional incumbent with `train_allocation=min_shortage`, `sigma_init=0.10`,
    `pop24 x 300`, producing `1141.0050`;
@@ -80,7 +84,66 @@ Result:
 - gap vs PPO `-1.8875%`
 
 This improves the prior best (`1154.0874`) by `14.0481` cost units and closes the PPO gap from
-`3.1430%` to `1.8875%`, but does not beat PPO.
+`3.1430%` to `1.8875%`, but does not beat PPO. It is now superseded by the decoupled
+allocation-target mode below.
+
+## Decoupled allocation-target result
+
+Implemented `echelon_targets_with_alloc_targets` as the first richer policy class after the
+same-mode restart chain saturated.
+
+- action dimension: `1 + 2K` controls: warehouse order-up-to target, K retailer order targets,
+  and K retailer allocation targets
+- order logic: use the first `K+1` controls with `echelon_base_stock_orders`
+- rationing logic: pass the second K retailer controls as `retailer_target_inventory_positions`
+  for `min_shortage`
+- warm start: initialize order targets and allocation targets both from the incumbent/gate retailer
+  targets so the old policy remains representable
+- checkpoint expansion: load an old K+1 `echelon_targets` soft-tree checkpoint into the new 1+2K
+  model by copying retailer outputs into both retailer target blocks
+
+Two full CRN restarts from the `1140.0393` incumbent improved the frontier:
+
+- `sigma_init=0.005`, seed `719`: learned `1139.9194 +/- 2.1705`, paired gate - learned
+  `+29.6710 +/- 0.9455`, gap vs PPO `-1.8768%`.
+- `sigma_init=0.0025`, seed `720`: learned `1139.8884 +/- 2.1677`, paired gate - learned
+  `+29.7020 +/- 0.9443`, gap vs PPO `-1.8740%`.
+
+Best command:
+
+```bash
+RAYON_NUM_THREADS=2 OMP_NUM_THREADS=2 \
+python scripts/one_warehouse_multi_retailer/run_asymmetric_learned_vs_gate.py \
+  --reference kaynov2024_instance_12 \
+  --budget full \
+  --policy_action_mode echelon_targets_with_alloc_targets \
+  --leaf_type linear \
+  --warm_start_at_best_base_stock \
+  --init_params_npy outputs/one_warehouse_multi_retailer/asymmetric_learned/models/asym_kaynov2024_instance_12_echelon_targets_with_alloc_targets_linear_d2_axis_aligned_t0.1_pop24_gen200_batch16_min_shortage_crn_sig0p005_seed719_372_200/model_params.npy \
+  --sigma_init 0.0025 \
+  --gate_search_paths 64 \
+  --training_episodes 200 \
+  --es_population 24 \
+  --train_seed_batch 16 \
+  --holdout_paths 4096 \
+  --train_allocation min_shortage \
+  --same_seed \
+  --seed 720 \
+  --output_json outputs/one_warehouse_multi_retailer/asymmetric_learned/kaynov2024_instance_12_echelon_targets_with_alloc_targets_restart_from_sigma0.005_sigma0.0025_seed720.json
+```
+
+Result:
+
+- learned `1139.8884 +/- 2.1677`, deployed `trained_xbest`, evaluated under proportional
+- gate `1169.5905 +/- 2.0548`
+- paired gate - learned `+29.7020 +/- 0.9443`
+- gap vs gate `+2.5395%`
+- published PPO `1118.92`
+- gap vs PPO `-1.8740%`
+
+This is the current best repo-native result for `kaynov2024_instance_12`. It improves the saturated
+same-mode checkpoint by only `0.0309` cost units and still leaves `20.9684` cost units to the
+published PPO number.
 
 ## Negative / limiting evidence
 
@@ -231,22 +294,10 @@ simple direct-order affine warm start as a useful path.
 The useful new lever is not raw direct orders or random-sequential training. It is a small-sigma
 CMA-ES restart chain from the incumbent `echelon_targets` policy while training under
 `min_shortage` and deploying under the better held-out allocation. The improvement is real on the
-4096-path held-out block (`+29.55 +/- 0.94` vs gate), but still leaves `21.12` cost units to
+4096-path held-out block (`+29.70 +/- 0.94` vs gate), but still leaves `20.97` cost units to
 published PPO.
 
-Next high-yield experiment: stop relying on smaller local restarts alone. The current
-`echelon_targets` action emits the same retailer target vector for ordering and for min-shortage
-rationing. The Rust rollout already carries a `retailer_target_inventory_positions` hook, so the
-next code-side candidate is a new action mode that emits separate order targets and allocation
-targets.
-
-- proposed mode: `echelon_targets_with_alloc_targets`
-- action dimension: `1 + 2K` controls: warehouse order-up-to target, K retailer order targets,
-  and K retailer allocation targets
-- order logic: use the first `K+1` controls with `echelon_base_stock_orders`
-- rationing logic: pass the second K retailer controls as `retailer_target_inventory_positions`
-  for `min_shortage`
-- warm start: initialize order targets and allocation targets both from the incumbent/gate retailer
-  targets so the old policy remains representable
-- first bounded screen: depth 2, linear leaves, `--same_seed`, `sigma_init=0.005`,
-  `train_seed_batch=16`, 4096 held-out paths, promote only if it beats `1140.0393`
+Decoupling order targets from allocation targets is valid and slightly useful, but the first two
+full restarts gained only `0.0309` cost units over the saturated same-mode checkpoint. The next
+high-yield path should be more capacity or a materially different policy/training objective, not
+only smaller local restarts of this depth-2 tree.
