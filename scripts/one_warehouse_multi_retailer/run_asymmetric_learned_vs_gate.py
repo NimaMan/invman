@@ -514,6 +514,11 @@ def run_one(reference, budget_name, leaf_type, policy_action_mode, train_allocat
     )
     train_seconds = time.time() - t_train
     trained_flat = np.asarray(trained_model.get_model_flat_params(), dtype=np.float32).tolist()
+    trained_model_params_npy = (
+        Path(train_args.trained_models_dir)
+        / f"{train_args.experiment_name}_{trained_model.num_params}_{budget['training_episodes']}"
+        / "model_params.npy"
+    )
 
     # ---- evaluate learned on held-out (paired CRN) ----
     learned_eval = _eval_allocs(
@@ -625,6 +630,7 @@ def run_one(reference, budget_name, leaf_type, policy_action_mode, train_allocat
         "direct_order_gate_init": bool(direct_init_flat is not None),
         "deployed_policy": deployed_policy,
         "deployed_allocation": deployed_alloc,
+        "trained_model_params_npy": str(trained_model_params_npy),
         "seed": seed,
         "sigma_init": sigma_init,
         "gate_search_paths": n_gate_search,
@@ -661,8 +667,13 @@ def run_one(reference, budget_name, leaf_type, policy_action_mode, train_allocat
         "paired_diff_sem": paired_sem,
         "verdict": verdict,
         "published": published,
+        "published_ppo_cost": published["ppo"],
         "learned_vs_ppo_pct": (None if published["ppo"] is None
                                else (published["ppo"] - learned_cost) / published["ppo"] * 100.0),
+        "learned_vs_published_ppo_pct": (
+            None if published["ppo"] is None
+            else (published["ppo"] - learned_cost) / published["ppo"] * 100.0
+        ),
         "gate_seconds": gate_seconds,
         "train_seconds": train_seconds,
         "best_train_reward": float(np.max(fitness_hist[-1])) if len(fitness_hist) else None,

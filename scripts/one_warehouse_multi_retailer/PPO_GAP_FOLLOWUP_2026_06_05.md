@@ -20,18 +20,22 @@ exact commands and metrics.
 - `--training_episodes`, `--es_population`, `--train_seed_batch`, `--holdout_paths`
 - `--init_params_npy` for CMA-ES restart/refinement from a saved policy
 - `--direct_order_gate_init`, a near-gate raw-order initializer for `direct_orders` + linear leaf
+- `published_ppo_cost` and `learned_vs_published_ppo_pct` JSON aliases for simple PPO-gap scans
+- `trained_model_params_npy` in JSON so promoted policies can be resumed without reconstructing paths
 
 When `--init_params_npy` is used, deployment selects the best held-out candidate among trained
 `xbest`, the loaded initializer, and the gate anchor.
 
 ## Best new result
 
-The best policy found in this follow-up is a two-step small-sigma restart:
+The best policy found in this follow-up is a three-step small-sigma restart:
 
 1. restart the old proportional incumbent with `train_allocation=min_shortage`, `sigma_init=0.10`,
    `pop24 x 300`, producing `1141.0050`;
 2. restart that new model with `sigma_init=0.05`, again under `train_allocation=min_shortage`,
-   producing `1140.9575`.
+   producing `1140.9575`;
+3. restart that model with `sigma_init=0.02`, again under `train_allocation=min_shortage`,
+   producing `1140.8092`.
 
 Best command:
 
@@ -43,29 +47,29 @@ python scripts/one_warehouse_multi_retailer/run_asymmetric_learned_vs_gate.py \
   --policy_action_mode echelon_targets \
   --leaf_type linear \
   --warm_start_at_best_base_stock \
-  --init_params_npy outputs/one_warehouse_multi_retailer/asymmetric_learned/models/asym_kaynov2024_instance_12_echelon_targets_linear_d2_axis_aligned_t0.1_pop24_gen300_batch8_min_shortage_sig0p1_seed700_228_300/model_params.npy \
-  --sigma_init 0.05 \
+  --init_params_npy outputs/one_warehouse_multi_retailer/asymmetric_learned/models/asym_kaynov2024_instance_12_echelon_targets_linear_d2_axis_aligned_t0.1_pop24_gen300_batch8_min_shortage_sig0p05_seed702_228_300/model_params.npy \
+  --sigma_init 0.02 \
   --gate_search_paths 64 \
   --training_episodes 300 \
   --es_population 24 \
   --train_seed_batch 8 \
   --holdout_paths 4096 \
   --train_allocation min_shortage \
-  --seed 702 \
-  --output_json outputs/one_warehouse_multi_retailer/asymmetric_learned/kaynov2024_instance_12_echelon_targets_linear_restart_from_sigma0.10_sigma0.05_seed702.json
+  --seed 703 \
+  --output_json outputs/one_warehouse_multi_retailer/asymmetric_learned/kaynov2024_instance_12_echelon_targets_linear_restart_from_sigma0.05_sigma0.02_seed703.json
 ```
 
 Result:
 
-- learned `1140.9575 +/- 2.1915`, deployed `trained_xbest`, evaluated under proportional
+- learned `1140.8092 +/- 2.1908`, deployed `trained_xbest`, evaluated under proportional
 - gate `1169.5905 +/- 2.0548`
-- paired gate - learned `+28.6329 +/- 0.9554`
-- gap vs gate `+2.4481%`
+- paired gate - learned `+28.7813 +/- 0.9599`
+- gap vs gate `+2.4608%`
 - published PPO `1118.92`
-- gap vs PPO `-1.9695%`
+- gap vs PPO `-1.9563%`
 
-This improves the prior best (`1154.0874`) by `13.1299` cost units and closes the PPO gap from
-`3.1430%` to `1.9695%`, but does not beat PPO.
+This improves the prior best (`1154.0874`) by `13.2782` cost units and closes the PPO gap from
+`3.1430%` to `1.9563%`, but does not beat PPO.
 
 ## Negative / limiting evidence
 
@@ -118,6 +122,32 @@ python scripts/one_warehouse_multi_retailer/run_asymmetric_learned_vs_gate.py \
 Held-out trained `xbest` was worse (`1151.3395`), so deployment fell back to the loaded incumbent
 `1150.1581`.
 
+Restart from the current `1140.8092` model with a larger `sigma_init=0.10`:
+
+```bash
+RAYON_NUM_THREADS=2 OMP_NUM_THREADS=2 \
+python scripts/one_warehouse_multi_retailer/run_asymmetric_learned_vs_gate.py \
+  --reference kaynov2024_instance_12 \
+  --budget full \
+  --policy_action_mode echelon_targets \
+  --leaf_type linear \
+  --warm_start_at_best_base_stock \
+  --init_params_npy outputs/one_warehouse_multi_retailer/asymmetric_learned/models/asym_kaynov2024_instance_12_echelon_targets_linear_d2_axis_aligned_t0.1_pop24_gen300_batch8_min_shortage_sig0p02_seed703_228_300/model_params.npy \
+  --sigma_init 0.10 \
+  --gate_search_paths 64 \
+  --training_episodes 300 \
+  --es_population 24 \
+  --train_seed_batch 8 \
+  --holdout_paths 4096 \
+  --train_allocation min_shortage \
+  --seed 704 \
+  --output_json outputs/one_warehouse_multi_retailer/asymmetric_learned/kaynov2024_instance_12_echelon_targets_linear_restart_from_sigma0.02_sigma0.10_seed704.json
+```
+
+Held-out trained `xbest` was worse (`1148.2242`), so deployment fell back to the loaded incumbent
+`1140.8092`. This argues for local restarts at or below `sigma_init=0.05`, or for a richer policy
+class, rather than widening the CMA-ES neighborhood around the current incumbent.
+
 Random-sequential training from the gate anchor:
 
 ```bash
@@ -152,14 +182,14 @@ simple direct-order affine warm start as a useful path.
 The useful new lever is not raw direct orders or random-sequential training. It is a small-sigma
 CMA-ES restart chain from the incumbent `echelon_targets` policy while training under
 `min_shortage` and deploying under the better held-out allocation. The improvement is real on the
-4096-path held-out block (`+28.63 +/- 0.96` vs gate), but still leaves `22.04` cost units to
+4096-path held-out block (`+28.78 +/- 0.96` vs gate), but still leaves `21.89` cost units to
 published PPO.
 
-Next high-yield experiment: continue from the new `1140.9575` model with smaller local restarts,
+Next high-yield experiment: continue from the new `1140.8092` model with smaller local restarts,
 not from the older proportional incumbent:
 
-- start from `outputs/one_warehouse_multi_retailer/asymmetric_learned/models/asym_kaynov2024_instance_12_echelon_targets_linear_d2_axis_aligned_t0.1_pop24_gen300_batch8_min_shortage_sig0p05_seed702_228_300/model_params.npy`
+- start from `outputs/one_warehouse_multi_retailer/asymmetric_learned/models/asym_kaynov2024_instance_12_echelon_targets_linear_d2_axis_aligned_t0.1_pop24_gen300_batch8_min_shortage_sig0p02_seed703_228_300/model_params.npy`
 - keep `train_allocation=min_shortage`
-- test `sigma_init` in `{0.02, 0.05, 0.10}` with `pop24 x 300`, `train_seed_batch=8`
+- test `sigma_init` in `{0.01, 0.02, 0.05}` with `pop24 x 300`, `train_seed_batch=8`
 - use 4096 held-out paths and select by paired improvement beyond SEM
-- only promote a restart if it beats `1140.9575`; longer runs have already shown regression risk
+- only promote a restart if it beats `1140.8092`; longer runs have already shown regression risk
