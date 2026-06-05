@@ -1,8 +1,6 @@
-from invman.problems.lost_sales.reference_instances import (
-    VANILLA_L4_P4_POISSON5,
-    get_benchmark_grid,
-    get_reference_instance,
-)
+import invman_rust
+
+from scripts.lost_sales.benchmark_full_suite import get_benchmark_grid
 
 
 def test_lost_sales_grid_contains_four_demand_families():
@@ -12,29 +10,30 @@ def test_lost_sales_grid_contains_four_demand_families():
     assert grid["axes"]["demand_case"] == [
         "poisson",
         "geometric",
-        "mmpp2_positive",
-        "mmpp2_negative",
+        "mmpp2_pos",
+        "mmpp2_neg",
     ]
     assert len(grid["instances"]) == 32
 
 
 def test_canonical_vanilla_instance_kept_as_named_alias():
-    instance = get_reference_instance(VANILLA_L4_P4_POISSON5.name)
-    assert instance.params["lead_time"] == 4
-    assert instance.params["shortage_cost"] == 4.0
-    assert instance.params["demand_dist_name"] == "Poisson"
+    instance = invman_rust.lost_sales_reference_costs("vanilla_l4_p4_poisson5")
+    assert instance["lead_time"] == 4
+    assert instance["shortage_cost"] == 4.0
+    assert instance["demand_kind"] == "Poisson"
 
 
 def test_literature_instance_exposes_reported_values():
-    instance = get_reference_instance("lit_poisson_p4_l4")
-    reported = instance.literature_metadata["reported_values"]
+    instance = invman_rust.lost_sales_reference_costs("lit_poisson_p4_l4")
+    reported = instance["costs"]
     assert reported["optimal"] == 4.73
-    assert reported["M2"] == 4.82
-    assert reported["CappedBS"] == 4.80
+    assert reported["myopic2"] == 4.82
+    assert reported["capped_base_stock"] == 4.80
 
 
 def test_mmpp2_extension_instance_has_no_published_values():
-    instance = get_reference_instance("lit_mmpp2_pos_p4_l4")
-    assert instance.params["demand_dist_name"] == "MarkovModulatedPoisson2"
-    assert instance.literature_metadata["demand_case"] == "mmpp2_positive"
-    assert instance.literature_metadata["reported_values"] == {}
+    instance = invman_rust.lost_sales_reference_costs("lit_mmpp2_pos_p4_l4")
+    assert instance["demand_kind"] == "MarkovModulatedPoisson2"
+    assert instance["source"] == "computed"
+    assert instance["costs"]["optimal"] is None
+    assert instance["costs"]["capped_base_stock"] is None

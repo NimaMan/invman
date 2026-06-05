@@ -27,7 +27,7 @@ the repo's own report/instance JSON, reads model_config.json / policy_artifact.j
 authoritative architecture + normalization, loads model_params.npy, computes the action at a
 handful of representative states, and validates.
 
-1. SOFT-TREE FORWARD (shared core; mirrors rust/src/core/policies/soft_tree.rs).
+1. SOFT-TREE FORWARD (shared core; mirrors src/core/policies/soft_tree.rs).
    - Internal nodes n in [0, 2^depth - 1): gate logit
        oblique:       logit = bias[n] + sum_f w[n,f] * x_f
        axis_aligned:  pick f* = argmax_f |w[n,f]|; logit = bias[n] + w[n,f*] * x_f*
@@ -49,7 +49,7 @@ handful of representative states, and validates.
    [n_internal], then leaves. linear leaves: leaf_w [n_leaf*control_dim*input_dim] then
    leaf_bias [n_leaf*control_dim]; constant leaves: leaf_const [n_leaf*control_dim].
 
-2. DENSE FORWARD (mirrors rust/src/core/policies/dense.rs).
+2. DENSE FORWARD (mirrors src/core/policies/dense.rs).
    - linear backbone:  u = W x + b,  W stored row-major as W[o*input_dim + i], b length o.
    - nn backbone:      one hidden layer width H=8, SELU; layers unpacked in order
                        (W1 [H*input_dim], b1 [H]), then (W2 [o*H], b2 [o]).

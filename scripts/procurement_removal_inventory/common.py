@@ -6,12 +6,7 @@ from typing import Iterable
 
 import numpy as np
 
-# NOTE: `invman.policies.soft_tree.SoftTreePolicy` was removed in the Python-cleanup migration
-# (the repo is now Rust-only for problem dynamics; policies route through `invman.policy`). The
-# soft-tree helpers below are LEGACY and will raise ImportError if called. The heuristic / exact-DP
-# helpers do not need it, so the import is deferred into the soft-tree helpers to keep this module
-# importable. For a working, self-contained learned-policy + heuristic + exact-DP benchmark that does
-# not depend on the removed class, use `benchmark_procurement_removal.py` in this directory.
+from invman.policy import Policy
 
 import invman_rust
 
@@ -88,20 +83,17 @@ def build_soft_tree_model(
     split_type: str,
     leaf_type: str,
 ):
-    from invman.policies.soft_tree import SoftTreePolicy  # legacy; removed in migration
-
-    return SoftTreePolicy(
+    max_purchase_quantity = int(reference["max_purchase_quantity"])
+    max_removal_quantity = int(reference["max_removal_quantity"])
+    return Policy(
+        backbone="soft_tree",
         input_dim=7,
-        action_spec={
-            "action_dim": 2,
-            "action_mode": "vector_quantity",
-            "min_values": [0, 0],
-            "max_values": [
-                int(reference["max_purchase_quantity"]),
-                int(reference["max_removal_quantity"]),
-            ],
-            "allowed_values": None,
-        },
+        control_dim=2,
+        control_mode="vector_quantity",
+        min_values=(0, 0),
+        max_values=(max_purchase_quantity, max_removal_quantity),
+        allowed_values=None,
+        max_order_size=max(max_purchase_quantity, max_removal_quantity),
         depth=int(depth),
         temperature=float(temperature),
         split_type=str(split_type),
@@ -113,7 +105,7 @@ def build_soft_tree_model(
 
 def soft_tree_rollout_kwargs(
     reference: dict,
-    model: SoftTreePolicy,
+    model: Policy,
     *,
     flat_params,
 ) -> dict:
@@ -121,9 +113,9 @@ def soft_tree_rollout_kwargs(
         "flat_params": np.asarray(flat_params, dtype=np.float32).tolist(),
         "input_dim": int(model.input_dim),
         "depth": int(model.depth),
-        "min_values": [int(value) for value in model.action_spec["min_values"]],
-        "max_values": [int(value) for value in model.action_spec["max_values"]],
-        "action_mode": str(model.action_spec["action_mode"]),
+        "min_values": [int(value) for value in model.min_values],
+        "max_values": [int(value) for value in model.max_values],
+        "action_mode": str(model.control_mode),
         "inventory_level": int(reference["initial_inventory_level"]),
         "returnable_inventory": int(reference["initial_returnable_inventory"]),
         "periods": int(reference["periods"]),
@@ -141,13 +133,13 @@ def soft_tree_rollout_kwargs(
         "temperature": float(model.temperature),
         "split_type": str(model.split_type),
         "leaf_type": str(model.leaf_type),
-        "allowed_values": model.action_spec.get("allowed_values"),
+        "allowed_values": model.allowed_values,
     }
 
 
 def evaluate_soft_tree_policy(
     reference: dict,
-    model: SoftTreePolicy,
+    model: Policy,
     seeds: Iterable[int],
     *,
     flat_params=None,

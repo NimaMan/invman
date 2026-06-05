@@ -20,17 +20,17 @@ dist/
 
 # Native build artifacts
 .maturin/
-rust/target/
+target/
 
 # Local experiment artifacts
 outputs/
 data/
-!rust/src/problems/hormuz_strait/data/
-!rust/src/problems/hormuz_strait/data/**
-!rust/src/problems/hormuz_strait/history/data/
-!rust/src/problems/hormuz_strait/history/data/**
-!rust/src/problems/hormuz_strait/maritime_traffic/data/
-!rust/src/problems/hormuz_strait/maritime_traffic/data/**
+!src/case_studies/hormuz_strait/data/
+!src/case_studies/hormuz_strait/data/**
+!src/case_studies/hormuz_strait/history/data/
+!src/case_studies/hormuz_strait/history/data/**
+!src/case_studies/hormuz_strait/maritime_traffic/data/
+!src/case_studies/hormuz_strait/maritime_traffic/data/**
 temp/
 tests/env
 tests/test_env

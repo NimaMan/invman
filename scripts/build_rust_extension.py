@@ -61,7 +61,7 @@ def _resolve_maturin(project_root: Path, python_executable: Path) -> list[str]:
 
 def main():
     project_root = Path(__file__).resolve().parents[1]
-    manifest_path = project_root / "rust" / "Cargo.toml"
+    manifest_path = project_root / "Cargo.toml"
     if not manifest_path.exists():
         raise SystemExit(f"missing Cargo manifest: {manifest_path}")
 
@@ -74,6 +74,8 @@ def main():
         "--locked",
         "--manifest-path",
         str(manifest_path),
+        "--features",
+        "python-extension",
     ]
     env = os.environ.copy()
     env["PYO3_PYTHON"] = str(python_executable)

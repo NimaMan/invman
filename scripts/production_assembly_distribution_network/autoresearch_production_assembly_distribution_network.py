@@ -70,9 +70,9 @@ ALGORITHM (per run)
 
 CPU CAP (HARD)
 --------------
-Set RAYON_NUM_THREADS=2 OMP_NUM_THREADS=2 before launching. Parallelism is rayon inside the
-population-rollout binding; there is no Python process pool. Several sibling agents run in
-parallel, so this runner MUST stay capped (~4 cores total).
+The shared CPU helper caps Rayon/BLAS/OpenMP before NumPy and Rust imports. Parallelism is
+rayon inside the population-rollout binding; there is no Python process pool. Several sibling
+agents run in parallel, so this runner MUST stay capped.
 
 USAGE (smoke)
 -------------
@@ -92,11 +92,15 @@ import sys
 import time
 from pathlib import Path
 
-import numpy as np
-
 PACKAGE_ROOT = Path(__file__).resolve().parents[2]
 if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
+
+from invman.cpu_limits import configure_process_cpu_limits_from_argv
+
+configure_process_cpu_limits_from_argv(sys.argv[1:], default=2)
+
+import numpy as np
 
 from invman.cmaes import CMAES  # noqa: E402
 

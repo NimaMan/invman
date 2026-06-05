@@ -114,7 +114,11 @@ The codebase now treats the following 16-instance subset as the canonical first 
 - `K in {5, 25}`
 - `L in {1, 2, 3, 4}`
 
-This grid is encoded in `invman.problems.lost_sales_fixed_order_cost.reference_instances` under the name `literature_subset_poisson_mu5`.
+This grid now lives in the Rust reference grid and Python benchmark glue exposed by
+`scripts/lost_sales_fixed_order_cost/benchmark_full_suite.py` (`FULL_GRID_NAME =
+"lost_sales_style_full_grid_mu5"`). The historical Python module path
+`invman.problems.lost_sales_fixed_order_cost.reference_instances` was removed in the Rust-first
+cleanup.
 
 The first repo-native baseline for this grid is stored in:
 

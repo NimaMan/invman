@@ -15,9 +15,9 @@ The policy family of interest is the ordinal quantity head:
 These names are the same family in the repo:
 
 - Python alias normalization:
-  - `invman/policies/common.py`
+  - `invman/policy_registry.py`
 - Rust parser alias normalization:
-  - `rust/src/core/policies/dense.rs`
+  - `src/core/policies/dense.rs`
 
 ## Regression table
 
@@ -234,14 +234,14 @@ The ordinal decoder has backend drift.
 
 Python:
 
-- `invman/policies/linear.py`
+- current Python policy descriptor/registry path: `invman/policy.py`, `invman/policy_registry.py`
 - `soft_gated_ordinal_quantity` does:
   - `round(sigmoid(g) * sum(sigmoid(o_k)))`
   - then clips to `[0, max_order_size]`
 
 Rust:
 
-- `rust/src/core/policies/dense.rs`
+- `src/core/policies/dense.rs`
 - `SoftGatedOrdinalQuantity` does:
   - `round(sigmoid(g) * sum(sigmoid(o_k)))`
   - without an explicit final clamp

@@ -10,8 +10,8 @@ if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
 
 from invman.experiment_runner import run_experiment
-from invman.policies.registry import apply_policy_name
-from invman.problems.lost_sales_fixed_order_cost.reference_instances import (
+from invman.policy_registry import apply_policy_name
+from scripts.lost_sales_fixed_order_cost.benchmark_full_suite import (
     build_reference_args,
     get_reference_instance,
 )
@@ -44,7 +44,7 @@ def parse_args():
     parser.add_argument("--description", required=True, help="Short description of the policy change being tested.")
     parser.add_argument("--reference", default="lit_pois_mu5_l4_p4_k5", help="Named fixed-order-cost reference instance.")
     parser.add_argument("--policy_name", required=True, help="Unique learned-policy identifier.")
-    parser.add_argument("--rollout_backend", choices=["python", "rust"], default="python")
+    parser.add_argument("--rollout_backend", choices=["rust"], default="rust")
     parser.add_argument("--sigma_init", type=float, default=5.0)
     parser.add_argument("--seed", type=int, default=123)
     parser.add_argument("--mp_num_processors", type=int, default=4)
@@ -54,7 +54,7 @@ def parse_args():
 
 def _git_short_commit(project_root: Path) -> str:
     result = subprocess.run(
-        ["git", "-C", str(project_root.parent), "rev-parse", "--short", "HEAD"],
+        ["git", "-C", str(project_root), "rev-parse", "--short", "HEAD"],
         check=True,
         capture_output=True,
         text=True,

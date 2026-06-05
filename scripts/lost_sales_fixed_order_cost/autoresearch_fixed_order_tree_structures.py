@@ -9,8 +9,8 @@ if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
 
 from invman.experiment_runner import run_experiment
-from invman.policies.registry import apply_policy_name, make_soft_tree_policy_name
-from invman.problems.lost_sales_fixed_order_cost.reference_instances import build_reference_args
+from invman.policy_registry import apply_policy_name, make_soft_tree_policy_name
+from scripts.lost_sales_fixed_order_cost.benchmark_full_suite import build_reference_args
 
 
 BUDGETS = {

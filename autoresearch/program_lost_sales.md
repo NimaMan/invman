@@ -11,10 +11,12 @@ To set up a new run:
    - `README.md`
    - `autoresearch/README.md`
    - `autoresearch/program_lost_sales.md`
-   - `invman/problems/lost_sales/reference_instances.py`
-   - `invman/policies/`
-   - `rust/src/policies/`
-   - `rust/src/rollout/`
+   - `scripts/lost_sales/benchmark_full_suite.py`
+   - `src/problems/lost_sales/vanilla/reference_costs.rs`
+   - `invman/policy.py`
+   - `invman/policy_registry.py`
+   - `invman/rollout_fitness.py`
+   - `src/problems/lost_sales/vanilla/rollout.rs`
 3. Rebuild the Rust extension if any Rust files changed:
    - `python scripts/build_rust_extension.py`
 4. Verify the baseline code path works:
@@ -31,15 +33,18 @@ The benchmark is fixed to the trusted vanilla lost-sales instance:
 
 The evaluation harness is fixed. Do not modify:
 
-- `invman/problems/lost_sales/reference_instances.py`
+- `scripts/lost_sales/benchmark_full_suite.py`
+- `src/problems/lost_sales/vanilla/reference_costs.rs`
 - `scripts/lost_sales/validate_reference_instance.py`
 - heuristic implementations used as the benchmark baseline
 
 The intended search surface is:
 
-- `invman/policies/`
-- `rust/src/policies/`
-- `rust/src/rollout/`
+- `invman/policy.py`
+- `invman/policy_registry.py`
+- `invman/policy_build.py`
+- `invman/rollout_fitness.py`
+- Rust policy math under `src/core/policies/`
 - limited support code needed to wire policy evaluation into the existing training loop
 
 ## Experiment budgets

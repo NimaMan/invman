@@ -8,13 +8,14 @@ from scripts.lost_sales_fixed_order_cost.benchmark_full_suite import (
 
 def _build_parsed(**overrides):
     payload = {
-        "grid_name": "literature_subset_poisson_mu5",
+        "grid_name": "lost_sales_style_full_grid_mu5",
         "run_tag": "fixed_cost_parallel_test",
         "seed": 123,
         "mp_num_processors": 16,
         "instance_jobs": 4,
         "eval_horizon": 1000,
         "eval_seeds": 2,
+        "state_scale": None,
         "same_seed": False,
         "search_horizon": 10000,
         "reuse_existing": True,

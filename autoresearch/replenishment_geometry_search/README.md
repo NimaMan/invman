@@ -38,8 +38,7 @@ Demand cases used in the current demand-robustness sweep:
 
 These demand extensions are implemented in:
 
-- [mod.rs](/home/nima/code/ml/invman/rust/src/problems/lost_sales/demand/mod.rs)
-- [__init__.py](/home/nima/code/ml/invman/invman/problems/lost_sales/demand/__init__.py)
+- [mod.rs](/home/nima/code/ml/invman/src/problems/lost_sales/demand/mod.rs)
 
 ## Policy Equations
 
@@ -266,7 +265,8 @@ This is taken from:
 
 The repo encodes this validation case in:
 
-- [reference_instances.py](/home/nima/code/ml/invman/invman/problems/lost_sales_fixed_order_cost/reference_instances.py)
+- [references.rs](/home/nima/code/ml/invman/src/problems/lost_sales/fixed_order_cost/literature/references.rs)
+- [validate_known_optimum.py](/home/nima/code/ml/invman/scripts/lost_sales_fixed_order_cost/validate_known_optimum.py)
 
 The paper-aligned parameters are:
 

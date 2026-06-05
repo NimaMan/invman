@@ -9,9 +9,8 @@ if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
 
 from invman.experiment_runner import run_experiment
-from invman.policies.registry import apply_policy_name
-from invman.problems.lost_sales.demand import MMPP2_NEGATIVE_MEAN5, MMPP2_POSITIVE_MEAN5
-from invman.problems.lost_sales.reference_instances import build_reference_args
+from invman.policy_registry import apply_policy_name
+from scripts.lost_sales.benchmark_canonical_suite import build_reference_args
 
 
 POLICIES = [
@@ -31,8 +30,28 @@ POLICIES = [
 DEMAND_CASES = [
     ("poisson", {"demand_dist_name": "Poisson", "demand_rate": 5.0}),
     ("geometric", {"demand_dist_name": "Geometric", "demand_rate": 5.0}),
-    ("mmpp2_positive", dict(MMPP2_POSITIVE_MEAN5)),
-    ("mmpp2_negative", dict(MMPP2_NEGATIVE_MEAN5)),
+    (
+        "mmpp2_positive",
+        {
+            "demand_dist_name": "MarkovModulatedPoisson2",
+            "demand_rate": 5.0,
+            "demand_lambda_low": 3.0,
+            "demand_lambda_high": 7.0,
+            "demand_p00": 0.9,
+            "demand_p11": 0.9,
+        },
+    ),
+    (
+        "mmpp2_negative",
+        {
+            "demand_dist_name": "MarkovModulatedPoisson2",
+            "demand_rate": 5.0,
+            "demand_lambda_low": 3.0,
+            "demand_lambda_high": 7.0,
+            "demand_p00": 0.1,
+            "demand_p11": 0.1,
+        },
+    ),
 ]
 
 

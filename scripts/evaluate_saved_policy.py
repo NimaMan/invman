@@ -8,23 +8,29 @@ PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
 
-from invman.policies.es_module import ESModule
-from invman.problems import get_problem_module
-from invman.problems.lost_sales.reference_instances import build_reference_args as build_lost_sales_reference_args
-from invman.problems.lost_sales_fixed_order_cost.reference_instances import (
+from invman.policy import Policy
+from invman.rollout_fitness import get_model_fitness
+from scripts.lost_sales.benchmark_canonical_suite import (
+    build_reference_args as build_lost_sales_reference_args,
+)
+from scripts.lost_sales_fixed_order_cost.benchmark_full_suite import (
     build_reference_args as build_fixed_cost_reference_args,
 )
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Evaluate a saved learned policy on a named reference instance.")
-    parser.add_argument("--model_dir", required=True, help="Directory containing model_config.json and model_params.npy.")
+    parser.add_argument("--model_dir", required=True, help="Directory containing policy_artifact.json and model_params.npy.")
     parser.add_argument("--problem", choices=["lost_sales", "lost_sales_fixed_order_cost"], required=True)
     parser.add_argument("--reference", required=True, help="Named reference instance for the selected problem.")
     parser.add_argument("--eval_horizon", type=int, default=int(1e6))
     parser.add_argument("--eval_seeds", type=int, default=3)
     parser.add_argument("--seed", type=int, default=123)
-    parser.add_argument("--track_demand", action="store_true", help="Force Python tracked-demand evaluation.")
+    parser.add_argument(
+        "--track_demand",
+        action="store_true",
+        help="Accepted for old CLI compatibility; current evaluation is Rust-backed.",
+    )
     return parser.parse_args()
 
 
@@ -50,16 +56,18 @@ def summarize_costs(costs):
 
 def main():
     parsed = parse_args()
-    model = ESModule.load(parsed.model_dir)
-    problem_module = get_problem_module(parsed.problem)
+    model = Policy.load(parsed.model_dir)
     args = build_reference_args(parsed.problem, parsed.reference)
+    args.problem = parsed.problem
+    args.reference_instance = parsed.reference
     args.horizon = parsed.eval_horizon
+    args.rollout_backend = "rust"
 
     costs = []
     for seed_offset in range(parsed.eval_seeds):
         eval_args = copy(args)
         seed = parsed.seed + seed_offset
-        reward, _ = problem_module.get_model_fitness(
+        reward, _ = get_model_fitness(
             model,
             eval_args,
             seed=seed,
@@ -73,6 +81,7 @@ def main():
         "reference": parsed.reference,
         "eval_horizon": parsed.eval_horizon,
         "eval_seeds": parsed.eval_seeds,
+        "rollout_backend": "rust",
         "evaluation": summarize_costs(costs),
     }
     print(json.dumps(payload, indent=2))

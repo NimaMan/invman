@@ -14,7 +14,7 @@
 #    two repo heuristics' exact discounted costs (all computed by the Rust DP), and the profit
 #    optimality gap of each heuristic. This instance also carries an INDEPENDENT analytical anchor:
 #    its T=1 reduction is the price-setting newsvendor (critical fractile), verified in
-#    rust/.../verification/tests.rs.
+#    src/.../verification/tests.rs.
 #
 # 2) LEARNED-VS-HEURISTIC ON THE PRIMARY INSTANCE (18 periods, Poisson price-dependent demand).
 #    No exact optimum exists here (large/continuing state), so we cannot report an optimality gap.

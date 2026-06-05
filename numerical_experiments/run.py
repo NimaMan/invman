@@ -10,6 +10,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from invman.cpu_limits import cpu_limited_environ, normalize_args_cpu_limits
 from numerical_experiments.catalog import get_suite, list_suites
 
 
@@ -34,6 +35,12 @@ def parse_args():
         "--python-bin",
         default=sys.executable,
         help="Python executable to use when launching suite scripts.",
+    )
+    parser.add_argument(
+        "--mp_num_processors",
+        type=int,
+        default=4,
+        help="Maximum CPU worker/thread budget to expose to child suite scripts.",
     )
     parser.add_argument(
         "--dry-run",
@@ -82,6 +89,7 @@ def _resolve_run_list(parsed) -> list:
 
 def main():
     parsed = parse_args()
+    mp_num_processors = normalize_args_cpu_limits(parsed)
 
     if parsed.list or (not parsed.suite and not parsed.all_ready):
         for suite in list_suites(status=parsed.status):
@@ -101,7 +109,11 @@ def main():
         print(rendered)
         if parsed.dry_run:
             continue
-        result = subprocess.run(command, cwd=PROJECT_ROOT)
+        result = subprocess.run(
+            command,
+            cwd=PROJECT_ROOT,
+            env=cpu_limited_environ(mp_num_processors),
+        )
         if result.returncode != 0:
             failures.append((suite.suite_id, result.returncode))
             if not parsed.continue_on_error:

@@ -5,7 +5,7 @@ autoresearch programs. It targets the `joint_replenishment` problem (Vanvuchelen
 Gijsbrechts & Boute 2020, *Computers in Industry* 119, 103239): two-item replenishment
 sharing a full-truckload major order cost, item-specific minor order / holding / shortage
 costs, order-before-demand, zero lead time, risk period one. The env is literature-faithful
-(Eq. 1-4 verified in-crate; see `rust/src/problems/joint_replenishment/README.md`).
+(Eq. 1-4 verified in-crate; see `src/problems/joint_replenishment/README.md`).
 
 The single-policy loop is the same shape as the sibling programs: train ONE soft-tree
 CMA-ES policy on a NAMED instance, evaluate held-out CRN cost + gap vs the strongest
@@ -62,8 +62,8 @@ the learned soft-tree and MOQ are on the same scale.
 Files in the surface:
 
 - `scripts/joint_replenishment/` (runner + `common.py` build/eval helpers)
-- the soft-tree policy core (`rust/src/core/policies/soft_tree.rs`) and the action
-  conversion in `rust/src/problems/joint_replenishment/rollout.rs` (read-only here; the
+- the soft-tree policy core (`src/core/policies/soft_tree.rs`) and the action
+  conversion in `src/problems/joint_replenishment/rollout.rs` (read-only here; the
   Python layer drives structure/action-box via `common.py`)
 - the CMA-ES driver (`invman/es_mp.py`)
 

@@ -1,5 +1,5 @@
 """
-Generate rust/src/problems/lost_sales/reference_costs.rs: the lost-sales
+Generate src/problems/lost_sales/reference_costs.rs: the lost-sales
 benchmark grid with per-instance heuristic reference costs.
 
 Sources (literature preferred, repo-computed for the gaps):
@@ -14,7 +14,7 @@ Each instance records a `source`: "literature", "literature+computed", or
 
 Usage:
   python3 scripts/lost_sales/generate_rust_reference_costs.py \
-      > rust/src/problems/lost_sales/reference_costs.rs
+      > src/problems/lost_sales/reference_costs.rs
 """
 
 from __future__ import annotations

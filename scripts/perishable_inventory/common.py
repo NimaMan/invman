@@ -6,7 +6,7 @@ from typing import Iterable
 
 import numpy as np
 
-from invman.policies.soft_tree import SoftTreePolicy
+from invman.policy import Policy
 
 import invman_rust
 
@@ -187,16 +187,17 @@ def build_soft_tree_model(
     temperature: float,
     split_type: str,
     leaf_type: str,
-) -> SoftTreePolicy:
-    return SoftTreePolicy(
+) -> Policy:
+    max_order_size = int(reference["max_order_size"])
+    return Policy(
+        backbone="soft_tree",
         input_dim=int(reference["shelf_life"]) + int(reference["lead_time"]) - 1,
-        action_spec={
-            "action_dim": 1,
-            "action_mode": "scalar_quantity",
-            "min_values": [0],
-            "max_values": [int(reference["max_order_size"])],
-            "allowed_values": None,
-        },
+        control_dim=1,
+        control_mode="scalar_quantity",
+        min_values=(0,),
+        max_values=(max_order_size,),
+        allowed_values=None,
+        max_order_size=max_order_size,
         depth=int(depth),
         temperature=float(temperature),
         split_type=str(split_type),
@@ -208,7 +209,7 @@ def build_soft_tree_model(
 
 def soft_tree_rollout_kwargs(
     reference: dict,
-    model: SoftTreePolicy,
+    model: Policy,
     *,
     flat_params,
     horizon: int,
@@ -217,9 +218,9 @@ def soft_tree_rollout_kwargs(
         "flat_params": np.asarray(flat_params, dtype=np.float32).tolist(),
         "input_dim": int(model.input_dim),
         "depth": int(model.depth),
-        "min_values": [int(value) for value in model.action_spec["min_values"]],
-        "max_values": [int(value) for value in model.action_spec["max_values"]],
-        "action_mode": str(model.action_spec["action_mode"]),
+        "min_values": [int(value) for value in model.min_values],
+        "max_values": [int(value) for value in model.max_values],
+        "action_mode": str(model.control_mode),
         "demand_mean": float(reference["demand_mean"]),
         "demand_cov": float(reference["demand_cov"]),
         "shelf_life": int(reference["shelf_life"]),
@@ -234,13 +235,13 @@ def soft_tree_rollout_kwargs(
         "split_type": str(model.split_type),
         "leaf_type": str(model.leaf_type),
         "issuing_policy": str(reference["issuing_policy"]),
-        "allowed_values": model.action_spec.get("allowed_values"),
+        "allowed_values": model.allowed_values,
     }
 
 
 def evaluate_soft_tree_policy(
     reference: dict,
-    model: SoftTreePolicy,
+    model: Policy,
     seeds: Iterable[int],
     *,
     flat_params=None,
@@ -299,7 +300,7 @@ def evaluate_heuristic_trace_summary(
 
 def evaluate_soft_tree_trace_summary(
     reference: dict,
-    model: SoftTreePolicy,
+    model: Policy,
     demands: Iterable[int],
     *,
     demand_mean: float,

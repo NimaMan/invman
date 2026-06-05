@@ -60,15 +60,8 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
 from pathlib import Path
-
-for _var in ("RAYON_NUM_THREADS", "OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS",
-             "MKL_NUM_THREADS", "NUMEXPR_NUM_THREADS"):
-    os.environ.setdefault(_var, "2")
-
-import numpy as np
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -76,6 +69,12 @@ if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
+
+from invman.cpu_limits import configure_process_cpu_limits_from_argv
+
+configure_process_cpu_limits_from_argv(sys.argv[1:], default=2)
+
+import numpy as np
 
 import invman_rust
 from invman.policy import Policy

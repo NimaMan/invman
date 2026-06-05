@@ -46,7 +46,6 @@ DEFAULT_EXACT_REFERENCES = [
 
 DEFAULT_PRACTICAL_DATASET = (
     PACKAGE_ROOT
-    / "rust"
     / "src"
     / "problems"
     / "perishable_inventory"
@@ -57,7 +56,6 @@ DEFAULT_PRACTICAL_DATASET = (
 
 DEFAULT_OUTPUT_JSON = (
     PACKAGE_ROOT
-    / "rust"
     / "src"
     / "problems"
     / "perishable_inventory"
@@ -68,7 +66,6 @@ DEFAULT_OUTPUT_JSON = (
 
 DEFAULT_OUTPUT_MARKDOWN = (
     PACKAGE_ROOT
-    / "rust"
     / "src"
     / "problems"
     / "perishable_inventory"

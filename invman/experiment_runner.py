@@ -4,6 +4,7 @@ from pathlib import Path
 
 import numpy as np
 
+from invman.cpu_limits import normalize_args_cpu_limits
 from invman import rollout_fitness
 from invman.es_mp import train
 from invman.policy_build import build_policy
@@ -121,6 +122,7 @@ def save_result_payload(args, payload):
 
 
 def run_experiment(args):
+    normalize_args_cpu_limits(args)
     apply_policy_name(args)
     ensure_output_dirs(args)
     policy_spec = get_policy_spec(args)

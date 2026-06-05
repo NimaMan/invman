@@ -7,13 +7,13 @@ if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
 
 from invman.experiment_runner import run_experiment
-from invman.policies.registry import apply_policy_name
-from invman.problems.lost_sales.experiment_spec import COMMON_BUDGET as VANILLA_BUDGET
-from invman.problems.lost_sales.reference_instances import build_reference_args as build_vanilla_args
-from invman.problems.lost_sales_fixed_order_cost.experiment_spec import (
-    COMMON_BUDGET as FIXED_COST_BUDGET,
+from invman.policy_registry import apply_policy_name
+from scripts.lost_sales.benchmark_canonical_suite import (
+    COMMON_BUDGET as VANILLA_BUDGET,
+    build_reference_args as build_vanilla_args,
 )
-from invman.problems.lost_sales_fixed_order_cost.reference_instances import (
+from scripts.lost_sales_fixed_order_cost.benchmark_full_suite import (
+    COMMON_BUDGET as FIXED_COST_BUDGET,
     build_reference_args as build_fixed_cost_args,
 )
 
@@ -25,8 +25,12 @@ def parse_args():
     parser.add_argument("--problem", choices=["lost_sales", "lost_sales_fixed_order_cost"], required=True)
     parser.add_argument("--reference", required=True)
     parser.add_argument("--policy", default="linear_direct_quantity")
-    parser.add_argument("--state_features", default="raw_pipeline")
-    parser.add_argument("--rollout_backend", default="python")
+    parser.add_argument(
+        "--state_features",
+        default="pipeline",
+        choices=["pipeline", "pipeline_plus_summary", "augmented", "feature_augmented"],
+    )
+    parser.add_argument("--rollout_backend", choices=["rust"], default="rust")
     parser.add_argument("--run_tag", required=True)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--mp_num_processors", type=int, default=4)

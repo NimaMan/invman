@@ -18,7 +18,6 @@ import invman_rust
 
 DEFAULT_DATASET = (
     PACKAGE_ROOT
-    / "rust"
     / "src"
     / "problems"
     / "perishable_inventory"
@@ -29,7 +28,6 @@ DEFAULT_DATASET = (
 
 DEFAULT_OUTPUT_JSON = (
     PACKAGE_ROOT
-    / "rust"
     / "src"
     / "problems"
     / "perishable_inventory"
@@ -40,7 +38,6 @@ DEFAULT_OUTPUT_JSON = (
 
 DEFAULT_OUTPUT_MARKDOWN = (
     PACKAGE_ROOT
-    / "rust"
     / "src"
     / "problems"
     / "perishable_inventory"

@@ -13,13 +13,18 @@ if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
 
 from invman.experiment_runner import run_experiment
-from invman.policies.registry import apply_policy_name
-from invman.problems.lost_sales_fixed_order_cost.reference_instances import build_reference_args
+from invman.policy_registry import apply_policy_name
+from scripts.lost_sales_fixed_order_cost.benchmark_full_suite import build_reference_args
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--backend", choices=["python", "rust"], required=True)
+    parser = argparse.ArgumentParser(
+        description=(
+            "Replay the canonical fixed-cost ordinal experiment. The fixed-cost "
+            "Python simulator has been retired; this probe now runs through Rust."
+        )
+    )
+    parser.add_argument("--backend", choices=["rust"], default="rust")
     parser.add_argument("--run_tag", required=True)
     parser.add_argument("--reference", default="lit_pois_mu5_l4_p4_k5")
     parser.add_argument("--policy_name", default="linear_gated_ordinal_quantity")

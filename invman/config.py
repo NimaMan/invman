@@ -1,6 +1,7 @@
 import argparse
 from pathlib import Path
 
+from invman.cpu_limits import normalize_args_cpu_limits
 from invman.policy_registry import apply_policy_name, resolve_policy_name
 
 SUPPORTED_DEMAND_NAMES = ("Poisson", "Geometric", "MarkovModulatedPoisson2")
@@ -285,4 +286,5 @@ def get_config(argv=None):
     if args.policy_name is not None:
         apply_policy_name(args)
 
+    normalize_args_cpu_limits(args)
     return args

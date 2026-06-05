@@ -65,8 +65,8 @@ Files:
 
 - `scripts/vendor_managed_inventory/autoresearch_vendor_managed_inventory.py` (this runner)
 - `scripts/vendor_managed_inventory/benchmark_reduced_single_retailer.py` (reused helpers)
-- `rust/src/problems/vendor_managed_inventory/` (env + bindings; read-only here)
-- `rust/src/core/policies/soft_tree.rs` (the soft-tree action mapping; read-only here)
+- `src/problems/vendor_managed_inventory/` (env + bindings; read-only here)
+- `src/core/policies/soft_tree.rs` (the soft-tree action mapping; read-only here)
 
 ## Budgets
 

@@ -72,22 +72,22 @@ import argparse
 import csv
 import json
 import math
-import os
 import subprocess
 import sys
 import time
 from pathlib import Path
 
-# HARD CPU CAP -- must be set BEFORE importing invman_rust (the population rollout fans out
-# via rayon). Several sibling autoresearch agents run in parallel; cap at ~2 cores each.
-os.environ.setdefault("RAYON_NUM_THREADS", "2")
-os.environ.setdefault("OMP_NUM_THREADS", "2")
-
-import numpy as np
-
 PACKAGE_ROOT = Path(__file__).resolve().parents[2]
 if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
+
+from invman.cpu_limits import configure_process_cpu_limits_from_argv
+
+# HARD CPU CAP -- must be set BEFORE importing numpy/invman_rust. Several sibling
+# autoresearch agents run in parallel; default to ~2 cores each.
+configure_process_cpu_limits_from_argv(sys.argv[1:], default=2)
+
+import numpy as np
 
 import invman_rust as ir
 

@@ -7,17 +7,7 @@ from typing import Iterable
 
 import numpy as np
 
-# NOTE (2026-05): the soft-tree descriptor moved from the removed `invman.policies.soft_tree`
-# module to `invman.policy.Policy(backbone="soft_tree", ...)`. The exact-DP / heuristic validation
-# and literature-summary scripts in this folder do NOT need a soft-tree class, so this import is made
-# lazy: importing common.py no longer fails, and the soft-tree helpers below resolve the class only
-# if/when they are actually called. New work should prefer
-# scripts/random_yield_inventory/benchmark_policies_vs_exact_and_heuristics.py, which uses the
-# current Policy interface directly.
-try:  # pragma: no cover - legacy path, kept for backward compatibility only
-    from invman.policies.soft_tree import SoftTreePolicy  # type: ignore
-except Exception:  # ModuleNotFoundError on current package layout
-    SoftTreePolicy = None  # type: ignore
+from invman.policy import Policy
 
 import invman_rust
 
@@ -101,16 +91,17 @@ def build_soft_tree_model(
     split_type: str,
     leaf_type: str,
     action_cap: int | None = None,
-) -> SoftTreePolicy:
-    return SoftTreePolicy(
+) -> Policy:
+    max_action = default_action_cap(reference) if action_cap is None else int(action_cap)
+    return Policy(
+        backbone="soft_tree",
         input_dim=int(reference["lead_time"]) + 3,
-        action_spec={
-            "action_dim": 1,
-            "action_mode": "scalar_quantity",
-            "min_values": [0],
-            "max_values": [default_action_cap(reference) if action_cap is None else int(action_cap)],
-            "allowed_values": None,
-        },
+        control_dim=1,
+        control_mode="scalar_quantity",
+        min_values=(0,),
+        max_values=(max_action,),
+        allowed_values=None,
+        max_order_size=max_action,
         depth=int(depth),
         temperature=float(temperature),
         split_type=str(split_type),
@@ -122,7 +113,7 @@ def build_soft_tree_model(
 
 def soft_tree_rollout_kwargs(
     reference: dict,
-    model: SoftTreePolicy,
+    model: Policy,
     *,
     flat_params,
 ) -> dict:
@@ -130,9 +121,9 @@ def soft_tree_rollout_kwargs(
         "flat_params": np.asarray(flat_params, dtype=np.float32).tolist(),
         "input_dim": int(model.input_dim),
         "depth": int(model.depth),
-        "min_values": [int(value) for value in model.action_spec["min_values"]],
-        "max_values": [int(value) for value in model.action_spec["max_values"]],
-        "action_mode": str(model.action_spec["action_mode"]),
+        "min_values": [int(value) for value in model.min_values],
+        "max_values": [int(value) for value in model.max_values],
+        "action_mode": str(model.control_mode),
         "initial_inventory_level": float(reference["initial_inventory_level"]),
         "pipeline_orders": [float(value) for value in reference["initial_pipeline_orders"]],
         "periods": int(reference["periods"]),
@@ -145,13 +136,13 @@ def soft_tree_rollout_kwargs(
         "temperature": float(model.temperature),
         "split_type": str(model.split_type),
         "leaf_type": str(model.leaf_type),
-        "allowed_values": model.action_spec.get("allowed_values"),
+        "allowed_values": model.allowed_values,
     }
 
 
 def evaluate_soft_tree_policy(
     reference: dict,
-    model: SoftTreePolicy,
+    model: Policy,
     seeds: Iterable[int],
     *,
     flat_params=None,

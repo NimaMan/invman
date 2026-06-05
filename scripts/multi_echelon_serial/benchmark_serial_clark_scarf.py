@@ -1,6 +1,6 @@
 """
 Benchmark the serial Clark-Scarf multi-echelon problem
-(rust/src/problems/multi_echelon/serial).
+(src/problems/multi_echelon/serial).
 
 OBJECTIVE
 ---------

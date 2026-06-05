@@ -6,6 +6,10 @@ from pathlib import Path
 
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
+if str(PACKAGE_ROOT) not in sys.path:
+    sys.path.insert(0, str(PACKAGE_ROOT))
+
+from invman.cpu_limits import cpu_limited_environ, normalize_args_cpu_limits
 
 SELECTED_POLICIES = (
     "linear_soft_gated_direct_quantity",
@@ -121,6 +125,7 @@ def _suite_outputs(suite_name: str) -> dict:
 
 def main():
     parsed = parse_args()
+    mp_num_processors = normalize_args_cpu_limits(parsed)
     plan = []
     for suite_name in _suite_order(parsed.suite):
         plan.append(
@@ -136,7 +141,12 @@ def main():
         return
 
     for item in plan:
-        subprocess.run(item["command"], cwd=PACKAGE_ROOT, check=True)
+        subprocess.run(
+            item["command"],
+            cwd=PACKAGE_ROOT,
+            check=True,
+            env=cpu_limited_environ(mp_num_processors),
+        )
 
 
 if __name__ == "__main__":

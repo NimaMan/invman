@@ -37,11 +37,19 @@ If Rust source changes, rebuild the extension:
 python scripts/build_rust_extension.py
 ```
 
+The Rust crate defaults to Rust-native development. The Python extension feature is enabled by the
+build helper above. Use this command for Rust unit/integration verification:
+
+```bash
+cargo test --manifest-path Cargo.toml -q
+```
+
 ## Sanity Checks
 
 Run these before long experiments on a fresh machine:
 
 ```bash
+cargo test --manifest-path Cargo.toml -q
 python -m pytest tests/test_lost_sales_reference_grid.py tests/test_fixed_order_cost_reference_grid.py tests/test_numerical_experiments_catalog.py -q
 python numerical_experiments/run.py --list
 ```
@@ -102,9 +110,9 @@ The live benchmark defaults have moved since the original paperlike `5k` runs.
 When in doubt, trust the current experiment spec files over older run tags:
 
 - vanilla lost sales:
-  - [experiment_spec.py](/home/nima/code/ml/invman/invman/problems/lost_sales/experiment_spec.py)
+  - [benchmark_full_suite.py](/home/nima/code/ml/invman/scripts/lost_sales/benchmark_full_suite.py)
 - fixed-cost lost sales:
-  - [experiment_spec.py](/home/nima/code/ml/invman/invman/problems/lost_sales_fixed_order_cost/experiment_spec.py)
+  - [benchmark_full_suite.py](/home/nima/code/ml/invman/scripts/lost_sales_fixed_order_cost/benchmark_full_suite.py)
 
 Current defaults:
 
@@ -209,7 +217,7 @@ The current correlated-demand sweeps use two mean-preserving `MarkovModulatedPoi
 
 The Rust implementation is:
 
-- [mod.rs](/home/nima/code/ml/invman/rust/src/problems/lost_sales/demand/mod.rs)
+- [mod.rs](/home/nima/code/ml/invman/src/problems/lost_sales/demand/mod.rs)
 
 ## Outputs
 
@@ -275,8 +283,8 @@ On a separate Linux machine:
 When in doubt, use these files:
 
 - experiment catalog: `numerical_experiments/catalog.py`
-- lost-sales experiment definitions: `invman/problems/lost_sales/experiment_spec.py`
-- lost-sales instance registry: `invman/problems/lost_sales/reference_instances.py`
-- fixed-cost experiment definitions: `invman/problems/lost_sales_fixed_order_cost/experiment_spec.py`
-- fixed-cost instance registry: `invman/problems/lost_sales_fixed_order_cost/reference_instances.py`
+- lost-sales suite and reference glue: `scripts/lost_sales/benchmark_full_suite.py`
+- lost-sales Rust references: `src/problems/lost_sales/vanilla/reference_costs.rs`
+- fixed-cost suite and reference glue: `scripts/lost_sales_fixed_order_cost/benchmark_full_suite.py`
+- fixed-cost Rust references: `src/problems/lost_sales/fixed_order_cost/literature/references.rs`
 - core runner: `invman/experiment_runner.py`

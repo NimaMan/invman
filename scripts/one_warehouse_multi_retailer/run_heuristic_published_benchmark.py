@@ -8,10 +8,9 @@ how the repo's echelon base-stock + allocation heuristics compare to the publish
 Kaynov et al. (2024) Table A.3 benchmark rows on the carried instance set.
 
 Why this script exists separately from `run_paper_benchmark.py`:
-  - `run_paper_benchmark.py` / `common.py` import `invman.policies.soft_tree.SoftTreePolicy`,
-    a module path that no longer exists after the repo's policy refactor. That makes the
-    *learned soft-tree* path uninstantiable today. The heuristic + exact-DP comparison, by
-    contrast, needs only `invman_rust`, so it is isolated here and runs as-is.
+  - `run_paper_benchmark.py` trains learned soft-tree policies and therefore carries the full
+    CMA-ES path. This script intentionally isolates the heuristic + exact-DP comparison, which
+    needs only `invman_rust`, so it can run as a smaller reproducibility check.
 
 ALGORITHM (per instance)
 -------------------------

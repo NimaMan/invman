@@ -24,7 +24,7 @@ Before designing or training any policy:
 
 1. **Build ONE faithful, correctly-named environment per problem.** One env that is
    literature-verified beats several that are approximate. The env home is
-   `rust/src/problems/<problem>/` with its own `env.rs::step_state`, `references.rs`,
+   `src/problems/<problem>/` with its own `env.rs::step_state`, `references.rs`,
    `README.md`, and verification. The file name must clearly represent the model
    (e.g. `divergent_special_delivery`, not a generic `multi_echelon`).
 2. **Anchor it to published costs BEFORE any learned claim.** Reproduce a published number
@@ -115,7 +115,7 @@ For a new problem, choose the action geometry with this procedure:
    0 reproduces the heuristic** and the optimizer searches *outward* from a known-good point.
 3. **Warm-start CMA-ES at the encoded heuristic** (Section 4), then let it refine. Because the
    leaf transform is non-trivial (`constant: min + sigmoid(p)*span`;
-   `linear: min + softplus(bias + w*state)`; see `rust/src/core/policies/soft_tree.rs`), the
+   `linear: min + softplus(bias + w*state)`; see `src/core/policies/soft_tree.rs`), the
    warm-start must **invert the transform** so the leaf actually starts at the heuristic, not
    at a sigmoid-saturated grid maximum. This was a load-bearing OWMR fix: before inverting the
    transform, generation 0 started over-stocked (holdout ~1879 vs heuristic ~1180); after the
@@ -218,7 +218,7 @@ inside an autoresearch run.
 1. **Pick the problem** for a real reason: it must have **literature instances with published
    comparator costs** (an env you can anchor byte-for-byte), and it should add a missing axis
    to the paper.
-2. **Build / verify the env** in `rust/src/problems/<problem>/` with `step_state`,
+2. **Build / verify the env** in `src/problems/<problem>/` with `step_state`,
    `references.rs` carrying the published instances **verbatim** (no repo-invented parameters),
    a `README.md`, and a worked-transition unit test. File name represents the model.
 3. **Reproduce the published anchor** to a stated tolerance (Section 1). If there is no true
@@ -251,7 +251,7 @@ Mapping it onto the checklist:
 
 - **Instances (step 1-2).** The eight Dehaybe, Catanzaro & Chevalier (2024) lost-sales
   rolling-forecast instances carried verbatim in
-  `rust/src/problems/nonstationary_lot_sizing/references.rs::LOST_SALES_FORECAST_BENCHMARKS`
+  `src/problems/nonstationary_lot_sizing/references.rs::LOST_SALES_FORECAST_BENCHMARKS`
   (`dehaybe2024_lostsales_lt2_b5_k10_{constant_5,constant_10,constant_15,seasonal_1,seasonal_2,
   seasonal_4,growth,decline}`): all `L=2, b=5, h=1, K=10`, 104 periods,
   `forecast_horizon=32`, `initial_net_inventory=20`, lost sales. Primary anchor =

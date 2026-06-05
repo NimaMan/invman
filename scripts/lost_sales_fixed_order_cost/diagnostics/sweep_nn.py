@@ -3,7 +3,11 @@ import subprocess
 import sys
 from pathlib import Path
 
-from invman.policies.registry import make_dense_policy_name
+PACKAGE_ROOT = Path(__file__).resolve().parents[3]
+if str(PACKAGE_ROOT) not in sys.path:
+    sys.path.insert(0, str(PACKAGE_ROOT))
+
+from invman.policy_registry import make_dense_policy_name
 
 
 EXPERIMENTS = [

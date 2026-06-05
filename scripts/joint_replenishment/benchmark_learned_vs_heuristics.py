@@ -39,10 +39,10 @@ For each setting s:
 CPU CAP
 -------
 This script is written to run UNDER A HARD 2-CORE CAP (other CMA-ES agents run in
-parallel). The Rust population rollout uses rayon; we set RAYON_NUM_THREADS=2 at
-import time (before invman_rust is loaded) and force mp_num_processors=1 so the
-es_mp Pool fallback (unused on the population path) cannot fan out either. Run with
-RAYON_NUM_THREADS already exported to override.
+parallel). The Rust population rollout uses rayon; the shared CPU helper caps native
+threads at import time (before invman_rust is loaded), and mp_num_processors=1 ensures the
+es_mp Pool fallback (unused on the population path) cannot fan out either. Lower externally
+exported thread values are preserved; higher values are capped by the shared CPU helper.
 
 USAGE
 -----
@@ -59,23 +59,20 @@ import sys
 from pathlib import Path
 from types import SimpleNamespace
 
-# HARD 2-CORE CAP. Other CMA-ES agents run in parallel, so every layer that can
-# spin up threads must be capped BEFORE numpy / invman_rust import their native libs:
-#   - RAYON_NUM_THREADS  : the Rust population rollout (rayon par_iter over candidates)
-#   - OPENBLAS/OMP/MKL/NUMEXPR : OpenBLAS (numpy/CMA-ES covariance eigendecomposition)
-# Each respects an externally-exported value if already present.
-for _var in ("RAYON_NUM_THREADS", "OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS",
-             "MKL_NUM_THREADS", "NUMEXPR_NUM_THREADS"):
-    os.environ.setdefault(_var, "2")
-
-import numpy as np
-
 PACKAGE_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT_DIR = Path(__file__).resolve().parent
 if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
+
+from invman.cpu_limits import configure_process_cpu_limits_from_argv
+
+# HARD 2-CORE CAP. Other CMA-ES agents run in parallel, so every layer that can
+# spin up threads must be capped BEFORE numpy / invman_rust import their native libs.
+configure_process_cpu_limits_from_argv(sys.argv[1:], default=2)
+
+import numpy as np
 
 from invman.es_mp import train
 

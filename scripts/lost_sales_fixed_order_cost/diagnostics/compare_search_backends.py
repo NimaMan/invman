@@ -7,11 +7,11 @@ PACKAGE_ROOT = Path(__file__).resolve().parents[3]
 if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
 
-from invman.problems.lost_sales_fixed_order_cost.benchmark import benchmark_reference_instance
+from scripts.lost_sales_fixed_order_cost.benchmark_full_suite import benchmark_reference_instance
 
 
 def build_parser():
-    parser = argparse.ArgumentParser(description="Compare Python and Rust fixed-cost heuristic search backends.")
+    parser = argparse.ArgumentParser(description="Report fixed-cost heuristic backend availability after the Rust-first migration.")
     parser.add_argument("--reference_instance", default="lit_pois_mu5_l4_p4_k5")
     parser.add_argument("--search_horizon", default=2000, type=int)
     parser.add_argument("--eval_horizon", default=50000, type=int)
@@ -35,21 +35,16 @@ def main():
         "modified_search_mode": args.modified_search_mode,
     }
 
-    python_payload = benchmark_reference_instance(args.reference_instance, backend="python", **shared_kwargs)
     rust_payload = benchmark_reference_instance(args.reference_instance, backend="rust", **shared_kwargs)
 
     comparison = {
         "reference_instance": args.reference_instance,
-        "python": python_payload["search_results"],
-        "rust": rust_payload["search_results"],
-        "same_best_params": {
-            "s_s": python_payload["search_results"]["s_s"]["best_result"]["params"]
-            == rust_payload["search_results"]["s_s"]["best_result"]["params"],
-            "s_nq": python_payload["search_results"]["s_nq"]["best_result"]["params"]
-            == rust_payload["search_results"]["s_nq"]["best_result"]["params"],
-            "modified_s_s_q": python_payload["search_results"]["modified_s_s_q"]["best_result"]["params"]
-            == rust_payload["search_results"]["modified_s_s_q"]["best_result"]["params"],
+        "python_backend": {
+            "available": False,
+            "reason": "the fixed-cost Python env/search backend was removed in the Rust-first migration",
         },
+        "rust_backend": rust_payload,
+        "same_best_params": None,
     }
     print(json.dumps(comparison, indent=2))
 

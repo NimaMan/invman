@@ -2,7 +2,7 @@
 
 Runnable scripts for the multi-echelon (Gijsbrechts 2022 / Van Roy 1997 one-warehouse,
 K-retailer with special delivery) problem implemented in
-`rust/src/problems/multi_echelon/divergent_special_delivery/` and exposed to Python through
+`src/problems/multi_echelon/divergent_special_delivery/` and exposed to Python through
 the `invman_rust` extension.
 
 All scripts are self-contained: they read the env parameters and action grids from the
@@ -40,7 +40,7 @@ The learned policy mirrors the lost-sales interface: the env emits the **pure de
 state** (`raw_decision_state`) and the **policy** normalizes it (`StateNormalizer`
 divide-by-scale, scale = max order-up-to level) before the soft tree produces the
 order-up-to action. See the package README under
-`rust/src/problems/multi_echelon/divergent_special_delivery/`.
+`src/problems/multi_echelon/divergent_special_delivery/`.
 
 ## Verification (Rust)
 

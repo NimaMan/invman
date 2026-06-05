@@ -45,7 +45,7 @@ Key files:
 
 - `program_lost_sales.md`: agent instructions for the autonomous loop
 - `../scripts/lost_sales/autoresearch_lost_sales.py`: fixed-budget experiment runner and logger
-- `../scripts/autoresearch_tree_structures.py`: focused tree-structure comparison runner
+- `../scripts/lost_sales/autoresearch_tree_structures.py`: focused tree-structure comparison runner
 - `../scripts/build_rust_extension.py`: helper to rebuild the Rust extension in the active virtualenv
 
 The second target is the canonical fixed-order-cost benchmark:
@@ -57,8 +57,8 @@ The second target is the canonical fixed-order-cost benchmark:
 Fixed-cost files:
 
 - `program_fixed_order_cost.md`: agent instructions for the fixed-cost loop
-- `../scripts/autoresearch_fixed_order_cost.py`: fixed-cost keep/discard runner and ledger
-- `../scripts/autoresearch_fixed_order_tree_structures.py`: focused tree-structure comparison runner
+- `../scripts/lost_sales_fixed_order_cost/autoresearch_fixed_order_cost.py`: fixed-cost keep/discard runner and ledger
+- `../scripts/lost_sales_fixed_order_cost/autoresearch_fixed_order_tree_structures.py`: focused tree-structure comparison runner
 - `../scripts/evaluate_saved_policy.py`: long-horizon reevaluation helper for promoted candidates
 - `fixed_cost_ordinal_stability/README.md`: focused note on when the ordinal fixed-cost head works,
   when it fails, and how the stored Rust/Python baselines differ

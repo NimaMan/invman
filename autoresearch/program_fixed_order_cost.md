@@ -11,15 +11,16 @@ To set up a new run:
    - `README.md`
    - `autoresearch/README.md`
    - `autoresearch/program_fixed_order_cost.md`
-   - `invman/problems/lost_sales_fixed_order_cost/reference_instances.py`
-   - `invman/problems/lost_sales_fixed_order_cost/heuristics.py`
-   - `invman/policies/`
-   - `rust/src/policies/`
-   - `rust/src/rollout/`
+   - `scripts/lost_sales_fixed_order_cost/benchmark_full_suite.py`
+   - `src/problems/lost_sales/fixed_order_cost/literature/references.rs`
+   - `src/problems/lost_sales/fixed_order_cost/heuristics.rs`
+   - `invman/policy.py`
+   - `invman/policy_registry.py`
+   - `invman/rollout_fitness.py`
 3. Rebuild the Rust extension if any Rust files changed:
    - `python scripts/build_rust_extension.py`
 4. Verify the fixed-cost benchmark code path works:
-   - `python scripts/validate_fixed_order_cost_heuristics.py --reference_instance lit_pois_mu5_l4_p4_k5`
+   - `python scripts/lost_sales_fixed_order_cost/validate_known_optimum.py`
 
 ## Scope
 
@@ -33,20 +34,23 @@ The benchmark is fixed to the canonical fixed-order-cost instance:
 
 The evaluation harness is fixed. Do not modify:
 
-- `invman/problems/lost_sales_fixed_order_cost/reference_instances.py`
+- `scripts/lost_sales_fixed_order_cost/benchmark_full_suite.py`
+- `src/problems/lost_sales/fixed_order_cost/literature/references.rs`
 - heuristic search code used as the benchmark baseline
 - the long-run evaluation protocol when checking promoted candidates
 
 The intended search surface is:
 
-- `invman/policies/`
-- `rust/src/policies/`
-- `rust/src/rollout/`
+- `invman/policy.py`
+- `invman/policy_registry.py`
+- `invman/policy_build.py`
+- `invman/rollout_fitness.py`
+- Rust policy math under `src/core/policies/`
 - limited support code needed to wire policy evaluation into the training loop
 
 ## Experiment budgets
 
-Use the fixed budgets from `scripts/autoresearch_fixed_order_cost.py`:
+Use the fixed budgets from `scripts/lost_sales_fixed_order_cost/autoresearch_fixed_order_cost.py`:
 
 - `screening`: fast search budget
 - `full`: trusted benchmark budget
@@ -66,7 +70,7 @@ For each experiment:
 
 1. Make one policy-focused change.
 2. Run:
-   - `python scripts/autoresearch_fixed_order_cost.py --run_tag <tag> --budget screening --description "<what changed>" ...`
+   - `python scripts/lost_sales_fixed_order_cost/autoresearch_fixed_order_cost.py --run_tag <tag> --budget screening --description "<what changed>" ...`
 3. The script writes:
    - experiment JSON under `outputs/autoresearch/<tag>/results/`
    - logs under `outputs/autoresearch/<tag>/logs/`

@@ -2,14 +2,18 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[2]
 if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
 
 from invman.experiment_runner import run_experiment
-from invman.policies.registry import apply_policy_name, get_policy_spec, make_soft_tree_policy_name
-from invman.problems.dual_sourcing.reference_instances import build_reference_args
+from invman.policy_registry import apply_policy_name, get_policy_spec, make_soft_tree_policy_name
+from scripts.dual_sourcing.dual_sourcing_benchmark_lib import (
+    build_reference_args,
+    evaluate_default_heuristics,
+)
 
 
 DEFAULT_REFERENCES = [
@@ -22,22 +26,6 @@ DEFAULT_REFERENCES = [
 ]
 
 DEFAULT_POLICIES = [
-    {
-        "id": "linear_smallcap_delta",
-        "label": "Linear, small-cap capped dual-index delta",
-        "policy_name": "linear_capped_dual_index_delta_smallcap_targets",
-        "structure_family": "dense",
-        "backbone": "linear",
-        "control_family": "smallcap_delta",
-    },
-    {
-        "id": "nn_smallcap_delta",
-        "label": "NN, small-cap capped dual-index delta",
-        "policy_name": "nn_capped_dual_index_delta_smallcap_targets",
-        "structure_family": "dense",
-        "backbone": "nn",
-        "control_family": "smallcap_delta",
-    },
     {
         "id": "tree_base_surge",
         "label": "Soft tree, base-surge targets",
@@ -187,7 +175,12 @@ def _load_or_run(args, reuse_existing: bool):
 
 
 def _summarize_row(reference_name: str, policy_item: dict, payload: dict, result_path: Path):
-    heuristic_results = payload["evaluation"]["heuristics"]
+    reference_args = build_reference_args(reference_name)
+    heuristic_results = payload["evaluation"].get("heuristics") or evaluate_default_heuristics(
+        reference_args,
+        seed=int(getattr(reference_args, "seed", 123)),
+        horizon=int(getattr(reference_args, "horizon", 6000)),
+    )
     best_heuristic_name, best_heuristic = min(
         (
             (name, summary)
@@ -197,7 +190,7 @@ def _summarize_row(reference_name: str, policy_item: dict, payload: dict, result
         key=lambda item: float(item[1]["mean_cost"]),
     )
     learned = payload["evaluation"]["learned_policy"]
-    policy_spec = get_policy_spec(type("Args", (), {"policy_name": policy_item["policy_name"]})())
+    policy_spec = get_policy_spec(SimpleNamespace(policy_name=policy_item["policy_name"]))
     return {
         "reference": reference_name,
         "policy_id": policy_item["id"],

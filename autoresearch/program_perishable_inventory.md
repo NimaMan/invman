@@ -9,7 +9,7 @@ per-period holding / shortage / waste / procurement costs over gamma demand
 (`mean 4, cov 0.5`). The env is literature-faithful on the `m=2`, `L=1` slice (exact value
 iteration re-derives the published optimal-policy tables, the best base-stock levels 5 LIFO /
 7 FIFO, and the Farrington 2025 Table-3 value-iteration returns in-crate at test time; see
-`rust/src/problems/perishable_inventory/README.md`).
+`src/problems/perishable_inventory/README.md`).
 
 The single-policy loop is the same shape as the sibling programs: warm-start ONE soft-tree
 CMA-ES policy at the best base-stock on a NAMED instance, evaluate held-out CRN mean

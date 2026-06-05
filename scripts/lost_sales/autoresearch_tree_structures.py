@@ -8,8 +8,10 @@ if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
 
 from invman.experiment_runner import run_experiment
-from invman.policies.registry import apply_policy_name, make_soft_tree_policy_name
-from invman.problems.lost_sales.reference_instances import VANILLA_L4_P4_POISSON5, build_reference_args
+from invman.policy_registry import apply_policy_name, make_soft_tree_policy_name
+from scripts.lost_sales.benchmark_canonical_suite import build_reference_args
+
+DEFAULT_REFERENCE = "vanilla_l4_p4_poisson5"
 
 
 BUDGETS = {
@@ -34,7 +36,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Compare candidate tree policy structures on the trusted lost-sales benchmark.")
     parser.add_argument("--run_tag", default="tree_structure_search", help="Namespace used for outputs.")
     parser.add_argument("--budget", choices=sorted(BUDGETS), default="screening", help="Fixed experiment budget.")
-    parser.add_argument("--reference", default=VANILLA_L4_P4_POISSON5.name, help="Named reference instance.")
+    parser.add_argument("--reference", default=DEFAULT_REFERENCE, help="Named reference instance.")
     parser.add_argument("--tree_depths", nargs="+", type=int, default=[2, 3], help="Tree depths to compare.")
     parser.add_argument(
         "--tree_split_types",
@@ -89,11 +91,12 @@ def _prepare_args(parsed, root, split_type, leaf_type, depth):
 
 def _summarize_result(payload):
     learned_cost = payload["evaluation"]["learned_policy"]["mean_cost"]
-    heuristic_cost = min(
+    heuristic_costs = [
         summary["mean_cost"]
         for summary in payload["evaluation"]["heuristics"].values()
-        if isinstance(summary, dict) and "mean_cost" in summary
-    )
+        if isinstance(summary, dict) and summary.get("mean_cost") is not None
+    ]
+    heuristic_cost = min(heuristic_costs) if heuristic_costs else None
     return {
         "experiment_name": payload["experiment_name"],
         "policy_architecture": payload["policy_architecture"],
@@ -102,7 +105,7 @@ def _summarize_result(payload):
         "tree_depth": payload["tree_depth"],
         "learned_mean_cost": learned_cost,
         "best_heuristic_cost": heuristic_cost,
-        "heuristic_gap": learned_cost - heuristic_cost,
+        "heuristic_gap": None if heuristic_cost is None else learned_cost - heuristic_cost,
         "results_file": payload.get("results_file"),
     }
 

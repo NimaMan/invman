@@ -1,18 +1,17 @@
-from invman.problems.lost_sales_fixed_order_cost.reference_instances import (
+import pytest
+
+import invman_rust
+
+from scripts.lost_sales_fixed_order_cost.benchmark_full_suite import (
+    benchmark_reference_instance,
     build_reference_args,
-    build_grid_instances,
+    get_benchmark_grid,
     get_reference_instance,
-    list_reference_instances,
 )
 
 
-def test_literature_subset_grid_has_expected_size():
-    instances = build_grid_instances("literature_subset_poisson_mu5")
-    assert len(instances) == 16
-
-
 def test_full_grid_has_expected_size_and_axes():
-    instances = build_grid_instances("lost_sales_style_full_grid_mu5")
+    instances = get_benchmark_grid("lost_sales_style_full_grid_mu5")["instances"]
     assert len(instances) == 64
     demand_names = {instance["params"]["demand_dist_name"] for instance in instances}
     assert demand_names == {"Poisson", "Geometric", "MarkovModulatedPoisson2"}
@@ -23,10 +22,17 @@ def test_full_grid_has_expected_size_and_axes():
 
 
 def test_correlated_mmpp2_grid_has_positive_and_negative_cases():
-    instances = build_grid_instances("correlated_mmpp2_mu5_l4_p4_k5")
+    instances = [
+        instance
+        for instance in get_benchmark_grid("lost_sales_style_full_grid_mu5")["instances"]
+        if instance["params"]["lead_time"] == 4
+        and instance["params"]["shortage_cost"] == 4.0
+        and instance["params"]["fixed_order_cost"] == 5.0
+        and instance["params"]["demand_dist_name"] == "MarkovModulatedPoisson2"
+    ]
     assert len(instances) == 2
     names = {instance["name"] for instance in instances}
-    assert names == {"corr_mmpp2_neg_mu5_l4_p4_k5", "corr_mmpp2_pos_mu5_l4_p4_k5"}
+    assert names == {"lit_mmpp2_neg_mu5_l4_p4_k5", "lit_mmpp2_pos_mu5_l4_p4_k5"}
     for instance in instances:
         params = instance["params"]
         assert params["demand_dist_name"] == "MarkovModulatedPoisson2"
@@ -40,35 +46,90 @@ def test_literature_subset_grid_contains_canonical_instance():
     assert instance["params"]["lead_time"] == 4
     assert instance["params"]["shortage_cost"] == 4.0
     assert instance["params"]["fixed_order_cost"] == 5.0
-    anchors = instance["benchmark_anchors"]
-    approximators = anchors["policy_approximator_anchors"]
-    assert approximators["linear_categorical_quantity"]["mean_cost"] > approximators["linear_soft_gated_ordinal_quantity"]["mean_cost"]
-    assert approximators["nn_categorical_quantity"]["verification_status"] == "needs_verification"
-    assert approximators["nn_soft_gated_ordinal_quantity"]["mean_cost"] < approximators["linear_soft_gated_ordinal_quantity"]["mean_cost"]
-    assert approximators["linear_soft_gated_ordinal_quantity"]["mean_cost"] < approximators["soft_tree_depth1_linear_leaf"]["mean_cost"]
-    assert anchors["heuristic_anchors_1m"]["modified_s_s_q"]["mean_cost"] < 9.2
-    assert approximators["nn_soft_gated_ordinal_quantity"]["mean_cost"] < anchors["heuristic_anchors_1m"]["modified_s_s_q"]["mean_cost"]
+    assert instance["search"]["position_upper_bound"] == 45
+    assert instance["literature_metadata"]["parent_problem_family"] == "Bijvank2015ParametricPolicies"
 
 
 def test_reference_instance_names_are_sorted_and_stable():
-    names = list_reference_instances()
+    names = invman_rust.lost_sales_fixed_order_cost_list_reference_instances()
     assert "bijvank2015_table1_l2_p14_k5" in names
     assert names[0] == "bijvank2015_table1_l2_p14_k5"
-    assert "lit_pois_mu5_l4_p4_k5" in names
 
 
 def test_published_validation_instance_matches_reported_benchmark():
-    instance = get_reference_instance("bijvank2015_table1_l2_p14_k5")
-    assert instance["params"]["lead_time"] == 2
-    assert instance["params"]["shortage_cost"] == 14.0
-    assert instance["params"]["fixed_order_cost"] == 5.0
-    published = instance["benchmark_anchors"]["published_heuristic_references"]
-    assert published["s_s"]["params"] == {"s": 17, "S": 23}
-    assert published["s_nq"]["params"] == {"s": 17, "q": 7}
-    assert published["modified_s_s_q"]["params"] == {"s": 17, "S": 23, "q": 7}
-    assert instance["benchmark_anchors"]["published_optimal_reference"]["mean_cost"] == 11.46
+    summary = invman_rust.lost_sales_fixed_order_cost_exact_literature_summary()
+    instance = summary["reference"]
+    assert instance["lead_time"] == 2
+    assert instance["shortage_cost"] == 14.0
+    assert instance["fixed_order_cost"] == 5.0
+    published = {
+        row["policy_name"]: row for row in instance["published_heuristic_rows"]
+    }
+    assert published["s_s"]["params"] == [17, 23]
+    assert published["s_nq"]["params"] == [17, 7]
+    assert published["modified_s_s_q"]["params"] == [17, 23, 7]
+    assert summary["published_optimal_cost"] == 11.46
+    assert summary["optimal_average_cost"] == pytest.approx(11.463052002030395)
 
 
 def test_fixed_cost_reference_args_do_not_force_tracked_demands():
     args = build_reference_args("lit_pois_mu5_l4_p4_k5")
     assert not getattr(args, "track_demand", False)
+
+
+def test_benchmark_reference_instance_reports_available_rust_heuristic_baselines():
+    payload = benchmark_reference_instance(
+        "lit_pois_mu5_l4_p4_k5",
+        search_horizon=100,
+        search_seed=123,
+    )
+
+    assert payload["note"].startswith("fixed-cost heuristic baselines evaluated")
+    assert payload["capped_base_stock_reference"]["source"] == "not_applicable_fixed_order_cost"
+    assert set(payload["evaluation"]) == {"s_s", "s_nq", "modified_s_s_q"}
+    expected_param_lengths = {"s_s": 2, "s_nq": 2, "modified_s_s_q": 3}
+    for policy_name, row in payload["evaluation"].items():
+        assert row["available"] is True
+        assert row["source"] == "rust_lost_sales_fixed_heuristics_all_detailed"
+        assert row["mean_cost"] > 0.0
+        assert len(row["params"]) == expected_param_lengths[policy_name]
+        assert row["top"][0]["params"] == row["params"]
+        assert row["top"][0]["mean_cost"] == pytest.approx(row["mean_cost"])
+        assert row["search_horizon"] == 100
+        assert row["search_seed"] == 123
+
+
+def test_fixed_heuristics_detailed_binding_matches_cost_only_binding():
+    kwargs = dict(
+        demand_kind="Poisson",
+        demand_rate=5.0,
+        demand_lambda_low=3.0,
+        demand_lambda_high=7.0,
+        demand_p00=0.9,
+        demand_p11=0.9,
+        lead_time=4,
+        holding_cost=1.0,
+        shortage_cost=4.0,
+        procurement_cost=0.0,
+        fixed_order_cost=5.0,
+        max_order_size=20,
+        position_upper_bound=30,
+        horizon=50,
+        seed=123,
+        warm_up_periods_ratio=0.2,
+        top_k=2,
+    )
+
+    cost_only = dict(invman_rust.lost_sales_fixed_heuristics_all(**kwargs))
+    detailed = dict(invman_rust.lost_sales_fixed_heuristics_all_detailed(**kwargs))
+
+    for policy_name, expected_params_len in {
+        "s_s": 2,
+        "s_nq": 2,
+        "modified_s_s_q": 3,
+    }.items():
+        row = detailed[policy_name]
+        assert row["mean_cost"] == pytest.approx(cost_only[policy_name])
+        assert len(row["params"]) == expected_params_len
+        assert len(row["top"]) == 2
+        assert row["top"][0]["params"] == row["params"]

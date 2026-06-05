@@ -1,7 +1,7 @@
 # program_multi_echelon_serial — autoresearch for the serial Clark-Scarf env
 
 The objective of this program is one honest learned-policy result on the
-literature-verified **serial multi-echelon** env (`rust/src/problems/multi_echelon/serial`),
+literature-verified **serial multi-echelon** env (`src/problems/multi_echelon/serial`),
 the textbook Clark-Scarf model (Clark & Scarf 1960; Snyder & Shen *Fundamentals of
 Supply Chain Theory* Example 6.1). It is a **MATCH-only** problem: the comparator is a
 TRUE optimum, so the honest ceiling is to reproduce it, never to beat it.
@@ -24,7 +24,7 @@ TRUE optimum, so the honest ceiling is to reproduce it, never to beat it.
 ## The binding (call-bridge added)
 
 - `multi_echelon_serial_soft_tree_population_rollout`
-  (`rust/src/problems/multi_echelon/serial/bindings.rs`) — decodes a soft-tree policy
+  (`src/problems/multi_echelon/serial/bindings.rs`) — decodes a soft-tree policy
   into the serial decision and rolls out `echelon_base_stock.rs`-style dynamics in Rust
   (`serial/rollout.rs`), returning per-individual mean per-period cost under paired CRN.
 - `multi_echelon_serial_exact_normal_solution` — exact Clark-Scarf solver helper, used to
@@ -37,7 +37,7 @@ The serial decision class is **echelon base-stock**: each stage k orders
 `max(0, S_k − echelon_IP_k)`. The policy emits the N echelon base-stock LEVELS directly
 (continuous, non-negative, bounded by a generous physical ceiling), via the new continuous
 soft-tree head `action_vector_continuous_from_flat_params` in
-`rust/src/core/policies/soft_tree.rs`. It lives in the optimal policy's coordinate system,
+`src/core/policies/soft_tree.rs`. It lives in the optimal policy's coordinate system,
 so warm-starting the constant leaves at the exact Clark-Scarf levels makes **generation 0
 reproduce the optimum** (verified: 47.68, the +0.06% env-sim band). The warm-start anchor
 is always kept in the candidate set, so the reported policy can never be worse than the

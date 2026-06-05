@@ -8,7 +8,7 @@ programs. It targets the `multi_echelon/general_backorder_fixed_cost` problem
 (`geevers2023_general_set1`): 4 suppliers / 4 warehouses / 5 retailers, Poisson(15) retailer
 demand, unit lead times, backorders (no fixed ordering cost in the published objective --
 holding + backorder only). The env is the verified family member
-(`rust/src/problems/multi_echelon/general_backorder_fixed_cost/`, set-1 reproduction asserted
+(`src/problems/multi_echelon/general_backorder_fixed_cost/`, set-1 reproduction asserted
 in-crate by `tests::verification::set1_benchmark_reproduces_geevers_published_cost`).
 
 The single-policy loop is the same shape as the sibling programs: train ONE soft-tree

@@ -1,6 +1,6 @@
 """
 Autoresearch runner for the serial Clark-Scarf multi-echelon env
-(rust/src/problems/multi_echelon/serial).
+(src/problems/multi_echelon/serial).
 
 OBJECTIVE
 ---------
@@ -39,20 +39,20 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-import os
 import subprocess
 import sys
 import time
 from pathlib import Path
 
-os.environ.setdefault("RAYON_NUM_THREADS", "2")
-os.environ.setdefault("OMP_NUM_THREADS", "2")
-
-import numpy as np
-
 PACKAGE_ROOT = Path(__file__).resolve().parents[2]
 if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
+
+from invman.cpu_limits import configure_process_cpu_limits_from_argv
+
+configure_process_cpu_limits_from_argv(sys.argv[1:], default=2)
+
+import numpy as np
 
 import invman_rust
 from invman.cmaes import CMAES

@@ -43,9 +43,8 @@ ALGORITHM
     6. Append a TSV ledger row to outputs/autoresearch/<run_tag>/results.tsv.
 
 CPU CAP
-    Route everything through the binding with RAYON_NUM_THREADS / OMP_NUM_THREADS
-    set in the environment (the bindings otherwise grab ~27 cores). This runner
-    spawns NO worker processes of its own.
+    Route everything through the binding with the shared CPU helper set before NumPy
+    and Rust imports. This runner spawns NO worker processes of its own.
 
 USAGE
     RAYON_NUM_THREADS=2 OMP_NUM_THREADS=2 python \
@@ -64,13 +63,17 @@ import subprocess
 import sys
 from pathlib import Path
 
-import numpy as np
-
 PACKAGE_ROOT = Path(__file__).resolve().parents[2]
 if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
 # Make the sibling benchmark module importable as a plain module.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from invman.cpu_limits import configure_process_cpu_limits_from_argv
+
+configure_process_cpu_limits_from_argv(sys.argv[1:], default=2)
+
+import numpy as np
 
 import invman_rust as ir
 

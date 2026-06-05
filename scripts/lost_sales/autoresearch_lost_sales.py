@@ -10,8 +10,10 @@ if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
 
 from invman.experiment_runner import run_experiment
-from invman.policies.registry import apply_policy_name
-from invman.problems.lost_sales.reference_instances import VANILLA_L4_P4_POISSON5, build_reference_args
+from invman.policy_registry import apply_policy_name
+from scripts.lost_sales.benchmark_canonical_suite import build_reference_args
+
+DEFAULT_REFERENCE = "vanilla_l4_p4_poisson5"
 
 
 BUDGETS = {
@@ -37,7 +39,7 @@ def parse_args():
     parser.add_argument("--run_tag", default="lost_sales_autoresearch", help="Autoresearch run namespace.")
     parser.add_argument("--budget", choices=sorted(BUDGETS), default="screening", help="Fixed experiment budget.")
     parser.add_argument("--description", required=True, help="Short description of the policy change being tested.")
-    parser.add_argument("--reference", default=VANILLA_L4_P4_POISSON5.name, help="Named reference instance.")
+    parser.add_argument("--reference", default=DEFAULT_REFERENCE, help="Named reference instance.")
     parser.add_argument("--policy_name", required=True, help="Unique learned-policy identifier.")
     parser.add_argument("--rollout_backend", choices=["python", "rust"], default="python")
     parser.add_argument("--sigma_init", type=float, default=5.0)
@@ -48,12 +50,15 @@ def parse_args():
 
 
 def _git_short_commit(project_root: Path) -> str:
-    result = subprocess.run(
-        ["git", "-C", str(project_root.parent), "rev-parse", "--short", "HEAD"],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(project_root), "rev-parse", "--short", "HEAD"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except subprocess.CalledProcessError:
+        return "unknown"
     return result.stdout.strip()
 
 
@@ -148,12 +153,13 @@ def main():
     payload, results_path = run_experiment(args)
     learned_cost = payload["evaluation"]["learned_policy"]["mean_cost"]
     heuristic_results = payload["evaluation"]["heuristics"]
-    best_heuristic_cost = min(
+    heuristic_costs = [
         heuristic_summary["mean_cost"]
         for heuristic_summary in heuristic_results.values()
-        if isinstance(heuristic_summary, dict) and "mean_cost" in heuristic_summary
-    )
-    heuristic_gap = learned_cost - best_heuristic_cost
+        if isinstance(heuristic_summary, dict) and heuristic_summary.get("mean_cost") is not None
+    ]
+    best_heuristic_cost = min(heuristic_costs) if heuristic_costs else None
+    heuristic_gap = None if best_heuristic_cost is None else learned_cost - best_heuristic_cost
     prior_best = _best_prior_cost(paths["tsv"])
     status = "keep" if prior_best is None or learned_cost < prior_best else "discard"
 
@@ -164,8 +170,8 @@ def main():
         parsed.budget,
         payload["policy_architecture"],
         f"{learned_cost:.6f}",
-        f"{best_heuristic_cost:.6f}",
-        f"{heuristic_gap:.6f}",
+        "" if best_heuristic_cost is None else f"{best_heuristic_cost:.6f}",
+        "" if heuristic_gap is None else f"{heuristic_gap:.6f}",
         status,
         parsed.description,
     ]

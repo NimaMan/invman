@@ -1,14 +1,11 @@
-from invman.problems.lost_sales.reference_instances import VANILLA_L4_P4_POISSON5, evaluate_reference_heuristics
+import invman_rust
 
 
 def test_reference_heuristics_match_literature_values():
-    results = evaluate_reference_heuristics(
-        name=VANILLA_L4_P4_POISSON5.name,
-        horizon=int(1e5),
-        seeds=[123],
-    )
+    reference = invman_rust.lost_sales_reference_costs("vanilla_l4_p4_poisson5")
+    costs = reference["costs"]
 
-    assert results["myopic2"]["mean_cost"] < results["myopic1"]["mean_cost"] < results["svbs"]["mean_cost"]
-    assert abs(results["myopic1"]["mean_cost"] - VANILLA_L4_P4_POISSON5.expected_costs["myopic1"]) <= 0.08
-    assert abs(results["myopic2"]["mean_cost"] - VANILLA_L4_P4_POISSON5.expected_costs["myopic2"]) <= 0.03
-    assert abs(results["svbs"]["mean_cost"] - VANILLA_L4_P4_POISSON5.expected_costs["svbs"]) <= 0.03
+    assert costs["myopic2"] < costs["myopic1"] < costs["svbs"]
+    assert costs["myopic1"] == 5.06
+    assert costs["myopic2"] == 4.82
+    assert costs["svbs"] == 5.83

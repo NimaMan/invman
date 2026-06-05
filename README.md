@@ -1,14 +1,33 @@
 # Inventory Management Experiments
 
-This repository now keeps one active code path:
+This repository now keeps one active Rust-first code path:
 
-- `invman.problems.lost_sales` for the canonical vanilla lost-sales package
-- `invman.problems.dual_sourcing` for the Gijsbrechts / Veeraraghavan-Scheller-Wolf dual-sourcing settings
-- `invman.problems.multi_echelon` for the Van Roy / Gijsbrechts two-echelon warehouse-retailer settings
-- policy optimization with evolution strategies over compact policy parameterizations
-- a canonical `invman.policies` package for learned policy classes
-- a colocated Rust crate under `rust/` for high-throughput rollout kernels
-- one runner script at `scripts/run_experiment.py`
+- a root-level Rust crate (`Cargo.toml`, `src/`) for problem dynamics, reference instances,
+  heuristic searches, exact solvers, and high-throughput rollout kernels
+- flattened Python support modules (`invman/policy.py`, `invman/policy_registry.py`,
+  `invman/policy_build.py`, `invman/rollout_fitness.py`) for policy descriptors, CMA-ES
+  optimization, and Rust binding orchestration
+- benchmark helper scripts under `scripts/<problem>/` for paper grids and autoresearch runs
+- one generic runner script at `scripts/run_experiment.py`
+
+## Benchmark Reporting Principle
+
+Across all problem families, `literature_verified` applies only to repo exact algorithms and repo
+heuristic implementations.
+
+That means:
+
+- if a repo exact solver matches public literature benchmark numbers, that exact algorithm can be
+  marked `literature_verified`
+- if a repo heuristic implementation matches public literature benchmark numbers, that heuristic can
+  be marked `literature_verified`
+- references should carry literature rows and problem-instance definitions, not repo-generated exact
+  or heuristic outputs
+- repo-generated verification outputs should be produced by Rust verification code or written to
+  validation artifacts, not frozen into the reference catalog
+- published learned-policy rows from papers, such as PPO or A3C, are carried as published rows and
+  reported as such; they are not labeled as `literature_verified` repo algorithms
+- benchmark tables should separate published literature numbers from repo reproduced absolute costs
 
 The current baseline problem is the single-item lost-sales setting with lead time, holding cost, shortage cost, and either Poisson or geometric demand. The runner can train either a linear policy or a small neural policy and compare the learned policy against the classic lost-sales heuristics already in the repo.
 
@@ -136,6 +155,12 @@ Build the optional Rust extension into the active virtualenv:
 python scripts/build_rust_extension.py
 ```
 
+Run Rust-native verification from the repo root:
+
+```bash
+cargo test --manifest-path Cargo.toml -q
+```
+
 For agent-driven runs on another machine, use the repo-local guide in `AGENTS.md`.
 
 Run a small experiment:
@@ -153,15 +178,17 @@ Outputs are written under `outputs/`:
 ## Structure
 
 - `invman/config.py`: CLI configuration
-- `invman/problems/lost_sales/`: vanilla lost-sales env, heuristics, and benchmark references
-- `invman/problems/lost_sales_fixed_order_cost/`: fixed-order-cost extension and heuristic search
-- `invman/problems/dual_sourcing/`: dual-sourcing env, heuristics, bounded DP, and literature settings
-- `invman/problems/multi_echelon/`: two-echelon env, constant base-stock benchmark, and literature settings
-- `invman/policies/`: canonical linear, neural, and tree policy parameterizations
-- `rust/`: native rollout kernels used by the Rust-backed policy path
+- `invman/policy.py`: canonical learned-policy descriptor used by Rust rollouts
+- `invman/policy_registry.py`: policy-name parser and registry
+- `invman/policy_build.py`: converts CLI/config args into bounded `Policy` descriptors
+- `invman/rollout_fitness.py`: Rust-backed fitness dispatch for CMA-ES
+- `Cargo.toml`, `src/`: native problem dynamics, reference grids, heuristics, exact solvers, and
+  rollout kernels
 - `invman/cmaes.py`, `invman/es_mp.py`: evolution-strategy optimizers and training loop
 - `scripts/run_experiment.py`: single entry point for training and evaluation
 - `numerical_experiments/`: curated experiment catalog and launcher for Linux-scale benchmark runs
+- `scripts/lost_sales/benchmark_full_suite.py`: vanilla lost-sales reference/grid helper and suite runner
+- `scripts/lost_sales_fixed_order_cost/benchmark_full_suite.py`: fixed-cost reference/grid helper and suite runner
 - `scripts/lost_sales/autoresearch_tree_structures.py`: vanilla lost-sales tree-architecture comparison runner
 - `scripts/lost_sales_fixed_order_cost/autoresearch_fixed_order_cost.py`: fixed-cost autoresearch runner
 - `scripts/lost_sales_fixed_order_cost/autoresearch_fixed_order_tree_structures.py`: fixed-cost tree-architecture screening runner

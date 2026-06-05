@@ -9,6 +9,15 @@ PACKAGE_ROOT = Path(__file__).resolve().parents[2]
 if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
 
+from invman.cpu_limits import (
+    bounded_worker_count,
+    configure_process_cpu_limits_from_argv,
+    cpu_limited_environ,
+    normalize_args_cpu_limits,
+)
+
+configure_process_cpu_limits_from_argv(sys.argv[1:])
+
 import invman_rust
 
 from invman.config import get_config
@@ -19,9 +28,9 @@ from invman.utils import RunStatusTracker
 # --- suite orchestration glue (grid + reference data come from Rust) ----------
 # The fixed-cost grid, instance params and (s,S)/(s,nQ)/(s,S,q) heuristics live in
 # the Rust crate; this script only carries the CMA-ES budget, policy roster, and
-# the arg-building/summary glue. Heuristic baselines are omitted until the Rust
-# grid+baseline binding lands (the (s,S,q) family is implemented in Rust but not
-# yet precomputed over this grid).
+# the arg-building/summary glue. Heuristic baselines are evaluated through the
+# Rust fixed-cost heuristic search binding on the instance's deterministic search
+# protocol.
 FULL_GRID_NAME = "lost_sales_style_full_grid_mu5"
 GRID_LEAD_TIMES = {4, 6, 8, 10}  # the paper grid; the Rust grid also includes L=2
 
@@ -87,13 +96,80 @@ def build_reference_args(name):
 
 
 def benchmark_reference_instance(name, *, eval_horizon=None, eval_seeds=None, **_ignored):
-    get_reference_instance(name)  # validate
+    instance = get_reference_instance(name)
+    args = build_reference_args(name)
+    search = instance["search"]
+    search_horizon = int(_ignored.get("search_horizon") or search["search_horizon"])
+    search_seed = int(_ignored.get("search_seed") or search["search_seed"])
+    position_upper_bound = int(
+        _ignored.get("position_upper_bound") or search["position_upper_bound"]
+    )
+    top_k = int(_ignored.get("top_k_s_s_pairs") or search.get("top_k_s_s_pairs", 1) or 1)
+    search_kwargs = dict(
+        demand_kind=str(args.demand_dist_name),
+        demand_rate=float(args.demand_rate),
+        demand_lambda_low=float(getattr(args, "demand_lambda_low", 3.0)),
+        demand_lambda_high=float(getattr(args, "demand_lambda_high", 7.0)),
+        demand_p00=float(getattr(args, "demand_p00", 0.9)),
+        demand_p11=float(getattr(args, "demand_p11", 0.9)),
+        lead_time=int(args.lead_time),
+        holding_cost=float(args.holding_cost),
+        shortage_cost=float(args.shortage_cost),
+        procurement_cost=float(getattr(args, "procurement_cost", 0.0)),
+        fixed_order_cost=float(args.fixed_order_cost),
+        max_order_size=int(args.max_order_size),
+        position_upper_bound=position_upper_bound,
+        horizon=search_horizon,
+        seed=search_seed,
+        warm_up_periods_ratio=float(getattr(args, "warm_up_periods_ratio", 0.2)),
+        top_k=top_k,
+    )
+    if hasattr(invman_rust, "lost_sales_fixed_heuristics_all_detailed"):
+        detailed = dict(invman_rust.lost_sales_fixed_heuristics_all_detailed(**search_kwargs))
+        evaluation = {}
+        for policy_name in ("s_s", "s_nq", "modified_s_s_q"):
+            row = dict(detailed[policy_name])
+            evaluation[policy_name] = {
+                "mean_cost": float(row["mean_cost"]),
+                "params": [int(value) for value in row["params"]],
+                "available": True,
+                "source": "rust_lost_sales_fixed_heuristics_all_detailed",
+                "search_horizon": search_horizon,
+                "search_seed": search_seed,
+                "position_upper_bound": position_upper_bound,
+                "top": [
+                    {
+                        "params": [int(value) for value in top_row["params"]],
+                        "mean_cost": float(top_row["mean_cost"]),
+                    }
+                    for top_row in row.get("top", [])
+                ],
+                "evaluated_candidates": int(row.get("evaluated_candidates", 0)),
+            }
+    else:
+        costs = invman_rust.lost_sales_fixed_heuristics_all(**search_kwargs)
+        evaluation = {
+            policy_name: {
+                "mean_cost": float(mean_cost),
+                "params": None,
+                "available": True,
+                "source": "rust_lost_sales_fixed_heuristics_all",
+                "search_horizon": search_horizon,
+                "search_seed": search_seed,
+                "position_upper_bound": position_upper_bound,
+            }
+            for policy_name, mean_cost in dict(costs).items()
+        }
     return {
         "reference_instance": name,
-        "evaluation": {},  # (s,S,q) baselines pending the Rust grid+baseline binding
-        "optimal_reference": {"mean_cost": None, "available": False, "source": "pending_rust_binding"},
-        "capped_base_stock_reference": {"mean_cost": None, "available": False, "source": "pending_rust_binding"},
-        "note": "fixed-cost (s,S,q) baselines pending the Rust grid+baseline binding",
+        "evaluation": evaluation,
+        "optimal_reference": _optimal_reference(name),
+        "capped_base_stock_reference": {
+            "mean_cost": None,
+            "available": False,
+            "source": "not_applicable_fixed_order_cost",
+        },
+        "note": "fixed-cost heuristic baselines evaluated by Rust search binding.",
     }
 
 
@@ -430,7 +506,7 @@ def _build_instance_payload(parsed, root: Path, instance: dict, selected_ids: se
 
 def _effective_instance_jobs(parsed, num_instances: int) -> int:
     requested = max(1, int(parsed.instance_jobs))
-    total_rollout_workers = max(1, int(parsed.mp_num_processors))
+    total_rollout_workers = bounded_worker_count(parsed.mp_num_processors)
     return max(1, min(requested, num_instances, total_rollout_workers))
 
 
@@ -482,7 +558,12 @@ def _shared_child_command_args(parsed, *, mp_num_processors: int) -> list[str]:
 def _run_instance_subprocess(parsed, reference_name: str, *, mp_num_processors: int):
     command = _shared_child_command_args(parsed, mp_num_processors=mp_num_processors)
     command.extend(["--references", reference_name])
-    subprocess.run(command, check=True, cwd=PACKAGE_ROOT)
+    subprocess.run(
+        command,
+        check=True,
+        cwd=PACKAGE_ROOT,
+        env=cpu_limited_environ(mp_num_processors),
+    )
 
 
 def _collect_instance_payloads(parsed, root: Path, grid_instances: list[dict], selected_ids: set[str] | None, tracker=None):
@@ -540,6 +621,7 @@ def _collect_instance_payloads(parsed, root: Path, grid_instances: list[dict], s
 
 def main():
     parsed = parse_args()
+    normalize_args_cpu_limits(parsed)
     root = _suite_root(parsed.run_tag)
     _ensure_dirs(root)
 

@@ -5,6 +5,7 @@ from copy import copy
 import numpy as np
 
 from invman.cmaes import CMAES
+from invman.cpu_limits import normalize_args_cpu_limits
 from invman.utils import Seeder, env_time_limit, save_model_solutions, write_log
 
 
@@ -136,6 +137,7 @@ def train(
         write_log(message, model, args)
 
     episodes = args.training_episodes
+    mp_num_processors = normalize_args_cpu_limits(args)
     history = []
     fitness_hist = []
     population_hist = []
@@ -185,7 +187,7 @@ def train(
 
             if pop_fitness is None:
                 if pool is None:
-                    pool = ctx.Pool(processes=args.mp_num_processors)
+                    pool = ctx.Pool(processes=mp_num_processors)
                 results = [
                     pool.apply_async(
                         get_model_fitness,

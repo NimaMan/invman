@@ -4,18 +4,26 @@ This is the dual-sourcing counterpart to the lost-sales and fixed-cost autoresea
 
 ## Benchmark
 
-Primary screening instance:
+Use the full six-row Gijs Figure 9 family as the trusted design set:
 
+- `dual_l2_ce105`
+- `dual_l2_ce110`
+- `dual_l3_ce105`
+- `dual_l3_ce110`
+- `dual_l4_ce105`
 - `dual_l4_ce110`
-- regular lead time `l_r = 4`
+
+Shared parameters:
+
+- regular lead time `l_r in {2,3,4}`
 - expedited lead time `l_e = 0`
 - demand uniform on `{0,1,2,3,4}`
 - `h = 5`
 - `b = 495`
 - `c_r = 100`
-- `c_e = 110`
+- `c_e in {105,110}`
 
-The benchmark heuristics are fixed:
+Benchmark heuristics:
 
 - single-index
 - dual-index
@@ -24,64 +32,65 @@ The benchmark heuristics are fixed:
 
 ## Intended search surface
 
-- `invman/policies/`
-- `rust/src/policies/`
-- `rust/src/rollout/`
-- limited support code needed to wire vector-action trees into training
+- `invman/policy.py`
+- `invman/policy_registry.py`
+- `invman/policy_build.py`
+- `invman/rollout_fitness.py`
+- `src/problems/dual_sourcing/`
+- `scripts/dual_sourcing/`
+- `autoresearch/dual_sourcing_policy_search/`
 
 ## Budgets
 
-Use the budgets from `scripts/dual_sourcing/autoresearch_dual_sourcing.py`:
+Use the budgets in:
 
-- `screening`
-- `full`
+- `scripts/dual_sourcing/autoresearch_dual_sourcing.py`
+- `autoresearch/dual_sourcing_policy_search/run_factor_screen.py`
+
+The six-row factor screen is the first pass. Promoted candidates can then move to larger budgets.
 
 ## Goal
 
-Lower the learned-policy cost on the primary dual-sourcing instance while preserving a clean
-general policy pipeline.
+Use the six-row benchmark family to answer two questions:
 
-Current smoke baseline:
+1. which policy-design factors matter most?
+2. what policy families are worth promoting to larger-budget searches?
 
-- learned tree: `249.84`
-- best heuristic baseline: capped dual-index `220.73`
+Primary metric:
 
-Current full-budget baseline:
+- relative gap to the best heuristic on the same benchmark row
 
-- learned tree: `233.08375`
-- single-index: `226.816875`
-- dual-index: `222.4025`
-- capped dual-index: `221.61`
-- tailored base-surge: `222.7825`
+Do not lock the search to one policy class. The job is to find very strong policies, not to prove that
+soft trees are always best.
 
 ## What we know
 
-The current direct vector-action soft tree is no longer just a smoke-test artifact. With a full budget,
-it improves a lot versus the original smoke run, but it still remains clearly behind the best heuristics.
+The important shift is that dual sourcing is no longer a one-instance smoke-test problem.
 
-That suggests the next dual-sourcing search should not focus first on more CMA-ES budget or deeper trees.
-It should focus on the policy output space.
+Across the current six-row benchmark family, the evidence so far is:
 
-The benchmark heuristics all work with inventory-position targets or related low-dimensional controls:
+- the dominant bottleneck is policy design, not missing simulator fidelity
+- control geometry matters more than raw parameter count
+- factorized dual-index controls work better than staying in raw order quantities
+- a small discrete regular-cap grid helps because it keeps the learned surface close to the strongest heuristic family
+- tighter trees can outperform wider oblique trees on the hard `l_r=3` and `l_r=4` rows
 
-- expedited inventory position
-- regular inventory position
-- optional regular cap or regular base-surge quantity
+The current follow-up conclusion is more specific:
 
-The current learned tree instead outputs direct raw orders:
+- `l_r = 2` rows improve with axis-aligned linear-leaf policies on the factorized capped-delta surface
+- `l_r in {3,4}` still prefer the tighter axis-constant small-cap tree
+- the best next design is a row-conditioned family or mixture on top of the same factorized control basis, not one universal policy geometry
 
-- `(q_regular, q_expedited)`
+So the next search should focus first on the policy/control surface, not just on more CMA-ES budget.
 
-So it has to discover both the right state compression and the right replenishment logic in one search
-space. That is a plausible bottleneck.
+## Canonical workspace
 
-## Next autoresearch target
+The organized search surface now lives in:
 
-The next family to add and test is a learned target-position policy for dual sourcing:
+- `autoresearch/dual_sourcing_policy_search/README.md`
 
-- the policy outputs state-dependent expedited and regular targets
-- a deterministic mapper converts those targets into `(q_regular, q_expedited)`
-- optional extension: a third output for a regular cap
+Use that folder for:
 
-This remains a learned, state-dependent policy class, but searches in a coordinate system that matches
-the strongest known heuristic families much better than direct raw order quantities.
+- canonical factor screens across all six rows
+- summaries of which design factors help most
+- next-round candidate policies to promote

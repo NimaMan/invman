@@ -9,6 +9,15 @@ PACKAGE_ROOT = Path(__file__).resolve().parents[2]
 if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
 
+from invman.cpu_limits import (
+    bounded_worker_count,
+    configure_process_cpu_limits_from_argv,
+    cpu_limited_environ,
+    normalize_args_cpu_limits,
+)
+
+configure_process_cpu_limits_from_argv(sys.argv[1:])
+
 import invman_rust
 
 from invman.config import get_config
@@ -421,7 +430,7 @@ def _build_instance_payload(parsed, root: Path, instance: dict, selected_ids: se
 
 def _effective_instance_jobs(parsed, num_instances: int) -> int:
     requested = max(1, int(parsed.instance_jobs))
-    total_rollout_workers = max(1, int(parsed.mp_num_processors))
+    total_rollout_workers = bounded_worker_count(parsed.mp_num_processors)
     return max(1, min(requested, num_instances, total_rollout_workers))
 
 
@@ -471,7 +480,12 @@ def _shared_child_command_args(parsed, *, mp_num_processors: int) -> list[str]:
 def _run_instance_subprocess(parsed, reference_name: str, *, mp_num_processors: int):
     command = _shared_child_command_args(parsed, mp_num_processors=mp_num_processors)
     command.extend(["--references", reference_name])
-    subprocess.run(command, check=True, cwd=PACKAGE_ROOT)
+    subprocess.run(
+        command,
+        check=True,
+        cwd=PACKAGE_ROOT,
+        env=cpu_limited_environ(mp_num_processors),
+    )
 
 
 def _collect_instance_payloads(parsed, root: Path, grid_instances: list[dict], selected_ids: set[str] | None, tracker=None):
@@ -529,6 +543,7 @@ def _collect_instance_payloads(parsed, root: Path, grid_instances: list[dict], s
 
 def main():
     parsed = parse_args()
+    normalize_args_cpu_limits(parsed)
     root = _suite_root(parsed.run_tag)
     _ensure_dirs(root)
 

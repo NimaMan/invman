@@ -49,8 +49,8 @@ HARD 2-CORE CAP (two sibling autoresearch agents run in parallel). Every native 
 capped BEFORE numpy / invman_rust import: RAYON_NUM_THREADS (Rust population rollout),
 OPENBLAS/OMP/MKL/NUMEXPR (numpy/CMA-ES eigendecomposition). mp_num_processors is forced to
 1 (the population path bypasses the multiprocessing Pool; rayon is the only fan-out, capped
-at RAYON_NUM_THREADS). Each var respects an externally-exported value. The scripts'
-~27-core default is overridden.
+at RAYON_NUM_THREADS). Lower externally-exported thread values are preserved; higher values
+are capped by the shared CPU helper. The scripts' ~27-core default is overridden.
 
 USAGE
 -----
@@ -77,19 +77,19 @@ import sys
 from pathlib import Path
 from types import SimpleNamespace
 
-# HARD 2-CORE CAP -- set BEFORE numpy / invman_rust pull in their native libs.
-for _var in ("RAYON_NUM_THREADS", "OPENBLAS_NUM_THREADS", "OMP_NUM_THREADS",
-             "MKL_NUM_THREADS", "NUMEXPR_NUM_THREADS"):
-    os.environ.setdefault(_var, "2")
-
-import numpy as np
-
 PACKAGE_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT_DIR = Path(__file__).resolve().parent
 if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
+
+from invman.cpu_limits import configure_process_cpu_limits_from_argv
+
+# HARD 2-CORE CAP -- set BEFORE numpy / invman_rust pull in their native libs.
+configure_process_cpu_limits_from_argv(sys.argv[1:], default=2)
+
+import numpy as np
 
 from invman.es_mp import train
 

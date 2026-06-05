@@ -216,62 +216,197 @@ Tier-1 *committed results* do not depend on it.
 - New local work includes CPU concurrency guards (`invman/cpu_limits.py`), capped child-process worker environments, sampled ES population metadata tests, a continuous soft-tree Rust action head, serial Clark-Scarf bindings/runner, and faithful average-profit ameliorating-inventory bindings/runner.
 - The installed `invman_rust` module in the active Python environment already exposes the newly added serial multi-echelon and ameliorating-inventory average-profit bindings.
 - `python numerical_experiments/run.py --list` works and lists the current ready/exploratory suite catalog, but the catalog should not be treated as proof that every listed script is runnable under the current API.
+- The `scripts/lost_sales/`, `scripts/lost_sales_fixed_order_cost/`, and stable dual-sourcing lanes no longer contain deleted top-level `invman.problems.*` or `invman.policies.*` imports.
+- The lightweight fixed-cost/lost-sales helper scripts have been migrated to the flattened Python API and Rust backend defaults: `autoresearch/fixed_cost_ordinal_stability/replay_exact_ordinal.py`, `scripts/raw_state_single_policy_probe.py`, and `scripts/evaluate_saved_policy.py`.
+- `autoresearch/fixed_cost_ordinal_stability/ablate_state_drift.py` is now explicitly archived because it depended on deleted Python env/model APIs and an old torch checkpoint format.
+- The perishable, joint-pricing, random-yield, and procurement-removal common helpers now build current `invman.policy.Policy` soft-tree descriptors instead of importing the removed `invman.policies.soft_tree.SoftTreePolicy`.
+- README/agent/autoresearch active-surface docs now point at root Rust sources, flattened `invman/` support modules, and current benchmark helper scripts instead of deleted `invman.problems.*` / `invman.policies.*` packages.
+- Fixed-cost heuristic benchmark summaries now use `invman_rust.lost_sales_fixed_heuristics_all_detailed`, which exposes winning `(s,S)`, `(s,nQ)`, and modified `(s,S,q)` params plus top candidates while preserving the legacy cost-only binding.
+- Fixed-cost fixed-policy rollouts now also expose `invman_rust.lost_sales_fixed_policy_trace_from_demands`, returning per-period inventory position, pipeline, order quantity, arrivals, ending inventory, cost, and warm-up activity flags for supplied demand paths. The fixed-cost diagnostic script can now report a bounded deterministic trace sample for the searched modified `(s,S,q)` heuristic.
+- Current `Policy` descriptors now have Rust action-evaluation bindings for soft-tree, linear, and NN backbones. The fixed-cost diagnostic's coarse learned-policy state-grid action histogram uses these bindings instead of the removed Python policy/env internals.
+- Learned lost-sales policies now also have Rust supplied-demand trace bindings for soft-tree, linear, and NN backbones. The fixed-cost diagnostic can report deterministic rounded-mean demand trace samples for saved learned policies as well as for the searched modified `(s,S,q)` heuristic.
+- The fixed-cost diagnostic can now archive the exact learned-policy trace, heuristic trace, and coarse action-summary JSON via `--output_json`, so these artifacts can be reviewed for paper/appendix inclusion without changing the benchmark regeneration path.
+- Cargo now separates Rust-native verification from Python extension builds: default features are Rust-native, `python scripts/build_rust_extension.py` enables the `python-extension` feature for maturin/PyO3, and plain `cargo test --manifest-path Cargo.toml -q` links and passes.
+- `numerical_experiments/run.py` now propagates the shared CPU/thread cap to child suite scripts, and the ready OWMR paper benchmark writes reports under root `src/problems/...` instead of recreating the removed `rust/src/...` tree.
+- The exploratory-runner CPU audit has been extended from ad hoc `RAYON_NUM_THREADS` / `OMP_NUM_THREADS` setup to the shared `invman.cpu_limits` helper: ameliorating average-profit, general backorder fixed-cost, serial multi-echelon, perishable, joint-replenishment learned/evaluator/autoresearch, OWMR autoresearch/learned/asymmetric runners, vendor-managed inventory, production-assembly, and the lost-sales paper-suite wrapper.
+- Root-Rust layout assumptions now have executable regression coverage in `tests/test_rust_first_migration.py`: root `Cargo.toml`/`src/` are treated as source of truth, old `rust/Cargo.toml`/`rust/src` are forbidden, active source surfaces plus the tier-two `invman/` package and root build files are scanned for nested-Rust paths, and active scripts/docs/tests are scanned for live imports from deleted `invman.problems.*` / `invman.policies.*`.
+- The perishable and nonstationary practical benchmark helpers no longer default to deleted `rust/src/...` artifact paths; they read/write under root `src/problems/...`. Their shared `invman.benchmarks.practical` report helper has been restored as a tier-two Python utility for JSON dataset loading and JSON/Markdown report writing.
 
 ## Verification Snapshot
 
 Commands that currently pass:
 
+- `python scripts/build_rust_extension.py`
+- `python setup.py --name` (`invman`; latest run 2026-06-04)
+- `cargo check --manifest-path Cargo.toml -q` (latest run 2026-06-04)
+- `cargo test --manifest-path Cargo.toml -q` (`167 passed`, `1 ignored`; latest run 2026-06-04, 67.67s)
 - `python numerical_experiments/run.py --list`
+- `python numerical_experiments/run.py --list --status ready`
+- `python numerical_experiments/run.py --all-ready --dry-run --mp_num_processors 2`
 - `python -m pytest tests/test_cpu_limits.py -q` (`5 passed`)
+- lost-sales binding smoke:
+  - `invman_rust.lost_sales_reference_instance_names()`
+  - `invman_rust.lost_sales_reference_costs("vanilla_l4_p4_poisson5")`
 - help/import checks for:
+  - `scripts/lost_sales/benchmark_canonical_suite.py`
   - `scripts/lost_sales/benchmark_full_suite.py`
+  - `scripts/lost_sales/autoresearch_lost_sales.py`
+  - `scripts/lost_sales/autoresearch_tree_structures.py`
+  - `scripts/lost_sales/l4_demand_policy_suite.py`
+  - `scripts/lost_sales/validate_reference_instance.py`
+  - `scripts/lost_sales_fixed_order_cost/benchmark_canonical_suite.py`
   - `scripts/lost_sales_fixed_order_cost/benchmark_full_suite.py`
+  - `scripts/lost_sales_fixed_order_cost/autoresearch_fixed_order_cost.py`
+  - `scripts/lost_sales_fixed_order_cost/autoresearch_fixed_order_tree_structures.py`
+  - `scripts/lost_sales_fixed_order_cost/l4_demand_policy_suite.py`
+  - `scripts/lost_sales_fixed_order_cost/validate_known_optimum.py`
+  - `scripts/lost_sales_fixed_order_cost/diagnostics/analyze_policy.py`
+  - `scripts/lost_sales_fixed_order_cost/diagnostics/benchmark_heuristics_grid.py`
+  - `scripts/lost_sales_fixed_order_cost/diagnostics/compare_search_backends.py`
   - `scripts/dual_sourcing/benchmark_full_suite.py`
   - `scripts/one_warehouse_multi_retailer/run_paper_benchmark.py`
   - `scripts/multi_echelon/autoresearch_multi_echelon.py`
   - `scripts/multi_echelon_serial/autoresearch_multi_echelon_serial.py`
   - `scripts/random_yield_inventory/benchmark_policies_vs_exact_and_heuristics.py`
+- `python -m py_compile scripts/lost_sales/compute_missing_heuristics_via_rust.py scripts/lost_sales/l4_demand_policy_suite.py scripts/lost_sales/validate_reference_instance.py`
+- `python -m py_compile` for the migrated fixed-cost lost-sales utility and diagnostic scripts.
+- migrated-test checks:
+  - `python -m pytest tests/test_lost_sales_reference_grid.py tests/test_fixed_order_cost_reference_grid.py tests/test_numerical_experiments_catalog.py tests/test_cpu_limits.py -q` (`19 passed`; fixed-cost reference grid later expanded with baseline availability coverage)
+  - `python -m pytest tests/test_soft_tree_policy.py tests/test_multi_echelon_problem.py -q` (`14 passed`)
+  - `python -m pytest tests/test_reference_instance.py tests/test_policy_parameter_counts.py -q` (`2 passed`)
+  - `python -m pytest tests/test_lost_sales_demand.py tests/test_fixed_order_cost_heuristics.py tests/test_fixed_order_cost_search_backends.py -q` (`8 passed`)
+  - `python -m pytest tests/test_lost_sales_env.py -q` (`9 passed`)
+  - `python -m pytest tests/test_invman_rust_bridge.py -q` (`17 passed`)
+  - `python -m pytest tests/test_policy_factory.py -q` (`30 passed`)
+  - `python -m pytest tests/test_dual_sourcing_problem.py -q` (`16 passed`)
+  - combined migrated set: `python -m pytest tests/test_lost_sales_reference_grid.py tests/test_fixed_order_cost_reference_grid.py tests/test_numerical_experiments_catalog.py tests/test_cpu_limits.py tests/test_soft_tree_policy.py tests/test_multi_echelon_problem.py tests/test_policy_parameter_counts.py tests/test_reference_instance.py tests/test_lost_sales_demand.py tests/test_fixed_order_cost_heuristics.py tests/test_fixed_order_cost_search_backends.py tests/test_lost_sales_env.py tests/test_invman_rust_bridge.py tests/test_policy_factory.py tests/test_dual_sourcing_problem.py -q` (`115 passed`)
+  - fixed-cost baseline/detail/trace regression: `python -m pytest tests/test_fixed_order_cost_reference_grid.py tests/test_fixed_order_cost_heuristics.py tests/test_fixed_order_cost_search_backends.py -q` (`14 passed`; latest run 2026-06-04, 0.67s)
+  - catalog/launcher/CPU regression: `python -m pytest tests/test_numerical_experiments_catalog.py tests/test_cpu_limits.py -q` (`14 passed`; latest run 2026-06-04, 1.10s)
+  - CPU-limit regression: `python -m pytest tests/test_cpu_limits.py -q` (`5 passed`; latest run 2026-06-04, 0.04s)
+  - descriptor action-binding regression: `python -m pytest tests/test_soft_tree_policy.py tests/test_policy_factory.py -q` (`41 passed`; latest run 2026-06-04, 0.13s)
+  - learned-policy trace regression: `python -m pytest tests/test_lost_sales_env.py tests/test_fixed_order_cost_heuristics.py -q` (`16 passed`; latest run 2026-06-04, 1.75s)
+  - fixed-cost diagnostic archive regression: `python -m pytest tests/test_fixed_order_cost_heuristics.py -q` (`5 passed`; latest run 2026-06-04, 2.12s)
+  - Rust-first migration-layout regression: `python -m pytest tests/test_rust_first_migration.py -q` (`5 passed`; latest run 2026-06-04, 0.31s)
+  - migration-layout + ready-catalog regression: `python -m pytest tests/test_rust_first_migration.py tests/test_numerical_experiments_catalog.py -q` (`14 passed`; latest run 2026-06-04, 1.15s)
+  - migration-layout + practical-report + ready-catalog regression: `python -m pytest tests/test_practical_benchmark_reports.py tests/test_rust_first_migration.py tests/test_numerical_experiments_catalog.py -q` (`15 passed`; latest run 2026-06-04, 1.22s)
+  - full Python test suite: `python -m pytest tests -q` (`147 passed`; latest run 2026-06-04, 49.70s)
+  - `python -m py_compile tests/test_lost_sales_reference_grid.py tests/test_fixed_order_cost_reference_grid.py tests/test_soft_tree_policy.py tests/test_multi_echelon_problem.py tests/test_reference_instance.py tests/test_policy_parameter_counts.py tests/test_lost_sales_demand.py tests/test_fixed_order_cost_heuristics.py tests/test_fixed_order_cost_search_backends.py tests/test_lost_sales_env.py tests/test_invman_rust_bridge.py tests/test_policy_factory.py tests/test_dual_sourcing_problem.py`
+- migrated helper-script checks:
+  - `python -m py_compile autoresearch/fixed_cost_ordinal_stability/replay_exact_ordinal.py autoresearch/fixed_cost_ordinal_stability/ablate_state_drift.py scripts/raw_state_single_policy_probe.py scripts/evaluate_saved_policy.py scripts/perishable_inventory/common.py scripts/joint_pricing_inventory/common.py`
+  - `python -m py_compile scripts/random_yield_inventory/common.py scripts/procurement_removal_inventory/common.py scripts/random_yield_inventory/train_soft_tree_reference.py scripts/procurement_removal_inventory/train_soft_tree_reference.py`
+  - `python autoresearch/fixed_cost_ordinal_stability/replay_exact_ordinal.py --help`
+  - `python scripts/raw_state_single_policy_probe.py --help`
+  - `python scripts/evaluate_saved_policy.py --help`
+  - `python scripts/random_yield_inventory/train_soft_tree_reference.py --help`
+  - `python scripts/procurement_removal_inventory/train_soft_tree_reference.py --help`
+  - perishable/joint-pricing smoke snippets instantiate current `Policy` soft trees and produce Rust rollout kwargs
+  - random-yield/procurement-removal smoke snippets instantiate current `Policy` soft trees and run one-seed Rust rollouts
+- stale import scan:
+  - `rg "invman\\.policies|invman\\.problems\\.lost_sales|invman\\.problems\\.lost_sales_fixed_order_cost" scripts/lost_sales scripts/lost_sales_fixed_order_cost -g '*.py'`
+  - returns no matches
+  - `rg "invman\\.problems|invman\\.policies" tests -g '*.py'`
+  - returns no matches
+  - `rg "invman\\.problems|invman\\.policies" tests scripts/lost_sales scripts/lost_sales_fixed_order_cost scripts/dual_sourcing -g '*.py'`
+  - only finds explanatory docstring text in `scripts/dual_sourcing/dual_sourcing_benchmark_lib.py`, not live imports
+- tiny Rust-routed validator smoke:
+  - `python scripts/lost_sales/validate_reference_instance.py --horizon 100 --num_seeds 1 --tolerance 999`
+- exact fixed-cost known-optimum validator:
+  - `python scripts/lost_sales_fixed_order_cost/validate_known_optimum.py`
+  - reproduces Bijvank 2015 Table 1 tightly: optimal 11.46305 vs published 11.46; modified (s,S,q) 11.49740 vs published 11.50
+- fixed-cost diagnostic availability checks:
+  - `python scripts/lost_sales_fixed_order_cost/diagnostics/benchmark_heuristics_grid.py --limit 1 --search_horizon 100`
+  - `python scripts/lost_sales_fixed_order_cost/diagnostics/compare_search_backends.py --search_horizon 100 --eval_horizon 100 --eval_seeds 1`
+- fixed-cost detailed binding smoke:
+  - `invman_rust.lost_sales_fixed_heuristics_all_detailed(...)`
+  - returns per-policy `params`, `mean_cost`, `top`, and `evaluated_candidates`
+- fixed-cost trace binding smoke:
+  - `invman_rust.lost_sales_fixed_policy_trace_from_demands(...)`
+  - returns policy metadata, `mean_cost`, `warm_up_periods`, and per-period trace rows
+- learned-policy supplied-demand trace binding smoke:
+  - `invman_rust.lost_sales_soft_tree_trace_from_demands(...)`
+  - `invman_rust.lost_sales_linear_trace_from_demands(...)`
+  - `invman_rust.lost_sales_nn_trace_from_demands(...)`
+  - return policy metadata, `mean_cost`, `warm_up_periods`, and per-period state/action/cost trace rows
+- policy descriptor action binding smoke:
+  - `invman_rust.soft_tree_action_vector_from_flat_params(...)`
+  - `invman_rust.linear_policy_action_from_flat_params(...)`
+  - `invman_rust.nn_policy_action_from_flat_params(...)`
+- fixed-cost diagnostic checks after trace/action wiring:
+  - `python scripts/lost_sales_fixed_order_cost/diagnostics/analyze_policy.py --help`
+  - in-memory zeroed linear `Policy` smoke for `coarse_grid_action_histogram(...)` returns a non-empty Rust-routed histogram
+  - end-to-end temporary saved-policy CLI smoke: `python scripts/lost_sales_fixed_order_cost/diagnostics/analyze_policy.py --model_dir <tmp_policy> --horizon 5 --trace_horizon 4 --trace_rows 2`
+  - the CLI smoke emits learned-policy trace rows, searched modified `(s,S,q)` params/trace rows, and a non-empty coarse state-grid action histogram
+  - the CLI smoke with `--output_json <tmp_json>` writes the same diagnostic trace payload that it prints to stdout
+- dual-sourcing autoresearch factor-screen import/help check:
+  - `python -m py_compile autoresearch/dual_sourcing_policy_search/run_factor_screen.py`
+  - `python autoresearch/dual_sourcing_policy_search/run_factor_screen.py --help`
+- broad live-import scan:
+  - `rg '^(from|import) invman\\.(problems|policies)' -g '*.py'`
+  - returns no matches after the helper migration/deprecation slice
+  - stricter embedded-import scan `rg '^\\s*(from|import) invman\\.(problems|policies)' -g '*.py'`
+  - returns no matches after the random-yield/procurement-removal common-helper migration
+  - active nested-Rust path scan `rg 'rust/src|rust/Cargo|--manifest-path rust|PACKAGE_ROOT\\s*/\\s*["\\x27]rust["\\x27]|Path\\([^\\n]*["\\x27]rust["\\x27]' README.md AGENTS.md docs autoresearch scripts numerical_experiments src paper -g '*.md' -g '*.py' -g '*.rs' -g '*.tex' -g '*.toml'`
+  - returns no matches after the ready-surface/root-crate sweep
+  - live deleted-package import scan `rg '^\\s*(from|import)\\s+invman\\.(problems|policies)' README.md AGENTS.md docs autoresearch scripts numerical_experiments tests src paper -g '*.md' -g '*.py' -g '*.rs' -g '*.tex'`
+  - returns no matches; remaining `invman.problems.*` / `invman.policies.*` text is historical warning text, not live imports
+  - `rg 'pending_rust_binding|pending the Rust grid|fixed-cost heuristic baseline binding is pending|fixed-cost \\(s,S,q\\) baselines pending' scripts tests` returns no matches
+- ready-suite runnable-surface checks:
+  - automated catalog tests confirm every ready suite command is repo-local, avoids deleted nested-Rust paths, and every ready suite script accepts `--help` under a one-worker CPU cap
+  - `python numerical_experiments/run.py --all-ready --dry-run --mp_num_processors 2`
+  - launcher unit test confirms selected suite subprocesses receive a CPU-limited environment
+  - `python scripts/one_warehouse_multi_retailer/run_paper_benchmark.py --instance_names kaynov2024_instance_1 --training_episodes_small 1 --training_episodes_large 1 --es_population 2 --train_seed_batch 1 --heuristic_search_replications 1 --benchmark_replications 1 --eval_seeds 1 --mp_num_processors 1 --artifact_dir /tmp/invman_owmr_smoke_artifacts --output_json /tmp/invman_owmr_smoke.json --output_markdown /tmp/invman_owmr_smoke.md`
+  - tiny OWMR smoke completes and records `RAYON_NUM_THREADS`, `OMP_NUM_THREADS`, `OPENBLAS_NUM_THREADS`, and `MKL_NUM_THREADS` as `1`
+- exploratory CPU-audit checks:
+  - `python -m py_compile scripts/run_lost_sales_paper_benchmarks.py scripts/ameliorating_inventory/autoresearch_ameliorating_inventory_average_profit.py scripts/general_backorder_fixed_cost/autoresearch_general_backorder_fixed_cost.py scripts/multi_echelon_serial/autoresearch_multi_echelon_serial.py scripts/perishable_inventory/autoresearch_perishable_inventory.py scripts/joint_replenishment/benchmark_learned_vs_heuristics.py scripts/joint_replenishment/autoresearch_joint_replenishment.py scripts/joint_replenishment/evaluate_setting5_vs_vi_optimum.py scripts/one_warehouse_multi_retailer/autoresearch_one_warehouse_multi_retailer.py scripts/one_warehouse_multi_retailer/benchmark_learned_vs_heuristic.py`
+  - `python -m py_compile scripts/vendor_managed_inventory/autoresearch_vendor_managed_inventory.py scripts/production_assembly_distribution_network/autoresearch_production_assembly_distribution_network.py scripts/one_warehouse_multi_retailer/run_asymmetric_learned_vs_gate.py scripts/joint_replenishment/benchmark_learned_vs_heuristics.py`
+  - `python scripts/run_lost_sales_paper_benchmarks.py --dry_run --limit 1 --mp_num_processors 2`
+  - help checks pass for the patched ameliorating, general-backorder, serial, perishable, joint-replenishment, OWMR, vendor-managed, and production-assembly runners
+  - `rg 'set RAYON_NUM_THREADS|RAYON_NUM_THREADS already exported|os\\.environ\\.setdefault\\(\"(RAYON_NUM_THREADS|OMP_NUM_THREADS)|for _var in \\(\"RAYON_NUM_THREADS' scripts autoresearch numerical_experiments invman -g '*.py'` returns no active matches
+- practical helper migration checks:
+  - `python -m py_compile invman/benchmarks/__init__.py invman/benchmarks/practical.py scripts/perishable_inventory/run_paper_benchmark.py scripts/perishable_inventory/run_practical_benchmark.py scripts/nonstationary_lot_sizing/run_practical_benchmark.py tests/test_rust_first_migration.py`
+  - `python -m py_compile tests/test_practical_benchmark_reports.py tests/test_rust_first_migration.py invman/benchmarks/practical.py`
+  - `python scripts/perishable_inventory/run_paper_benchmark.py --help`
+  - `python scripts/perishable_inventory/run_practical_benchmark.py --help`
+  - `python scripts/nonstationary_lot_sizing/run_practical_benchmark.py --help`
+  - `python scripts/perishable_inventory/run_practical_benchmark.py --output_json /tmp/invman_perishable_practical_smoke.json --output_markdown /tmp/invman_perishable_practical_smoke.md`
+  - `python scripts/nonstationary_lot_sizing/run_practical_benchmark.py --output_json /tmp/invman_nonstationary_practical_smoke.json --output_markdown /tmp/invman_nonstationary_practical_smoke.md`
 
-Commands that currently fail:
+Resolved items and remaining caveats:
 
-- `python -m pytest tests/test_lost_sales_reference_grid.py tests/test_fixed_order_cost_reference_grid.py tests/test_numerical_experiments_catalog.py tests/test_cpu_limits.py -q`
-  - fails during collection because tests import missing `invman.problems.*`
-- `python -m pytest tests/test_soft_tree_policy.py tests/test_multi_echelon_problem.py -q`
-  - fails during collection because `tests/test_soft_tree_policy.py` imports missing `invman.policies`
-- `python scripts/lost_sales/autoresearch_lost_sales.py --help`
-  - fails because it imports missing `invman.policies.registry`
-- `cargo test --manifest-path rust/Cargo.toml -q`
-  - fails at link time with unresolved Python symbols from PyO3; the supported build route appears to be `python scripts/build_rust_extension.py` / maturin with `PYO3_PYTHON`
+- the broader Python test migration is now clear for the current `tests/` tree: the full Python suite passes with the new migration/practical-report regressions included, and no test imports deleted `invman.problems.*` or `invman.policies.*` paths.
+- fixed-cost lost-sales grid heuristic baseline costs, winning params, top candidates, supplied-demand fixed-policy traces, learned-policy supplied-demand traces, and learned-policy coarse-grid action summaries are now wired through Rust bindings. The remaining optional paper-output detail is whether to include trace artifacts in tables/appendices, not whether the binding exists.
+- remaining deleted-package references are explicit explanatory "removed path" notes, not live Python imports or active usage instructions; active nested-Rust path references now scan clean and have regression coverage.
+- the canonical Rust test command is now `cargo test --manifest-path Cargo.toml -q`; Python extension builds remain `python scripts/build_rust_extension.py`, which explicitly enables the PyO3 extension feature.
 
 ## Latest Limiting Factors
 
-1. Post-migration import fallout is the highest-priority blocker. Many tests, docs, and older scripts still reference deleted paths such as `invman.problems.*`, `invman.policies.*`, and `invman.policies.soft_tree`. Some newer scripts are self-contained and Rust-routed, but the test suite is not yet a reliable health signal.
+1. Post-migration import fallout is cleared for the current Python test suite and the stable lost-sales/fixed-cost/dual-sourcing lanes. The full `tests/` suite passes under the flattened API. The previously stale fixed-cost/lost-sales helper scripts, saved-policy evaluator, perishable/joint-pricing helpers, random-yield/procurement-removal helpers, and practical benchmark report helpers have been migrated or deliberately archived. Remaining deleted-package references are explicit removed-path warnings, not live Python imports or active usage instructions.
 
-2. The repo needs one compatibility decision: either restore thin compatibility shims for the old Python package paths, or migrate every remaining caller to the flattened Python API plus `invman_rust`. Mixing both without an explicit boundary will keep producing false-ready scripts.
+2. The compatibility direction is now effectively migration/deprecation, not broad shims: stable lanes use `invman.policy`, `invman.policy_registry`, `invman.rollout_fitness`, benchmark helper builders, and `invman_rust`. Add old-path shims only if a specific preserved artifact requires them.
 
-3. The Rust verification path is not clean as raw Cargo. `cargo test` does not link because the crate is a PyO3 extension module. Either document the maturin/Python test path as canonical or split Rust unit testing so verification can run without unresolved Python symbols.
+3. Rust verification is now split cleanly from Python extension builds. Default Cargo features are Rust-native and `cargo test --manifest-path Cargo.toml -q` passes; extension builds must go through `python scripts/build_rust_extension.py`, which enables the `python-extension` feature for maturin/PyO3.
 
 4. Installed-extension/source drift is possible. The active environment exposes the new bindings, but the Rust source is dirty. After Rust edits, rebuild with `python scripts/build_rust_extension.py` and record which source commit/artifact produced benchmark numbers.
 
-5. Benchmark readiness is inconsistent. The catalog lists ready suites, while recommended sanity tests and some legacy runners fail. "Ready" should mean runnable under the current API, not just present in `numerical_experiments/catalog.py`.
+5. Benchmark readiness is improved but still needs discipline. The catalog lists ready suites, lost-sales/fixed-cost/dual-sourcing scripts import, the full Python suite passes, active source surfaces now have a root-Rust path regression, and fixed-cost grid-wide heuristic costs, winning params, fixed-policy traces, learned-policy supplied-demand traces, and learned-policy coarse-grid action summaries now come from Rust. Trace diagnostics can be archived through `--output_json`; remaining publication-grade work is deciding whether those trace artifacts belong in final paper tables/appendices.
 
-6. CPU oversubscription was recently patched and the new CPU-limit tests pass, but every long-running benchmark launcher and subprocess path still needs an audit for `normalize_args_cpu_limits(...)` and `cpu_limited_environ(...)`.
+6. CPU oversubscription is patched for the stable lost-sales/fixed-cost full-suite subprocess paths, the top-level numerical-experiment launcher, the ready OWMR paper benchmark, and the audited exploratory runners that previously carried manual Rayon/OpenMP cap code. Remaining CPU work is evidence-gathering on full-budget launcher behavior rather than obvious ad hoc env setup.
 
 7. Reporting discipline is now a hard constraint. `literature_verified` should only be set when repo exact/heuristic code reproduces a published number. Published DRL/A3C/PPO rows are comparison rows, not repo-verified algorithms.
 
-8. Dual sourcing is still mainly policy-geometry limited. Current evidence favors factorized capped-delta / capped-dual-index coordinates, with row-conditioned geometry: axis-linear for `l_r = 2`, tighter axis-constant small-cap trees for `l_r in {3,4}`. `autoresearch/dual_sourcing_policy_search/run_factor_screen.py` is still documented as carrying old broken imports.
+8. Dual sourcing is still mainly policy-geometry limited. Current evidence favors factorized capped-delta / capped-dual-index coordinates, with row-conditioned geometry: axis-linear for `l_r = 2`, tighter axis-constant small-cap trees for `l_r in {3,4}`. `autoresearch/dual_sourcing_policy_search/run_factor_screen.py` has been migrated to current policy-registry and Rust-backed reference helpers; remaining work is final policy-screen evidence, not old-import repair.
 
 9. Serial Clark-Scarf is match-only. The comparator is a true optimum, so the learned-policy result can tie the optimum within simulation error but should never be framed as beating it.
 
 10. Faithful ameliorating inventory is bound-limited. The current single-purchase learned policy can beat the simple order-up-to heuristic, but it remains far below the perfect-information LP upper bound and is not comparable to the paper's full three-part-action DRL gap.
 
-11. Several exploratory families still carry honest blockers: missing published anchors, self-consistency-only exact checks, stale old imports, or learned policies that still lose to tuned heuristics. Do not promote them into headline claims until their runners and verification status are clean.
+11. Several exploratory families still carry honest blockers: missing published anchors, self-consistency-only exact checks, documentation drift, or learned policies that still lose to tuned heuristics. Do not promote them into headline claims until their runners and verification status are clean.
 
 12. The paper workspace is in heavy churn. There are deleted docs, a deleted old paper file, a new untracked paper file, regenerated figures/PDFs, and updated manuscript claims. Freeze the source of truth before doing final benchmark or Overleaf work.
 
 ## Rust-First Migration
 
-Target direction: make the Rust crate the main project surface instead of a nested `rust/` folder. The repo root should eventually look like the Rust project root, with Python kept as a tier-two support layer for bindings, experiments, papers, and orchestration.
+Target direction: make the Rust crate the main project surface instead of a nested `rust/` folder. The repo root now carries the Rust crate entrypoints (`Cargo.toml`, `Cargo.lock`, `src/`), with Python kept as a tier-two support layer for bindings, experiments, papers, and orchestration.
 
 Proposed target layout:
 
@@ -279,28 +414,108 @@ Proposed target layout:
 - `src/problems/`, `src/core/`, `src/case_studies/`: tier-one Rust source domains
 - `python/invman/` or `bindings/python/invman/`: tier-two Python API, CMA-ES runners, and compatibility shims
 - `scripts/`, `numerical_experiments/`, `paper/`, `docs/`, `autoresearch/`: tier-two project support surfaces
-- old `rust/`: removed after redirects/docs/build scripts have been updated
+- old `rust/`: removed; only root `Cargo.toml`, `Cargo.lock`, `src/`, and tier-two support folders remain
 
 Migration steps:
 
-1. Move `rust/Cargo.toml`, `rust/Cargo.lock`, `rust/pyproject.toml`, and `rust/src/` to the repo root equivalents.
-2. Update `scripts/build_rust_extension.py`, setup/build docs, and any `--manifest-path rust/Cargo.toml` references to use root `Cargo.toml`.
-3. Update paths in tests, scripts, docs, paper notes, and README files from `rust/src/...` to `src/...`.
-4. Decide where the Python package lives after the move: either keep `invman/` at the root as a support package or move it under `python/invman/` with packaging metadata adjusted.
-5. Rebuild `invman_rust` through the canonical maturin path and confirm the installed extension exposes the same bindings.
-6. Rerun the minimum verification gate: catalog listing, CPU tests, focused Rust-binding Python tests, and import checks for ready benchmark scripts.
-7. Remove the empty/obsolete `rust/` folder only after all docs and scripts no longer depend on it.
+1. Done: move `Cargo.toml`, `Cargo.lock`, and `src/` to the repo root equivalents.
+2. Done: update `scripts/build_rust_extension.py`, setup/build docs, and any `--manifest-path Cargo.toml` references to use root `Cargo.toml`.
+3. Done for the broad text/code path sweep: update references from the old nested crate path to `src/...`.
+4. Done for this migration slice: keep `invman/` at the root as the tier-two support package, and move the old maturin `pyproject.toml` to `bindings/python/invman_rust/pyproject.toml` so root `setup.py` still owns `pip install -e .` for `invman`.
+5. Done: rebuild `invman_rust` through the canonical maturin path and confirm the installed extension exposes the lost-sales binding surface.
+6. Done for the first canary: catalog listing, CPU tests, `cargo check`, focused lost-sales Rust-binding smoke, and import checks for ready lost-sales benchmark scripts.
+7. Done: remove the empty/obsolete `rust/` folder after docs and scripts stopped depending on it.
 
 Migration risks:
 
 - Path churn can invalidate benchmark scripts, docs, paper references, and Overleaf push assumptions.
 - Python editable-install metadata may need a new package layout if `invman/` moves under `python/`.
-- Cargo/PyO3 testing remains unresolved unless the migration also defines the canonical Rust verification command.
+- Cargo/PyO3 verification depends on the feature split: Rust tests use default features, while Python extension builds use the explicit `python-extension` feature through `scripts/build_rust_extension.py`.
 - Existing untracked/generated artifacts should not be moved blindly; separate source moves from output cleanup.
+
+## Proposed Active Migration Goal
+
+Goal: migrate `invman` to a Rust-first repository layout with the Rust crate at the repo root, while preserving benchmark reproducibility and using stable lost-sales checks as the first canary.
+
+Important sequencing decision: do not physically move only `lost_sales` first. Rust module resolution is anchored at the crate root (`src/lib.rs` and `src/problems/mod.rs`), so moving one problem family while leaving `Cargo.toml` under `rust/` would create an awkward split crate. The safer first implementation slice is:
+
+- moved the crate root once (`Cargo.toml` + `src/` now live at the repo root)
+- update only the minimum build and path references required to compile/import
+- validate with the stable lost-sales surface before touching newer/dirty problem families semantically
+
+Stage 0: preflight and freeze
+
+- Record current dirty state and avoid mixing source relocation with generated-output cleanup.
+- Confirm `invman_rust` build route through `python scripts/build_rust_extension.py`.
+- List stale references with:
+  - `rg "rust/src|rust/Cargo|--manifest-path rust" ...`
+  - `rg "invman\\.problems|invman\\.policies" ...`
+
+Stage 1: root the Rust crate
+
+- Done:
+  - `Cargo.toml` is at the repo root
+  - `Cargo.lock` is at the repo root
+  - `src/` is at the repo root
+  - the old maturin `pyproject.toml` is under `bindings/python/invman_rust/`
+- Python, scripts, docs, paper, and benchmark outputs stayed in place for this stage.
+- `scripts/build_rust_extension.py` now uses root `Cargo.toml`.
+
+Stage 2: lost-sales canary
+
+- Update references needed by the stable lost-sales path:
+  - docs and scripts that mention `src/problems/lost_sales/...`
+  - any build/test command using `--manifest-path Cargo.toml`
+  - README/AGENTS examples that still point to deleted Python problem-package files
+- Run the minimum canary:
+  - done: `python scripts/build_rust_extension.py`
+  - done: `cargo check --manifest-path Cargo.toml -q`
+  - done: `cargo test --manifest-path Cargo.toml -q`
+  - done: `python -m pytest tests/test_cpu_limits.py -q`
+  - done: `python numerical_experiments/run.py --list`
+  - done: import/help checks for `scripts/lost_sales/benchmark_full_suite.py` and `scripts/lost_sales_fixed_order_cost/benchmark_full_suite.py`
+  - done: `invman_rust` lost-sales reference binding smoke
+  - done: migrate and import-check vanilla lost-sales autoresearch/utility scripts away from deleted `invman.problems.*` and `invman.policies.*`
+  - done: migrate and import-check fixed-cost lost-sales autoresearch/utility/diagnostic scripts away from deleted `invman.problems.*` and `invman.policies.*`
+  - done: migrate focused vanilla lost-sales env/demand tests to public Rust bindings and reference tables
+  - done: migrate fixed-cost lost-sales heuristic/search-backend tests to public Rust bindings
+  - done: migrate the lost-sales Rust bridge tests to the current `Policy` descriptor plus `invman.rollout_fitness`
+  - done: migrate the policy-factory tests to current `Policy` descriptor assertions and explicit unsupported dense dual-sourcing behavior
+  - done: migrate dual-sourcing reference/grid/search/rollout tests to current Rust bindings and `scripts.dual_sourcing.dual_sourcing_benchmark_lib`
+  - done: migrate `autoresearch/dual_sourcing_policy_search/run_factor_screen.py` to the current policy registry and Rust-backed dual-sourcing reference/heuristic helpers
+  - done: migrate fixed-cost/lost-sales helper probes and saved-policy evaluation to Rust-routed flattened APIs
+  - done: migrate perishable and joint-pricing common soft-tree helpers from removed `SoftTreePolicy` imports to current `Policy`
+  - done: migrate random-yield and procurement-removal common soft-tree helpers from removed `SoftTreePolicy` imports to current `Policy`
+  - done: archive the fixed-cost state-drift ablation script that depends on deleted env/model APIs
+  - done: expose fixed-cost heuristic winning params/top candidates through `lost_sales_fixed_heuristics_all_detailed` and route benchmark summaries to it
+  - done: expose fixed-cost fixed-policy per-period traces through `lost_sales_fixed_policy_trace_from_demands`, add Python trace regression coverage, and route diagnostic heuristic action summaries through a bounded trace sample
+  - done: expose Rust action-evaluation bindings for current `Policy` descriptors and route the fixed-cost diagnostic's learned-policy coarse-grid action histogram through them
+  - done: expose Rust supplied-demand per-period traces for learned lost-sales soft-tree, linear, and NN policies, add regression coverage, and route fixed-cost diagnostic learned-policy trace samples through them
+
+Stage 3: Python tier-two cleanup
+
+- Current decision for this slice: keep `invman/` at repo root as the tier-two Python support package.
+- Current old-import policy: migrate runnable scripts to `invman.policy`, `invman.policy_registry`, `invman.rollout_fitness`, benchmark helper builders, and `invman_rust`; deliberately archive scripts that require deleted Python env/model internals.
+- Active-surface README/docs references have been swept for the stable lanes. Remaining old-path text is intentionally explanatory/historical.
+- Current ready catalog scripts expose `--help` under CPU caps, ready commands are repo-local and avoid deleted nested-Rust paths, and the top-level ready dry-run works. Do not claim full benchmark completion from that alone because most ready suites are intentionally long-running and still need full-budget execution for final numbers.
+
+Stage 4: sweep non-lost-sales references
+
+- Done for active nested-Rust path references: README/agent/docs/autoresearch/scripts/numerical-experiment/source/paper scans return no live `rust/src`, `rust/Cargo`, `--manifest-path rust`, or root `rust` path construction references. Remaining old-path text is intentionally explanatory/historical.
+- Use problem-family order based on churn:
+  - stable first: `lost_sales`, `lost_sales/fixed_order_cost`
+  - then already-routed families: `dual_sourcing`, `multi_echelon`
+  - then newer dirty families: `ameliorating_inventory`, `multi_echelon/serial`, exploratory families
+
+Stage 5: verification and cleanup
+
+- Done: define the canonical Rust verification command after the PyO3/root move. Cargo default features are Rust-native, `cargo test --manifest-path Cargo.toml -q` passes, and the Python extension build route explicitly enables `python-extension`.
+- Done: remove the obsolete `rust/` folder after no scripts/docs/tests referenced it.
+- Done for the ready launcher surface: `numerical_experiments/run.py` propagates CPU limits, all ready suite commands dry-run, ready scripts accept `--help` under CPU caps, ready commands are checked for deleted nested-Rust paths, and the OWMR ready script no longer writes into deleted `rust/src/...` defaults.
+- Continue updating `plan.md`, README files, and `numerical_experiments/catalog.py` as runnable state and verification status change.
 
 ## Next Work
 
-1. Use `rg "invman\\.problems|invman\\.policies"` to inventory every stale import and choose the shim-vs-migration strategy.
-2. Fix the minimum verification gate first: CPU tests, catalog listing, core benchmark script imports, and focused pytest files that should still apply after the migration.
-3. Rebuild `invman_rust` with `python scripts/build_rust_extension.py` after the Rust source changes, then rerun focused Python checks that exercise the new bindings.
-4. Update `numerical_experiments/catalog.py`, README files, and paper notes only after runnable state and verification status match.
+1. Decide whether final paper tables/appendices should include fixed-cost heuristic trace artifacts or learned-policy trace artifacts; params, top candidates, supplied-demand fixed-policy traces, supplied-demand learned-policy traces, learned-policy coarse-grid action summaries, and archiveable diagnostic JSON are now available.
+2. Use the catalog help/dry-run/CPU-env checks as the gate before promoting more suites to "ready"; the obvious manual Rayon/OpenMP setup has been cleared.
+3. Run full-budget ready suites only when final benchmark numbers are needed; current evidence proves import/help/dry-run plus targeted smoke, not full-paper numerical completion.

@@ -7,17 +7,34 @@ PACKAGE_ROOT = Path(__file__).resolve().parents[3]
 if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
 
-from invman.problems.lost_sales_fixed_order_cost.benchmark import benchmark_grid
+from scripts.lost_sales_fixed_order_cost.benchmark_full_suite import (
+    benchmark_reference_instance,
+    get_benchmark_grid,
+)
+
+
+def benchmark_grid(grid_name, limit=None, **kwargs):
+    grid = get_benchmark_grid(grid_name)
+    instances = grid["instances"][:limit]
+    return {
+        "grid_name": grid_name,
+        "num_instances": len(instances),
+        "instances": [
+            benchmark_reference_instance(instance["name"], **kwargs)
+            for instance in instances
+        ],
+        "note": "fixed-cost heuristic grid baselines are evaluated through the Rust fixed-cost heuristic search binding",
+    }
 
 
 def build_parser():
     parser = argparse.ArgumentParser(
-        description="Benchmark fixed-cost heuristics only on the literature subset grid."
+        description="Report fixed-cost heuristic-baseline availability on the Rust experiment grid."
     )
     parser.add_argument(
         "--grid_name",
-        default="literature_subset_poisson_mu5",
-        help="Named benchmark grid from the fixed-order-cost problem package.",
+        default="lost_sales_style_full_grid_mu5",
+        help="Named benchmark grid from the fixed-order-cost Rust binding.",
     )
     parser.add_argument("--limit", default=None, type=int, help="Limit the number of instances for smoke tests.")
     parser.add_argument("--search_horizon", default=None, type=int, help="Override the search horizon.")

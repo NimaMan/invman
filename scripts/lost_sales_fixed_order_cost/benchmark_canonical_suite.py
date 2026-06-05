@@ -8,14 +8,14 @@ if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
 
 from invman.experiment_runner import run_experiment
-from invman.problems.lost_sales_fixed_order_cost.benchmark import benchmark_reference_instance
-from invman.problems.lost_sales_fixed_order_cost.experiment_spec import (
+from scripts.lost_sales_fixed_order_cost.benchmark_full_suite import (
     COMMON_BUDGET,
     EXPERIMENT_SPECS,
+    benchmark_reference_instance,
     configure_run_args,
+    get_reference_instance,
     result_path_for,
 )
-from invman.problems.lost_sales_fixed_order_cost.reference_instances import get_reference_instance
 
 
 def parse_args():
@@ -61,8 +61,13 @@ def _ensure_dirs(root: Path):
 
 def _render_markdown(summary):
     heuristic = summary["heuristics"]["evaluation"]
-    best_heuristic_cost = min(
-        heuristic[name]["mean_cost"] for name in ("s_s", "s_nq", "modified_s_s_q")
+    available_heuristics = {
+        name: row for name, row in heuristic.items() if row.get("mean_cost") is not None
+    }
+    best_heuristic_cost = (
+        min(row["mean_cost"] for row in available_heuristics.values())
+        if available_heuristics
+        else None
     )
     optimal_reference = summary.get("optimal_reference")
     has_optimal = bool(optimal_reference and optimal_reference.get("available"))
@@ -81,16 +86,21 @@ def _render_markdown(summary):
                 "",
             ]
         )
+    lines.extend(["## Heuristic Baseline", ""])
+    if available_heuristics:
+        lines.extend(["| Policy | Params | Mean cost |", "| --- | --- | ---: |"])
+        for name, row in available_heuristics.items():
+            lines.append(f"| `{name}` | `{row.get('params')}` | `{row['mean_cost']:.5f}` |")
+        lines.append("")
+    else:
+        lines.extend(
+            [
+                "- no fixed-cost heuristic baseline rows were available for this summary",
+                "",
+            ]
+        )
     lines.extend(
         [
-            "## Heuristic Baseline",
-            "",
-            "| Policy | Params | Mean cost |",
-            "| --- | --- | ---: |",
-            f"| `s,S` | `{heuristic['s_s']['params']}` | `{heuristic['s_s']['mean_cost']:.5f}` |",
-            f"| `s,nQ` | `{heuristic['s_nq']['params']}` | `{heuristic['s_nq']['mean_cost']:.5f}` |",
-            f"| modified `s,S,q` | `{heuristic['modified_s_s_q']['params']}` | `{heuristic['modified_s_s_q']['mean_cost']:.5f}` |",
-            "",
             "## Policy Function Approximators",
             "",
             (
@@ -113,7 +123,11 @@ def _render_markdown(summary):
             f"`{result['payload']['rollout_backend']}`",
             f"`{result['payload']['evaluation_horizon']}`",
             f"`{learned_cost:.5f}`",
-            f"`{learned_cost - best_heuristic_cost:.5f}`",
+            (
+                f"`{learned_cost - best_heuristic_cost:.5f}`"
+                if best_heuristic_cost is not None
+                else "`pending`"
+            ),
         ]
         if has_optimal:
             row.append(f"`{learned_cost - float(optimal_reference['mean_cost']):.5f}`")
@@ -164,10 +178,9 @@ def main():
     _ensure_dirs(root)
     selected_ids = set(parsed.only) if parsed.only else None
     summary_json, summary_md = _summary_paths(root)
-    optimal_reference = (
-        get_reference_instance(parsed.reference)
-        .get("benchmark_anchors", {})
-        .get("published_optimal_reference", {"available": False})
+    reference = get_reference_instance(parsed.reference)
+    optimal_reference = reference.get("benchmark_anchors", {}).get(
+        "published_optimal_reference", {"available": False}
     )
 
     if parsed.reuse_existing_summary and summary_json.exists():

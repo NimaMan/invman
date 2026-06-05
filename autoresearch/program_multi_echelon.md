@@ -19,7 +19,7 @@ defined by the env), and we use the literature numbers purely as a **benchmark t
 - We do **not** constrain our action space, features, or training to reproduce the paper's choices.
 
 The only thing that must be faithful is the **environment** (the MDP transition + cost). That is
-verified — see `rust/src/problems/multi_echelon/divergent_special_delivery/` (gijs_2022 mode:
+verified — see `src/problems/multi_echelon/divergent_special_delivery/` (gijs_2022 mode:
 pre-shipment warehouse order Eq. (2), end-of-period holding; exact-DP + worked-transition tests pass)
 and its `literature/README.md` (Van Roy constant base-stock costs reproduce within ~1% on the
 `van_roy_1997` reproduction instances).
@@ -93,7 +93,7 @@ beat the published savings, we report it as a result.
 
 ## Related literature (the same / closely-related problem)
 
-See `rust/src/problems/multi_echelon/divergent_special_delivery/literature/README.md` for full
+See `src/problems/multi_echelon/divergent_special_delivery/literature/README.md` for full
 citations and carried rows. Papers on this and closely-related divergent two-echelon problems:
 
 - **Van Roy, Bertsekas, Lee & Tsitsiklis (1997)** — the base one-warehouse/K-retailer model with
@@ -118,8 +118,8 @@ delivery topology**; record absolute rows in `references.rs` and the discussion 
 ## Budgets and search surface
 
 - Budgets: `screening` / `full` in `scripts/multi_echelon/{autoresearch_multi_echelon,train_multi_echelon_policy}.py`.
-- Search surface: the soft-tree policy (`rust/src/core/policies/`), the observation/normalizer and
-  action grids (`rust/src/problems/multi_echelon/divergent_special_delivery/rollout.rs`,
+- Search surface: the soft-tree policy (`src/core/policies/`), the observation/normalizer and
+  action grids (`src/problems/multi_echelon/divergent_special_delivery/rollout.rs`,
   `references.rs`), and the CMA-ES driver (`invman/`).
 
 ## Search direction (learnings → priors for the next runs)

@@ -3,7 +3,7 @@
 OBJECTIVE
 ---------
 Produce the three reproducible benchmark blocks that define the verification
-status of `rust/src/problems/spare_parts_inventory`, using only the already
+status of `src/problems/spare_parts_inventory`, using only the already
 installed `invman_rust` bindings (no Rust rebuild):
 
   1. Kranenburg (2006) Chapter 5, Table 5.2 LATERAL-TRANSSHIPMENT family.

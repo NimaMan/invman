@@ -1,102 +1,113 @@
-from itertools import product
+import math
 from types import SimpleNamespace
 
 import numpy as np
 import pytest
 
-from invman.policies import apply_policy_name, make_soft_tree_policy_name
-from invman.policies import SoftTreePolicy
-from invman.problems.dual_sourcing.experiments.render_paper_tables import render_reports
-from invman.problems.dual_sourcing import (
-    build_grid_instances,
-    get_benchmark_reference,
-    get_benchmark_grid,
-    build_reference_args,
-    build_fixed_demand_path,
-    get_reference_instance,
-    search_best_capped_dual_index_policy,
-    search_best_dual_index_policy,
-    search_best_single_index_policy,
-    search_best_tailored_base_surge_policy,
-    solve_bounded_dp,
-)
-from invman.problems.dual_sourcing.env import DualSourcingEnv
-
-invman_rust = pytest.importorskip("invman_rust")
+import invman_rust
+from invman.policy_build import build_policy
+from invman.policy_registry import apply_policy_name, make_soft_tree_policy_name
+from invman.rollout_fitness import get_model_fitness, get_population_fitness
+from scripts.dual_sourcing import dual_sourcing_benchmark_lib as lib
 
 
-def test_dual_sourcing_env_step_updates_reduced_state():
-    env = DualSourcingEnv(
-        regular_lead_time=3,
-        regular_order_cost=100.0,
-        expedited_order_cost=105.0,
-        holding_cost=5.0,
-        shortage_cost=495.0,
-        regular_max_order_size=12,
-        expedited_max_order_size=12,
-        demand_low=0,
-        demand_high=4,
-        horizon=2,
-        track_demand=True,
-        warm_up_periods_ratio=0.0,
-    )
-    env.state = [8, 3, 1]
-    env.horizon_demand = [4, 0]
-
-    _, epoch_cost, done = env.step((2, 1))
-
-    assert env.state == [8, 1, 2]
-    assert epoch_cost == pytest.approx(100.0 * 2 + 105.0 * 1 + 5.0 * 5)
-    assert done is False
-
-
-def test_dual_sourcing_search_backends_match():
-    args = build_reference_args("dual_l2_ce105")
-    args.horizon = 200
+def _dual_args(reference_name="dual_l2_ce105", *, policy_name="soft_tree_identity"):
+    args = lib.build_reference_args(reference_name)
+    args.problem = "dual_sourcing"
+    args.policy_name = policy_name
+    args.horizon = 80
     args.warm_up_periods_ratio = 0.0
+    apply_policy_name(args)
+    return args
 
-    for search_fn in (
-        search_best_single_index_policy,
-        search_best_dual_index_policy,
-        search_best_capped_dual_index_policy,
-        search_best_tailored_base_surge_policy,
-    ):
-        python_result = search_fn(args, seed=321, horizon=200, backend="python")
-        rust_result = search_fn(args, seed=321, horizon=200, backend="rust")
-        assert rust_result.best_result.params == python_result.best_result.params
-        assert rust_result.best_result.mean_cost == pytest.approx(python_result.best_result.mean_cost)
+
+def _rollout_from_demands(policy, args, *, state, demands):
+    return invman_rust.dual_sourcing_soft_tree_rollout_from_demands(
+        flat_params=policy.get_model_flat_params().astype(np.float32).tolist(),
+        input_dim=policy.input_dim,
+        depth=policy.depth,
+        min_values=list(policy.min_values),
+        max_values=list(policy.max_values),
+        action_mode=policy.control_mode,
+        action_adapter=policy.action_adapter,
+        state=list(state),
+        demands=list(demands),
+        regular_order_cost=args.regular_order_cost,
+        expedited_order_cost=args.expedited_order_cost,
+        holding_cost=args.holding_cost,
+        shortage_cost=args.shortage_cost,
+        regular_max_order_size=args.regular_max_order_size,
+        expedited_max_order_size=args.expedited_max_order_size,
+        warm_up_periods_ratio=args.warm_up_periods_ratio,
+        temperature=policy.temperature,
+        split_type=policy.split_type,
+        leaf_type=policy.leaf_type,
+        allowed_values=policy.allowed_values,
+    )
+
+
+def _step_state(state, regular_order, expedited_order, demand):
+    if len(state) == 1:
+        return [state[0] + expedited_order - demand + regular_order]
+    end_inventory = state[0] + expedited_order - demand
+    return [end_inventory + state[1], *state[2:], regular_order]
+
+
+def _epoch_cost(state, regular_order, expedited_order, demand, args):
+    end_inventory = state[0] + expedited_order - demand
+    return (
+        args.regular_order_cost * regular_order
+        + args.expedited_order_cost * expedited_order
+        + args.holding_cost * max(end_inventory, 0)
+        + args.shortage_cost * max(-end_inventory, 0)
+    )
+
+
+def _mean_after_warmup(costs, warm_up_periods_ratio):
+    warmup = min(math.floor(warm_up_periods_ratio * len(costs)), len(costs))
+    active = costs[warmup:] if warmup < len(costs) else costs
+    return sum(active) / len(active)
+
+
+def _constant_action_oracle(args, *, state, demands, action):
+    state = list(state)
+    costs = []
+    for demand in demands:
+        regular_order, expedited_order = action
+        costs.append(_epoch_cost(state, regular_order, expedited_order, demand, args))
+        state = _step_state(state, regular_order, expedited_order, demand)
+    return _mean_after_warmup(costs, args.warm_up_periods_ratio)
 
 
 def test_dual_sourcing_reference_instances_include_literature_benchmark_metadata():
-    benchmark = get_benchmark_reference()
-    instance = get_reference_instance("dual_l4_ce110")
+    names = [dict(item)["name"] for item in invman_rust.dual_sourcing_list_reference_instances()]
+    instance = dict(invman_rust.dual_sourcing_get_reference_instance("dual_l4_ce110"))
+    published = dict(instance["published_optimality_gap_pct"])
 
-    assert "optimal_dp" in benchmark.benchmark_policies
-    assert "capped_dual_index" in benchmark.benchmark_policies
-    assert benchmark.published_values["a3c_optimality_gap_pct_upper"] == 2.0
-    assert benchmark.published_values["published_metric"] == "optimality_gap_pct"
-    assert instance.expected_ranking == (
-        "capped_dual_index",
-        "dual_index",
-        "tailored_base_surge",
-        "single_index",
-    )
-    assert instance.literature_values["best_reported_heuristic_family"] == "capped_dual_index"
-    assert instance.literature_values["published_optimality_gap_pct"] == {
-        "capped_dual_index": 0.11,
-        "dual_index": 0.49,
-        "single_index": 2.44,
-        "tailored_base_surge": 0.58,
-        "a3c": 1.33,
-    }
-    assert instance.literature_values["has_exact_published_cost"] is False
+    assert names == [
+        "dual_l2_ce105",
+        "dual_l2_ce110",
+        "dual_l3_ce105",
+        "dual_l3_ce110",
+        "dual_l4_ce105",
+        "dual_l4_ce110",
+    ]
+    assert invman_rust.dual_sourcing_primary_reference_instance_name() == "dual_l4_ce110"
+    assert instance["source"].startswith("Gijsbrechts")
+    assert instance["regular_lead_time"] == 4
+    assert instance["initial_state"] == [10, 0, 0, 0]
+    assert published["capped_dual_index"] == pytest.approx(0.11)
+    assert published["dual_index"] == pytest.approx(0.49)
+    assert published["single_index"] == pytest.approx(2.44)
+    assert published["tailored_base_surge"] == pytest.approx(0.58)
+    assert published["a3c"] == pytest.approx(1.33)
 
 
 def test_dual_sourcing_gijs_experiment_grid_has_expected_shape():
-    grid = get_benchmark_grid()
-    instances = build_grid_instances()
+    grid = lib.get_benchmark_grid()
+    instances = lib.build_grid_instances()
 
-    assert grid["name"] == "gijsbrechts2022_figure9_family"
+    assert grid["name"] == lib.GIJSBRECHTS_2022_FIGURE9_FAMILY_NAME
     assert grid["reference_instance_names"] == [
         "dual_l2_ce105",
         "dual_l2_ce110",
@@ -121,151 +132,70 @@ def test_dual_sourcing_gijs_experiment_grid_has_expected_shape():
     )
 
 
-def test_dual_sourcing_render_tables_groups_by_expedited_cost():
-    payloads = [
-        {
-            "params": {"regular_lead_time": 2, "expedited_order_cost": 105.0},
-            "heuristics": {
-                "heuristics": {
-                    "single_index": {"mean_cost": 10.0},
-                    "dual_index": {"mean_cost": 9.0},
-                    "capped_dual_index": {"mean_cost": 8.0},
-                    "tailored_base_surge": {"mean_cost": 8.5},
-                }
-            },
-            "learned_policies": {
-                "soft_tree_single_index_targets": {
-                    "evaluation": {"learned_policy": {"mean_cost": 7.5}}
-                }
-            },
-        },
-        {
-            "params": {"regular_lead_time": 3, "expedited_order_cost": 110.0},
-            "heuristics": {
-                "heuristics": {
-                    "single_index": {"mean_cost": 11.0},
-                    "dual_index": {"mean_cost": 10.0},
-                    "capped_dual_index": {"mean_cost": 9.5},
-                    "tailored_base_surge": {"mean_cost": 9.7},
-                }
-            },
-            "learned_policies": {
-                "soft_tree_single_index_targets": {
-                    "evaluation": {"learned_policy": {"mean_cost": 9.2}}
-                }
-            },
-        },
-    ]
+def test_dual_sourcing_default_heuristics_are_rust_searched_and_ranked():
+    args = lib.build_reference_args("dual_l2_ce105")
+    args.horizon = 50
+    args.warm_up_periods_ratio = 0.2
 
-    markdown, latex = render_reports(payloads)
+    heuristics = lib.evaluate_default_heuristics(args, seed=123, horizon=50, top_k=2)
+    best_name, best_cost = lib.best_heuristic(heuristics)
 
-    assert "## c_e=105" in markdown
-    assert "## c_e=110" in markdown
-    assert "l_r=2" in markdown
-    assert "l_r=3" in markdown
-    assert "Soft tree, single-index targets" in markdown
-    assert "\\caption{Dual-sourcing mean costs" in latex
+    assert set(heuristics) == {
+        "single_index",
+        "dual_index",
+        "capped_dual_index",
+        "tailored_base_surge",
+    }
+    assert all(item["available"] for item in heuristics.values())
+    assert all(item["source"] == "rust_search_from_demands" for item in heuristics.values())
+    assert best_name == "capped_dual_index"
+    assert best_cost == pytest.approx(heuristics["capped_dual_index"]["mean_cost"])
 
 
-def test_dual_sourcing_bounded_dp_reports_average_cost_of_extracted_policy():
-    args = SimpleNamespace(
-        regular_lead_time=2,
+@pytest.mark.parametrize(
+    ("search_fn", "param_count"),
+    [
+        (invman_rust.dual_sourcing_single_index_search_from_demands, 2),
+        (invman_rust.dual_sourcing_dual_index_search_from_demands, 2),
+        (invman_rust.dual_sourcing_capped_dual_index_search_from_demands, 3),
+        (invman_rust.dual_sourcing_tailored_base_surge_search_from_demands, 2),
+    ],
+)
+def test_dual_sourcing_direct_search_bindings_return_sorted_top_results(search_fn, param_count):
+    common = dict(
+        state=[6, 0],
+        demands=[0, 1, 2, 3, 4, 2, 1, 0],
+        regular_max_order_size=4,
+        expedited_max_order_size=4,
         regular_order_cost=10.0,
         expedited_order_cost=12.0,
         holding_cost=1.0,
         shortage_cost=20.0,
-        regular_max_order_size=4,
-        expedited_max_order_size=4,
-        dual_demand_low=0,
-        dual_demand_high=2,
-    )
-    inventory_lower = -8
-    inventory_upper = 10
-
-    dp_result = solve_bounded_dp(
-        args,
-        inventory_lower=inventory_lower,
-        inventory_upper=inventory_upper,
-        tolerance=1e-10,
-        max_iterations=500,
+        warm_up_periods_ratio=0.0,
+        target_upper_bound=8,
+        top_k=4,
     )
 
-    demand_values = list(range(args.dual_demand_low, args.dual_demand_high + 1))
-    demand_prob = 1.0 / len(demand_values)
-    state_space = list(
-        product(
-            range(inventory_lower, inventory_upper + 1),
-            range(args.regular_max_order_size + 1),
-        )
-    )
-    state_to_idx = {state: idx for idx, state in enumerate(state_space)}
-    transition = np.zeros((len(state_space), len(state_space)), dtype=np.float64)
-    expected_cost = np.zeros(len(state_space), dtype=np.float64)
+    best, top = search_fn(**common)
 
-    for state_idx, state in enumerate(state_space):
-        regular_order, expedited_order = dp_result.best_action_by_state[state]
-        for demand in demand_values:
-            end_inventory = int(state[0]) + int(expedited_order) - int(demand)
-            next_state = (
-                max(inventory_lower, min(inventory_upper, end_inventory + int(state[1]))),
-                max(0, min(args.regular_max_order_size, int(regular_order))),
-            )
-            transition[state_idx, state_to_idx[next_state]] += demand_prob
-            expected_cost[state_idx] += demand_prob * (
-                args.regular_order_cost * int(regular_order)
-                + args.expedited_order_cost * int(expedited_order)
-                + args.holding_cost * max(end_inventory, 0)
-                + args.shortage_cost * max(-end_inventory, 0)
-            )
-
-    initial_state = (
-        int(round((args.regular_lead_time + 1) * 0.5 * (args.dual_demand_low + args.dual_demand_high))),
-        0,
-    )
-    distribution = np.zeros(len(state_space), dtype=np.float64)
-    distribution[state_to_idx[initial_state]] = 1.0
-    for _ in range(10_000):
-        next_distribution = distribution @ transition
-        if np.max(np.abs(next_distribution - distribution)) < 1e-14:
-            distribution = next_distribution
-            break
-        distribution = next_distribution
-
-    stationary_cost = float(distribution @ expected_cost)
-    assert dp_result.average_cost == pytest.approx(stationary_cost, abs=1e-8)
+    assert tuple(best) == tuple(top[0])
+    assert len(best) == param_count + 1
+    assert len(top) <= 4
+    assert [row[-1] for row in top] == sorted(row[-1] for row in top)
 
 
-def test_dual_sourcing_rust_bounded_average_cost_matches_python_dp():
-    args = SimpleNamespace(
-        regular_lead_time=2,
-        regular_order_cost=10.0,
-        expedited_order_cost=12.0,
-        holding_cost=1.0,
-        shortage_cost=20.0,
-        regular_max_order_size=4,
-        expedited_max_order_size=4,
-        dual_demand_low=0,
-        dual_demand_high=2,
-    )
-
-    python_summary = solve_bounded_dp(
-        args,
-        inventory_lower=-8,
-        inventory_upper=10,
-        tolerance=1e-10,
-        max_iterations=500,
-    )
-    rust_summary = dict(
+def test_dual_sourcing_bounded_dp_summary_exposes_stable_policy_metadata():
+    summary = dict(
         invman_rust.dual_sourcing_bounded_average_cost_optimal_summary(
-            regular_lead_time=args.regular_lead_time,
-            regular_order_cost=args.regular_order_cost,
-            expedited_order_cost=args.expedited_order_cost,
-            holding_cost=args.holding_cost,
-            shortage_cost=args.shortage_cost,
-            regular_max_order_size=args.regular_max_order_size,
-            expedited_max_order_size=args.expedited_max_order_size,
-            demand_low=args.dual_demand_low,
-            demand_high=args.dual_demand_high,
+            regular_lead_time=2,
+            regular_order_cost=10.0,
+            expedited_order_cost=12.0,
+            holding_cost=1.0,
+            shortage_cost=20.0,
+            regular_max_order_size=4,
+            expedited_max_order_size=4,
+            demand_low=0,
+            demand_high=2,
             inventory_lower=-8,
             inventory_upper=10,
             tolerance=1e-10,
@@ -273,13 +203,14 @@ def test_dual_sourcing_rust_bounded_average_cost_matches_python_dp():
         )
     )
 
-    initial_state = tuple(rust_summary["initial_state"])
-    assert rust_summary["average_cost"] == pytest.approx(python_summary.average_cost, abs=1e-10)
-    assert tuple(rust_summary["first_action"]) == python_summary.best_action_by_state[initial_state]
-    assert rust_summary["iterations"] == python_summary.iterations
+    assert summary["initial_state"] == [3, 0]
+    assert summary["inventory_bounds"] == [-8, 10]
+    assert len(summary["first_action"]) == 2
+    assert summary["average_cost"] > 0.0
+    assert summary["iterations"] > 0
 
 
-def test_dual_sourcing_rust_reference_benchmark_matches_figure9_gaps_for_l2_ce105():
+def test_dual_sourcing_reference_benchmark_matches_figure9_gaps_for_l2_ce105():
     report = dict(
         invman_rust.dual_sourcing_reference_benchmark_summary(
             reference_instance_name="dual_l2_ce105",
@@ -317,314 +248,95 @@ def test_dual_sourcing_rust_reference_benchmark_matches_figure9_gaps_for_l2_ce10
         )
 
 
-def test_dual_sourcing_soft_tree_rust_matches_python_rollout():
-    args = build_reference_args("dual_l2_ce105")
-    args.horizon = 50
-    args.warm_up_periods_ratio = 0.0
-    fixed_path = build_fixed_demand_path(args, seed=77, horizon=50)
-    env = DualSourcingEnv(
-        regular_lead_time=args.regular_lead_time,
-        regular_order_cost=args.regular_order_cost,
-        expedited_order_cost=args.expedited_order_cost,
-        holding_cost=args.holding_cost,
-        shortage_cost=args.shortage_cost,
-        regular_max_order_size=args.regular_max_order_size,
-        expedited_max_order_size=args.expedited_max_order_size,
-        demand_low=args.dual_demand_low,
-        demand_high=args.dual_demand_high,
-        horizon=args.horizon,
-        track_demand=True,
-        warm_up_periods_ratio=args.warm_up_periods_ratio,
+def test_dual_sourcing_soft_tree_rollout_from_demands_matches_step_oracle_for_identity_head():
+    args = _dual_args("dual_l2_ce105", policy_name="soft_tree_identity")
+    policy = build_policy(args)
+    state = [8, 3]
+    demands = [4, 0, 3, 1]
+
+    rust_cost = _rollout_from_demands(policy, args, state=state, demands=demands)
+    expected = _constant_action_oracle(args, state=state, demands=demands, action=(1, 1))
+
+    assert policy.leaf_type == "linear"
+    assert policy.control_mode == "vector_quantity"
+    assert rust_cost == pytest.approx(expected)
+
+
+@pytest.mark.parametrize(
+    "policy_name",
+    [
+        make_soft_tree_policy_name(
+            depth=2,
+            temperature=0.25,
+            split_type="oblique",
+            leaf_type="linear",
+            action_adapter="capped_dual_index_targets",
+        ),
+        "soft_tree_dual_index_delta_targets",
+        "soft_tree_capped_dual_index_delta_targets",
+        "soft_tree_capped_dual_index_delta_smallcap_targets",
+    ],
+)
+def test_dual_sourcing_structured_soft_tree_rollout_from_demands_is_finite(policy_name):
+    args = _dual_args("dual_l2_ce105", policy_name=policy_name)
+    policy = build_policy(args)
+
+    cost = _rollout_from_demands(
+        policy,
+        args,
+        state=[6, 0],
+        demands=[0, 1, 2, 3, 4, 2],
     )
-    model = SoftTreePolicy(
-        input_dim=env.state_space_dim,
-        action_spec=env.action_spec,
-        depth=2,
-        temperature=0.25,
-        split_type="oblique",
-        leaf_type="constant",
+
+    assert policy.action_adapter.startswith("dual_sourcing_")
+    assert np.isfinite(cost)
+
+
+def test_dual_sourcing_population_fitness_matches_single_model_fitness():
+    args = _dual_args(
+        "dual_l2_ce105",
+        policy_name="soft_tree_capped_dual_index_delta_smallcap_targets",
     )
-    model.set_model_params(model.get_model_flat_params())
+    args.warm_up_periods_ratio = 0.2
+    args.horizon = 60
+    policy = build_policy(args)
+    base = policy.get_model_flat_params()
+    shifted = np.linspace(-0.2, 0.2, policy.num_params, dtype=np.float32)
+    batch = [base, shifted]
+    seeds = [11, 22]
 
-    env.state = list(fixed_path.state)
-    env.current_epoch = 0
-    env.done = False
-    env.epoch_costs = []
-    env.total_cost = 0.0
-    env.horizon_demand = np.asarray(fixed_path.demands, dtype=np.int64)
-    while not env.is_done():
-        env.step(model(env.policy_state))
+    population = get_population_fitness(policy, args, batch, seeds)
+    singles = [
+        get_model_fitness(policy, args, model_params=params, seed=seed, indiv_idx=idx)
+        for idx, (params, seed) in enumerate(zip(batch, seeds))
+    ]
 
-    rust_cost = invman_rust.dual_sourcing_soft_tree_rollout_from_demands(
-        flat_params=model.get_model_flat_params().astype(np.float32).tolist(),
-        input_dim=model.input_dim,
-        depth=model.depth,
-        min_values=model.min_values,
-        max_values=model.max_values,
-        action_mode=model.action_mode,
-        state=list(fixed_path.state),
-        demands=list(fixed_path.demands),
-        regular_order_cost=args.regular_order_cost,
-        expedited_order_cost=args.expedited_order_cost,
-        holding_cost=args.holding_cost,
-        shortage_cost=args.shortage_cost,
-        regular_max_order_size=args.regular_max_order_size,
-        expedited_max_order_size=args.expedited_max_order_size,
-        warm_up_periods_ratio=0.0,
-        temperature=model.temperature,
-        split_type=model.split_type,
-        leaf_type=model.leaf_type,
-        allowed_values=model.action_spec["allowed_values"],
+    assert [idx for _, idx in population] == [0, 1]
+    assert [score for score, _ in population] == pytest.approx([score for score, _ in singles])
+
+
+def test_dual_sourcing_configure_run_args_preserves_reference_and_policy_protocol(tmp_path):
+    parsed = SimpleNamespace(
+        budget="screening",
+        seed=777,
+        same_seed=True,
+        mp_num_processors=2,
+        eval_horizon=123,
+        eval_seeds=2,
+        training_episodes=5,
+        training_horizon=60,
+        run_tag="unit_dual",
     )
-    assert rust_cost == pytest.approx(env.avg_total_cost)
+    spec = lib.EXPERIMENT_SPECS[0]
 
+    args = lib.configure_run_args(parsed, spec, tmp_path, "dual_l2_ce105")
 
-def test_dual_sourcing_structured_tree_rust_matches_python_rollout():
-    args = build_reference_args("dual_l2_ce105")
-    args.horizon = 50
-    args.warm_up_periods_ratio = 0.0
-    args.problem = "dual_sourcing"
-    args.policy_name = make_soft_tree_policy_name(
-        depth=2,
-        temperature=0.25,
-        split_type="oblique",
-        leaf_type="linear",
-        action_adapter="capped_dual_index_targets",
-    )
-    apply_policy_name(args)
-    fixed_path = build_fixed_demand_path(args, seed=91, horizon=50)
-    env = DualSourcingEnv(
-        regular_lead_time=args.regular_lead_time,
-        regular_order_cost=args.regular_order_cost,
-        expedited_order_cost=args.expedited_order_cost,
-        holding_cost=args.holding_cost,
-        shortage_cost=args.shortage_cost,
-        regular_max_order_size=args.regular_max_order_size,
-        expedited_max_order_size=args.expedited_max_order_size,
-        demand_low=args.dual_demand_low,
-        demand_high=args.dual_demand_high,
-        horizon=args.horizon,
-        track_demand=True,
-        warm_up_periods_ratio=args.warm_up_periods_ratio,
-    )
-    from invman.policies.factory import build_policy
-
-    model = build_policy(args, env)
-    model.set_model_params(model.get_model_flat_params())
-
-    env.state = list(fixed_path.state)
-    env.current_epoch = 0
-    env.done = False
-    env.epoch_costs = []
-    env.total_cost = 0.0
-    env.horizon_demand = np.asarray(fixed_path.demands, dtype=np.int64)
-    while not env.is_done():
-        env.step(model(env.policy_state))
-
-    rust_cost = invman_rust.dual_sourcing_soft_tree_rollout_from_demands(
-        flat_params=model.get_model_flat_params().astype(np.float32).tolist(),
-        input_dim=model.input_dim,
-        depth=model.depth,
-        min_values=model.min_values,
-        max_values=model.max_values,
-        action_mode=model.control_mode,
-        action_adapter=model.action_adapter,
-        state=list(fixed_path.state),
-        demands=list(fixed_path.demands),
-        regular_order_cost=args.regular_order_cost,
-        expedited_order_cost=args.expedited_order_cost,
-        holding_cost=args.holding_cost,
-        shortage_cost=args.shortage_cost,
-        regular_max_order_size=args.regular_max_order_size,
-        expedited_max_order_size=args.expedited_max_order_size,
-        warm_up_periods_ratio=0.0,
-        temperature=model.temperature,
-        split_type=model.split_type,
-        leaf_type=model.leaf_type,
-        allowed_values=model.control_spec["allowed_values"],
-    )
-    assert rust_cost == pytest.approx(env.avg_total_cost)
-
-
-def test_dual_sourcing_factorized_structured_tree_rust_matches_python_rollout():
-    args = build_reference_args("dual_l2_ce105")
-    args.horizon = 50
-    args.warm_up_periods_ratio = 0.0
-    args.problem = "dual_sourcing"
-    args.policy_name = "soft_tree_capped_dual_index_delta_targets"
-    apply_policy_name(args)
-    fixed_path = build_fixed_demand_path(args, seed=93, horizon=50)
-    env = DualSourcingEnv(
-        regular_lead_time=args.regular_lead_time,
-        regular_order_cost=args.regular_order_cost,
-        expedited_order_cost=args.expedited_order_cost,
-        holding_cost=args.holding_cost,
-        shortage_cost=args.shortage_cost,
-        regular_max_order_size=args.regular_max_order_size,
-        expedited_max_order_size=args.expedited_max_order_size,
-        demand_low=args.dual_demand_low,
-        demand_high=args.dual_demand_high,
-        horizon=args.horizon,
-        track_demand=True,
-        warm_up_periods_ratio=args.warm_up_periods_ratio,
-    )
-    from invman.policies.factory import build_policy
-
-    model = build_policy(args, env)
-    model.set_model_params(model.get_model_flat_params())
-
-    env.state = list(fixed_path.state)
-    env.current_epoch = 0
-    env.done = False
-    env.epoch_costs = []
-    env.total_cost = 0.0
-    env.horizon_demand = np.asarray(fixed_path.demands, dtype=np.int64)
-    while not env.is_done():
-        env.step(model(env.policy_state))
-
-    rust_cost = invman_rust.dual_sourcing_soft_tree_rollout_from_demands(
-        flat_params=model.get_model_flat_params().astype(np.float32).tolist(),
-        input_dim=model.input_dim,
-        depth=model.depth,
-        min_values=model.min_values,
-        max_values=model.max_values,
-        action_mode=model.control_mode,
-        action_adapter=model.action_adapter,
-        state=list(fixed_path.state),
-        demands=list(fixed_path.demands),
-        regular_order_cost=args.regular_order_cost,
-        expedited_order_cost=args.expedited_order_cost,
-        holding_cost=args.holding_cost,
-        shortage_cost=args.shortage_cost,
-        regular_max_order_size=args.regular_max_order_size,
-        expedited_max_order_size=args.expedited_max_order_size,
-        warm_up_periods_ratio=0.0,
-        temperature=model.temperature,
-        split_type=model.split_type,
-        leaf_type=model.leaf_type,
-        allowed_values=model.control_spec["allowed_values"],
-    )
-    assert rust_cost == pytest.approx(env.avg_total_cost)
-
-
-def test_dual_sourcing_dual_index_delta_tree_rust_matches_python_rollout():
-    args = build_reference_args("dual_l2_ce105")
-    args.horizon = 50
-    args.warm_up_periods_ratio = 0.0
-    args.problem = "dual_sourcing"
-    args.policy_name = "soft_tree_dual_index_delta_targets"
-    apply_policy_name(args)
-    fixed_path = build_fixed_demand_path(args, seed=94, horizon=50)
-    env = DualSourcingEnv(
-        regular_lead_time=args.regular_lead_time,
-        regular_order_cost=args.regular_order_cost,
-        expedited_order_cost=args.expedited_order_cost,
-        holding_cost=args.holding_cost,
-        shortage_cost=args.shortage_cost,
-        regular_max_order_size=args.regular_max_order_size,
-        expedited_max_order_size=args.expedited_max_order_size,
-        demand_low=args.dual_demand_low,
-        demand_high=args.dual_demand_high,
-        horizon=args.horizon,
-        track_demand=True,
-        warm_up_periods_ratio=args.warm_up_periods_ratio,
-    )
-    from invman.policies.factory import build_policy
-
-    model = build_policy(args, env)
-    model.set_model_params(model.get_model_flat_params())
-
-    env.state = list(fixed_path.state)
-    env.current_epoch = 0
-    env.done = False
-    env.epoch_costs = []
-    env.total_cost = 0.0
-    env.horizon_demand = np.asarray(fixed_path.demands, dtype=np.int64)
-    while not env.is_done():
-        env.step(model(env.policy_state))
-
-    rust_cost = invman_rust.dual_sourcing_soft_tree_rollout_from_demands(
-        flat_params=model.get_model_flat_params().astype(np.float32).tolist(),
-        input_dim=model.input_dim,
-        depth=model.depth,
-        min_values=model.min_values,
-        max_values=model.max_values,
-        action_mode=model.control_mode,
-        action_adapter=model.action_adapter,
-        state=list(fixed_path.state),
-        demands=list(fixed_path.demands),
-        regular_order_cost=args.regular_order_cost,
-        expedited_order_cost=args.expedited_order_cost,
-        holding_cost=args.holding_cost,
-        shortage_cost=args.shortage_cost,
-        regular_max_order_size=args.regular_max_order_size,
-        expedited_max_order_size=args.expedited_max_order_size,
-        warm_up_periods_ratio=0.0,
-        temperature=model.temperature,
-        split_type=model.split_type,
-        leaf_type=model.leaf_type,
-        allowed_values=model.control_spec["allowed_values"],
-    )
-    assert rust_cost == pytest.approx(env.avg_total_cost)
-
-
-def test_dual_sourcing_smallcap_factorized_tree_rust_matches_python_rollout():
-    args = build_reference_args("dual_l2_ce105")
-    args.horizon = 50
-    args.warm_up_periods_ratio = 0.0
-    args.problem = "dual_sourcing"
-    args.policy_name = "soft_tree_capped_dual_index_delta_smallcap_targets"
-    apply_policy_name(args)
-    fixed_path = build_fixed_demand_path(args, seed=95, horizon=50)
-    env = DualSourcingEnv(
-        regular_lead_time=args.regular_lead_time,
-        regular_order_cost=args.regular_order_cost,
-        expedited_order_cost=args.expedited_order_cost,
-        holding_cost=args.holding_cost,
-        shortage_cost=args.shortage_cost,
-        regular_max_order_size=args.regular_max_order_size,
-        expedited_max_order_size=args.expedited_max_order_size,
-        demand_low=args.dual_demand_low,
-        demand_high=args.dual_demand_high,
-        horizon=args.horizon,
-        track_demand=True,
-        warm_up_periods_ratio=args.warm_up_periods_ratio,
-    )
-    from invman.policies.factory import build_policy
-
-    model = build_policy(args, env)
-    model.set_model_params(model.get_model_flat_params())
-
-    env.state = list(fixed_path.state)
-    env.current_epoch = 0
-    env.done = False
-    env.epoch_costs = []
-    env.total_cost = 0.0
-    env.horizon_demand = np.asarray(fixed_path.demands, dtype=np.int64)
-    while not env.is_done():
-        env.step(model(env.policy_state))
-
-    rust_cost = invman_rust.dual_sourcing_soft_tree_rollout_from_demands(
-        flat_params=model.get_model_flat_params().astype(np.float32).tolist(),
-        input_dim=model.input_dim,
-        depth=model.depth,
-        min_values=model.min_values,
-        max_values=model.max_values,
-        action_mode=model.control_mode,
-        action_adapter=model.action_adapter,
-        state=list(fixed_path.state),
-        demands=list(fixed_path.demands),
-        regular_order_cost=args.regular_order_cost,
-        expedited_order_cost=args.expedited_order_cost,
-        holding_cost=args.holding_cost,
-        shortage_cost=args.shortage_cost,
-        regular_max_order_size=args.regular_max_order_size,
-        expedited_max_order_size=args.expedited_max_order_size,
-        warm_up_periods_ratio=0.0,
-        temperature=model.temperature,
-        split_type=model.split_type,
-        leaf_type=model.leaf_type,
-        allowed_values=model.control_spec["allowed_values"],
-    )
-    assert model.control_spec["allowed_values"][2] == [1, 2, 3, 4, 6, 8, 12]
-    assert rust_cost == pytest.approx(env.avg_total_cost)
+    assert args.problem == "dual_sourcing"
+    assert args.reference_instance == "dual_l2_ce105"
+    assert args.policy_name == spec["policy_name"]
+    assert args.rollout_backend == "rust"
+    assert args.eval_horizon == 123
+    assert args.eval_seeds == 2
+    assert args.training_episodes == 5
+    assert args.horizon == 60
+    assert args.results_dir == str(tmp_path / "results")
