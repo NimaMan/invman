@@ -2039,6 +2039,59 @@ selecting on the evaluation block instead flips FIFO to a small ($\approx-0.49\%
 \end{table}
 \FloatBarrier
 
+\paragraph{Three further exactly-solvable instances.}
+To check that the gate beat is not specific to the two anchor instances, we ran the
+\emph{identical} recipe --- depth-2 oblique-linear soft tree, warm-started at the best
+base-stock gate, CMA-ES under common random numbers, selection on the disjoint validation
+block --- on three more De Moor et al.\ Scenario-A settings whose exact-MDP value iteration
+the repository also reproduces (each under $2000$ states): a longer shelf life ($m=3$,
+$L=1$, FIFO, waste cost $7$), the first setting with a genuine \emph{in-transit pipeline}
+($m=2$, $L=2$, FIFO, waste cost $7$), and a higher waste cost ($m=2$, $L=1$, FIFO, waste
+cost $10$). No architecture was re-swept; only the longer-state instances enlarge the policy
+from $21$ to $28$ parameters, the extra weights coming from the third state component (the
+$m=3$ second on-hand bucket and, for $L=2$, the in-transit pipeline bucket). On all three the
+learned tree again \emph{beats} the best base-stock gate on the shared Monte-Carlo estimator
+by several times its paired standard error (Table~\ref{tab:perish-results-more}), and again
+sits essentially on the analytic value-iteration optimum, which we read as context only.
+
+\begin{table}[!htbp]
+\centering
+\small
+\caption{Perishable inventory, three further exactly-solvable instances (companion to
+Table~\ref{tab:perish-results}; same recipe and protocol): best learned depth-2 oblique-linear
+soft tree vs.\ the best base-stock gate, common-random-number evaluation ($2048$ held-out seeds,
+horizon $465$, $\gamma=0.99$). Returns are discounted \emph{negated} costs (higher is better).
+$\Delta\%$ is the learned policy's improvement over the gate, ``SEM mult.'' that gain divided by
+the paired standard error. The value-iteration optimum is the \emph{analytic} reference of
+\citet{deMoor2022perishable} / \citet{farrington2025perishable} and is context only (different
+estimator). Instances are described by their parameters; all are FIFO with mean demand $4$,
+coefficient of variation $0.5$ and order cap $10$.}
+\label{tab:perish-results-more}
+\begin{tabular}{lccccc}
+\toprule
+Instance ($S$ = best base-stock) & Gate & Learned (ours) & $\Delta\%$ & SEM mult. & VI optimum (context) \\
+\midrule
+$m=3,\ L=1$, waste $7$ \ ($S=8$)            & $-1435.30$ & $\mathbf{-1425.20}$ & $\mathbf{+0.70\%}$ & $\approx 5.9\times$  & $-1424.39$ \\
+$m=2,\ L=2$, waste $7$ \ ($S=9$)            & $-1495.44$ & $\mathbf{-1462.45}$ & $\mathbf{+2.21\%}$ & $\approx 17.7\times$ & $-1461.30$ \\
+$m=2,\ L=1$, waste $10$ \ ($S=6$)           & $-1485.40$ & $\mathbf{-1464.06}$ & $\mathbf{+1.44\%}$ & $\approx 11.2\times$ & $-1463.51$ \\
+\bottomrule
+\end{tabular}
+\par\medskip\footnotesize As in Table~\ref{tab:perish-results}, the headline is the like-for-like
+gate beat: gate and learned policy are scored on the \emph{same} Monte-Carlo estimator and the gate
+is the exact optimum within the base-stock family. The VI-optimum column is the analytic discounted
+return under midpoint-binned Gamma demand and is not on the same estimator (it rounds to the published
+$-1424$, $-1461$ and $-1463$ respectively), so we report it as context rather than as a separate
+improvement claim. Selection is on a disjoint validation block.
+\end{table}
+\FloatBarrier
+
+\noindent
+The pattern of the two anchor instances therefore holds across a longer shelf life, an added lead-time
+pipeline, and a higher waste cost: the largest gate beat ($+2.21\%$, $\approx17.7\times$ the paired SEM)
+is the $L=2$ pipeline instance, where the age-and-pipeline state gives the learned tree the most room
+over a single base-stock level, while the smallest ($+0.70\%$, $\approx5.9\times$) is the $m=3$ case in
+which the best base-stock policy is already close to the exact optimum.
+
 
 % =============================================================================
 % General-network backorder inventory control (Geevers, van Hezewijk & Mes, 2024;
@@ -2296,7 +2349,7 @@ appears only in the gated journal full text; we could not reproduce their publis
 open sources and therefore exclude them. Set~1 (order per stock point) is confirmed verbatim against
 the open thesis: a $4$-supplier, $4$-warehouse, $5$-retailer network with a many-to-many
 warehouse--retailer edge set and historical connection weights, $\mathrm{Poisson}(15)$ retailer
-demand, unit lead times, and the Kunnumkal--Topaloglu (2011) cost structure (warehouse holding $0.6$,
+demand, unit lead times, and the \citet{kunnumkal2011} cost structure (warehouse holding $0.6$,
 retailer holding $1.0$, retailer backorder $19.0$, no warehouse backorder cost).
 Table~\ref{tab:gbk-params} lists the set-1 instance.
 
@@ -2320,7 +2373,7 @@ warm-start (benchmark) and the learned policy.
 literature-verified set. The network has $4$ suppliers, $4$ warehouses, and $5$ retailers connected
 by a many-to-many warehouse--retailer edge set with historical connection weights (each retailer's
 incoming weights sum to $1$). All lead times are $1$; demand is $\mathrm{Poisson}(15)$ at each
-retailer. Cost structure is Kunnumkal--Topaloglu (2011): warehouse holding $h^w$, retailer holding
+retailer. Cost structure is that of \citet{kunnumkal2011}: warehouse holding $h^w$, retailer holding
 $h^r$, retailer (customer) backorder $b$, warehouse backorder $0$; \emph{no} fixed ordering cost.}
 \label{tab:gbk-params}
 \begin{tabular}{lc}
@@ -2403,6 +2456,55 @@ Published PPO best \citep{geevers2024cardboard} & $8{,}714$ & cross-protocol \\
 the same environment; both learned seeds beat it by $>22\%$ under the paired CRN comparison
 ($\gg 2\times$ SEM). The PPO figure is reported only as context; the learned policy lands
 $679$--$1{,}123$ below it, but under a different protocol, so it is not claimed as a head-to-head beat.
+\end{table}
+\FloatBarrier
+
+A second, structurally different instance of this family corroborates the same lever. The
+\emph{general-network divergent} instance is a one-supplier,
+one-warehouse, three-retailer divergent tree carrying the same \citet{kunnumkal2011} cost
+structure as set~1 (warehouse holding $0.6$, retailer holding $1.0$, retailer backorder $19.0$,
+no warehouse backorder) under unit lead times, with customer demand drawn as
+$\mathrm{Poisson}(\alpha)$ whose per-period, per-retailer mean is itself resampled
+$\alpha\sim\mathrm{Uniform}[5,15]$ each period --- a nonstationary mean. It is distinct both from the
+CardBoard network above and from the divergent special-delivery (Gijsbrechts/Van-Roy) model treated
+elsewhere in the paper.
+Evaluating the published constant node-base-stock benchmark at levels $[124,30,30,30]$ in our
+environment reproduces the published cost $4{,}059$ to within $-3.0\%$ (mean $\approx 3{,}931$, all
+three retailer fill rates $\approx 98.6\%$); this reproduction is looser than the set-1 row
+($-1.1\%$), as detailed in the validation appendix. The instance is treated as literature-verified, and
+the learned soft tree --- warm-started at those same levels and trained under the identical
+node-base-stock-targets design --- beats the reproduced benchmark by $\approx 37\%$ across two
+independent optimizer seeds.
+
+\begin{table}[!htbp]
+\centering
+\caption{General-network \emph{divergent} (\citealp{kunnumkal2011}) learned-policy results (long-run
+average cost, lower is better; reproduced from the open Geevers~(2020) thesis). The
+improvement is the learned policy's cost reduction relative to the \emph{reproduced} constant
+node-base-stock benchmark ($3{,}930.4$, the paired gate); held-out common-random-number evaluation
+($2{,}000$ seeds, $75$-period paths, $25$-period warm-up, $\alpha\sim\mathrm{Uniform}[5,15]$ resampled
+per period). The DRL row is a cross-protocol context figure from the source thesis, \emph{not} a
+head-to-head comparison.}
+\label{tab:divergent-kt-results}
+\begin{tabular}{lcc}
+\toprule
+Policy / metric & Held-out cost & $\Delta\%$ vs.\ benchmark \\
+\midrule
+Published const.\ node-base-stock benchmark & $4{,}059$ & --- \\
+Reproduced benchmark (paired gate) & $3{,}930.4$ & $-3.0\%$ (vs.\ published) \\
+Warm-start (gen.\ 0 $=$ benchmark) & $3{,}913.5 \pm 31.8$ & $-0.4\%$ \\
+Learned soft tree, seed 123 (ours) & $\mathbf{2{,}469.1 \pm 7.6}$ & $\mathbf{-37.2\%}$ \\
+Learned soft tree, seed 777 (ours) & $\mathbf{2{,}477.9 \pm 8.0}$ & $\mathbf{-37.0\%}$ \\
+\addlinespace[2pt]
+\multicolumn{3}{l}{\footnotesize Cross-protocol context (not head-to-head):} \\
+Published DRL best (source thesis) & $3{,}724$ & cross-protocol \\
+\bottomrule
+\end{tabular}
+\par\medskip\footnotesize The like-for-like comparator is the constant node-base-stock benchmark on
+the same environment; both learned seeds beat it by $\approx 37\%$ under the paired CRN comparison
+($\gg 2\times$ SEM). The published DRL figure is reported only as context (a different learner under
+the source thesis's own protocol); the learned policy lands below it, but under a different protocol,
+so it is not claimed as a head-to-head beat.
 \end{table}
 \FloatBarrier
 
@@ -2655,6 +2757,18 @@ optimum: it attains a long-run-average cost of $47.6554$, a $99.99\%$ match to t
 with a signed gap of $+0.011\%$ --- inside the environment's own $\approx{+}0.06\%$ reproduction band
 and statistically indistinguishable from the optimum (standard error $\approx0.006$).
 
+Three further serial instances from \citet{snyder2019foundations} corroborate the same outcome across
+more stages and both demand families: a $2$-stage system with $\mathrm{Normal}(100,15)$ demand, a
+$5$-stage system with $\mathrm{Normal}(32,5.657)$ demand, and a $5$-stage system with
+$\mathrm{Poisson}(32)$ demand (all with unit demand-facing lead time, installation holding decreasing
+upstream, and a single customer backorder penalty). Run under the
+identical warm-started direct-level recipe, the learned soft tree \emph{reproduces} each instance's
+proven Clark--Scarf optimum --- $166.2705 \to 166.2300$, $225.8672 \to 225.8047$, and
+$226.8458 \to 226.8447$ respectively --- with every signed gap inside $0.03\%$ in magnitude, i.e.\
+within the environment's own $\approx{\pm}0.06\%$ Monte-Carlo reproduction band and statistically
+indistinguishable from the optimum (standard errors $\le 0.024$). As with Example~6.1 these are
+\emph{matches}, not improvements: the comparator is a proven optimum and cannot be beaten.
+
 \paragraph{Interpretation.}
 The honest reading is a \emph{match}, not a win. Because the comparator is a proven optimum attained by
 the echelon base-stock policy class, the highest a learned policy can reach is the optimum itself; the
@@ -2682,6 +2796,13 @@ Quantity & Cost & Gap vs.\ optimum \\
 Proven Clark--Scarf optimum \citep{snyder2019foundations} & $47.65$ & --- \\
 Exact recursive-newsvendor solver (ours) & $47.6654$ & $+0.032\%$ \\
 Learned direct-level soft tree (warm-started) & $47.6554$ & $+0.011\%$ (match, $99.99\%$) \\
+\midrule
+Proven optimum, $2$-stage Normal & $166.2705$ & --- \\
+Learned, $2$-stage Normal (warm-started) & $166.2300$ & $-0.024\%$ (match, $100.0\%$) \\
+Proven optimum, $5$-stage Normal & $225.8672$ & --- \\
+Learned, $5$-stage Normal (warm-started) & $225.8047$ & $-0.028\%$ (match, $100.0\%$) \\
+Proven optimum, $5$-stage Poisson & $226.8458$ & --- \\
+Learned, $5$-stage Poisson (warm-started) & $226.8447$ & $-0.001\%$ (match, $100.0\%$) \\
 \bottomrule
 \end{tabular}
 \par\medskip\footnotesize The learned policy reproduces the proven optimum to within $+0.06\%$ --- the
@@ -2957,6 +3078,65 @@ $-17.77\%$ relative to PPO), which remains the strongest learned policy on every
 \end{table}
 \FloatBarrier
 
+\paragraph{New regimes: backorder and lost sales.}
+The instances above are all partial-backorder. To test whether the same per-retailer
+soft tree carries to qualitatively different demand-fulfilment dynamics, we add three
+$K{=}3$ instances of \citet{kaynov2024owmr} drawn from the other two regimes of
+Table~A.3: a \emph{full-backorder} instance with heterogeneous high-variability demand
+($N(1,5),N(5,1),\mathrm{Pois}(0.5)$; $L_w{=}2$, $L_r{=}1$), a \emph{lost-sales} instance
+with \emph{asymmetric retailer lead times} ($L_r{=}1,2,3$ over symmetric $\mathrm{Pois}(3)$
+demand; $L_w{=}2$), and a \emph{lost-sales} instance with heterogeneous demand and
+\emph{long lead times} ($L_w{=}5$, $L_r{=}3$). The three smaller $K{=}3$ instances keep
+the gate's full Cartesian grid tractable. Table~\ref{tab:owmr-results-regimes} reports the
+results under the identical protocol of Table~\ref{tab:owmr-results}.
+
+On all three the learned per-retailer soft tree \emph{matches} (ties) the tuned in-repo
+gate to within numerical error rather than beating it: with the per-retailer warm-start
+floor the trained CMA-ES incumbent lands above the strong gate on the held-out block, so
+the deployed policy falls back to the gate-reproducing anchor (paired advantage $0.00$, not
+exceeding its standard error). Across these regimes the published PPO of
+\citet{kaynov2024owmr} is \emph{cheaper} than both the learned policy and the heuristic gate
+($-1.05\%$, $-1.96\%$, $-6.43\%$ for the learned policy relative to PPO), so the learned
+policy stays below PPO here; we make no PPO claim. The takeaway is one of \emph{robustness}:
+the per-retailer geometry does not degrade when moved from partial backorder to full
+backorder or lost sales (including under lead-time asymmetry and long leads), reproducing the
+strongest in-repo heuristic exactly; the genuine held-out \emph{beats} of
+Table~\ref{tab:owmr-results} remain confined to the heterogeneous and high-CV
+partial-backorder instances where there is dynamic structure the static gate cannot express.
+
+\begin{table}[!htbp]
+\centering
+\small
+\caption{OWMR \emph{backorder} and \emph{lost-sales} regime instances of
+\citet{kaynov2024owmr} ($K{=}3$): best learned per-retailer soft tree (linear-leaf
+echelon-targets) vs.\ the strongest tuned echelon base-stock $+$ allocation gate,
+common-random-number evaluation ($4096$ held-out paths, horizon $100$). Costs are
+$100$-period undiscounted totals (lower is better). $\Delta\%$ is the learned policy's
+improvement over the gate; ``paired $\pm$ SEM'' is the gate$-$learned advantage on identical
+paths (a win requires it to exceed its SEM). Published PPO and base-stock (the better of the
+proportional/min-shortage rows) are the $-$reward references of \citet{kaynov2024owmr}. On all
+three the learned policy ties the gate (deployed policy $=$ gate-reproducing warm-start
+anchor) and stays below the published PPO.}
+\label{tab:owmr-results-regimes}
+\begin{tabular}{lcccccc}
+\toprule
+Instance (regime / structure) & Learned & Gate & $\Delta\%$ & Paired $\pm$ SEM & Published PPO & Base-stock \\
+\midrule
+backorder, heterogeneous           & $1749.90$ & $1749.90$ & $+0.00\%$ & $+0.00\pm0.00$ & $1731.67$ & $1776.04$ \\
+lost-sales, lead-asymmetric        & $1541.30$ & $1541.30$ & $+0.00\%$ & $+0.00\pm0.00$ & $1511.68$ & $1535.96$ \\
+lost-sales, long-lead heterogeneous & $1782.27$ & $1782.27$ & $+0.00\%$ & $+0.00\pm0.00$ & $1674.54$ & $1736.55$ \\
+\bottomrule
+\end{tabular}
+\par\medskip\footnotesize All learned policies use the linear-leaf per-retailer
+echelon-targets geometry under min-shortage allocation. The trained CMA-ES
+incumbent's held-out cost was above the gate on every instance ($1793.11$, $1584.47$,
+$1802.12$ respectively), so the deployed policy is the gate-reproducing warm-start anchor and
+the comparison is an exact tie. The published base-stock column is the cheaper of Kaynov's
+proportional/min-shortage rows; the learned policy is below the published PPO on all three
+($-1.05\%$, $-1.96\%$, $-6.43\%$), so no PPO beat is claimed.
+\end{table}
+\FloatBarrier
+
 
 \section{Ameliorating inventory}
 \label{sec:amelior}
@@ -3175,6 +3355,8 @@ Instance & Learned ($\pm$ SEM) & Order-up-to gate & Gain over gate & LP bound & 
 \midrule
 spirits & $\mathbf{115.07\pm0.44}$ & $20.91$  & $+94.16\ (+450\%)$ & $1991.93$ & $94.2\%$ \\
 port wine    & $\mathbf{505.78\pm0.59}$ & $133.78$ & $+372.00\ (+278\%)$ & $2444.80$ & $79.3\%$ \\
+\addlinespace
+spirits (capacity)  & $\mathbf{130.49\pm0.50}$ & $20.91$ & $+109.58\ (+524\%)$ & $1663.89$ & $92.2\%$ \\
 \bottomrule
 \end{tabular}
 \par\medskip\footnotesize The like-for-like win is over the tuned order-up-to gate (paired CRN,
@@ -3183,6 +3365,16 @@ purchase action vs the bound's full three-part LP issuance --- and is not compar
 $\sim$3.5\% deep-RL gap of \citet{pahrGrunow2025}; it is reported, never ``beaten''.
 \end{table}
 \FloatBarrier
+
+\paragraph{Companion variant: the capacity lever.}
+A further companion instance isolates a single design lever under the same recipe and protocol. A
+\emph{processing-capacity-constrained} variant (blending on, per-age capacity lowered from $50$ to
+$30$, which tightens the perfect-information bound to $1663.89$) \emph{raises} the learned average
+profit to $130.49\pm0.50$ ($+109.58$, $+524\%$, $\approx\!157\times$ the paired SEM over the same
+order-up-to gate): the tighter capacity curbs holding on idle stock, and the gap to the (now lower)
+bound closes slightly to $92.2\%$. As in the anchor rows, the win is the like-for-like beat of the
+tuned order-up-to gate; the LP value remains an upper bound, reported with its gap and never treated
+as achievable.
 
 
 \section{Production / assembly / distribution network}
@@ -3385,6 +3577,28 @@ environment to literature-verified would require recovering the paper's exact or
 inventory-position simulation convention and binding the echelon-position policy; we leave
 that to future work and do not present this row as a published-number benchmark.
 
+\paragraph{Topology diversification.}
+To check that the result is not an artefact of the serial chain, we re-ran the \emph{same} recipe and
+protocol (a depth-2 oblique soft tree with linear leaves, identical population, generations, and
+held-out paired-common-random-number evaluation; no re-sweep) on two further topologies of the same
+supply-network model: a \emph{mixed distribution-and-assembly network} (an external source feeds a
+single node that \emph{distributes} to two intermediate nodes, whose output two downstream
+\emph{assembly} nodes each combine to serve a customer) and a \emph{pure assembly network} (a
+three-layer assembly tree in which four sources feed two intermediate assembly nodes that feed a final
+assembly node serving the customer). Both move the action space well beyond the serial chain: the
+distribution split and the assembly $\min(\cdot)$ production starve downstream stages, so the
+environment's own best pairwise base-stock needs much higher order-up-to levels (gates $297.69$ and
+$283.34$ per period, against $60.24$ for the serial case). On the pure assembly network the learned
+tree beats this gate by $-2.98\%$ ($274.90\pm0.17$ vs $283.34$, outside the held-out standard error by
+$\approx40\times$); on the mixed network it is at parity-to-marginally-better, beating the gate by up
+to $-0.99\%$ ($294.73\pm0.92$ vs $297.69$) on the best of three CMA seeds while a third seed sits
+$+2.9\%$ above it. As for the serial case, these comparators are the \emph{environment's own}
+grid-searched best heuristic on a faithful but not literature-verified environment --- the
+source paper gives no analytical optimum for mixed or assembly networks (only random-search, DFO,
+Spearmint, and DNN benchmarks) --- so these are research learned-beats-(or-matches)-own-heuristic
+results across serial, mixed distribution-plus-assembly, and pure-assembly structures, and are
+\emph{not} published-number beats.
+
 \begin{table}[!htbp]
 \centering
 \small
@@ -3404,6 +3618,14 @@ Flow warm-start (generation $0$)               & $70.85\pm0.61$ & $+17.6\%$ & --
 Learned soft tree, depth $2$, seed $123$       & $\mathbf{57.25\pm0.22}$ & $\mathbf{-4.96\%}$ & $\approx 14\times$ \\
 Learned soft tree, depth $2$, seed $321$       & $\mathbf{54.96\pm0.23}$ & $\mathbf{-8.77\%}$ & $\approx 23\times$ \\
 Learned soft tree, depth $3$, seed $123$       & $\mathbf{57.85\pm0.25}$ & $\mathbf{-3.97\%}$ & $\approx 10\times$ \\
+\midrule
+\multicolumn{4}{l}{\emph{Mixed distribution-and-assembly network} (gate $297.69$, OUL echelon $[36,13,7]$)} \\
+Best pairwise base-stock (gate)                & $297.69\pm0.67$ & --- & --- \\
+Learned soft tree, depth $2$ (best of $3$ seeds) & $\mathbf{294.73\pm0.92}$ & $\mathbf{-0.99\%}$ & $\approx 3\times$ \\
+\midrule
+\multicolumn{4}{l}{\emph{Pure assembly network} (gate $283.34$, OUL echelon $[52,52,52]$)} \\
+Best pairwise base-stock (gate)                & $283.34\pm0.20$ & --- & --- \\
+Learned soft tree, depth $2$, seed $123$        & $\mathbf{274.90\pm0.17}$ & $\mathbf{-2.98\%}$ & $\approx 40\times$ \\
 \bottomrule
 \end{tabular}
 \par\medskip\footnotesize The comparator is the environment's own best heuristic on a faithful but
@@ -3472,7 +3694,7 @@ idea with sample-efficient learners for limited-data regimes.
 % Bibliography embedded inline (natbib-compatible \bibitem labels) so the manuscript is
 % self-contained and renders with a single pdflatex pass -- no bibtex step required. The
 % same entries are also kept in references.bib for tooling that prefers a .bib database.
-\begin{thebibliography}{23}
+\begin{thebibliography}{24}
 
 \bibitem[Bijvank et al.(2015)]{Bijvank2015ParametricPolicies}
 M.~Bijvank, S.~Bhulai, and W.~T. Huh.
@@ -3563,6 +3785,11 @@ New policies for the stochastic inventory control problem with two supply source
 K.~Geevers, L.~van Hezewijk, and M.~Mes.
 Multi-echelon inventory optimization using deep reinforcement learning.
 \emph{Central European Journal of Operations Research}, 32(3):653--683, 2024.
+
+\bibitem[Kunnumkal and Topaloglu(2011)]{kunnumkal2011}
+S.~Kunnumkal and H.~Topaloglu.
+Linear programming based decomposition methods for inventory distribution systems.
+\emph{European Journal of Operational Research}, 211(2):282--297, 2011.
 
 \bibitem[Snyder and Shen(2019)]{snyder2019foundations}
 L.~V. Snyder and Z.-J.~M. Shen.
@@ -3819,6 +4046,30 @@ warm-up window; the reproduction holds across replications and seeds with wareho
 rates in the $98$--$99\%$ band, so set~1 is treated as literature-verified. Sets~2 and~3 appear only
 in the gated journal full text, could not be confirmed against an open copy, and are not
 literature-verified; they are excluded from this validation.
+
+We additionally validate the structurally different \emph{general-network divergent} instance of
+\citet{kunnumkal2011}, whose constant node-base-stock benchmark is reported in the open Geevers~(2020)
+thesis (Ch.~5). Evaluating the published levels $[124,30,30,30]$ in our environment reproduces the
+published cost $4{,}059$ to within $-3.0\%$. This reproduction is looser than the set-1 row above
+($-1.1\%$); the wider gap reflects the nonstationary resampled-mean demand
+($\alpha\sim\mathrm{Uniform}[5,15]$ per period) and the divergent rationing convention, and we report
+it honestly as such. All three retailer fill rates land at $\approx 98.6\%$, so the instance is still
+treated as literature-verified for the purpose of the learned-policy comparison.
+
+\begin{table}[!htbp]
+\centering
+\caption{Reproduction of the general-network \emph{divergent} (\citealp{kunnumkal2011}) constant
+node-base-stock benchmark, as reported in the open Geevers~(2020) thesis (Ch.~5).}
+\label{tab:divergent-kt-validation}
+\begin{tabular}{lccc}
+\toprule
+Instance & Published benchmark & Reproduced & Gap \\
+\midrule
+Divergent K--T ($1{\to}1{\to}3$, $\alpha\sim\mathrm{U}[5,15]$) & $4{,}059$ & $3{,}931$ & $-3.0\%$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+\FloatBarrier
 
 \subsection{Published serial multi-echelon (Clark--Scarf) validation}
 \label{app:serial-validation}

@@ -1,0 +1,93 @@
+% ---------------------------------------------------------------------------
+% ADDITIONS FRAGMENT: two new network topologies for the production / assembly /
+% distribution network section (Pirhooshyaran & Snyder 2021).
+%
+% This file is NOT \input{} anywhere yet. It supplies (i) drop-in rows that
+% EXTEND the existing results table tab:pirhoo-results in
+% paper/sections/production_assembly_distribution_network.tex, and (ii) one
+% short paragraph noting the topology diversification. The orchestrator decides
+% whether/how to fold these into the manuscript; this fragment defines NO new
+% styles and contains NO \documentclass.
+%
+% EXACT INSERTION POINTS (into paper/sections/production_assembly_distribution_network.tex):
+%   1. TABLE ROWS: insert the block delimited below by
+%        "%% >>> BEGIN tab:pirhoo-results extension rows" / "%% <<< END ..."
+%      into the tabular of tab:pirhoo-results, immediately BEFORE the closing
+%      "\bottomrule" (currently the line after
+%         "Learned soft tree, depth $3$, seed $123$ ... \\"  -- the last case-3 row).
+%      i.e. after the existing line
+%         "Learned soft tree, depth $3$, seed $123$       & $\mathbf{57.85\pm0.25}$ & $\mathbf{-3.97\%}$ & $\approx 10\times$ \\"
+%      and before
+%         "\bottomrule".
+%      The block opens with its own "\midrule" so the new topologies are visually
+%      separated from the serial case-3 rows. (The table caption already says the
+%      gate is the environment's own grid-searched heuristic, not a published
+%      optimum; these rows inherit that framing.)
+%   2. PROSE: insert the paragraph delimited below by
+%        "%% >>> BEGIN topology-diversification paragraph" / "%% <<< END ..."
+%      at the end of the "Honest scope." paragraph in
+%      \subsection{Results} (sec:pirhoo-results), immediately BEFORE the
+%      "\begin{table}[!htbp]" of tab:pirhoo-results.
+%
+% HONESTY STATUS (load-bearing -- do not soften): identical to the case-3 row.
+% The environment is FAITHFUL (eqs. 1-13 verified equation-by-equation) but
+% literature_verified=FALSE. For mixed and assembly networks the source paper
+% reports NO analytical optimum (only random search / DFO / Spearmint / DNN), so
+% the comparator here is the environment's OWN best grid-searched pairwise
+% base-stock. These are learned-beats-(or-matches)-own-best-heuristic RESEARCH
+% results, explicitly NOT published-number beats.
+%
+% DATA PROVENANCE (held-out paired-CRN, 4000 paths, full budget; soft tree =
+% depth-2 oblique linear leaves, same recipe + protocol as serial case 3):
+%   MIXED SCN (Pirhooshyaran & Snyder 2021, Fig. 1 / Table 5; 6 nodes, node 0
+%     external source -> node 1; node 1 distributes to {2,3}; nodes 4,5
+%     assembly-and fed by both 2 and 3; two customers N(5,1) at nodes 4,5;
+%     T=10; 8 supply relations):
+%       gate (env own best pairwise base-stock) OUL echelon [36,13,7]
+%            (relations [36,13,13,7,7,7,7,36]) -> held-out 297.69 +/- 0.67
+%       learned soft tree (warm-flow 10): seed 321 295.30 +/- 0.87 (-0.80%),
+%            seed 777 294.73 +/- 0.92 (-0.99%), seed 123 306.25 +/- 1.06 (+2.88%).
+%       Headline row below uses the best (seed 777) and notes seed spread.
+%   ASSEMBLY SCN (Pirhooshyaran & Snyder 2021, Fig. 6 left / Supplement Table 3,
+%     instance 1; 7 nodes, sources {1..4}, node 5 assembly-and {1,2}, node 6 {3,4},
+%     node 7 {5,6}, demand N(13,1.2) at node 7; T=10; 10 supply relations):
+%       gate OUL echelon [52,52,52] -> held-out 283.34 +/- 0.20
+%       learned soft tree seed 123 274.90 +/- 0.17 (-2.98%).
+%   Ledgers: outputs/autoresearch/mixed_distribution_assembly_network_autoresearch/
+%   and outputs/autoresearch/pure_assembly_network_autoresearch/ (commit 7b4da10).
+% ---------------------------------------------------------------------------
+
+%% >>> BEGIN tab:pirhoo-results extension rows
+\midrule
+\multicolumn{4}{l}{\emph{Mixed distribution-and-assembly network} (gate $297.69$, OUL echelon $[36,13,7]$)} \\
+Best pairwise base-stock (gate)                & $297.69\pm0.67$ & --- & --- \\
+Learned soft tree, depth $2$ (best of $3$ seeds) & $\mathbf{294.73\pm0.92}$ & $\mathbf{-0.99\%}$ & $\approx 3\times$ \\
+\midrule
+\multicolumn{4}{l}{\emph{Pure assembly network} (gate $283.34$, OUL echelon $[52,52,52]$)} \\
+Best pairwise base-stock (gate)                & $283.34\pm0.20$ & --- & --- \\
+Learned soft tree, depth $2$, seed $123$        & $\mathbf{274.90\pm0.17}$ & $\mathbf{-2.98\%}$ & $\approx 40\times$ \\
+%% <<< END tab:pirhoo-results extension rows
+
+%% >>> BEGIN topology-diversification paragraph
+\paragraph{Topology diversification.}
+To check that the result is not an artefact of the serial chain, we re-ran the \emph{same} recipe and
+protocol (a depth-2 oblique soft tree with linear leaves, identical population, generations, and
+held-out paired-common-random-number evaluation; no re-sweep) on two further topologies of the same
+supply-network model: a \emph{mixed distribution-and-assembly network} (an external source feeds a
+single node that \emph{distributes} to two intermediate nodes, whose output two downstream
+\emph{assembly} nodes each combine to serve a customer) and a \emph{pure assembly network} (a
+three-layer assembly tree in which four sources feed two intermediate assembly nodes that feed a final
+assembly node serving the customer). Both move the action space well beyond the serial chain: the
+distribution split and the assembly $\min(\cdot)$ production starve downstream stages, so the
+environment's own best pairwise base-stock needs much higher order-up-to levels (gates $297.69$ and
+$283.34$ per period, against $60.24$ for the serial case). On the pure assembly network the learned
+tree beats this gate by $-2.98\%$ ($274.90\pm0.17$ vs $283.34$, outside the held-out standard error by
+$\approx40\times$); on the mixed network it is at parity-to-marginally-better, beating the gate by up
+to $-0.99\%$ ($294.73\pm0.92$ vs $297.69$) on the best of three CMA seeds while a third seed sits
+$+2.9\%$ above it. As for the serial case, these comparators are the \emph{environment's own}
+grid-searched best heuristic on a faithful but \texttt{literature\_verified=false} environment --- the
+source paper gives no analytical optimum for mixed or assembly networks (only random-search, DFO,
+Spearmint, and DNN benchmarks) --- so these are research learned-beats-(or-matches)-own-heuristic
+results across serial, mixed distribution-plus-assembly, and pure-assembly structures, and are
+\emph{not} published-number beats.
+%% <<< END topology-diversification paragraph

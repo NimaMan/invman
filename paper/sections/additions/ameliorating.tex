@@ -1,0 +1,78 @@
+% ---------------------------------------------------------------------------
+% ADDITION: two companion Pahr & Grunow (2025) ameliorating-inventory variants.
+%
+% PURPOSE
+% -------
+% Extends the existing ameliorating-inventory results table (Table
+% "tab:amelior-results" in learning_inventory_control_policies_es.tex) with two
+% companion instances trained under the EXACT same recipe/protocol as the
+% spirits and port-wine rows:
+%   - a BLENDING-ENABLED variant (companion spirits_0002): identical to the
+%     spirits anchor except per-period blending is switched on. The perfect-
+%     information LP bound is unchanged (1991.93), so it is the clean
+%     "value of blending" contrast.
+%   - a PROCESSING-CAPACITY-CONSTRAINED variant (companion spirits_1002):
+%     blending on, per-age capacity lowered from 50 to 30. The LP bound tightens
+%     to 1663.89.
+%
+% INSERTION POINT (manuscript learning_inventory_control_policies_es.tex)
+% ----------------------------------------------------------------------
+% Insert the TWO `\addlinespace ... \\` table rows below into the body of
+% Table tab:amelior-results, immediately AFTER the existing "port wine" row
+%     port wine ... & $79.3\%$ \\
+% and BEFORE the `\bottomrule` (currently line 3178). Insert the framing
+% paragraph (the "Companion variants" block below) immediately AFTER the table's
+% closing `\FloatBarrier` (currently line 3185), before the next \section.
+%
+% PROVENANCE (every number sourced; nothing fabricated)
+% -----------------------------------------------------
+%   LP bounds (executing fidelity, gap < 1e-3 re-solving the perfect-information
+%   LP): src/problems/ameliorating_inventory/tests/verification.rs
+%     - spirits_0002_blending_upper_bound_reproduces_published_max_reward
+%       (re-solved 1991.9344294292 vs published 1991.9344293377, gap 9.1e-8)
+%     - spirits_1002_capacity_upper_bound_reproduces_published_max_reward
+%       (re-solved 1663.8888177511 vs published 1663.8888177083, gap 4.3e-8)
+%     Anchors from problem_configurations/{spirits_0002,spirits_1002}/upper_bound.json
+%     in the Pahr & Grunow (2025) companion repo.
+%   Learned/gate results (full budget, commit 7b4da10):
+%     outputs/autoresearch/ameliorating_inventory_average_profit_autoresearch/
+%       spirits_0002_d1_oblique_full.json :
+%         learned 115.0678 +/- 0.4390 (gen_best@25); gate 20.9069 (S=24);
+%         gain +94.1609 (+450.4%); paired SEM 0.6556 (143.6x); gap-to-bound 94.22%.
+%       spirits_1002_d1_oblique_full.json :
+%         learned 130.4852 +/- 0.5026 (cma_incumbent); gate 20.9069 (S=24);
+%         gain +109.5783 (+524.1%); paired SEM 0.6998 (156.6x); gap-to-bound 92.16%.
+%   Runner: scripts/ameliorating_inventory/autoresearch_ameliorating_inventory_
+%     average_profit.py --instance {spirits_0002,spirits_1002} --budget full
+%     (population 16, 60 generations; held-out CRN eval, 12,000-period horizon,
+%     24 paired seeds -- the same protocol as the spirits/port-wine rows).
+%
+% HONEST FRAMING (identical to the existing ameliorating section)
+% --------------------------------------------------------------
+%   The like-for-like win is over the tuned order-up-to gate (legitimate). The LP
+%   value is an UPPER BOUND, reported with the gap, NEVER "beaten". The gap is
+%   structural (single scalar purchase action vs the bound's full three-part LP
+%   issuance + full purchase cost every period) and is NOT comparable to the
+%   ~3.5% deep-RL gap of Pahr & Grunow (2025), which uses the full 3-part action.
+% ---------------------------------------------------------------------------
+
+% === Rows to splice into Table tab:amelior-results (after the "port wine" row) ===
+\addlinespace
+spirits (blending)  & $\mathbf{115.07\pm0.44}$ & $20.91$ & $+94.16\ (+450\%)$  & $1991.93$ & $94.2\%$ \\
+spirits (capacity)  & $\mathbf{130.49\pm0.50}$ & $20.91$ & $+109.58\ (+524\%)$ & $1663.89$ & $92.2\%$ \\
+
+% === Framing paragraph to splice after the table's \FloatBarrier ===
+\paragraph{Companion variants: the blending toggle and the capacity lever.}
+Two further companion instances isolate single design levers under the same recipe and
+protocol. A \emph{blending-enabled} variant (identical to the spirits anchor except per-period
+blending is switched on, leaving the perfect-information bound unchanged at $1991.93$) gives a
+clean ``value of blending'' contrast: the learned price-reactive purchase realizes the same
+average profit as the no-blending anchor ($115.07\pm0.44$, again $\approx\!450\%$ and
+$\approx\!140\times$ the paired SEM above the order-up-to gate), so on this instance enabling
+blending does not move the single-purchase outcome---the issuance LP already draws the same aged
+stock. A \emph{processing-capacity-constrained} variant (blending on, per-age capacity lowered
+from $50$ to $30$, tightening the bound to $1663.89$) instead \emph{raises} learned average profit
+to $130.49\pm0.50$ ($+109.58$, $+524\%$, $\approx\!157\times$ the paired SEM over the same gate):
+the tighter capacity curbs holding on idle stock, and the gap to the (now lower) bound closes
+slightly to $92.2\%$. In both variants the win is the like-for-like beat of the tuned order-up-to
+gate; the LP value remains an upper bound, reported with its gap and never treated as achievable.
