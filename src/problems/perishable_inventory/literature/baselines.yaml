@@ -21,6 +21,9 @@ entries:
       last_reviewed: "2026-06-05"
     source:
       citation: "De Moor, Gijsbrechts, and Boute (2022), EJOR 301(2):535-545; Farrington, Wong, Li, and Utley (2025), Annals of Operations Research 349(3):1609-1638"
+      citation_keys:
+        - deMoor2022perishable
+        - farrington2025perishable
       url: https://doi.org/10.1007/s10479-025-06551-6
       table: "Farrington et al. (2025) Table 3; De Moor et al. (2022) m=2 experiment 1 policy table"
       numbers: "Rounded value-iteration mean return, best base-stock level, and 9x9 optimal-policy table."
@@ -48,26 +51,47 @@ entries:
       objective: discounted_return
       sign: higher_is_better
       rows:
-        - label: value_iteration_mean_return
+        - row_id: value_iteration_mean_return
+          label: value_iteration_mean_return
           policy_id: value_iteration
           metric: rounded_mean_return
           value: -1553
+          value_kind: scalar
           params: null
+          source_ref:
+            citation_key: farrington2025perishable
+            table: "Table 3"
+            row: "Scenario A, m=2, experiment 1"
+            column: "value iteration mean return"
+          rounding: "rounded integer mean return"
           verification_status: strict_literature_verified
           notes: "Exact MDP re-derives the rounded published mean return."
-        - label: best_base_stock_level
+        - row_id: best_base_stock_level
+          label: best_base_stock_level
           policy_id: base_stock
           metric: base_stock_level
           value: 5
+          value_kind: integer
           params:
             S: 5
+          source_ref:
+            citation_key: deMoor2022perishable
+            table: "m=2 experiment 1 policy table"
+            row: "best base-stock level"
           verification_status: strict_literature_verified
           notes: "Exact MDP search recovers the published base-stock level."
-        - label: optimal_policy_table
+        - row_id: optimal_policy_table_9x9
+          label: optimal_policy_table
           policy_id: value_iteration
           metric: policy_table_9x9
           value: stored_in_reference_const
+          value_kind: artifact_ref
+          artifact_ref: src/problems/perishable_inventory/references.rs::DE_MOOR_M2_EXP1_FIGURE3_POLICY
           params: null
+          source_ref:
+            citation_key: deMoor2022perishable
+            table: "m=2 experiment 1 policy table"
+            row: "9x9 optimal policy table"
           verification_status: strict_literature_verified
           notes: "The 9x9 table is stored in DE_MOOR_M2_EXP1_FIGURE3_POLICY and re-derived exactly by test."
       source_numbers_not_promoted:
@@ -77,9 +101,9 @@ entries:
       command: cargo test m2_
       tolerance: "exact equality for base-stock level, policy table, and rounded integer mean return"
       reproduced_rows:
-        - value_iteration
+        - value_iteration_mean_return
         - best_base_stock_level
-        - optimal_policy_table
+        - optimal_policy_table_9x9
       table_only_rows: []
       artifact: src/problems/perishable_inventory/verification/README.md
     repo_baseline_gate:
@@ -113,6 +137,9 @@ entries:
       last_reviewed: "2026-06-05"
     source:
       citation: "De Moor, Gijsbrechts, and Boute (2022), EJOR 301(2):535-545; Farrington, Wong, Li, and Utley (2025), Annals of Operations Research 349(3):1609-1638"
+      citation_keys:
+        - deMoor2022perishable
+        - farrington2025perishable
       url: https://doi.org/10.1007/s10479-025-06551-6
       table: "Farrington et al. (2025) Table 3; De Moor et al. (2022) m=2 experiment 2 policy table"
       numbers: "Rounded value-iteration mean return, best base-stock level, and 9x9 optimal-policy table."
@@ -140,26 +167,47 @@ entries:
       objective: discounted_return
       sign: higher_is_better
       rows:
-        - label: value_iteration_mean_return
+        - row_id: value_iteration_mean_return
+          label: value_iteration_mean_return
           policy_id: value_iteration
           metric: rounded_mean_return
           value: -1457
+          value_kind: scalar
           params: null
+          source_ref:
+            citation_key: farrington2025perishable
+            table: "Table 3"
+            row: "Scenario A, m=2, experiment 2"
+            column: "value iteration mean return"
+          rounding: "rounded integer mean return"
           verification_status: strict_literature_verified
           notes: "Exact MDP re-derives the rounded published mean return."
-        - label: best_base_stock_level
+        - row_id: best_base_stock_level
+          label: best_base_stock_level
           policy_id: base_stock
           metric: base_stock_level
           value: 7
+          value_kind: integer
           params:
             S: 7
+          source_ref:
+            citation_key: deMoor2022perishable
+            table: "m=2 experiment 2 policy table"
+            row: "best base-stock level"
           verification_status: strict_literature_verified
           notes: "Exact MDP search recovers the published base-stock level."
-        - label: optimal_policy_table
+        - row_id: optimal_policy_table_9x9
+          label: optimal_policy_table
           policy_id: value_iteration
           metric: policy_table_9x9
           value: stored_in_reference_const
+          value_kind: artifact_ref
+          artifact_ref: src/problems/perishable_inventory/references.rs::DE_MOOR_M2_EXP2_FIGURE3_POLICY
           params: null
+          source_ref:
+            citation_key: deMoor2022perishable
+            table: "m=2 experiment 2 policy table"
+            row: "9x9 optimal policy table"
           verification_status: strict_literature_verified
           notes: "The 9x9 table is stored in DE_MOOR_M2_EXP2_FIGURE3_POLICY and re-derived exactly by test."
       source_numbers_not_promoted:
@@ -169,9 +217,9 @@ entries:
       command: cargo test m2_
       tolerance: "exact equality for base-stock level, policy table, and rounded integer mean return"
       reproduced_rows:
-        - value_iteration
+        - value_iteration_mean_return
         - best_base_stock_level
-        - optimal_policy_table
+        - optimal_policy_table_9x9
       table_only_rows: []
       artifact: src/problems/perishable_inventory/verification/README.md
     repo_baseline_gate:
@@ -202,6 +250,8 @@ entries:
       last_reviewed: "2026-06-05"
     source:
       citation: "Farrington, Wong, Li, and Utley (2025), Annals of Operations Research 349(3):1609-1638, Table 3"
+      citation_keys:
+        - farrington2025perishable
       url: https://doi.org/10.1007/s10479-025-06551-6
       table: "Farrington et al. (2025) Table 3, Scenario A m=4 experiment 6"
       numbers: "Value-iteration and best base-stock mean returns are stored in references.rs but are not re-derived by the current exact summary cap."
@@ -229,25 +279,52 @@ entries:
       objective: discounted_return
       sign: higher_is_better
       rows:
-        - label: value_iteration_mean_return
+        - row_id: value_iteration_mean_return
+          label: value_iteration_mean_return
           policy_id: value_iteration
           metric: rounded_mean_return
           value: -1432
+          value_kind: scalar
           params: null
+          source_ref:
+            citation_key: farrington2025perishable
+            table: "Table 3"
+            row: "Scenario A, m=4, experiment 6"
+            column: "value iteration mean return"
+          rounding: "rounded integer mean return"
           verification_status: table_only
           notes: "Stored from Farrington Table 3; not re-derived by current repo tests."
-        - label: best_base_stock_mean_return
+        - row_id: best_base_stock_mean_return
+          label: best_base_stock_mean_return
           policy_id: base_stock
           metric: rounded_mean_return
           value: -1453
+          value_kind: scalar
           params: null
+          source_ref:
+            citation_key: farrington2025perishable
+            table: "Table 3"
+            row: "Scenario A, m=4, experiment 6"
+            column: "best base-stock mean return"
+          rounding: "rounded integer mean return"
           verification_status: table_only
           notes: "Stored from Farrington Table 3; not re-derived by current repo tests."
-        - label: optimality_gap_pct
+        - row_id: base_stock_optimality_gap_pct
+          label: optimality_gap_pct
           policy_id: base_stock
           metric: optimality_gap_pct
           value: 1.44
+          value_kind: derived
           params: null
+          source_ref:
+            citation_key: farrington2025perishable
+            table: "Table 3"
+            row: "Scenario A, m=4, experiment 6"
+            column: "base-stock optimality gap"
+          derived_from:
+            - value_iteration_mean_return
+            - best_base_stock_mean_return
+          rounding: "percentage as reported in source table"
           verification_status: table_only
           notes: "Stored from Farrington Table 3; not re-derived by current repo tests."
       source_numbers_not_promoted:
@@ -258,9 +335,9 @@ entries:
       tolerance: null
       reproduced_rows: []
       table_only_rows:
-        - value_iteration
-        - base_stock
-        - optimality_gap_pct
+        - value_iteration_mean_return
+        - best_base_stock_mean_return
+        - base_stock_optimality_gap_pct
       artifact: src/problems/perishable_inventory/literature/README.md
     repo_baseline_gate:
       policy: "Repo-native practical trace gate for base_stock and bsp_low_ew."

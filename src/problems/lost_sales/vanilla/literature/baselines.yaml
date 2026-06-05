@@ -21,6 +21,10 @@ entries:
       last_reviewed: "2026-06-05"
     source:
       citation: "Zipkin (2008), Old and New Methods for Lost-Sales Inventory Systems, Operations Research 56(5):1256-1263"
+      citation_keys:
+        - Zipkin2008OldSystems
+        - gijsbrechts2022drl
+        - Xin2021CappedBaseStock
       url: https://doi.org/10.1287/opre.1070.0471
       table: "Table 3(a), Poisson, penalty p=4, lead-time column 4, p.1261"
       numbers: "Optimal, Myopic, Myopic-2, Standard vector base-stock, and Better vector base-stock average costs."
@@ -43,39 +47,79 @@ entries:
       objective: steady_state_mean_cost
       sign: lower_is_better
       rows:
-        - label: Optimal
+        - row_id: optimal_mean_cost
+          label: Optimal
           policy_id: optimal
           metric: mean_cost
           value: 4.73
+          value_kind: scalar
           params: null
+          source_ref:
+            citation_key: Zipkin2008OldSystems
+            table: "Table 3(a)"
+            page: 1261
+            row: Optimal
+            column: "Poisson, p=4, L=4"
           verification_status: table_only
           notes: "Published DP value; not produced by the current heuristic rollout verifier."
-        - label: Myopic
+        - row_id: myopic1_mean_cost
+          label: Myopic
           policy_id: myopic1
           metric: mean_cost
           value: 5.06
+          value_kind: scalar
           params: null
+          source_ref:
+            citation_key: Zipkin2008OldSystems
+            table: "Table 3(a)"
+            page: 1261
+            row: Myopic
+            column: "Poisson, p=4, L=4"
           verification_status: strict_literature_verified
           notes: "Re-derived by live env plus heuristic rollout."
-        - label: Myopic-2
+        - row_id: myopic2_mean_cost
+          label: Myopic-2
           policy_id: myopic2
           metric: mean_cost
           value: 4.82
+          value_kind: scalar
           params: null
+          source_ref:
+            citation_key: Zipkin2008OldSystems
+            table: "Table 3(a)"
+            page: 1261
+            row: Myopic-2
+            column: "Poisson, p=4, L=4"
           verification_status: strict_literature_verified
           notes: "Re-derived by live env plus heuristic rollout; current executable heuristic gate."
-        - label: Standard vector base-stock
+        - row_id: standard_vector_base_stock_mean_cost
+          label: Standard vector base-stock
           policy_id: svbs
           metric: mean_cost
           value: 5.83
+          value_kind: scalar
           params: null
+          source_ref:
+            citation_key: Zipkin2008OldSystems
+            table: "Table 3(a)"
+            page: 1261
+            row: "Standard vector base-stock"
+            column: "Poisson, p=4, L=4"
           verification_status: strict_literature_verified
           notes: "Re-derived by live env plus heuristic rollout."
-        - label: Better vector base-stock
+        - row_id: better_vector_base_stock_mean_cost
+          label: Better vector base-stock
           policy_id: better_vector_base_stock
           metric: mean_cost
           value: 4.80
+          value_kind: scalar
           params: null
+          source_ref:
+            citation_key: Zipkin2008OldSystems
+            table: "Table 3(a)"
+            page: 1261
+            row: "Better vector base-stock"
+            column: "Poisson, p=4, L=4"
           verification_status: table_only
           notes: "Stored in reference_costs.rs as capped_base_stock; not re-derived by the current verifier."
     repo_verification:
@@ -83,12 +127,12 @@ entries:
       command: cargo test vanilla_heuristic_mean_costs_match_literature_numbers
       tolerance: "absolute mean-cost tolerance 0.12"
       reproduced_rows:
-        - myopic1
-        - myopic2
-        - svbs
+        - myopic1_mean_cost
+        - myopic2_mean_cost
+        - standard_vector_base_stock_mean_cost
       table_only_rows:
-        - optimal
-        - better_vector_base_stock
+        - optimal_mean_cost
+        - better_vector_base_stock_mean_cost
       artifact: src/problems/lost_sales/vanilla/literature/README.md
     repo_baseline_gate:
       policy: "Myopic-2 is the executable published heuristic gate; optimal and Better vector base-stock are table anchors."

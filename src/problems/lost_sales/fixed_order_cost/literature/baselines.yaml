@@ -21,6 +21,8 @@ entries:
       last_reviewed: "2026-06-05"
     source:
       citation: "Bijvank, Bhulai, and Huh (2015), Parametric replenishment policies for inventory systems with lost sales and fixed order cost, EJOR 241(2):381-390"
+      citation_keys:
+        - Bijvank2015ParametricPolicies
       url: https://www.math.vu.nl/~sbhulai/publications/ejor2015b.pdf
       table: "Table 1 validation instance"
       numbers: "Optimal average cost and best (s,S), (s,nQ), and modified (s,S,q) rows."
@@ -42,39 +44,67 @@ entries:
       objective: long_run_average_cost
       sign: lower_is_better
       rows:
-        - label: Optimal DP
+        - row_id: optimal_dp_mean_cost
+          label: Optimal DP
           policy_id: optimal_dp
           metric: mean_cost
           value: 11.46
+          value_kind: scalar
           params: null
+          source_ref:
+            citation_key: Bijvank2015ParametricPolicies
+            table: "Table 1"
+            row: Optimal
+            column: "R=1, L=2, h=1, p=14, K=5"
           verification_status: strict_literature_verified
           notes: "Exact average-cost value iteration reproduces this row at inventory-position cap 24."
-        - label: "(s,S)"
+        - row_id: s_s_mean_cost
+          label: "(s,S)"
           policy_id: s_s
           metric: mean_cost
           value: 11.62
+          value_kind: scalar
           params:
             s: 17
             S: 23
+          source_ref:
+            citation_key: Bijvank2015ParametricPolicies
+            table: "Table 1"
+            row: "(s,S)"
+            column: "R=1, L=2, h=1, p=14, K=5"
           verification_status: strict_literature_verified
           notes: "Exact policy evaluator reproduces the published parameters and cost."
-        - label: "(s,nQ)"
+        - row_id: s_nq_mean_cost
+          label: "(s,nQ)"
           policy_id: s_nq
           metric: mean_cost
           value: 11.56
+          value_kind: scalar
           params:
             s: 17
             q: 7
+          source_ref:
+            citation_key: Bijvank2015ParametricPolicies
+            table: "Table 1"
+            row: "(s,nQ)"
+            column: "R=1, L=2, h=1, p=14, K=5"
           verification_status: strict_literature_verified
           notes: "Exact policy evaluator reproduces the published parameters and cost."
-        - label: "modified (s,S,q)"
+        - row_id: modified_s_s_q_mean_cost
+          label: "modified (s,S,q)"
           policy_id: modified_s_s_q
           metric: mean_cost
           value: 11.50
+          value_kind: scalar
           params:
             s: 17
             S: 23
             q: 7
+          source_ref:
+            citation_key: Bijvank2015ParametricPolicies
+            table: "Table 1"
+            row: "modified (s,S,q)"
+            column: "R=1, L=2, h=1, p=14, K=5"
           verification_status: strict_literature_verified
           notes: "Exact policy evaluator reproduces the published parameters and cost."
     repo_verification:
@@ -82,10 +112,10 @@ entries:
       command: cargo test literature_row_is_matched_tightly_once_cap_is_large_enough
       tolerance: "absolute mean-cost tolerance < 0.01 at inventory-position cap 24"
       reproduced_rows:
-        - optimal_dp
-        - s_s
-        - s_nq
-        - modified_s_s_q
+        - optimal_dp_mean_cost
+        - s_s_mean_cost
+        - s_nq_mean_cost
+        - modified_s_s_q_mean_cost
       table_only_rows: []
       artifact: src/problems/lost_sales/fixed_order_cost/verification/README.md
     repo_baseline_gate:
@@ -114,6 +144,8 @@ entries:
       last_reviewed: "2026-06-05"
     source:
       citation: "Repo-native canonical fixed-order-cost lost-sales benchmark; family inspired by Bijvank et al. (2015)."
+      citation_keys:
+        - Bijvank2015ParametricPolicies
       url: null
       table: null
       numbers: "Long-run heuristic and learned-policy anchors from the checked-in refresh note."
@@ -148,6 +180,19 @@ entries:
       script: scripts/lost_sales_fixed_order_cost/benchmark_canonical_suite.py
       eval: "docs/benchmarks/fixed_cost_l4_refresh.md reports evaluation horizon 1000000, eval_seeds=10, warm-up 20 percent."
       latest_report: docs/benchmarks/fixed_cost_l4_refresh.md
+      rows:
+        - row_id: modified_s_s_q_repo_gate_mean_cost
+          policy_id: modified_s_s_q
+          metric: mean_cost
+          value: 9.17436
+          value_kind: scalar
+          params:
+            s: 22
+            S: 30
+            q: 8
+          source_ref:
+            artifact: docs/benchmarks/fixed_cost_l4_refresh.md
+            row: "best current heuristic anchor"
       notes: "Learned-policy rows in the report are repo-native comparator rows and should not be promoted as literature values."
     paper_link:
       section: "paper/generated/fixed_cost_canonical_table.tex and paper/learning_inventory_control_policies_es.tex::sec:lostsales-results-fixed-cost"
