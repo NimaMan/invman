@@ -1128,13 +1128,13 @@ Figure~\ref{fig:env-dual} depicts this environment as a flow network --- the reg
     % regular mode (top): dashed request (outer) + solid ship (inner); labels off the arcs.
     % The regular order arrives at the START of the period (folded into I_t before the
     % decision), so its arrival is event 1; the new regular request is event 3.
-    \draw[reqflow] (stk.north west) to[bend right=30] (reg.south east);
-    \draw[matflow] (reg.south east) to[bend right=6]  (stk.west);
+    \draw[reqflow] (stk.north) to[bend right=24] (reg.east);
+    \draw[matflow] (reg.south) to[bend right=18] (stk.west);
     \node[reqlabel] at (3.0,3.45) {\ding{184}\, request $q^r_t$};
     \node[ltlabel]  at (4.7,1.55) {\ding{182}\, arrival $q^r_{t-l_r}$\\(into $I_t$; cost $c_r$)};
     % expedited mode (bottom): requested now, arrives the SAME period (event 5)
-    \draw[reqflow] (stk.south west) to[bend left=30] (exp.north east);
-    \draw[matflow] (exp.north east) to[bend left=6]  (stk.west);
+    \draw[reqflow] (stk.south) to[bend left=24] (exp.east);
+    \draw[matflow] (exp.north) to[bend left=18] (stk.west);
     \node[reqlabel] at (3.0,-3.45) {\ding{184}\, request $q^e_t$};
     \node[ltlabel]  at (4.7,-1.55) {\ding{185}\, arrives \emph{this period}\\$l_e=0$ (cost $c_e>c_r$)};
 
@@ -1142,9 +1142,9 @@ Figure~\ref{fig:env-dual} depicts this environment as a flow network --- the reg
           node[midway,above=3pt,ltlabel] {\ding{186}\, serve from\\$I_t+q^e_t$};
     \draw[lostflow] (dem) -- (bo);
 
-    \node[costH,above=9mm of stk.north] {holding $h\,(J_t)^+$};
+    \node[costH] at (10.4,2.1) {holding $h\,(J_t)^+$};
     \node[costP,right=3pt of bo.east] {backorder\\$b\,(J_t)^-$};
-    \node[costK,below=9mm of stk.south,align=center]
+    \node[costK,align=center] at (10.4,-2.4)
           {$J_t=I_t+q^e_t-D_t$\\(end-of-period net inventory)};
 
     \begin{scope}[on background layer]
@@ -1785,9 +1785,9 @@ issuing rule, the outdating of the oldest leftover stock, and where each cost is
 
     % inbound: dashed request UP (event 2), solid lead-time arrival DOWN into the
     % youngest bucket (event 5, placed L periods ago; for L=1 it arrives next period).
-    \draw[reqflow] (stk.north west) to[bend right=34] (sup.north east);
+    \draw[reqflow] (stk.north) to[bend right=34] (sup.north);
     \node[reqlabel] at (3.3,2.05) {\ding{183}\, order $q_t\!\le\!\bar q$};
-    \draw[matflow] (sup.south east) to[bend right=10] (stk.west);
+    \draw[matflow] (sup.south) to[bend right=22] (stk.west);
     \node[ltlabel]  at (3.5,-1.55) {\ding{187}\, arrival (placed $L$ ago)\\enters youngest bucket; cost $c\,q$};
 
     \draw[demandflow] (stk) -- (dem)
@@ -2484,8 +2484,8 @@ different role in this paper: the comparator is a \emph{proven optimum}, so the 
     \node[ltlabel] at (13.0,-2.3) {\ding{182}\, ship after $L_1$\\($\le$ stage $2$ on-hand)};
 
     % stage 1 -> demand
-    \draw[demandflow] (s1) -- (dem)
-          node[midway,above=3pt,ltlabel] {\ding{183}\, serve $\min(I^1_t,\,d_t{+}B_{t-1})$};
+    \draw[demandflow] (s1) -- (dem);
+    \node[ltlabel] at (18.2,1.55) {\ding{183}\, serve $\min(I^1_t,\,d_t{+}B_{t-1})$};
 
     % echelon holding costs, charged on post-demand on-hand at each stage
     \node[costH] at (5.2,3.3)  {holding $h^3 (I^3_t)^+$};
@@ -2714,9 +2714,9 @@ are charged.
     \node[envsink]   (d2)   at (19.4,0.0) {demand $D^k_t$};
     \node[envlost]   (b2)   at (19.4,-3.4){shortage:\\backorder $\beta$\\/ \emph{lost} $1-\beta$};
 
-    \draw[reqflow] (wh.north west) to[bend right=30] (sup.north east);
+    \draw[reqflow] (wh.north) to[bend right=30] (sup.north);
     \node[reqlabel] at (2.9,1.9) {\ding{183}\, warehouse order};
-    \draw[matflow] (sup.south east) to[bend right=10] (wh.west);
+    \draw[matflow] (sup.south) to[bend right=22] (wh.west);
     \node[ltlabel]  at (3.0,-1.5) {\ding{185}\, receipt (placed $L_w$ ago)};
 
     \draw[matflow] (wh.east) to[bend left=10]  (r1.west);
@@ -2728,7 +2728,7 @@ are charged.
           node[midway,above=3pt,ltlabel] {\ding{187}\, demand};
     \draw[lostflow] (d2) -- (b2);
 
-    \node[costH,above=8mm of wh.north] {holding $h_w(y^w_t)^+$};
+    \node[costH] at (7.6,2.4) {holding $h_w(y^w_t)^+$};
     \node[costH,above=3pt of r1.north] {holding $h_r$};
     \node[costP,right=2pt of b2.east] {penalty $p\,b^k_t$};
 
@@ -2978,9 +2978,9 @@ where purchase cost and holding are charged against sales revenue.
     \node[envsink]   (prod) at (15.6,0)   {age-targeted\\products (sales $P^{s}_t$)};
     \node[envlost]   (loss) at (7.4,-4.2) {evaporation\\$+$ decay\\\emph{(loss)}};
 
-    \draw[reqflow] (stk.north west) to[bend right=32] (sup.north east);
+    \draw[reqflow] (stk.north) to[bend right=32] (sup.north);
     \node[reqlabel] at (3.3,2.0) {\ding{183}\, purchase $a^P_t$};
-    \draw[matflow] (sup.south east) to[bend right=10] (stk.west);
+    \draw[matflow] (sup.south) to[bend right=22] (stk.west);
     \node[ltlabel]  at (3.4,-1.55) {\ding{184}\, enters youngest class;\\cost $P_t\,a^P_t$};
 
     \draw[demandflow] (stk) -- (prod)
@@ -3207,14 +3207,14 @@ finished, and in-transit stock) and the backorder penalty are charged.
     \node[envsink]   (dem) at (22.0,0)   {demand\\$D_t\sim N(5,1)$};
     \node[envlost]   (bo)  at (22.0,-3.6){backorder\\(carried)};
 
-    \draw[reqflow] (n0.north west) to[bend right=26] (sup.north east);
-    \draw[reqflow] (n1.north west) to[bend right=26] (n0.north east);
-    \draw[reqflow] (n2.north west) to[bend right=26] (n1.north east);
-    \node[reqlabel] at (10.9,1.95) {\ding{183}\, pairwise order-up-to on each relation};
+    \draw[reqflow] (n0.north) to[bend right=26] (sup.north);
+    \draw[reqflow] (n1.north) to[bend right=26] (n0.north);
+    \draw[reqflow] (n2.north) to[bend right=26] (n1.north);
+    \node[reqlabel] at (10.9,2.35) {\ding{183}\, pairwise order-up-to on each relation};
 
-    \draw[matflow] (sup.south east) to[bend right=10] (n0.west);
-    \draw[matflow] (n0.south east)  to[bend right=10] (n1.west);
-    \draw[matflow] (n1.south east)  to[bend right=10] (n2.west);
+    \draw[matflow] (sup.east) -- (n0.west);
+    \draw[matflow] (n0.east)  -- (n1.west);
+    \draw[matflow] (n1.east)  -- (n2.west);
     \node[ltlabel] at (8.1,-1.5) {\ding{185}\, ship (lead $L$); \emph{process all raw on arrival}};
 
     \draw[demandflow] (n2) -- (dem)
