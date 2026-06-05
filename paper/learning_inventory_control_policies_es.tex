@@ -3612,15 +3612,18 @@ within $1.31\%$), we state it explicitly and treat the reproduction as an implem
 check rather than a re-derivation of the published result. The per-problem subsections that follow
 validate the seven problems whose comparator is a published reproduction-able quantity (vanilla lost
 sales, fixed-cost lost sales, multi-echelon Van~Roy / dual sourcing, perishable inventory,
-general-network backorder, and serial multi-echelon); the final subsection
-(Section~\ref{app:additional-env-validation}) records the same fidelity checks for further
-environments in our suite that we validate against the literature. The three remaining studied
+general-network backorder, and serial multi-echelon), and then the
+production/assembly/distribution network, whose only published anchor is the single-node newsvendor
+cost: it is a faithful but \emph{not} literature-verified environment at the network level, so its
+validation is a single-node fidelity check rather than a published-number reproduction of the
+Section~\ref{sec:pirhoo} result (Section~\ref{app:pirhoo-validation}). The final subsection
+(Section~\ref{app:additional-env-validation}) records the same kind of fidelity check for the one
+further environment in our suite that we validate against the literature but do \emph{not} train or
+report a learned policy on in this paper. The two remaining studied
 problems are anchored differently and therefore do not appear as published-number rows here: the
 one-warehouse multi-retailer and ameliorating-inventory results are reported against a tuned
 in-environment heuristic gate (with, for ameliorating inventory, a perfect-information upper bound
-reported strictly as a bound), and the production/assembly/distribution network is a faithful but
-not literature-verified environment whose only published anchor --- the single-node newsvendor cost
---- is recorded in Section~\ref{app:additional-env-validation}.
+reported strictly as a bound).
 
 \subsection{Published vanilla lost-sales validation}
 
@@ -3856,39 +3859,102 @@ Both the exact solver and the environment dynamics reproduce the published optim
 band ($\lesssim 0.06\%$), so the serial environment is shown to reproduce the literature optimum under
 the known-optimal policy before any learned policy is trained on it.
 
-\subsection{Additional verified environments (not studied in this paper's experiments)}
-\label{app:additional-env-validation}
+\subsection{Production / assembly / distribution network single-node fidelity check}
+\label{app:pirhoo-validation}
 
-The per-problem subsections above complete the published-number literature validation for the seven
-literature-anchored problems studied in this paper. For completeness we record here a separate,
-smaller bucket: two further inventory
-environments that we implement and validate against the literature, but on which we
-do \emph{not} train policies or report learned-policy results in this paper. We note them only because
-they bear on reproducibility --- our environments reproduce published benchmarks beyond the
-problems we report results for. Table~\ref{tab:additional-env-validation} covers
-a joint-replenishment system \citep{vanvuchelen2020jrp} and a production/assembly/distribution network
-\citep{pirhooshyaran2021scn}; each reproduces its published benchmark (a published optimal action and
-an exact newsvendor cost, respectively) to within a tight tolerance, and we report them only as
-environment-fidelity checks, not as results.
+The production/assembly/distribution network of Section~\ref{sec:pirhoo} is anchored differently from
+the seven problems above, and we are explicit about the difference. The network-level model is
+\emph{faithful} to the published MDP and cost of \citet{pirhooshyaran2021scn} --- transition, cost
+accounting, and timing are reproduced equation-by-equation against the paper --- but it is \emph{not}
+literature-verified at the network level, because \citet{pirhooshyaran2021scn} report \emph{no}
+published optimal or benchmark cost for the multi-node version of this MDP that we could reproduce.
+What we can validate against a published number is the environment's \emph{single-node reduction}: the
+single-node newsvendor instance of the paper's Table~1 ($\mu=100$, $\sigma=10$, $h=10$, $p=30$, $L=1$),
+for which the paper reports an analytical optimal cost of $127.11$. Running the environment's own exact
+dynamic program on this reduction --- simulating its step dynamics, not the closed-form newsvendor
+formula --- reproduces $127.10$, a relative gap of $+0.008\%$, with the tiny residual attributable to
+the integer demand/order-up-to discretization (it shrinks as the demand scale grows). This certifies
+the environment's \emph{dynamics} against a published quantity.
 
 \begin{table}[!htbp]
 \centering
-\caption{Additional verified environments not studied in this paper's experiments. Each environment
-reproduces a published benchmark within a tight tolerance, confirming environment fidelity beyond the
-problems we train on.}
-\label{tab:additional-env-validation}
-\resizebox{\textwidth}{!}{%
-\begin{tabular}{lcccc}
+\caption{Single-node fidelity check for the production/assembly/distribution network. The
+environment's exact dynamic program reproduces the published single-node newsvendor optimum of
+\citet{pirhooshyaran2021scn} (Table~1, $\mu=100$, $\sigma=10$, $h=10$, $p=30$, $L=1$) by simulating
+its own step dynamics.}
+\label{tab:pirhoo-validation}
+\begin{tabular}{lccc}
 \toprule
-Environment & Published reference (value) & Reproduced & Gap & Source \\
+Quantity & Published optimum & Reproduced (env DP) & Gap \\
 \midrule
-Joint replenishment & Figure~3 action $(0,6)$ at $(5,0)$ & $(0,6)$ & exact & \citet{vanvuchelen2020jrp} \\
-Production/assembly/distribution network & Single-node newsvendor ($127.11$) & $127.10$ & $+0.008\%$ & \citet{pirhooshyaran2021scn} \\
+Single-node newsvendor cost & $127.11$ & $127.10$ & $+0.008\%$ \\
 \bottomrule
-\end{tabular}%
-}
+\end{tabular}
 \end{table}
 \FloatBarrier
+
+Two points keep the network-level result honest, consistent with the scope stated in
+Section~\ref{sec:pirhoo}. First, the Section~\ref{sec:pirhoo} learned-policy result is a
+\emph{research} result, not a
+published-number beat: the learned soft tree improves on the environment's \emph{own} best
+grid-searched pairwise base-stock heuristic by roughly $5$--$9\%$ on held-out paths, and that
+heuristic is not a published optimum. Second, the textbook serial optimum $47.65$
+(Section~\ref{app:serial-validation}) is \emph{not} a valid target for this environment: it is an
+\emph{echelon} base-stock cost, whereas this environment's pairwise policy targets the \emph{local}
+raw-material position (and excludes finished goods), so $47.65$ is structurally unreachable here and we
+do not use it as a comparator. The single-node reduction above is therefore the only published anchor
+we claim for this environment, and it holds.
+
+\subsection{Additional verified environment (not studied in this paper's experiments)}
+\label{app:additional-env-validation}
+
+The per-problem subsections above complete the literature validation for the studied problems,
+including the single-node fidelity check for the production/assembly/distribution network. For
+completeness we record here the one further inventory environment that we implement and validate
+against the literature but on which we do \emph{not} train a policy or report a learned-policy result
+in this paper: the joint-replenishment system of \citet{vanvuchelen2020jrp}. We note it only because
+it bears on reproducibility --- our environment reproduces a published benchmark beyond the problems
+we train on.
+
+Before treating the joint-replenishment environment as faithful, we validate it against the one exact,
+executable quantity that \citet{vanvuchelen2020jrp} state in prose. Their paper reports per-setting
+optimality gaps only as a figure (Figure~2), so there is no published absolute optimal-cost table to
+match; the single exact result they state is an \emph{optimal action}. For their small-scale
+setting~5 (two items, truck capacity $V=6$, major order cost $K=75$, minor order costs $k=[40,10]$,
+holding $h=[1,1]$, penalty $b=[19,19]$, demand $U[0,5]$ and $U[0,3]$, discount $\gamma=0.99$), they
+state that in state $(I_1,I_2)=(5,0)$ the optimal policy ships exactly one full truckload to item~2 ---
+the action $q=(0,6)$ --- whereas both of their heuristics instead order $q=(2,4)$
+\citep{vanvuchelen2020jrp}. Running infinite-horizon value iteration over the environment's \emph{own}
+one-period cost and transition reproduces this published optimal action exactly ($q=(0,6)$ at state
+$(5,0)$), and the same value iteration confirms it is strictly cheaper than the heuristic action
+$q=(2,4)$. As a hand-checkable cost anchor, the environment evaluates the published optimal action at a
+worked demand $d=(2,4)$ to a one-period cost of $90$ (major $75$ $+$ minor $10$ on the single ordered
+item, plus holding $5$ on the resulting inventory $(3,2)$), matching the paper's cost convention.
+
+\begin{table}[!htbp]
+\centering
+\caption{Reproduction of the \citet{vanvuchelen2020jrp} Figure~3 joint-replenishment anchor
+(small-scale setting~5). The environment reproduces the published optimal action by independent
+value iteration over its own dynamics, and evaluates that action to the published cost convention at a
+worked demand. \citet{vanvuchelen2020jrp} report no absolute optimal-cost table (per-setting gaps
+appear only as a figure), so the published anchor is an optimal action rather than a cost.}
+\label{tab:additional-env-validation}
+\begin{tabular}{lcc}
+\toprule
+Quantity & Published & Reproduced \\
+\midrule
+Optimal action at state $(5,0)$ & $(0,6)$ & $(0,6)$ (env value iteration) \\
+Heuristic action at state $(5,0)$ & $(2,4)$ & $(2,4)$ (strictly costlier) \\
+One-period cost at $q=(0,6)$, $d=(2,4)$ & --- & $90$ (env cost convention) \\
+\bottomrule
+\end{tabular}
+\end{table}
+\FloatBarrier
+
+This is a verified environment we deliberately do \emph{not} study as a learned-policy result in this
+paper: we report no dedicated problem section, no training, and no learned-versus-heuristic comparison
+for joint replenishment. It appears here solely as an environment-fidelity check, confirming that our
+implementation reproduces the published Vanvuchelen et al.\ optimal action under its own dynamics.
 
 
 \end{document}
