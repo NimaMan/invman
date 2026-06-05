@@ -109,10 +109,11 @@ We study whether a single, generic learning recipe --- evolution strategies opti
 interpretable policies --- can match or beat strong problem-specific heuristics and published deep
 reinforcement learning (DRL) across a range of classical inventory control problems. Using
 Covariance Matrix Adaptation Evolution Strategies (CMA-ES) we learn the parameters of small policy
-function approximators (linear maps, one-hidden-layer networks, and soft decision trees) for seven
+function approximators (linear maps, one-hidden-layer networks, and soft decision trees) for ten
 problems: lost sales, fixed-ordering-cost lost sales, dual sourcing, divergent multi-echelon control
-with special delivery, perishable inventory, general-network backorder, and serial (Clark--Scarf)
-multi-echelon control. A recurring design lever is that the \emph{action parameterization is
+with special delivery, perishable inventory, general-network backorder, serial (Clark--Scarf)
+multi-echelon control, one-warehouse multi-retailer distribution, ameliorating inventory, and a
+production/assembly/distribution network. A recurring design lever is that the \emph{action parameterization is
 part of the policy}: rather than fixing an external action grid, each policy carries its own decoder
 (a soft-gated direct or ordinal quantity, or soft-tree leaves) and, where a structured heuristic
 exists, learns inside that heuristic's coordinate system.
@@ -158,7 +159,7 @@ and cheap enough to retrain. The recipe is to optimize the parameters of a compa
 approximator with Covariance Matrix Adaptation Evolution Strategies (CMA-ES), a gradient-free,
 population-based optimizer that has been shown to scale to neural-network policies
 \citep{Hansen2001CompletelyStrategies,Salimans2017EvolutionLearning}. CMA-ES is attractive here for
-three reasons that hold across all seven problems we study. First, it optimizes the
+three reasons that hold across all ten problems we study. First, it optimizes the
 realized objective --- the simulated long-run average cost --- directly, with no value-function
 bootstrapping, reward shaping, or credit assignment to individual actions, so the same loop applies
 unchanged whether the action is a scalar order, a regular/expedite pair, or a pair of echelon
@@ -179,8 +180,10 @@ fixed-cost order/no-order decision and the multi-echelon operating region.
 Our contributions are as follows.
 \begin{enumerate}
     \item \textbf{A cross-problem evolution-strategies result.} We show that CMA-ES-trained compact
-    policies are competitive across seven inventory problems --- lost sales, fixed-cost lost sales, dual
-    sourcing, divergent and serial multi-echelon, general-network backorder, and perishable inventory:
+    policies are competitive across ten inventory problems --- lost sales, fixed-cost lost sales, dual
+    sourcing, divergent and serial multi-echelon, general-network backorder, perishable inventory,
+    one-warehouse multi-retailer distribution, ameliorating inventory, and a
+    production/assembly/distribution network:
     they beat strong heuristics where the comparator is a heuristic, match proven optima where it is
     optimal (the dual-sourcing capped dual-index proxy and the serial Clark--Scarf optimum), and clear
     published DRL where a baseline exists --- using one
@@ -188,9 +191,14 @@ Our contributions are as follows.
     per-problem hyperparameter tuning. Learned policies are instance-best in $22/24$ vanilla and
     $47/48$ fixed-cost lost-sales instances, match the capped dual-index optimal proxy on all six
     dual-sourcing instances, and improve on the best in-environment constant base-stock by
-    $\approx 14.4\%$ on both multi-echelon settings; on the three further problems a soft tree beats the
+    $\approx 14.4\%$ on both multi-echelon settings; on the three further benchmark problems a soft tree beats the
     best base-stock gate for perishable inventory, beats the published benchmark of a general-network
-    backorder system by over $20\%$, and matches the proven serial Clark--Scarf optimum.
+    backorder system by over $20\%$, and matches the proven serial Clark--Scarf optimum. On the final
+    three problems the same recipe beats the strongest tuned base-stock-and-allocation gate beyond
+    sampling error on the harder one-warehouse multi-retailer instances, raises long-run average profit
+    far above the best order-up-to purchase policy under the ameliorating-inventory profit objective,
+    and beats a faithful production/assembly/distribution network's own best pairwise base-stock by
+    $\approx 4$--$9\%$.
     \item \textbf{Action parameterization as policy design.} We formalize and evaluate a family of
     policy-owned decoders (soft-gated direct quantity, soft-gated ordinal quantity, soft trees with
     linear leaves) and per-problem action geometries (capped-dual-index coordinates; direct-level
@@ -208,9 +216,11 @@ The remainder of the paper is organized as follows. Section~\ref{sec:related} re
 on learned inventory policies, evolution strategies, dual sourcing, and multi-echelon control.
 Section~\ref{sec:methods} presents the shared machinery: the policy interface (a learned map from
 state to valid action), the CMA-ES optimizer, and the evaluation protocol common to all problems.
-Sections~\ref{sec:lostsales}--\ref{sec:serial} then treat each problem as a self-contained
+Sections~\ref{sec:lostsales}--\ref{sec:pirhoo} then treat each problem as a self-contained
 unit --- lost sales and fixed-cost lost sales, dual sourcing, divergent multi-echelon control,
-perishable inventory, general-network backorder, and serial multi-echelon control --- each stating
+perishable inventory, general-network backorder, serial multi-echelon control, one-warehouse
+multi-retailer distribution, ameliorating inventory, and a production/assembly/distribution
+network --- each stating
 its formulation, its policy (input state, internals, output action), its instance-level
 experiment setup, and its results, with interpretation of where each decoder wins and where
 heuristics still lead. Section~\ref{sec:discussion} draws managerial insights, and
@@ -261,7 +271,7 @@ and otherwise train directly for each problem.
 This section states the shared machinery used by every problem: the policy interface --- a learned
 deterministic map from a problem's state to a valid action --- the CMA-ES optimizer, and the
 evaluation protocol. Each problem's environment, its concrete policy internals, and its results are
-then developed in its own self-contained section (Sections~\ref{sec:lostsales}--\ref{sec:serial}).
+then developed in its own self-contained section (Sections~\ref{sec:lostsales}--\ref{sec:pirhoo}).
 
 \subsection{The action parameterization is part of the policy}
 \label{sec:methods-principle}
@@ -399,7 +409,7 @@ the covariance is adapted by combined rank-one (evolution-path) and rank-$\mu$ u
 exponential smoothing, and the global step size $\sigma$ is adapted online by cumulative step-length
 adaptation; we use the reference implementation of \citet{Hansen2019pycma}. Relative to A3C/PPO-style
 DRL, CMA-ES has few hyperparameters, supplies its own exploration through $\bSigma$, and optimizes
-the realized objective directly, so the loop is unchanged across our seven problems.
+the realized objective directly, so the loop is unchanged across our ten problems.
 Figure~\ref{fig:cmaes-loop} summarizes this generational loop.
 
 \begin{figure}[t]
@@ -429,7 +439,7 @@ Figure~\ref{fig:cmaes-loop} summarizes this generational loop.
 \end{figure}
 
 \begin{algorithm}[!htbp]
-\caption{CMA-ES policy optimization (used for all seven problems)}
+\caption{CMA-ES policy optimization (used for all ten problems)}
 \label{alg:cmaes-framework}
 \begin{algorithmic}[1]
     \STATE \textbf{Input:} population size $N$, initial mean $\bmu_1$, step size $\sigma$, simulator and policy decoder
@@ -2681,10 +2691,733 @@ optimum cannot be beaten.
 \FloatBarrier
 
 
+\section{One warehouse, multiple retailers}
+\label{sec:owmr}
+
+\subsection{Problem formulation}
+\label{sec:owmr-formulation}
+
+Figure~\ref{fig:env-owmr} depicts this environment as a flow network --- the warehouse order and
+its lead-time receipt, the downstream allocation of scarce warehouse stock to the retailers, each
+retailer's lead-time receipt and demand draw, and where holding and the partial-backorder penalty
+are charged.
+
+\begin{figure}[t]
+  \centering
+  \resizebox{\textwidth}{!}{%
+  \begin{tikzpicture}[x=1cm,y=1cm]
+    \node[envsupply] (sup)  at (0,0)      {external\\supplier};
+    \node[envstock]  (wh)   at (6.2,0)    {warehouse\\IP $y^w_t$\\(lead $L_w$)};
+    \node[envstock]  (r1)   at (13.0,3.0) {retailer $1$\\IP $y^1_t$};
+    \node[envstock]  (r2)   at (13.0,0.0) {retailer $k$\\IP $y^k_t$};
+    \node[envstock]  (r3)   at (13.0,-3.0){retailer $K$\\IP $y^K_t$};
+    \node[envsink]   (d2)   at (19.4,0.0) {demand $D^k_t$};
+    \node[envlost]   (b2)   at (19.4,-3.4){shortage:\\backorder $\beta$\\/ \emph{lost} $1-\beta$};
+
+    \draw[reqflow] (wh.north west) to[bend right=30] (sup.north east);
+    \node[reqlabel] at (2.9,1.9) {\ding{183}\, warehouse order};
+    \draw[matflow] (sup.south east) to[bend right=10] (wh.west);
+    \node[ltlabel]  at (3.0,-1.5) {\ding{185}\, receipt (placed $L_w$ ago)};
+
+    \draw[matflow] (wh.east) to[bend left=10]  (r1.west);
+    \draw[matflow] (wh.east) -- (r2.west);
+    \draw[matflow] (wh.east) to[bend right=10] (r3.west);
+    \node[ltlabel] at (9.6,1.55) {\ding{186}\, allocate scarce\\on-hand (proportional\\/ min-shortage)};
+
+    \draw[demandflow] (r2) -- (d2)
+          node[midway,above=3pt,ltlabel] {\ding{187}\, demand};
+    \draw[lostflow] (d2) -- (b2);
+
+    \node[costH,above=8mm of wh.north] {holding $h_w(y^w_t)^+$};
+    \node[costH,above=3pt of r1.north] {holding $h_r$};
+    \node[costP,right=2pt of b2.east] {penalty $p\,b^k_t$};
+
+    \begin{scope}[on background layer]
+      \node[envbox,fit=(current bounding box)] (box) {};
+    \end{scope}
+    \node[envtitle,above=3pt of box.north,anchor=south]
+          {One-warehouse, $K$-retailer environment (partial backorder, warehouse lead $L_w$)};
+  \end{tikzpicture}%
+  }
+  \par\vspace{6pt}\centerline{%
+    \tikz\node[draw=mydarkblue!55,rounded corners=4pt,fill=mydarkblue!4,inner sep=7pt]{%
+      \begin{minipage}{\dimexpr\linewidth-18pt\relax}\centering
+        {\small\bfseries\color{mydarkblue!85}Per-period event sequence}\\[4pt]
+        {\small\begin{tabular}{@{}p{4.3cm}p{4.3cm}p{4.3cm}@{}}
+          \ding{182}\,observe warehouse + retailer inventory positions & \ding{183}\,set warehouse order-up-to and per-retailer targets & \ding{184}\,warehouse receipt (placed $L_w$ ago) arrives\\[4pt]
+          \ding{185}\,\emph{allocate} scarce warehouse on-hand across retailers (proportional / min-shortage) & \ding{186}\,retailer receipts arrive; demand $D^k_t$ drawn; a fraction $\beta$ of each shortage is backordered, the rest lost & \ding{187}\,charge $h_w$ on warehouse on-hand, $h_r$ on retailer on-hand, penalty $p$ on backorders\\
+        \end{tabular}}
+      \end{minipage}};}\par
+  \caption{One-warehouse multi-retailer environment of \citet{kaynov2024owmr}, drawn as an
+  event-based interaction. A single warehouse \emph{orders} from an external supplier (thin dashed
+  control arrow) and receives the goods after a lead time $L_w$ (solid material arrow). Each period
+  the warehouse \emph{allocates} its scarce on-hand stock across the $K$ retailers under a fixed
+  rationing rule --- \emph{proportional} (floor rationing) or \emph{min-shortage} ---
+  and each retailer receives its allocation after its own lead time, then faces demand $D^k_t$. Under
+  the \emph{partial-backorder} regime a fraction $\beta$ of any retailer shortage is backordered and
+  the remainder is lost. Warehouse holding $h_w$ is charged on warehouse on-hand stock (after
+  emergency fulfilment), retailer holding $h_r$ on retailer on-hand stock, and a penalty
+  $p$ on backordered units; the boxed panel gives the per-period event sequence
+  (Section~\ref{sec:owmr-formulation}, Eq.~\eqref{eq:owmr-cost}).}
+  \label{fig:env-owmr}
+\end{figure}
+
+We consider the periodic-review one-warehouse, $K$-retailer (OWMR) distribution system of
+\citet{kaynov2024owmr}. A single warehouse replenishes from an external supplier with deterministic
+lead time $L_w$ and rations its on-hand stock across $K$ retailers, each with its own deterministic
+lead time $L_{r,k}$ and i.i.d.\ demand $D^k_t$. We study the \emph{partial-backorder} regime: a fixed
+fraction $\beta$ of each retailer shortage is backordered and carried forward, the rest is lost. We
+write $(x)^+=\max(0,x)$.
+
+\paragraph{Timing of a period.}
+At the start of period $t$ the controller observes the warehouse and per-retailer inventory positions,
+sets the warehouse order and the per-retailer replenishment requests, the warehouse receipt placed
+$L_w$ periods earlier arrives, the warehouse \emph{allocates} its available on-hand stock across the
+retailers' requests under the rationing rule, each retailer's allocation arrives after $L_{r,k}$,
+demand $D^k_t$ is realized at each retailer, a fraction $\beta$ of any shortage is backordered and the
+rest lost, and holding and penalty costs are charged.
+
+\paragraph{State.}
+The state is the warehouse inventory position $y^w_t$ together with each retailer's inventory
+position and the in-transit pipelines,
+\begin{equation*}
+    \mathbf{S}_t=\bigl(y^w_t,\ \{y^k_t\}_{k=1}^{K},\ \text{warehouse pipeline},\ \{\text{retailer-}k\text{ pipeline}\}_{k=1}^{K}\bigr),
+\end{equation*}
+where an inventory position aggregates on-hand stock, in-transit receipts, and (negative) outstanding
+backorders.
+
+\paragraph{Action.}
+The decision is the warehouse order-up-to level and the per-retailer replenishment targets,
+\begin{equation*}
+    a_t=\bigl(S^w_t,\ S^1_t,\dots,S^K_t\bigr),
+\end{equation*}
+a $(K{+}1)$-dimensional control: the warehouse orders up to $S^w_t$, and the requested retailer
+replenishments are the deficits $(S^k_t-y^k_t)^+$, which the warehouse fills subject to its available
+on-hand stock via the allocation rule.
+
+\paragraph{Transition (allocation).}
+Let $A_t$ be the warehouse on-hand stock available for allocation and $\{g^k_t\}$ the retailer
+requests. If $\sum_k g^k_t\le A_t$ every request is met in full; otherwise the scarce stock is
+rationed. Under \emph{proportional} allocation each retailer receives the floor of its
+pro-rata share; under \emph{min-shortage} allocation the warehouse maximizes the
+minimum resulting retailer inventory position. The allocated quantities then enter the retailer
+pipelines and arrive after $L_{r,k}$.
+
+\paragraph{One-period cost.}
+Writing $I^w_t$ for warehouse on-hand stock (after any emergency fulfilment), $I^k_t$ for retailer-$k$
+on-hand stock, and $b^k_t$ for retailer-$k$ backorders, the cost incurred in period $t$ is
+\begin{equation}
+    \label{eq:owmr-cost}
+    c_t \;=\; h_w\,I^w_t \;+\; \sum_{k=1}^{K}\bigl(h_r\,I^k_t \;+\; p\,b^k_t\bigr),
+\end{equation}
+with warehouse holding $h_w$, retailer holding $h_r$, and per-unit backorder penalty $p$.
+
+\paragraph{Objective.}
+A stationary policy $\pi_{\btheta}$ maps the state to the action. Performance is the expected total
+undiscounted cost over the $H$-period horizon,
+\begin{equation}
+    \label{eq:owmr-objective}
+    C(\btheta) \;=\; \mathbb{E}\!\left[\sum_{t=1}^{H} c_t\right],
+    \qquad \min_{\btheta}\ C(\btheta),
+\end{equation}
+with $H=100$ as in \citet{kaynov2024owmr}; $C(\btheta)$ is estimated by simulation over shared
+demand-path seeds.
+
+\FloatBarrier
+
+\subsection{Policy}
+\label{sec:owmr-policy}
+
+The OWMR problem tests whether the learned policy can exploit \emph{heterogeneity and
+state-dependence across retailers} that a single shared base-stock level cannot express.
+\textbf{Input.} The policy input is the warehouse and per-retailer inventory positions, divide-by-
+scale normalized by the demand mean as in Section~\ref{sec:methods-principle}. \textbf{Output.} A
+valid action is the $(K{+}1)$-dimensional vector of warehouse and per-retailer order-up-to targets,
+clipped to non-negative integers. \textbf{Internals.}
+$\pi_{\btheta}$ uses the soft-tree backbone of Section~\ref{sec:soft-tree}: a depth-2 tree with leaves
+that emit the target vector. The crucial design choice is the action geometry. The symmetric
+geometry (a single shared retailer target) cannot represent asymmetric replenishment and only ties
+the tuned heuristic; the \emph{per-retailer} geometry (one target per
+retailer) is the natural asymmetric generalization of the gate and is the lever we test.
+
+\paragraph{The decisive lever: a per-retailer warm-start floor.}
+The keep/discard floor is the gate-reproducing CMA-ES warm start (Section~\ref{sec:methods-cmaes}). We
+generalize this warm start from the two-control symmetric geometry to \emph{any} control dimension:
+the leaves are seeded so that generation~0 emits the gate's full per-retailer target vector
+$(S^w,S^1,\dots,S^K)$, reproducing the gate to within numerical error on identical demand paths, after
+which CMA-ES searches outward. This floor is essential: \emph{without} it the richer per-retailer
+geometry is not a free win --- at screening it \emph{loses} to the gate by $-12.79\%$ on the
+heterogeneous instance, because the optimizer cannot locate the base-stock region in the larger
+search space; \emph{with} the floor the same instance flips to a $+1.33\%$ win. A raw per-retailer
+order geometry without a gate-reproducing anchor loses by $-50.84\%$,
+confirming the floor, not the representation, is what makes the per-retailer class usable.
+
+\subsection{Experiment setup}
+\label{sec:owmr-setup}
+
+The symmetric Poisson$(3)$ instances of \citet{kaynov2024owmr} are near-optimally solved by a tuned
+echelon base-stock policy --- a learned soft tree only \emph{ties} the heuristic there. We therefore
+study the three \emph{asymmetric / high-coefficient-of-variation} partial-backorder instances of
+Table~\ref{tab:owmr-params}, where the published PPO of \citet{kaynov2024owmr} beats base-stock by
+$\sim$20\%, indicating genuine exploitable structure.
+
+\paragraph{Comparator gate.}
+The like-for-like comparator is the strongest policy in our environment: an echelon base-stock policy whose
+warehouse level and per-retailer levels are grid-searched on a search-seed block (full Cartesian for
+the $K{=}3$ instance; symmetric reduction for the symmetric instance; a safety-factor candidate set
+for the heterogeneous $K{=}10$ instance), under the better of \{proportional,
+min-shortage\} allocation, then re-scored on a disjoint held-out block. This gate is already
+substantially stronger than the published base-stock and sits between it and the published PPO,
+so a beat against it transitively implies a policy at least as good as the published base-stock. The
+published PPO row is reported as the strongest \emph{learned} reference, not as the keep/discard gate.
+
+\paragraph{Evaluation protocol.}
+Policies are trained with warm-started CMA-ES (population $32$, $600$ generations at full budget) and
+evaluated under the common-random-number protocol of Section~\ref{sec:methods-eval}: the gate grid is
+searched on a $64$-path block (argmin verified stable against $96/256$), and learned policy and gate
+are re-scored on a disjoint $4096$-path held-out block under the deployed allocation. A win is claimed
+only when the paired-difference advantage exceeds its standard error. The deployed policy is the
+better of the trained CMA-ES incumbent and the gate-reproducing warm-start anchor.
+
+\begin{table}[!htbp]
+\centering
+\small
+\caption{OWMR asymmetric / high-variability partial-backorder instances of \citet{kaynov2024owmr}
+studied here. All are partial-backorder with warehouse lead $L_w=2$, emergency-shipment
+probability $0.8$, horizon $100$.}
+\label{tab:owmr-params}
+\begin{tabular}{llllll}
+\toprule
+Instance & $K$ & Per-retailer demand & $h_w$ & $h_r$ & $p$ \\
+\midrule
+heterogeneous-$3$ & $3$  & $N(1,5),\ N(5,1),\ \mathrm{Pois}(0.5)$ & $0.5$ & $1$ & $9$ \\
+high-CV symmetric-$10$ & $10$ & $N(5,14)\times 10$ (symmetric, $\sigma/\mu=2.8$) & $3$ & $3$ & $60$ \\
+heterogeneous-$10$ & $10$ & clipped-normal gradient $N(0,20)..N(10,0)$ + $4\times$Poisson & $3$ & $3$ & $60$ \\
+\bottomrule
+\end{tabular}
+\par\medskip\footnotesize Demand is rounded and clipped at $0$. The high-CV symmetric instance has ten
+identical retailers but a very high coefficient of variation; the other two are heterogeneous across
+retailers.
+\end{table}
+\FloatBarrier
+
+\subsection{Results}
+\label{sec:owmr-results}
+
+Table~\ref{tab:owmr-results} reports the learned per-retailer soft tree against the tuned gate on
+the held-out block. The learned policy \emph{beats the tuned gate beyond sampling error on two of the
+three instances}, and ties on the third. On the heterogeneous $K{=}3$ instance it improves the
+$100$-period cost from $1169.59$ to $1154.09$ ($+1.33\%$, paired advantage $+15.50\pm0.97$,
+$\approx16\times$ SEM) by learning state-dependent per-retailer deviations from the shared base-stock.
+On the symmetric high-CV $K{=}10$ instance a linear-leaf policy improves the cost from $91890.25$ to
+$85974.79$ ($+6.44\%$, paired $+5915.47\pm49.50$, $\approx120\times$ SEM), closing most of the gap to
+the published PPO (from $15.26\%$ to $7.84\%$); here the exploitable structure is \emph{dynamic
+state-dependence under high demand variance} (a constant-leaf shared base-stock only ties), not
+per-retailer heterogeneity. On the hardest, strongly heterogeneous $K{=}10$ instance the learned
+policy \emph{ties} the gate: with the per-retailer warm-start floor the trained incumbent lands above
+the strong asymmetric gate within budget, so the deployed policy falls back to the gate-reproducing
+anchor. This tie is \emph{search-limited}, not representation-limited --- the gate lies inside the
+learned policy's class, but CMA-ES cannot improve on it over the $10$-dimensional target space in
+$600$ generations.
+
+\paragraph{Interpretation.}
+The honest headline is that the learned soft tree \emph{beats the strongest tuned heuristic gate}
+beyond sampling error on the heterogeneous $K{=}3$ instance and the high-CV symmetric $K{=}10$
+instance, and ties it on the hardest heterogeneous $K{=}10$ instance. On all three rows the
+gate is itself stronger than the published base-stock and sits between it and the published
+PPO; the learned policy does \emph{not} beat the published PPO, which remains the strongest learned
+policy on every row ($-3.14\%$, $-7.84\%$, $-17.77\%$ relative to PPO). The mechanism behind the wins
+is the generalized per-retailer warm-start floor of Section~\ref{sec:owmr-policy}: it converts a rich
+but hard-to-optimize action geometry from a screening-stage loss into a robust held-out win.
+
+\begin{table}[!htbp]
+\centering
+\small
+\caption{OWMR asymmetric / high-CV instances: best learned per-retailer soft tree vs.\ the strongest
+tuned echelon base-stock $+$ allocation gate, common-random-number evaluation ($4096$ held-out
+paths, horizon $100$). Costs are $100$-period undiscounted totals (lower is better). $\Delta\%$ is the
+learned policy's improvement over the gate; ``paired $\pm$ SEM'' is the gate$-$learned advantage on
+identical paths (a win requires it to exceed its SEM). The published PPO column is the strongest
+\emph{learned} reference of \citet{kaynov2024owmr}, not the keep/discard gate.}
+\label{tab:owmr-results}
+\begin{tabular}{lccccc}
+\toprule
+Instance & Learned & Gate & $\Delta\%$ & Paired $\pm$ SEM & Published PPO \\
+\midrule
+heterogeneous-$3$ & $\mathbf{1154.09}$  & $1169.59$  & $\mathbf{+1.33\%}$ & $+15.50\pm0.97$    & $1118.92$ \\
+high-CV symmetric-$10$ & $\mathbf{85974.79}$ & $91890.25$ & $\mathbf{+6.44\%}$ & $+5915.47\pm49.50$ & $79727.39$ \\
+heterogeneous-$10$ & $50445.20$ & $50445.20$ & $+0.00\%$ & $+0.00\pm0.00$ & $42835.02$ \\
+\bottomrule
+\end{tabular}
+\par\medskip\footnotesize The comparator is the strongest tuned heuristic gate (itself stronger than
+the published base-stock); the learned policy beats it beyond SEM on the heterogeneous three-retailer
+and high-CV symmetric ten-retailer instances and ties it on the search-limited heterogeneous
+ten-retailer instance. The learned policy does not beat the published PPO ($-3.14\%$, $-7.84\%$,
+$-17.77\%$ relative to PPO), which remains the strongest learned policy on every row.
+\end{table}
+\FloatBarrier
+
+
+\section{Ameliorating inventory}
+\label{sec:amelior}
+
+\subsection{Problem formulation}
+\label{sec:amelior-formulation}
+
+Figure~\ref{fig:env-amelior} depicts this environment as a flow network --- the price-dependent
+purchase into the youngest age class, the aging of stock that \emph{improves} with age (subject to
+evaporation and stochastic decay), the per-period blending and issuance to age-targeted products, and
+where purchase cost and holding are charged against sales revenue.
+
+\begin{figure}[t]
+  \centering
+  \resizebox{\textwidth}{!}{%
+  \begin{tikzpicture}[x=1cm,y=1cm]
+    \node[envsupply] (sup)  at (0,0)      {external\\supplier\\(price $P_t$)};
+    \node[envstock]  (stk)  at (7.4,0)    {age-structured stock\\$\mathbf I_t=(I^{1}_t,\dots,I^{A}_t)$\\(young $\to$ aged/improved)};
+    \node[envsink]   (prod) at (15.6,0)   {age-targeted\\products (sales $P^{s}_t$)};
+    \node[envlost]   (loss) at (7.4,-4.2) {evaporation\\$+$ decay\\\emph{(loss)}};
+
+    \draw[reqflow] (stk.north west) to[bend right=32] (sup.north east);
+    \node[reqlabel] at (3.3,2.0) {\ding{183}\, purchase $a^P_t$};
+    \draw[matflow] (sup.south east) to[bend right=10] (stk.west);
+    \node[ltlabel]  at (3.4,-1.55) {\ding{184}\, enters youngest class;\\cost $P_t\,a^P_t$};
+
+    \draw[demandflow] (stk) -- (prod)
+          node[midway,above=4pt,ltlabel] {\ding{186}\, blending LP issues\\aged stock to products\\(mean age $\ge$ target)};
+    \draw[lostflow,myorange!70!black] (stk.south) -- (loss.north);
+
+    \node[costH,above=9mm of stk.north] {holding $h\sum_a I^{a}_t$};
+    \node[costK,below=2pt of loss.south,align=center] {ameliorate:\\age $\Rightarrow$ value};
+    \node[costP,right=3pt of prod.east] {revenue $+\,P^{s}_t$};
+
+    \begin{scope}[on background layer]
+      \node[envbox,fit=(current bounding box)] (box) {};
+    \end{scope}
+    \node[envtitle,above=3pt of box.north,anchor=south]
+          {Ameliorating single-item environment ($A$ age classes; long-run average profit)};
+  \end{tikzpicture}%
+  }
+  \par\vspace{6pt}\centerline{%
+    \tikz\node[draw=mydarkblue!55,rounded corners=4pt,fill=mydarkblue!4,inner sep=7pt]{%
+      \begin{minipage}{\dimexpr\linewidth-18pt\relax}\centering
+        {\small\bfseries\color{mydarkblue!85}Per-period event sequence}\\[4pt]
+        {\small\begin{tabular}{@{}p{4.3cm}p{4.3cm}p{4.3cm}@{}}
+          \ding{182}\,observe inventory by age $\mathbf I_t$ and realized purchase price $P_t$ & \ding{183}\,choose purchase volume $a^P_t\in[0,\bar I]$; it enters the youngest age class & \ding{184}\,a per-period \emph{blending LP} issues aged stock to products whose blend mean age meets the target\\[4pt]
+          \ding{185}\,sales realize at stochastic prices $P^{s}_t$; production is derived from the LP & \ding{186}\,stock \emph{ages}: evaporation and age-dependent decay remove a fraction (loss) & \ding{187}\,profit $=$ sales revenue $-$ purchase cost $P_t a^P_t-$ holding $h\sum_a I^{a}_t$\\
+        \end{tabular}}
+      \end{minipage}};}\par
+  \caption{Ameliorating-inventory environment of \citet{pahrGrunow2025}, drawn as an event-based
+  interaction ($A$ age classes; the product \emph{improves} with age, e.g.\ spirits or port wine).
+  Each period the controller \emph{purchases} $a^P_t$ units at a realized stochastic price $P_t$ (thin
+  dashed control arrow); the goods enter the \emph{youngest} age class (solid material arrow, cost
+  $P_t a^P_t$). A per-period \emph{blending LP} then issues aged stock to products defined by
+  \emph{target ages} --- a product can ship only if the issued blend's mean age meets its target ---
+  and sales realize at stochastic prices $P^{s}_t$; production is derived from the LP solution. Stock
+  \emph{ages} subject to evaporation and an age-dependent stochastic decay (orange loss sink). The
+  objective is long-run \emph{average profit}: sales revenue minus purchase cost and holding; the
+  boxed panel gives the per-period event sequence (Section~\ref{sec:amelior-formulation},
+  Eq.~\eqref{eq:amelior-profit}).}
+  \label{fig:env-amelior}
+\end{figure}
+
+We consider the single-item, periodic-review ameliorating-inventory control problem of
+\citet{pahrGrunow2025}, in which the product \emph{improves} with age: inventory is purchased young
+and ages through $A$ discrete age classes, gaining value (and meeting product target ages) but subject
+to evaporation and stochastic decay. The objective is long-run \emph{average profit}. We use the
+faithful average-profit formulation, including the per-period blending linear program (LP) that solves
+issuance and from which production is derived.
+
+\paragraph{Timing of a period.}
+At the start of period $t$ the controller observes the inventory disaggregated by age class and the
+realized purchase price $P_t$, and chooses a purchase volume $a^P_t$ which enters the youngest age
+class. A per-period blending LP issues aged stock to the products --- each product is defined by a
+target age and (with blending) may be served by a mix of age classes whose mean age meets the target
+--- and sales realize at stochastic prices. The remaining stock then ages: a fraction is lost to
+evaporation and an age-dependent stochastic decay.
+
+\paragraph{State.}
+The state is the inventory vector disaggregated by age class together with the realized purchase
+price,
+\begin{equation*}
+    \mathbf{S}_t=\bigl(I^{1}_t,\dots,I^{A}_t;\ P_t\bigr),
+\end{equation*}
+where $I^{a}_t$ is the on-hand quantity in age class $a$ ($a=1$ youngest, $a=A$ oldest/most improved).
+The sales prices follow a correlated process and form part of the environment's stochasticity.
+
+\paragraph{Action.}
+In the faithful dynamics the only free control is the scalar \emph{purchase} volume
+\begin{equation*}
+    a_t=a^P_t\in[0,\bar I],
+\end{equation*}
+where $\bar I$ is the inventory capacity. Issuance is determined by the environment's per-period
+blending LP and production is derived from it, so the ``three-part'' purchase/produce/issue decision
+of \citet{pahrGrunow2025} is reduced here to the structural purchase head.
+
+\paragraph{Transition.}
+The purchase enters the youngest class, $I^{1}\!\leftarrow a^P_t$. The blending LP issues quantities
+$x^{a}_t$ from the age classes to meet product demand subject to the per-product mean-age targets and a
+processing capacity; sold quantities leave inventory. The surviving stock then ages by one class, and
+an age-dependent decay factor together with a constant evaporation removes a fraction of each class
+(the loss sink in Figure~\ref{fig:env-amelior}).
+
+\paragraph{One-period profit.}
+Writing $R_t$ for realized sales revenue (issued quantities valued at the stochastic sales prices),
+the profit incurred in period $t$ is revenue minus the purchase cost and holding:
+\begin{equation}
+    \label{eq:amelior-profit}
+    \rho_t \;=\; R_t \;-\; P_t\,a^P_t \;-\; h\sum_{a=1}^{A} I^{a}_t ,
+\end{equation}
+with stochastic purchase price $P_t$ and per-unit holding cost $h$.
+
+\paragraph{Objective.}
+A stationary policy $\pi_{\btheta}$ maps the state to the purchase volume. Performance is the long-run
+\emph{average profit},
+\begin{equation}
+    \label{eq:amelior-objective}
+    G(\btheta) \;=\; \lim_{T\to\infty}\frac{1}{T}\,\mathbb{E}\!\left[\sum_{t=1}^{T}\rho_t\right],
+    \qquad \max_{\btheta}\ G(\btheta),
+\end{equation}
+estimated by simulation over shared price/demand-path seeds on a long post-warm-up window.
+
+\FloatBarrier
+
+\subsection{Policy}
+\label{sec:amelior-policy}
+
+Ameliorating inventory tests the recipe under a \emph{profit} objective with a price-augmented state.
+\textbf{Input.} The policy input is the price-augmented state $[\,P_t,\ I^{1}_t,\dots,I^{A}_t\,]$,
+divide-by-scale normalized by the inventory capacity. \textbf{Output.} A valid action is the scalar
+purchase volume $a^P_t\in[0,\bar I]$. \textbf{Internals.} $\pi_{\btheta}$ uses the soft-tree backbone
+of Section~\ref{sec:soft-tree} with a single purchase head and a \emph{linear} leaf, so the head can
+express a \emph{price-reactive} order-up-to purchase --- buying more when the realized purchase price
+is low, which a fixed order-up-to level cannot do. We warm-start CMA-ES at an order-up-to purchase
+$a^P_t=\mathrm{softplus}\!\left(S-\sum_a I^{a}_t\right)$, so generation~0 reproduces a simple
+order-up-to heuristic and the search refines a price-reactive purchase.
+
+\subsection{Experiment setup}
+\label{sec:amelior-setup}
+
+We use the two reference instances of Table~\ref{tab:amelior-params}: the companion default
+spirits instance ($10$ age classes, $3$ products, no blending) and the industry port-wine
+case study ($25$ age classes, $2$ products, blending enabled).
+
+\paragraph{Comparators: a bound and a beatable gate.}
+This problem has two reference points of different kinds, and we treat them differently. (i)~The
+\emph{perfect-information LP upper bound} on average profit ($1991.93$ for the spirits instance,
+$2444.80$ for the port-wine instance) is an \emph{upper bound} under hindsight and full LP issuance: our
+exact LP solver \emph{re-solves} this program and reproduces both published bounds to within $10^{-3}$ (an
+executing fidelity reproduction, not a stored constant), and we report the \emph{gap} to it but never treat it
+as an achievable target. (ii)~The like-for-like keep/discard \emph{gate} is the best tuned order-up-to
+purchase (the level $S$ maximizing profit on the same evaluation block); beating it is a legitimate
+win.
+
+\paragraph{Evaluation protocol.}
+Policies are trained with warm-started CMA-ES (full budget: population $16$, $60$ generations) and
+evaluated under the common-random-number protocol of Section~\ref{sec:methods-eval} on a held-out
+block ($12{,}000$-period horizon, $24$ paired seeds disjoint from training). A win over the gate is
+claimed only when the paired-difference advantage exceeds its standard error.
+
+\begin{table}[!htbp]
+\centering
+\small
+\caption{Ameliorating-inventory reference instances of \citet{pahrGrunow2025} used here.}
+\label{tab:amelior-params}
+\begin{tabular}{llll}
+\toprule
+Instance & Age classes $A$ & Products (target ages) & Perfect-info LP bound \\
+\midrule
+spirits  & $10$ & $3$ (ages $\{2,4,6\}$), no blending & $1991.93$ \\
+port wine    & $25$ & $2$ (ages $\{9,19\}$), blending     & $2444.80$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+\FloatBarrier
+
+\subsection{Results}
+\label{sec:amelior-results}
+
+Table~\ref{tab:amelior-results} reports the learned price-reactive purchase policy against the best
+tuned order-up-to gate at full budget. On both instances the learned policy \emph{beats the gate by a
+wide, statistically unambiguous margin}: on the spirits instance it raises average profit from
+$20.91$ to $115.07$ ($+94.16$, $+450\%$, $\approx140\times$ the paired SEM), and on the port-wine instance
+from $133.78$ to $505.78$ ($+372.00$, $+278\%$, $\approx610\times$ the paired SEM). The mechanism is
+price reactivity: the linear leaf buys more when the realized purchase price is low, which a fixed
+order-up-to level cannot exploit.
+
+\paragraph{Interpretation: an honest gap to an upper bound.}
+The gap to the perfect-information LP bound remains large ($94.2\%$ on the spirits instance,
+$79.3\%$ on the port-wine instance) and we report it as such. This gap is \emph{structural}, not an
+optimization failure: the bound assumes perfect information and the full three-part LP decision
+(purchase, production targets, and per-age issuance solved jointly with hindsight), whereas our policy
+controls only the scalar purchase volume while the environment charges the full purchase price
+($\sim$200 per unit) every period. A feasible single-purchase policy on the stochastic environment
+therefore sits well below the hindsight bound by construction, and our gap is \emph{not} comparable to
+the $\sim$3.5\% gap reported by \citet{pahrGrunow2025} for a deep-RL agent that acts in the full
+three-part action space. The tighter gap on the port-wine instance ($79.3\%$ vs $94.2\%$) is explained by
+blending: issuing across the two target ages lets each purchased unit convert into more sold product,
+so a single purchase lever captures more of the bound. The honest claim is therefore a robust beat of
+the order-up-to heuristic under a single shared estimator; widening the action geometry to the
+full three-part decision is the natural next step toward the deep-RL gap and is left to future work.
+
+\begin{table}[!htbp]
+\centering
+\small
+\caption{Ameliorating inventory: best learned price-reactive purchase soft tree vs.\ the best tuned
+order-up-to gate, common-random-number evaluation ($12{,}000$-period horizon, $24$ paired seeds).
+Higher average profit is better. ``Gain over gate'' is reported as the absolute profit gain and as a
+fraction of the gate; ``gap to bound'' is the fraction of the perfect-information LP \emph{upper bound}
+left uncaptured (the bound is a bound, never an achievable target).}
+\label{tab:amelior-results}
+\begin{tabular}{lccccc}
+\toprule
+Instance & Learned ($\pm$ SEM) & Order-up-to gate & Gain over gate & LP bound & Gap to bound \\
+\midrule
+spirits & $\mathbf{115.07\pm0.44}$ & $20.91$  & $+94.16\ (+450\%)$ & $1991.93$ & $94.2\%$ \\
+port wine    & $\mathbf{505.78\pm0.59}$ & $133.78$ & $+372.00\ (+278\%)$ & $2444.80$ & $79.3\%$ \\
+\bottomrule
+\end{tabular}
+\par\medskip\footnotesize The like-for-like win is over the tuned order-up-to gate (paired CRN,
+$\approx140\times$ / $\approx610\times$ SEM). The LP-bound gap is structural --- a single scalar
+purchase action vs the bound's full three-part LP issuance --- and is not comparable to the
+$\sim$3.5\% deep-RL gap of \citet{pahrGrunow2025}; it is reported, never ``beaten''.
+\end{table}
+\FloatBarrier
+
+
+\section{Production / assembly / distribution network}
+\label{sec:pirhoo}
+
+\subsection{Problem formulation}
+\label{sec:pirhoo-formulation}
+
+Figure~\ref{fig:env-pirhoo} depicts this environment as a flow network --- the per-relation order
+requests, the lead-time shipments of raw material between nodes, the ``process all raw on arrival''
+conversion to finished goods, the external demand at the downstream node, and where holding (on raw,
+finished, and in-transit stock) and the backorder penalty are charged.
+
+\begin{figure}[t]
+  \centering
+  \resizebox{\textwidth}{!}{%
+  \begin{tikzpicture}[x=1cm,y=1cm]
+    \node[envsupply] (sup) at (0,0)      {external\\source};
+    \node[envstock]  (n0)  at (5.4,0)    {node $0$\\raw\,$\mid$\,finished};
+    \node[envstock]  (n1)  at (11.0,0)   {node $1$\\raw\,$\mid$\,finished};
+    \node[envstock]  (n2)  at (16.6,0)   {node $2$\\raw\,$\mid$\,finished};
+    \node[envsink]   (dem) at (22.0,0)   {demand\\$D_t\sim N(5,1)$};
+    \node[envlost]   (bo)  at (22.0,-3.6){backorder\\(carried)};
+
+    \draw[reqflow] (n0.north west) to[bend right=26] (sup.north east);
+    \draw[reqflow] (n1.north west) to[bend right=26] (n0.north east);
+    \draw[reqflow] (n2.north west) to[bend right=26] (n1.north east);
+    \node[reqlabel] at (10.9,1.95) {\ding{183}\, pairwise order-up-to on each relation};
+
+    \draw[matflow] (sup.south east) to[bend right=10] (n0.west);
+    \draw[matflow] (n0.south east)  to[bend right=10] (n1.west);
+    \draw[matflow] (n1.south east)  to[bend right=10] (n2.west);
+    \node[ltlabel] at (8.1,-1.5) {\ding{185}\, ship (lead $L$); \emph{process all raw on arrival}};
+
+    \draw[demandflow] (n2) -- (dem)
+          node[midway,above=3pt,ltlabel] {\ding{186}\, demand};
+    \draw[lostflow] (dem) -- (bo);
+
+    \node[costH,above=8mm of n1.north] {holding on raw\,$+$\,finished\,$+$\,in-transit};
+    \node[costP,right=2pt of bo.east] {penalty $b\,B_t$};
+
+    \begin{scope}[on background layer]
+      \node[envbox,fit=(current bounding box)] (box) {};
+    \end{scope}
+    \node[envtitle,above=3pt of box.north,anchor=south]
+          {General supply network (serial case~3 instantiation; external demand at the downstream node)};
+  \end{tikzpicture}%
+  }
+  \par\vspace{6pt}\centerline{%
+    \tikz\node[draw=mydarkblue!55,rounded corners=4pt,fill=mydarkblue!4,inner sep=7pt]{%
+      \begin{minipage}{\dimexpr\linewidth-18pt\relax}\centering
+        {\small\bfseries\color{mydarkblue!85}Per-period event sequence}\\[4pt]
+        {\small\begin{tabular}{@{}p{4.3cm}p{4.3cm}p{4.3cm}@{}}
+          \ding{182}\,observe per-node raw/finished inventory, pipelines, backlog & \ding{183}\,place a pairwise order-up-to request on each supply relation & \ding{184}\,external demand $D_t$ is observed at the downstream node\\[4pt]
+          \ding{185}\,shipments placed $L$ ago arrive; each node \emph{processes all raw on arrival} into finished goods & \ding{186}\,downstream demand served from finished stock; shortfall \emph{backordered} and carried over & \ding{187}\,charge holding on raw, finished, and in-transit stock and penalty $b$ on backorders\\
+        \end{tabular}}
+      \end{minipage}};}\par
+  \caption{General production/assembly/distribution supply-network environment of
+  \citet{pirhooshyaran2021scn}, drawn as an event-based interaction; we instantiate it at the
+  paper's serial case~3 (a 3-node serial chain $0\!\to\!1\!\to\!2$, node $0$ the sole source, external
+  demand $N(5,1)$ at the downstream node $2$). Each node carries raw-material and finished-goods
+  inventory. Each period a \emph{pairwise order-up-to} request is placed on every supply relation (thin
+  dashed control arrows); shipments placed $L$ periods earlier arrive (solid material arrows) and each
+  node \emph{processes all raw material on arrival} into finished goods. Downstream demand is served
+  from finished stock and any shortfall is \emph{backordered and carried over}. Holding cost is charged
+  on raw, finished, \emph{and} in-transit stock and a penalty $b$ on
+  backorders; the boxed panel gives the per-period event sequence
+  (Section~\ref{sec:pirhoo-formulation}, Eq.~\eqref{eq:pirhoo-cost}).}
+  \label{fig:env-pirhoo}
+\end{figure}
+
+We consider the general production/assembly/distribution supply-network model of
+\citet{pirhooshyaran2021scn}: a directed network of nodes, each carrying raw-material and
+finished-goods inventory, connected by supply relations with deterministic shipment lead times. The
+control is a pairwise order-up-to policy on the supply relations; each node \emph{processes all raw
+material on arrival} into finished goods, external demand arrives at the downstream node(s), and
+shortfalls are backordered and carried over. We instantiate it at the paper's \emph{serial case~3}
+(a 3-node serial chain), the instance wired into the environment. Our implementation is verified
+\emph{equation-by-equation} against the paper (a worked-transition fixture reproduces
+the per-period cost by hand), but it is \emph{not} literature-verified at the network level: see the
+honesty note below.
+
+\paragraph{Timing of a period.}
+At the start of period $t$ the controller observes each node's raw and finished inventory, the
+in-transit pipelines, and the downstream backlog, and places a pairwise order-up-to request on each
+supply relation. External demand is observed; shipments placed $L$ periods earlier arrive and each
+node processes all arriving raw material into finished goods; downstream demand is served from finished
+stock with proportional allocation and any shortfall is backordered; holding and penalty costs are
+charged.
+
+\paragraph{State.}
+The state collects, for each node, its raw and finished inventory and in-transit pipeline, together
+with the downstream backlog,
+\begin{equation*}
+    \mathbf{S}_t=\bigl(\{\text{raw}^{n}_t,\ \text{fin}^{n}_t,\ \text{pipeline}^{n}_t\}_{n},\ \text{backlog}_t\bigr).
+\end{equation*}
+
+\paragraph{Action.}
+The decision is a per-relation order quantity (one entry per supply relation),
+\begin{equation*}
+    a_t=\bigl(q^{1}_t,\dots,q^{R}_t\bigr),
+\end{equation*}
+the order placed on each of the $R$ supply relations; for serial case~3, $R=3$ (the two internal edges
+and the external source).
+
+\paragraph{Transition.}
+Orders placed on each relation are shipped subject to upstream availability and arrive after the
+relation's lead time. On arrival each node processes all raw material into finished goods. Downstream
+demand is served from finished stock; when finished stock is scarce it is allocated proportionally and
+the unmet quantity is backordered and carried into the next period.
+
+\paragraph{One-period cost.}
+The cost incurred in period $t$ is the holding cost on \emph{all} inventory (raw, finished, and
+in-transit) plus the backorder penalty at the demand node:
+\begin{equation}
+    \label{eq:pirhoo-cost}
+    c_t \;=\; \sum_{n}\Bigl(h^{n}\bigl[\text{raw}^{n}_t+\text{fin}^{n}_t+\text{in-transit}^{n}_t\bigr]\Bigr) \;+\; b\,B_t ,
+\end{equation}
+with per-node holding rates $h^{n}$ and per-unit backorder penalty $b$ at the demand node ($B_t$ the
+backorder level), following the paper's cost specification.
+
+\paragraph{Objective.}
+A stationary policy $\pi_{\btheta}$ maps the state to the per-relation orders. Performance is the
+expected undiscounted average per-period cost over the horizon, $\min_{\btheta} C(\btheta)$, estimated
+by simulation over shared demand-path seeds.
+
+\FloatBarrier
+
+\subsection{Policy}
+\label{sec:pirhoo-policy}
+
+This environment tests the recipe on a \emph{network} action space. \textbf{Input.} The policy input
+is the per-node feature vector (raw and finished inventory, in-transit pipeline, and backlog),
+divide-by-scale normalized. \textbf{Output.} A valid action is the per-relation order vector of
+dimension $R$, clipped to the physical action box.
+\textbf{Internals.} $\pi_{\btheta}$ uses the soft-tree backbone of Section~\ref{sec:soft-tree}: a
+depth-2 tree with \emph{oblique} splits and \emph{linear} leaves, so each leaf maps the policy-state
+features to the per-relation orders and oblique splits switch regime by inventory state. The design
+choice we test is the \emph{leaf class}: a constant leaf can emit only a fixed order rate (and stays
+at the flow regime), whereas a linear leaf reads finished inventory, in-transit pipeline, and backlog
+to express inventory-position feedback on the same supply relations as the pairwise base-stock policy.
+We warm-start CMA-ES at the steady-state flow rate (order the demand mean on each relation), the
+simplest reproducible known-good point, and the search refines outward.
+
+\subsection{Experiment setup}
+\label{sec:pirhoo-setup}
+
+We study the paper's serial case~3: a 3-node serial chain
+$0\!\to\!1\!\to\!2$ with node $0$ the sole source, external demand $N(5,1)$ at node $2$ only, horizon
+$T=10$, shipment lead times (external$\to$0, $0\to1$, $1\to2$) $=(2,1,1)$, local holding $[2,4,7]$, and
+backorder cost $37.12$ at node $2$. The objective is the undiscounted average per-period cost.
+
+\paragraph{Honesty status: a faithful but not literature-verified environment.}
+This environment reproduces exactly one \emph{published} quantity: the single-node newsvendor cost of
+the paper's Table~1 ($\mu=100,\sigma=10,h=10,p=30,L=1$), for which the environment's exact dynamic
+program returns $\approx127.10$ against the published $127.11$ ($<1\%$). This certifies the
+\emph{dynamics}. There is \emph{no} published optimum for the multi-node version of \emph{this} MDP, so
+every multi-node reference instance remains not literature-verified. In particular, the
+textbook serial optimum $47.65$ (Section~\ref{sec:serial}) is an \emph{echelon} base-stock cost and is
+\emph{structurally unreachable} by this environment's \emph{local} pairwise policy (which targets the
+raw-material position and excludes finished goods); we therefore do \emph{not} use $47.65$ (or any
+published number) as the comparator here. The comparator is instead the environment's \emph{own} best
+heuristic.
+
+\paragraph{Comparator gate (a research baseline, not an optimum).}
+The strongest heuristic native to this environment is the pairwise base-stock policy of the paper. We
+grid-search its per-relation order-up-to levels on a search-seed block and re-score the
+argmin on a disjoint held-out block: the argmin is order-up-to $[8,7,9]$ with held-out cost
+$60.24$ per period. We state explicitly that $60.24$ is the environment's own best heuristic, not an
+optimum.
+
+\paragraph{Evaluation protocol.}
+Policies are trained with warm-started CMA-ES (population $24$, $60$ generations) and evaluated under
+the common-random-number protocol of Section~\ref{sec:methods-eval}: learned policy and gate are scored
+on the \emph{same} held-out block ($4000$ paths), paired on identical demand realizations.
+
+\subsection{Results}
+\label{sec:pirhoo-results}
+
+Table~\ref{tab:pirhoo-results} reports the learned soft tree against the environment's own best
+pairwise base-stock on the held-out block. The learned policy \emph{beats the environment's own best
+heuristic}, robustly and reproducibly: the depth-2 oblique-linear tree improves the per-period cost
+from $60.24$ to $57.25\pm0.22$ ($-4.96\%$) on one CMA seed and to $54.96\pm0.23$ ($-8.77\%$) on
+another, and a depth-3 tree gives $57.85\pm0.25$ ($-3.97\%$); every configuration beats the gate by
+more than $3.9\%$, outside the held-out standard error by $\ge 9\times$ SEM, across two seeds and two
+depths. The flow warm-start (generation~0) sits at $70.85\pm0.61$, so the improvement is the CMA-ES
+delta, not the initialization. The mechanism is a strictly richer control class on the \emph{same}
+action relations: the pairwise base-stock policy reacts only to the local raw-material position, while
+the learned linear-leaf tree additionally reads finished inventory, backlog, and inbound pipeline, and
+switches behaviour by inventory regime; constant-leaf trees stay at the flow regime and lose to the
+gate, confirming the leaf class is the lever.
+
+\paragraph{Honest scope.}
+This is a \emph{research} result on a faithful but \emph{not} literature-verified environment: the
+learned policy beats the environment's \emph{own} best heuristic, not any published cost. We report it
+as evidence that action design (the leaf class), not optimizer capacity, governs whether a black-box
+search recovers structured-control performance --- consistent with the same finding on the lost-sales,
+one-warehouse multi-retailer, and multi-echelon environments elsewhere in this work. Upgrading the
+environment to literature-verified would require recovering the paper's exact order-up-to to
+inventory-position simulation convention and binding the echelon-position policy; we leave
+that to future work and do not present this row as a published-number benchmark.
+
+\begin{table}[!htbp]
+\centering
+\small
+\caption{Production/assembly/distribution network (serial case~3): best learned soft tree vs.\ the
+environment's \emph{own} best pairwise base-stock gate, common-random-number evaluation ($4000$
+held-out paths). Costs are undiscounted per-period averages (lower is better). $\Delta\%$ is the
+learned policy's improvement over the gate; ``SEM mult.'' is that gain divided by the held-out
+standard error. The gate ($60.24$) is the environment's own grid-searched heuristic, \emph{not} a
+published optimum --- this is a research comparison, not a literature-number beat.}
+\label{tab:pirhoo-results}
+\begin{tabular}{lccc}
+\toprule
+Policy / config & Held-out cost ($\pm$ SEM) & $\Delta\%$ vs gate & SEM mult. \\
+\midrule
+Best pairwise base-stock (gate, OUL $[8,7,9]$) & $60.24$ & --- & --- \\
+Flow warm-start (generation $0$)               & $70.85\pm0.61$ & $+17.6\%$ & --- \\
+Learned soft tree, depth $2$, seed $123$       & $\mathbf{57.25\pm0.22}$ & $\mathbf{-4.96\%}$ & $\approx 14\times$ \\
+Learned soft tree, depth $2$, seed $321$       & $\mathbf{54.96\pm0.23}$ & $\mathbf{-8.77\%}$ & $\approx 23\times$ \\
+Learned soft tree, depth $3$, seed $123$       & $\mathbf{57.85\pm0.25}$ & $\mathbf{-3.97\%}$ & $\approx 10\times$ \\
+\bottomrule
+\end{tabular}
+\par\medskip\footnotesize The comparator is the environment's own best heuristic on a faithful but
+not literature-verified environment; the result is a research learned-beats-own-heuristic
+comparison, not a published-number beat. The serial optimum $47.65$ (Section~\ref{sec:serial}) is
+structurally unreachable by this environment's local pairwise policy and is not used as a target here.
+\end{table}
+\FloatBarrier
+
+
 \section{Discussion and managerial insights}
 \label{sec:discussion}
 
-Synthesizing across the seven problems, three themes emerge. First, a \emph{single, generic learning
+Synthesizing across the ten problems, three themes emerge. First, a \emph{single, generic learning
 recipe} --- CMA-ES over a compact policy --- is portable: the same optimization loop, unchanged,
 matches or beats strong heuristics and published DRL on a scalar lost-sales order, a setup-cost
 order/no-order decision, a structured dual-sourcing order pair, and a pair of echelon order-up-to
@@ -2715,8 +3448,9 @@ to order is concrete and verifiable.
 
 We have shown that evolution strategies --- specifically CMA-ES over compact, policy-owned decoders
 --- learn inventory control policies that match or beat strong heuristics and published DRL across
-seven inventory problems: lost sales, fixed-cost lost sales, dual sourcing, divergent and serial
-multi-echelon, general-network backorder, and perishable inventory. Relative to DRL, CMA-ES needs few hyperparameters, supplies its own
+ten inventory problems: lost sales, fixed-cost lost sales, dual sourcing, divergent and serial
+multi-echelon, general-network backorder, perishable inventory, one-warehouse multi-retailer
+distribution, ameliorating inventory, and a production/assembly/distribution network. Relative to DRL, CMA-ES needs few hyperparameters, supplies its own
 exploration, and optimizes the realized cost directly, so the same loop transfers across problems; and
 the resulting policies are orders of magnitude smaller than published DRL networks while remaining
 interpretable and verifiable.
@@ -2738,7 +3472,7 @@ idea with sample-efficient learners for limited-data regimes.
 % Bibliography embedded inline (natbib-compatible \bibitem labels) so the manuscript is
 % self-contained and renders with a single pdflatex pass -- no bibtex step required. The
 % same entries are also kept in references.bib for tooling that prefers a .bib database.
-\begin{thebibliography}{23}
+\begin{thebibliography}{24}
 
 \bibitem[Bijvank et al.(2015)]{Bijvank2015ParametricPolicies}
 M.~Bijvank, S.~Bhulai, and W.~T. Huh.
@@ -2855,6 +3589,11 @@ J.~Farrington, W.~K. Wong, K.~Li, and M.~Utley.
 Going faster to see further: GPU-accelerated value iteration and simulation for perishable inventory control using JAX.
 \emph{Annals of Operations Research}, 349(3):1609--1638, 2025.
 
+\bibitem[Pahr and Grunow(2025)]{pahrGrunow2025}
+M.~Pahr and M.~Grunow.
+The value of blending---Managing ameliorating inventory using deep reinforcement learning.
+\emph{Production and Operations Management}, 35(5), 2025.
+
 \end{thebibliography}
 
 \clearpage
@@ -2871,11 +3610,17 @@ published one with the relative gap. The remainder of this appendix carries out 
 problem; where a residual gap remains (most notably one multi-echelon case study below, reproduced to
 within $1.31\%$), we state it explicitly and treat the reproduction as an implementation-fidelity
 check rather than a re-derivation of the published result. The per-problem subsections that follow
-validate all seven problems studied in this paper (vanilla lost sales, fixed-cost lost sales,
-multi-echelon Van~Roy / dual sourcing, perishable inventory, general-network backorder, and serial
-multi-echelon); the final subsection (Section~\ref{app:additional-env-validation}) records the same
-fidelity checks for two additional environments in our suite that we validate against the literature
-but do not train on or report learned-policy results for here.
+validate the seven problems whose comparator is a published reproduction-able quantity (vanilla lost
+sales, fixed-cost lost sales, multi-echelon Van~Roy / dual sourcing, perishable inventory,
+general-network backorder, and serial multi-echelon); the final subsection
+(Section~\ref{app:additional-env-validation}) records the same fidelity checks for further
+environments in our suite that we validate against the literature. The three remaining studied
+problems are anchored differently and therefore do not appear as published-number rows here: the
+one-warehouse multi-retailer and ameliorating-inventory results are reported against a tuned
+in-environment heuristic gate (with, for ameliorating inventory, a perfect-information upper bound
+reported strictly as a bound), and the production/assembly/distribution network is a faithful but
+not literature-verified environment whose only published anchor --- the single-node newsvendor cost
+--- is recorded in Section~\ref{app:additional-env-validation}.
 
 \subsection{Published vanilla lost-sales validation}
 
@@ -3114,8 +3859,9 @@ the known-optimal policy before any learned policy is trained on it.
 \subsection{Additional verified environments (not studied in this paper's experiments)}
 \label{app:additional-env-validation}
 
-The per-problem subsections above complete the literature validation for all seven problems studied in
-this paper. For completeness we record here a separate, smaller bucket: two further inventory
+The per-problem subsections above complete the published-number literature validation for the seven
+literature-anchored problems studied in this paper. For completeness we record here a separate,
+smaller bucket: two further inventory
 environments that we implement and validate against the literature, but on which we
 do \emph{not} train policies or report learned-policy results in this paper. We note them only because
 they bear on reproducibility --- our environments reproduce published benchmarks beyond the
