@@ -109,9 +109,10 @@ We study whether a single, generic learning recipe --- evolution strategies opti
 interpretable policies --- can match or beat strong problem-specific heuristics and published deep
 reinforcement learning (DRL) across a range of classical inventory control problems. Using
 Covariance Matrix Adaptation Evolution Strategies (CMA-ES) we learn the parameters of small policy
-function approximators (linear maps, one-hidden-layer networks, and soft decision trees) for four
-problems: lost sales, fixed-ordering-cost lost sales, dual sourcing, and divergent multi-echelon
-control with special delivery. A recurring design lever is that the \emph{action parameterization is
+function approximators (linear maps, one-hidden-layer networks, and soft decision trees) for seven
+problems: lost sales, fixed-ordering-cost lost sales, dual sourcing, divergent multi-echelon control
+with special delivery, perishable inventory, general-network backorder, and serial (Clark--Scarf)
+multi-echelon control. A recurring design lever is that the \emph{action parameterization is
 part of the policy}: rather than fixing an external action grid, each policy carries its own decoder
 (a soft-gated direct or ordinal quantity, or soft-tree leaves) and, where a structured heuristic
 exists, learns inside that heuristic's coordinate system.
@@ -122,7 +123,11 @@ $48$-instance fixed-cost surface. On the six dual-sourcing instances of \citet{g
 the learned soft tree matches the capped dual-index heuristic --- itself a $\le0.11\%$ proxy for the
 bounded-DP optimum --- on every instance, and thus sits well inside the band that the published A3C
 learner ($0.51$--$1.85\%$ gap) does not reach. On both reported multi-echelon settings a
-direct-level soft tree improves on the best in-environment constant base-stock by $\approx 14.4\%$.
+direct-level soft tree improves on the best in-environment constant base-stock by $\approx 14.4\%$. On
+three further problems, a compact soft tree beats the best base-stock gate for perishable inventory
+($+1.16\%$ and $+0.82\%$ under FIFO and LIFO issuing), beats the published constant-base-stock
+benchmark of a general-network backorder system by over $20\%$, and matches the proven serial
+(Clark--Scarf) optimum.
 
 The policies carry tens to a few hundred parameters, are trained without per-problem hyperparameter
 tuning, and the reported single-state actions are validated against an independent rollout. The
@@ -183,7 +188,9 @@ Our contributions are as follows.
     per-problem hyperparameter tuning. Learned policies are instance-best in $22/24$ vanilla and
     $47/48$ fixed-cost lost-sales instances, match the capped dual-index optimal proxy on all six
     dual-sourcing instances, and improve on the best in-environment constant base-stock by
-    $\approx 14.4\%$ on both multi-echelon settings.
+    $\approx 14.4\%$ on both multi-echelon settings; on the three further problems a soft tree beats the
+    best base-stock gate for perishable inventory, beats the published benchmark of a general-network
+    backorder system by over $20\%$, and matches the proven serial Clark--Scarf optimum.
     \item \textbf{Action parameterization as policy design.} We formalize and evaluate a family of
     policy-owned decoders (soft-gated direct quantity, soft-gated ordinal quantity, soft trees with
     linear leaves) and per-problem action geometries (capped-dual-index coordinates; direct-level
@@ -201,9 +208,10 @@ The remainder of the paper is organized as follows. Section~\ref{sec:related} re
 on learned inventory policies, evolution strategies, dual sourcing, and multi-echelon control.
 Section~\ref{sec:methods} presents the shared machinery: the policy interface (a learned map from
 state to valid action), the CMA-ES optimizer, and the evaluation protocol common to all problems.
-Sections~\ref{sec:lostsales}--\ref{sec:multiechelon} then treat each problem as a self-contained
-unit --- lost sales and fixed-cost lost sales, dual sourcing, and divergent multi-echelon control ---
-each stating its formulation, its policy (input state, internals, output action), its instance-level
+Sections~\ref{sec:lostsales}--\ref{sec:serial} then treat each problem as a self-contained
+unit --- lost sales and fixed-cost lost sales, dual sourcing, divergent multi-echelon control,
+perishable inventory, general-network backorder, and serial multi-echelon control --- each stating
+its formulation, its policy (input state, internals, output action), its instance-level
 experiment setup, and its results, with interpretation of where each decoder wins and where
 heuristics still lead. Section~\ref{sec:discussion} draws managerial insights, and
 Section~\ref{sec:conclusion} concludes with limitations and future work.
@@ -253,7 +261,7 @@ and otherwise train directly for each problem.
 This section states the shared machinery used by every problem: the policy interface --- a learned
 deterministic map from a problem's state to a valid action --- the CMA-ES optimizer, and the
 evaluation protocol. Each problem's environment, its concrete policy internals, and its results are
-then developed in its own self-contained section (Sections~\ref{sec:lostsales}--\ref{sec:multiechelon}).
+then developed in its own self-contained section (Sections~\ref{sec:lostsales}--\ref{sec:serial}).
 
 \subsection{The action parameterization is part of the policy}
 \label{sec:methods-principle}
