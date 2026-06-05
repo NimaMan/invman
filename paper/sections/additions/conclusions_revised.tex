@@ -1,0 +1,214 @@
+% =============================================================================
+% conclusions_revised.tex
+% -----------------------------------------------------------------------------
+% Drop-in replacement for the manuscript's Discussion and Conclusion sections.
+% This file is \input{} into learning_inventory_control_policies_es.tex and uses
+% only the manuscript's preamble (natbib \citet/\citep, \section/\paragraph, the
+% existing \label targets sec:discussion and sec:conclusion). No \documentclass.
+%
+% It replaces the current
+%   \section{Discussion and managerial insights}            (label sec:discussion)
+%   \section{Conclusion, limitations, and future work}      (label sec:conclusion)
+% blocks. The two \section commands below carry the same labels, so all internal
+% \ref{sec:discussion} / \ref{sec:conclusion} cross-references resolve unchanged.
+%
+% NEW \cite keys used here that are NOT yet in the manuscript's \thebibliography
+% (the parent must add the matching \bibitem entries -- full details are listed at
+% the foot of this file in a comment block):
+%   alvo2023networks        Alvo, Russo, Kanoria, Lee (2023/2025) -- HDPO / reliable policy opt.
+%   temizoz2025dcl          Temizoz, Imdahl, Dijkman, Lamghari-Idrissi, van Jaarsveld (2025) -- Deep Controlled Learning, EJOR
+%   maggiar2025structure    Maggiar, Andaz, Bagaria, Eisenach, Foster, Gottesman, Perrault-Joncas (2025) -- Structure-Informed DRL
+%   xie2024vc               Xie, Ma, Xin (2024) -- VC Theory for Inventory Policies
+%   mania2018ars            Mania, Guy, Recht (2018) -- Simple/augmented random search
+%   vanvuchelen2020jrp      Vanvuchelen, Gijsbrechts, Boute (2020) -- PPO for the joint replenishment problem
+%   temizoz2024zsg          Temizoz, Imdahl, Dijkman, Lamghari-Idrissi, van Jaarsveld (2024) -- zero-shot generalization
+% =============================================================================
+
+\section{Discussion and managerial insights}
+\label{sec:discussion}
+
+Synthesizing across the ten problems, four themes emerge, and we close each by positioning it against
+the deep reinforcement learning (DRL) and evolution-strategies literatures.
+
+\paragraph{A single generic recipe is portable.}
+The same CMA-ES loop, unchanged, learns a scalar lost-sales order, a setup-cost order/no-order
+decision, a structured dual-sourcing order pair, a pair of echelon order-up-to levels, a per-node
+backorder target vector, and a price-reactive purchase quantity. For a practitioner this means one
+method to maintain rather than a bespoke heuristic per problem, and retraining when costs or demand
+change is a matter of rerunning a short simulation rather than re-deriving structure. This portability
+is the property the DRL roadmap of \citet{boute2022deep} asks of a learned controller, and the
+cross-problem A3C study of \citet{gijsbrechts2022drl} first demonstrated for a neural learner.
+Relative to that line, our contribution is not a new champion algorithm but a different point on the
+cost--complexity frontier: a gradient-free optimizer over a compact policy reaches comparable territory
+without value-function bootstrapping, reward shaping, or an exploration schedule, and so transfers
+across structurally distinct problems with no per-problem hyperparameter tuning. This is the
+inventory-control counterpart of the broader finding that black-box search over policy parameters is a
+scalable alternative to gradient-based DRL \citep{Salimans2017EvolutionLearning}, and that even
+linear policies found by simple random search can be competitive on hard control benchmarks
+\citep{mania2018ars}. Within operations, evolutionary search has chiefly been used to tune the
+parameters of a \emph{fixed} heuristic; learning the ordering policy itself with evolution strategies,
+and doing so across many inventory families, is the gap we address.
+
+\paragraph{Action geometry is where the leverage lives.}
+Across every problem the backbone width mattered far less than the decoder. On vanilla lost sales a
+small tree or linear ordinal head suffices; under a fixed cost the gated decoders that separate
+\emph{whether} from \emph{how much} are what avoid the never-order collapse; in dual sourcing the
+capped-dual-index coordinates are what let the policy reach the near-optimal region a raw-quantity
+decoder cannot express; and in multi-echelon the direct-level design is the difference between a
+$\approx 14\%$ improvement and a policy more than $200\%$ worse. The managerial reading is that
+choosing the control representation --- ideally the coordinate system of the best known heuristic ---
+is a more reliable lever than enlarging the network. This is, we believe, the most transferable
+finding in the paper, and it is precisely the lever the most recent DRL literature has converged on
+from the opposite direction: rather than freeing a large network to discover structure, that work
+\emph{injects} inventory structure into the learner. \citet{maggiar2025structure} build
+structure-informed policy networks that embed monotonicity and other analytically known properties of
+optimal policies; \citet{temizoz2025dcl} report that a model-based controlled-learning scheme reaches
+optimality gaps of at most $0.2\%$ on lost-sales and perishable problems, far inside earlier A3C gaps;
+and recent graph- and heuristic-parameterized agents make the parameters of a classical control the
+action space itself. Our policy-owned decoder is the same idea expressed as a design choice rather
+than a regularizer: we put the search directly in the heuristic's coordinate system and let a compact
+model modulate it. The convergence of independent lines on ``structure in the policy, not capacity in
+the network'' is, in our reading, the clearest signal of where the field is heading.
+
+\paragraph{Compact, interpretable, retrainable policies are a practical asset.}
+The learned policies carry tens to a few hundred parameters --- orders of magnitude fewer than
+published DRL networks, which the roadmap and subsequent studies note are large, tuning-heavy, and
+hard to interpret \citep{boute2022deep,gijsbrechts2022drl,kaynov2024owmr}. They reduce at run time to
+a small matrix multiply or a shallow tree traversal, so they can be deployed in standard enterprise or
+spreadsheet tooling and audited by non-specialists; where a structured heuristic underlies the decoder
+(dual sourcing, serial and divergent multi-echelon, general-network backorder), the learned outputs
+read directly as order-up-to levels and caps. Interpretability is now an explicit objective in
+inventory RL rather than an afterthought, and small or structurally constrained policies are
+increasingly favored for exactly the audit-and-deploy reasons above. Compactness also carries a
+statistical dividend that matters for practice: structured inventory policy classes provably generalize
+from limited data, with generalization error largely independent of horizon for base-stock classes and
+only logarithmic for $(s,S)$ classes \citep{xie2024vc}. A policy with hundreds of parameters living in
+a heuristic's coordinate system is squarely the kind of low-complexity class for which such guarantees
+apply, which is reassuring when the training signal is a finite simulation rather than an asymptotic
+average.
+
+\paragraph{Honest match/beat/bound accounting is itself a contribution.}
+A recurring concern in this literature is that DRL inventory results are difficult to reproduce and
+compare: cost conventions, demand processes, and baselines differ across papers, and there is no
+ImageNet-style standard benchmark, so reported ``wins'' are not always like-for-like
+\citep{boute2022deep,alvo2023networks}. We have tried to answer this concern at the level of
+\emph{discipline} rather than scale. Every environment is anchored to a published number before it
+carries any learned-policy claim (Appendix~\ref{app:validation}), and every result is reported under
+one of three honest verdicts. We \emph{beat} a comparator only when it is a heuristic and the margin
+clears the held-out standard error under common random numbers (general-network backorder by over
+$20\%$; ameliorating inventory's order-up-to gate by a wide margin; one-warehouse multi-retailer on the
+instances with exploitable dynamic structure; the production/assembly/distribution network's own best
+pairwise base-stock). We \emph{match}, and say so explicitly, when the comparator is provably optimal
+or a near-optimal proxy: the dual-sourcing soft tree sits inside the capped-dual-index policy's own
+$\le 0.11\%$ optimality band --- comfortably inside the band the published A3C learner does not reach
+--- and the serial soft tree recovers the Clark--Scarf optimum to $+0.011\%$; neither is framed as a
+win. And we report a \emph{gap to a bound} without ever calling it ``beaten'': the ameliorating-inventory
+gap to the perfect-information LP is structural (a single scalar purchase lever against the bound's full
+three-part hindsight issuance) and is not comparable to the $\sim\!3.5\%$ deep-RL gap of
+\citet{pahrGrunow2025}, who act in the full action space. Two comparisons we flag as indicative rather
+than strictly like-for-like --- the negligible sub-band dual-sourcing margins, and the multi-echelon
+improvement computed against a different baseline and cost convention than the published A3C figures.
+This accounting is deliberately conservative, and it is where we believe a portable ES study can be
+most useful to a field with a reproducibility problem: not by topping a leaderboard, but by stating
+exactly what kind of claim each number supports.
+
+\section{Conclusion, limitations, and future work}
+\label{sec:conclusion}
+
+We have shown that evolution strategies --- specifically CMA-ES over compact, policy-owned decoders ---
+learn inventory control policies that are competitive across ten inventory problems: lost sales,
+fixed-cost lost sales, dual sourcing, divergent and serial multi-echelon, general-network backorder,
+perishable inventory, one-warehouse multi-retailer distribution, ameliorating inventory, and a
+production/assembly/distribution network. Relative to DRL, CMA-ES needs few hyperparameters, supplies
+its own exploration, and optimizes the realized cost directly, so the same loop transfers across
+problems; the resulting policies are orders of magnitude smaller than published DRL networks while
+remaining interpretable and verifiable. The consistent lever is action geometry: with the decoder
+shaped like the relevant heuristic's coordinate system, a few-hundred-parameter policy matches proven
+optima where they exist, beats strong heuristics where the comparator is a heuristic, and clears
+published A3C on dual sourcing.
+
+\paragraph{Limitations.}
+Several caveats bound these claims and we state them plainly. (i)~Two comparisons are indicative rather
+than strictly like-for-like: the dual-sourcing margins below the capped-dual-index proxy are negligible
+and sit inside the heuristic's own optimality band, so the honest reading is a \emph{match}, not a win;
+and the multi-echelon improvement is computed against a different baseline and cost convention than the
+published A3C figures. (ii)~The high-penalty, autocorrelated MMPP lost-sales instances at the longest
+lead times ($L=8,10$) remain won by classical heuristics, indicating a real gap for stationary compact
+policies under regime-switching demand and deep pipelines. (iii)~We do not beat the strongest published
+PPO on the one-warehouse multi-retailer instances, which remains the best learned policy on every row
+there; our wins on that problem are over the tuned heuristic gate, not over PPO. (iv)~The
+ameliorating-inventory gap is to a perfect-information \emph{upper bound} and is structural; it is
+reported, never beaten. (v)~The production/assembly/distribution network result is a research result on
+a faithful but \emph{not} literature-anchored environment: the learned policy beats the environment's
+own best heuristic, not a published cost. (vi)~Methodologically, CMA-ES --- though far more
+sample-efficient than A3C here --- is still data-hungry relative to settings with scarce historical
+demand, and its population-based evaluation cost grows with the covariance dimension, so very large
+parameterizations may need restricted, diagonal, or separable covariance structures.
+
+\paragraph{Where the field is going, and how this fits.}
+Three currents in recent inventory RL frame our future work. First, the field is moving toward
+\emph{reproducible, optimum-anchored benchmarks}: open environments and comparisons to known or bounded
+optima rather than to other learners \citep{alvo2023networks,temizoz2025dcl}. Our per-environment
+literature validation and three-verdict accounting are a step in that direction, and contributing our
+ten validated environments and policy forwards to such a shared suite is the natural next move.
+Second, the most effective recent learners \emph{put inventory structure inside the policy} ---
+structure-informed networks, base-stock-regularized objectives, and heuristic-parameterized action
+spaces \citep{maggiar2025structure,temizoz2025dcl}. Our action-geometry result is the same principle
+reached gradient-free; the obvious synthesis is to hand a sample-efficient gradient learner the same
+policy-owned decoders, using CMA-ES (or warm-started from a heuristic, as we do for dual sourcing,
+serial multi-echelon, and general-network backorder) to seed and the gradient learner to refine ---
+which should directly attack the long-lead MMPP and the below-PPO gaps. Third, the frontier is turning
+to \emph{generalist and limited-data} settings: generally-capable agents trained for zero-shot transfer
+across instances, then paired with parameter estimation at deployment
+\citep{temizoz2024zsg,vanvuchelen2020jrp}, and the favorable sample-complexity of structured policy
+classes \citep{xie2024vc} suggests these compact decoders are exactly the right hypothesis class for
+the data-scarce regime. Concrete next steps, in order of expected payoff, are: richer state-dependent
+decoders for correlated and non-stationary demand; warm-starting from heuristics in every problem where
+a structured control exists; scaling CMA-ES via separable or restricted covariance so larger networked
+systems stay tractable; and amortizing one decoder across an instance family so that a single trained
+policy generalizes with estimate-then-decide adaptation rather than per-instance retraining. The
+through-line is unchanged from the body of the paper: in inventory control, the representation of the
+\emph{action} is at least as consequential as the choice of \emph{learner}, and a compact, honest,
+reproducible policy is often enough.
+
+% =============================================================================
+% NEW REFERENCES TO ADD (not already in the manuscript's \thebibliography).
+% Add these \bibitem entries to the bibliography. None duplicate an existing key.
+% Verified against arXiv / publisher pages, June 2026.
+% -----------------------------------------------------------------------------
+% \bibitem[Alvo et al.(2023)]{alvo2023networks}
+% M.~Alvo, D.~Russo, Y.~Kanoria, and M.~Lee.
+% Deep reinforcement learning for inventory networks: Toward reliable policy optimization.
+% \emph{arXiv preprint arXiv:2306.11246}, 2023 (revised 2025).
+%
+% \bibitem[Temiz\"oz et al.(2025)]{temizoz2025dcl}
+% T.~Temiz\"oz, C.~Imdahl, R.~Dijkman, D.~Lamghari-Idrissi, and W.~van Jaarsveld.
+% Deep controlled learning for inventory control.
+% \emph{European Journal of Operational Research}, 324(1):104--117, 2025.
+%
+% \bibitem[Maggiar et al.(2025)]{maggiar2025structure}
+% A.~Maggiar, S.~Andaz, A.~Bagaria, C.~Eisenach, D.~Foster, O.~Gottesman, and
+% D.~Perrault-Joncas.
+% Structure-informed deep reinforcement learning for inventory management.
+% \emph{arXiv preprint arXiv:2507.22040}, 2025.
+%
+% \bibitem[Xie et al.(2024)]{xie2024vc}
+% Y.~Xie, W.~Ma, and L.~Xin.
+% VC theory for inventory policies.
+% \emph{arXiv preprint arXiv:2404.11509}, 2024.
+%
+% \bibitem[Mania et al.(2018)]{mania2018ars}
+% H.~Mania, A.~Guy, and B.~Recht.
+% Simple random search provides a competitive approach to reinforcement learning.
+% \emph{arXiv preprint arXiv:1803.07055}, 2018.
+%
+% \bibitem[Vanvuchelen et al.(2020)]{vanvuchelen2020jrp}
+% N.~Vanvuchelen, J.~Gijsbrechts, and R.~Boute.
+% Use of proximal policy optimization for the joint replenishment problem.
+% \emph{Computers in Industry}, 119:103239, 2020.
+%
+% \bibitem[Temiz\"oz et al.(2024)]{temizoz2024zsg}
+% T.~Temiz\"oz, C.~Imdahl, R.~Dijkman, D.~Lamghari-Idrissi, and W.~van Jaarsveld.
+% Zero-shot generalization in inventory management: Train, then estimate and decide.
+% \emph{arXiv preprint arXiv:2411.00515}, 2024.
+% =============================================================================
