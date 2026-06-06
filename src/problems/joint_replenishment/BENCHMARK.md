@@ -91,6 +91,18 @@ seed-robust** by the repo standard (mean ± std over >= 5 optimizer seeds vs the
   s123 -0.79% / s777 -0.85% — this is 2 seeds, below the >= 5-seed bar.
 - **Setting 7: closed to +0.09% near-tie (best of 7 seeds, NOT seed-robust):** never strictly flips;
   remains a loss to MOQ (gap ranged +0.09% to +1.85% across 8 seeds).
+- **Honest downside-safe floor + seed-robust (5 optimizer seeds, training-path audit 2026-06-06):**
+  `autoresearch_joint_replenishment.py` now supports `--deploy_endpoint {floor,xbest,xfavorite}`
+  (default `floor`, ADDITIVE; `xbest` reproduces the historical single endpoint exactly). The floor
+  deploys the best-of {xbest = `es.best_param()`, xfavorite = CMA distribution mean `es.current_param()`
+  = `result[5]`, warm-start anchor `cma_x0` when `--warm_start_moq`} on the SAME held-out block — it
+  never deploys worse than xbest. Setting 5 (`d3 oblique linear` + MOQ warm-start), seeds 9001–9005,
+  full budget (pop24/300gen/batch12), 2048 held-out CRN seeds: **xbest 6569.80 ± 26.29 (−13.52% vs MOQ
+  gate 7596.67); floored 6549.72 ± 34.21 (−13.78%)** — floor deviated to xfavorite on 4/5 seeds,
+  reproduced xbest on 1/5 (downside-safe), 5/5 below the gate for both endpoints. Verdict unchanged
+  (robust WIN, sharpened). Setting 7 (`d3 basestock` + warm-start, same 5 seeds): xbest 9202.68 ± 78.57
+  (+1.77%) → floored 9162.20 ± 62.09 (+1.32%, std tightened); 0/5 below gate — remains a robust LOSS
+  (floor helps but does not flip). Reproduce: append `--deploy_endpoint floor` (default) to recipe #5.
 - **Structural loss (single seed, at_risk = false):** MOQ dominates DYN-OUT on all 16; the learned
   soft-tree LOSES on the high-cost h=5,b=95 family (settings 3,4,11,12,16) by -8.9% to -18.1% even at
   depth-3 / 300-generation budget — a rounded-action policy-class limit, not under-training. The

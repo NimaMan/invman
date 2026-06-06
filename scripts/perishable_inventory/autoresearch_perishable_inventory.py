@@ -277,8 +277,9 @@ def base_stock_warm_start_vector(*, depth, input_dim, base_stock_level, demand_m
 
 
 def train_warm_started(reference, kw, *, x0, popsize, generations, sigma_init, seed):
-    """Run warm-started CMA-ES; return the CMA incumbent plus every generation's
-    per-training-seed best individual.
+    """Run warm-started CMA-ES; return the CMA incumbent (xbest), the CMA
+    distribution MEAN (xfavorite), plus every generation's per-training-seed best
+    individual.
 
     The per-generation training argmax is HEAVILY selection-biased (a single training
     seed flatters the chosen individual), so we do NOT pick the promoted policy on the
@@ -286,6 +287,17 @@ def train_warm_started(reference, kw, *, x0, popsize, generations, sigma_init, s
     validation block (see main()). This was the load-bearing fix: at full budget the
     eval-block / training-argmax selection overfit (held-out -1482) while disjoint-
     validation selection recovered a genuine win (held-out -1457.9 vs gate -1475.1).
+
+    Honest-floor endpoint (additive, TRAINING_PATH_AUDIT_2026_06_06): this runner uses
+    a LOCAL CMA-ES loop (not invman.es_mp.train), so the two CMA endpoints are read
+    directly off the wrapper, exactly as the OWMR reference reads them off the optimizer
+    returned by es_mp.train(return_optimizer=True):
+      - xbest     = es.best_param()    = es.result[0]  (best individual ever sampled;
+                    the historical deployed endpoint -- can overfit the training batch)
+      - xfavorite = es.current_param() = es.result[5]  (the CMA distribution MEAN;
+                    averages out the per-seed sampling noise, often more robust)
+    Both are returned so the caller can deploy the best-of {xbest, xfavorite, anchor}
+    on a DISJOINT validation block (downside-safe: never worse than xbest).
     """
     es = CMAES(num_params=int(x0.size), sigma_init=float(sigma_init),
                popsize=int(popsize), seed=int(seed), x0=x0)
@@ -301,7 +313,8 @@ def train_warm_started(reference, kw, *, x0, popsize, generations, sigma_init, s
         history.append(float(np.max(returns)))
         gen_candidates.append(np.asarray(sols[int(np.argmax(returns))], dtype=np.float32))
     cma_best = np.asarray(es.best_param(), dtype=np.float32)
-    return cma_best, gen_candidates, history
+    cma_favorite = np.asarray(es.current_param(), dtype=np.float32)
+    return cma_best, cma_favorite, gen_candidates, history
 
 
 def parse_args():
@@ -322,6 +335,15 @@ def parse_args():
                    help="small sigma confines the search to a base-stock neighbourhood")
     p.add_argument("--no_warm_start", action="store_true",
                    help="ablation: random CMA init instead of base-stock warm start")
+    p.add_argument("--deploy_endpoint", choices=["floor", "xbest", "xfavorite"], default="floor",
+                   help="honest-floor endpoint selection (TRAINING_PATH_AUDIT_2026_06_06, "
+                        "additive). 'floor' (default) adds the CMA distribution-MEAN endpoint "
+                        "xfavorite (es.current_param() = result[5]) AND the warm-start anchor to "
+                        "the validation-block candidate set {cma_incumbent(xbest), gen-bests} so "
+                        "the deployed policy is the best-of on the DISJOINT validation block "
+                        "(downside-safe: never validation-worse than xbest); 'xbest' reproduces "
+                        "the historical candidate set EXACTLY (xfavorite/anchor not deployable); "
+                        "'xfavorite' deploys only the distribution-mean endpoint (+anchor).")
     p.add_argument("--seed", type=int, default=123)
     p.add_argument("--popsize", type=int, default=None)
     p.add_argument("--generations", type=int, default=None)
@@ -390,31 +412,51 @@ def main():
 
     # --- CMA-ES warm-started at the gate ---
     t0 = time.time()
-    cma_best_params, gen_candidates, history = train_warm_started(
+    cma_best_params, cma_favorite_params, gen_candidates, history = train_warm_started(
         reference, kw, x0=cma_x0, popsize=popsize, generations=generations,
         sigma_init=parsed.sigma_init, seed=parsed.seed,
     )
     train_seconds = time.time() - t0
 
     # --- model selection on the DISJOINT validation block (never the eval block) ---
-    # Candidate set: the CMA incumbent and every generation's training-argmax individual.
-    # Scoring them on a validation block disjoint from eval avoids rewarding a candidate
-    # that merely overfit its single training seed.
+    # Candidate set: the CMA incumbent (xbest) and every generation's training-argmax
+    # individual. Scoring them on a validation block disjoint from eval avoids rewarding
+    # a candidate that merely overfit its single training seed.
+    #
+    # HONEST FLOOR (additive, TRAINING_PATH_AUDIT_2026_06_06): under deploy_endpoint
+    # 'floor' (default) we additively expand the candidate set with the CMA distribution
+    # MEAN endpoint xfavorite (es.current_param()) AND the warm-start anchor x0, then
+    # validation-select the best-of (higher mean_return is better). This is downside-safe
+    # -- xbest is always in the candidate set under 'floor', so the deployed policy is
+    # never validation-worse than the historical xbest endpoint. 'xbest' reproduces the
+    # historical candidate set EXACTLY (xfavorite/anchor excluded); 'xfavorite' deploys
+    # only the distribution-mean endpoint (+anchor). NB validation higher-is-better here
+    # (return maximization), mirroring the OWMR floor's lower-is-better cost minimization.
     cma_val = float(evaluate_soft_tree(reference, kw, cma_best_params, val_seeds)["mean_return"])
     gen_val = [
         float(evaluate_soft_tree(reference, kw, p, val_seeds)["mean_return"])
         for p in gen_candidates
     ]
     best_gen_val = max(gen_val) if gen_val else -np.inf
-    if cma_val >= best_gen_val:
-        learned_params = cma_best_params
-        learned_source = "cma_incumbent"
-        selection_val_return = cma_val
-    else:
-        best_gen_idx = int(np.argmax(gen_val))
-        learned_params = gen_candidates[best_gen_idx]
-        learned_source = f"gen_best@{best_gen_idx}_val_selected"
-        selection_val_return = best_gen_val
+
+    # Build the deployable candidate set as (val_return, params, source) tuples gated by
+    # deploy_endpoint. xbest's two members (cma incumbent + gen-bests) are the historical
+    # set; floor/xfavorite add the distribution mean and (always, when warm-started) the
+    # anchor x0 so a known-good fallback is deployable.
+    candidates: list[tuple[float, np.ndarray, str]] = []
+    if parsed.deploy_endpoint in ("floor", "xbest"):
+        candidates.append((cma_val, cma_best_params, "cma_incumbent"))
+        if gen_candidates:
+            _gi = int(np.argmax(gen_val))
+            candidates.append((best_gen_val, gen_candidates[_gi], f"gen_best@{_gi}_val_selected"))
+    if parsed.deploy_endpoint in ("floor", "xfavorite"):
+        xfav_val = float(evaluate_soft_tree(reference, kw, cma_favorite_params, val_seeds)["mean_return"])
+        candidates.append((xfav_val, cma_favorite_params, "cma_xfavorite"))
+        # warm-start anchor x0 (the encoded base-stock gate) -- deployable fallback.
+        if not parsed.no_warm_start:
+            anchor_val = float(evaluate_soft_tree(reference, kw, x0, val_seeds)["mean_return"])
+            candidates.append((anchor_val, np.asarray(x0, dtype=np.float32), "warm_start_anchor"))
+    selection_val_return, learned_params, learned_source = max(candidates, key=lambda c: c[0])
 
     # --- report the SELECTED policy on the held-out eval block ---
     learned_eval = evaluate_soft_tree(reference, kw, learned_params, eval_seeds)
@@ -489,6 +531,11 @@ def main():
         },
         "learned": {
             "source": learned_source,
+            "deploy_endpoint": parsed.deploy_endpoint,
+            "floor_deviated_from_xbest": bool(
+                learned_source not in ("cma_incumbent",)
+                and not learned_source.startswith("gen_best@")
+            ),
             "selection_val_return": selection_val_return,
             "cma_incumbent_val_return": cma_val,
             "mean_return": learned_return,

@@ -45,9 +45,15 @@ if str(PACKAGE_ROOT) not in sys.path:
 
 import importlib.util
 
+import numpy as np
+
 import invman_rust  # noqa: F401  (ensures the extension is importable before training)
-from invman.experiment_runner import run_experiment
-from invman.policy_registry import apply_policy_name, make_soft_tree_policy_name
+from invman.experiment_runner import build_model, evaluate_model, run_experiment
+from invman import rollout_fitness
+from invman.es_mp import train as _es_train
+from invman.cpu_limits import normalize_args_cpu_limits
+from invman.policy_registry import apply_policy_name, get_policy_spec, make_soft_tree_policy_name
+from invman.utils import set_global_seeds
 
 # Reuse build_reference_args / best_constant_base_stock_baseline from the autoresearch entrypoint.
 _AUTORESEARCH = PACKAGE_ROOT / "scripts" / "multi_echelon" / "autoresearch_multi_echelon.py"
@@ -138,7 +144,60 @@ def best_constant_base_stock_over_operating_region(base_args, budget, seed):
     )
 
 
-def train_one(reference_name, design, depth, budget, parsed, out_dir):
+def _train_with_floor(args):
+    """ADDITIVE/REVERSIBLE (training-path audit 2026-06-06): mirror the OWMR honest
+    floor on the multi_echelon training path WITHOUT touching the shared
+    invman.experiment_runner.run_experiment (used by every problem) or invman.es_mp.
+
+    run_experiment trains via es_mp.train and DISCARDS the optimizer, so only the
+    CMA-ES xbest endpoint (es.best_param(), the historically deployed individual that
+    overfits the small training-seed batch) is ever evaluated. Here we replicate
+    run_experiment's exact pre-train steps (cpu limits, apply_policy_name, global
+    seeding, build_model) so the trained xbest is BIT-IDENTICAL to the run_experiment
+    path, then call es_mp.train(return_optimizer=True) to also read xfavorite
+    (es.current_param() = the CMA-ES distribution mean = result[5]). BOTH endpoints
+    are scored on the SAME eval seeds via the SAME evaluate_model, and we deploy the
+    cheaper one (the downside-safe best-of {xbest, xfavorite}).
+
+    Returns (deployed_summary, xbest_summary, xfavorite_summary, deployed_endpoint,
+    policy_architecture). deployed_summary is the dict evaluate_model returns
+    (mean_cost / std_cost / ...).
+    """
+    # Same pre-train preparation run_experiment performs (so xbest is reproducible).
+    normalize_args_cpu_limits(args)
+    apply_policy_name(args)
+    policy_spec = get_policy_spec(args)
+    policy_architecture = policy_spec.architecture_label(getattr(args, "state_features", "canonical"))
+    Path(args.results_dir).mkdir(parents=True, exist_ok=True)
+    Path(args.log_dir).mkdir(parents=True, exist_ok=True)
+    Path(args.trained_models_dir).mkdir(parents=True, exist_ok=True)
+    set_global_seeds(getattr(args, "seed", 0))
+    model = build_model(args)
+    trained_model, _hist, es = _es_train(
+        model=model,
+        get_model_fitness=rollout_fitness.get_model_fitness,
+        get_population_fitness=rollout_fitness.get_population_fitness,
+        args=args,
+        same_seed=getattr(args, "same_seed", False),
+        limit_env_time=getattr(args, "dynamic_horizon", False),
+        min_steps=getattr(args, "min_dynamic_horizon", 100),
+        max_steps=getattr(args, "max_dynamic_horizon", 5000),
+        return_optimizer=True,
+    )
+    # xbest = es.best_param() already applied inside es_mp.train (trained_model).
+    xbest_summary = evaluate_model(trained_model, args)
+    # xfavorite = es.current_param() = CMA-ES distribution mean (result[5]).
+    xfavorite_flat = np.asarray(es.current_param(), dtype=np.float32)
+    xfavorite_model = model.set_model_params(xfavorite_flat.tolist())
+    xfavorite_summary = evaluate_model(xfavorite_model, args)
+    if float(xfavorite_summary["mean_cost"]) < float(xbest_summary["mean_cost"]):
+        deployed_summary, deployed_endpoint = xfavorite_summary, "xfavorite"
+    else:
+        deployed_summary, deployed_endpoint = xbest_summary, "xbest"
+    return deployed_summary, xbest_summary, xfavorite_summary, deployed_endpoint, policy_architecture
+
+
+def train_one(reference_name, design, depth, budget, parsed, out_dir, deploy_endpoint="floor"):
     args = _are.build_reference_args(reference_name)
     args.multi_action_design = design
     args.policy_name = make_soft_tree_policy_name(
@@ -160,17 +219,38 @@ def train_one(reference_name, design, depth, budget, parsed, out_dir):
     args.log_dir = str(out_dir / "logs")
     args.trained_models_dir = str(out_dir / "models")
     t0 = time.time()
+    if deploy_endpoint == "xbest":
+        # Historical path: run_experiment deploys CMA-ES xbest. Reproduced EXACTLY.
+        with contextlib.redirect_stdout(io.StringIO()):
+            payload, results_path = run_experiment(args)
+        learned = payload["evaluation"]["learned_policy"]
+        return {
+            "design": design,
+            "depth": depth,
+            "policy_name": args.policy_name,
+            "policy_architecture": payload["policy_architecture"],
+            "mean_cost": float(learned["mean_cost"]),
+            "std_cost": float(learned["std_cost"]),
+            "deployed_endpoint": "xbest",
+            "xbest_cost": float(learned["mean_cost"]),
+            "xfavorite_cost": None,
+            "results_json": str(results_path),
+            "train_seconds": round(time.time() - t0, 1),
+        }
+    # Default "floor": best-of {xbest, xfavorite}, downside-safe (never worse than xbest).
     with contextlib.redirect_stdout(io.StringIO()):
-        payload, results_path = run_experiment(args)
-    learned = payload["evaluation"]["learned_policy"]
+        deployed, xbest_s, xfav_s, deployed_endpoint, policy_architecture = _train_with_floor(args)
     return {
         "design": design,
         "depth": depth,
         "policy_name": args.policy_name,
-        "policy_architecture": payload["policy_architecture"],
-        "mean_cost": float(learned["mean_cost"]),
-        "std_cost": float(learned["std_cost"]),
-        "results_json": str(results_path),
+        "policy_architecture": policy_architecture,
+        "mean_cost": float(deployed["mean_cost"]),
+        "std_cost": float(deployed["std_cost"]),
+        "deployed_endpoint": deployed_endpoint,
+        "xbest_cost": float(xbest_s["mean_cost"]),
+        "xfavorite_cost": float(xfav_s["mean_cost"]),
+        "results_json": None,
         "train_seconds": round(time.time() - t0, 1),
     }
 

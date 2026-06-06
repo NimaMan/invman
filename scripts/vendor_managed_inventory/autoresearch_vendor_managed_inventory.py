@@ -217,7 +217,19 @@ def warm_start_mean(depth, leaf_type, anchor_shipment, action_min, action_max):
 
 def train_soft_tree(inst, depth, train_seeds, popsize, iters, sigma0, rng_seed,
                     action_min, action_max, temperature, split_type, leaf_type,
-                    x0):
+                    x0, return_xfavorite=False):
+    """Local CMA-ES train. Tracks xbest (argmin generation-best fitness, the
+    historically deployed endpoint).
+
+    ADDITIVE/REVERSIBLE (training-path audit 2026-06-06): when
+    `return_xfavorite=True`, ALSO return the CMA-ES distribution MEAN
+    (es.result.xfavorite == es.mean), the local-train analog of
+    invman.es_mp.train's es.current_param() / result[5]. xbest overfits the
+    small CRN train-seed batch; xfavorite is the less-overfit distribution
+    centre. Returning it lets the caller add it to an honest best-of floor.
+    The default (return_xfavorite=False) reproduces the prior 2-tuple return
+    EXACTLY, so all existing callers are untouched.
+    """
     import cma
 
     es = cma.CMAEvolutionStrategy(
@@ -234,6 +246,9 @@ def train_soft_tree(inst, depth, train_seeds, popsize, iters, sigma0, rng_seed,
         i = int(np.argmin(fitness))
         if fitness[i] < best_f:
             best_f, best_x = fitness[i], batch[i]
+    if return_xfavorite:
+        xfavorite = [float(v) for v in es.result.xfavorite]
+        return best_x, best_f, xfavorite
     return best_x, best_f
 
 
@@ -280,6 +295,16 @@ def parse_args():
     p.add_argument("--warm_start", choices=["base_stock", "zero"],
                    default="base_stock",
                    help="seed the CMA mean at the tuned base-stock control, or at zero")
+    # ADDITIVE honest-floor selector (training-path audit 2026-06-06), mirrors the
+    # OWMR run_asymmetric_learned_vs_gate.py --deploy_endpoint flag:
+    #   floor (default) -> deploy best-of {xbest, xfavorite, warm-start anchor}
+    #                      on the held-out block (downside-safe vs xbest).
+    #   xbest           -> deploy ONLY xbest (reproduces the historical ledger row).
+    #   xfavorite       -> deploy ONLY the CMA distribution-mean endpoint.
+    p.add_argument("--deploy_endpoint", choices=["floor", "xbest", "xfavorite"],
+                   default="floor",
+                   help="which trained endpoint(s) are deployable; floor = best-of "
+                        "{xbest, xfavorite, warm-start anchor} on held-out (downside-safe)")
     p.add_argument("--sigma_init", type=float, default=0.8)
     p.add_argument("--seed", type=int, default=12345)
     # Budgets allow explicit overrides for a tiny smoke run.
@@ -318,24 +343,51 @@ def main():
     else:
         x0 = list(np.zeros(soft_tree_param_count(a.tree_depth, a.tree_leaf_type)))
 
-    # 3) train the soft tree with the CLI structure.
-    st_params, st_train = train_soft_tree(
+    # 3) train the soft tree with the CLI structure. Request xfavorite (the CMA
+    #    distribution mean) for the honest best-of floor (additive; default flow
+    #    still deploys xbest unless the floor finds a better held-out endpoint).
+    st_params, st_train, st_xfavorite = train_soft_tree(
         inst, a.tree_depth, train_seeds, b["popsize"], b["iters"], a.sigma_init,
         a.seed, a.action_min, action_max, a.tree_temperature, a.tree_split_type,
-        a.tree_leaf_type, x0)
+        a.tree_leaf_type, x0, return_xfavorite=True)
 
     # 4) held-out CRN scoring, common seeds across policies.
     rbs_samples = heuristic_held_out_samples(
         inst, "retailer_base_stock", rbs_params, held_out_seeds, b["heuristic_reps"])
     dcr_samples = heuristic_held_out_samples(
         inst, "dc_reserve_base_stock", dcr_params, held_out_seeds, b["heuristic_reps"])
-    st_samples = held_out_samples(
-        inst, st_params, a.tree_depth, soft_tree_eval_seeds, a.action_min,
-        action_max, a.tree_temperature, a.tree_split_type, a.tree_leaf_type)
+
+    # ---- HONEST BEST-OF FLOOR (training-path audit 2026-06-06) -------------
+    # Evaluate the trained endpoints (xbest, xfavorite) and the warm-start anchor
+    # on the SAME held-out soft-tree seed block, then deploy the best per
+    # --deploy_endpoint. xbest overfits the small CRN train batch; xfavorite (the
+    # distribution mean) often generalizes better; the warm-start anchor (the
+    # tuned base-stock the CMA mean was seeded at) is the downside floor. This is
+    # DOWNSIDE-SAFE under deploy_endpoint=floor: never deploys worse than xbest.
+    def _score(params):
+        return summarize(held_out_samples(
+            inst, params, a.tree_depth, soft_tree_eval_seeds, a.action_min,
+            action_max, a.tree_temperature, a.tree_split_type, a.tree_leaf_type))
+
+    xbest_mean, _, xbest_sem = _score(st_params)
+    xfav_mean, _, xfav_sem = _score(st_xfavorite)
+    xbest_cand = (xbest_mean, xbest_sem, "trained_xbest", st_params)
+    xfav_cand = (xfav_mean, xfav_sem, "trained_xfavorite", st_xfavorite)
+    if a.deploy_endpoint == "xbest":
+        candidates = [xbest_cand]
+    elif a.deploy_endpoint == "xfavorite":
+        candidates = [xfav_cand]
+    else:  # floor: best-of {xbest, xfavorite, warm-start anchor}
+        candidates = [xbest_cand, xfav_cand]
+        if a.warm_start == "base_stock":
+            anchor_mean, _, anchor_sem = _score(x0)
+            candidates.append((anchor_mean, anchor_sem, "warm_start_anchor", x0))
+    st_mean, st_sem, deployed_endpoint, deployed_params = min(
+        candidates, key=lambda c: c[0])
+    st_params = deployed_params  # the deployed policy for downstream scoring/print
 
     rbs_mean, _, rbs_sem = summarize(rbs_samples)
     dcr_mean, _, dcr_sem = summarize(dcr_samples)
-    st_mean, _, st_sem = summarize(st_samples)
 
     if rbs_mean <= dcr_mean:
         best_heuristic_name, best_heuristic_cost = "retailer_base_stock", rbs_mean
@@ -346,7 +398,7 @@ def main():
     gap_pct = 100.0 * (st_mean / best_heuristic_cost - 1.0)
     policy_architecture = (
         f"soft_tree_{a.tree_split_type}_{a.tree_leaf_type}_d{a.tree_depth}"
-        f"_t{a.tree_temperature}_ws_{a.warm_start}"
+        f"_t{a.tree_temperature}_ws_{a.warm_start}_deploy_{deployed_endpoint}"
     )
 
     # 5) append the ledger row.
@@ -376,6 +428,15 @@ def main():
         "results_tsv": str(results_tsv),
         "instance": a.instance,
         "policy_architecture": policy_architecture,
+        "deploy_endpoint_flag": a.deploy_endpoint,
+        "deployed_endpoint": deployed_endpoint,
+        "floor_candidates": {
+            "trained_xbest": xbest_mean,
+            "trained_xfavorite": xfav_mean,
+            **({"warm_start_anchor": candidates[-1][0]}
+               if a.deploy_endpoint == "floor" and a.warm_start == "base_stock"
+               else {}),
+        },
         "learned_mean_cost": st_mean,
         "soft_tree_sem": st_sem,
         "best_heuristic_name": best_heuristic_name,

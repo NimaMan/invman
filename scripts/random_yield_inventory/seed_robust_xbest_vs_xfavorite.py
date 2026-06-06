@@ -37,6 +37,19 @@ ALGORITHM (full description)
   next_batch_seeds, sort by cost ascending, es.tell on costs) so the xbest path
   reproduces the production-trainer deployment; only the extra xfavorite readout
   is added.
+
+  HONEST FLOOR (additive, mirrors the OWMR reference
+  ``scripts/one_warehouse_multi_retailer/run_asymmetric_learned_vs_gate.py``):
+  the ``--deploy_endpoint {floor,xbest,xfavorite}`` flag selects which trained
+  endpoint(s) are deployable per seed. ``floor`` (default) deploys, per seed, the
+  best-of {xbest, xfavorite, LIR-gate} on the SAME held-out block (the gate is the
+  downside-safe anchor here -- it is a deterministic CRN re-eval, the same role the
+  warm-start/init anchor plays in OWMR). ``xbest`` reproduces the historical
+  production-trainer deployment EXACTLY (single best individual, what
+  ``es_mp.train`` returns today). ``xfavorite`` deploys only the distribution-mean
+  endpoint. The floor is DOWNSIDE-SAFE: it never deploys worse than xbest, and it
+  helps on the seeds where xbest overfits the small training-seed batch. This is
+  purely additive: ``--deploy_endpoint xbest`` recovers the prior verdict.
 """
 
 from __future__ import annotations
@@ -131,6 +144,15 @@ def main():
     parser.add_argument("--train_seed_batch", type=int, default=8)
     parser.add_argument("--holdout_seed_start", type=int, default=100000)
     parser.add_argument("--holdout_seeds", type=int, default=4096)
+    parser.add_argument(
+        "--deploy_endpoint", choices=["floor", "xbest", "xfavorite"], default="floor",
+        help="Which trained endpoint(s) are deployable per seed (honest floor, "
+             "mirrors the OWMR reference): 'floor' (default) deploys best-of "
+             "{xbest, xfavorite, LIR-gate} on the held-out block (downside-safe); "
+             "'xbest' reproduces the historical production-trainer deployment "
+             "EXACTLY (single best individual); 'xfavorite' deploys only the "
+             "CMA-ES distribution mean (es.current_param() = result[5]).",
+    )
     parser.add_argument("--output_json", type=str, default=None)
     parsed = parser.parse_args()
 
@@ -165,20 +187,38 @@ def main():
         xf_eval = evaluate_soft_tree_policy(reference, model, holdout, flat_params=xfavorite.tolist())
         xb_cost = float(xb_eval["mean_cost"])
         xf_cost = float(xf_eval["mean_cost"])
+        # ---- honest floor (additive, mirrors OWMR): per seed, deploy the best-of
+        # the selected trained endpoint(s) plus the LIR gate as the downside-safe
+        # anchor. deploy_endpoint="xbest" reproduces the historical deployment. ----
+        candidates = []
+        if parsed.deploy_endpoint in ("floor", "xbest"):
+            candidates.append((xb_cost, "trained_xbest"))
+        if parsed.deploy_endpoint in ("floor", "xfavorite"):
+            candidates.append((xf_cost, "trained_xfavorite"))
+        if parsed.deploy_endpoint == "floor":
+            # the LIR gate is a deterministic CRN re-eval on the same block -> it is
+            # the downside-safe anchor (never deploy worse than the gate).
+            candidates.append((gate_cost, "lir_gate_anchor"))
+        deployed_cost, deployed_policy = min(candidates, key=lambda item: item[0])
         rec = {
             "seed": s,
             "xbest_holdout_mean": xb_cost,
             "xfavorite_holdout_mean": xf_cost,
+            "deployed_holdout_mean": deployed_cost,
+            "deployed_policy": deployed_policy,
             "xbest_gap_pct_vs_gate": (xb_cost / gate_cost - 1.0) * 100.0,
             "xfavorite_gap_pct_vs_gate": (xf_cost / gate_cost - 1.0) * 100.0,
+            "deployed_gap_pct_vs_gate": (deployed_cost / gate_cost - 1.0) * 100.0,
             "seconds": time.time() - t0,
         }
         per_seed.append(rec)
         print(f"{s:>6} {xb_cost:>12.3f} {xf_cost:>12.3f} "
-              f"{rec['xbest_gap_pct_vs_gate']:>+8.2f} {rec['xfavorite_gap_pct_vs_gate']:>+8.2f}")
+              f"{rec['xbest_gap_pct_vs_gate']:>+8.2f} {rec['xfavorite_gap_pct_vs_gate']:>+8.2f}"
+              f"  -> deploy {deployed_policy} {deployed_cost:.3f}")
 
     xb = [r["xbest_holdout_mean"] for r in per_seed]
     xf = [r["xfavorite_holdout_mean"] for r in per_seed]
+    deployed = [r["deployed_holdout_mean"] for r in per_seed]
     n = len(per_seed)
 
     def summarize(vals, label):
@@ -194,10 +234,19 @@ def main():
     print("\nSEED-ROBUST SUMMARY (held-out, paired):")
     xb_summary = summarize(xb, "xbest")
     xf_summary = summarize(xf, "xfavorite")
+    deployed_summary = summarize(deployed, f"deployed[{parsed.deploy_endpoint}]")
     std_reduction = (1.0 - xf_summary["cross_seed_std"] / xb_summary["cross_seed_std"]) * 100.0 \
         if xb_summary["cross_seed_std"] > 0 else float("nan")
+    floor_std_reduction = (1.0 - deployed_summary["cross_seed_std"] / xb_summary["cross_seed_std"]) * 100.0 \
+        if xb_summary["cross_seed_std"] > 0 else float("nan")
+    n_deviates = sum(1 for r in per_seed if r["deployed_policy"] != "trained_xbest")
     print(f"\n  cross-seed std reduction xbest->xfavorite: {std_reduction:+.1f}%")
     print(f"  seed-mean change xbest->xfavorite: {xf_summary['seed_mean'] - xb_summary['seed_mean']:+.3f}")
+    print(f"  floor[{parsed.deploy_endpoint}] cross-seed std reduction vs xbest: {floor_std_reduction:+.1f}%")
+    print(f"  floor[{parsed.deploy_endpoint}] seed-mean change vs xbest: "
+          f"{deployed_summary['seed_mean'] - xb_summary['seed_mean']:+.3f}")
+    print(f"  floor deviated from xbest on {n_deviates}/{n} seeds "
+          f"(deployed policies: {[r['deployed_policy'] for r in per_seed]})")
 
     payload = {
         "config": {
@@ -206,13 +255,19 @@ def main():
             "sigma_init": parsed.sigma_init, "train_seed_batch": parsed.train_seed_batch,
             "seeds": seeds,
             "holdout_seed_start": parsed.holdout_seed_start, "holdout_seeds": parsed.holdout_seeds,
+            "deploy_endpoint": parsed.deploy_endpoint,
         },
         "gate_cost": gate_cost,
         "gate_policy": "linear_inflation",
         "per_seed": per_seed,
         "xbest_summary": xb_summary,
         "xfavorite_summary": xf_summary,
+        "deployed_summary": deployed_summary,
+        "deploy_endpoint": parsed.deploy_endpoint,
+        "floor_deviated_seeds": n_deviates,
+        "deployed_policies": [r["deployed_policy"] for r in per_seed],
         "cross_seed_std_reduction_pct": std_reduction,
+        "floor_cross_seed_std_reduction_pct": floor_std_reduction,
     }
     if parsed.output_json:
         out = Path(parsed.output_json)

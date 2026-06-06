@@ -72,6 +72,8 @@ PACKAGE_ROOT = Path(__file__).resolve().parents[2]
 if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
 
+import numpy as np
+
 import invman_rust as ir
 
 # ---------------------------------------------------------------------------
@@ -174,10 +176,21 @@ def simulate_rolling_dp(forecast, replications, seed):
 def train_soft_tree(forecast, depth, leaf_type, action_cap, generations, popsize, seed):
     """Self-contained CMA-ES soft-tree training against the exposed rollout binding.
 
-    Returns (best_params, train_mean_cost). Uses CV-Normal demand to match the
-    'simple' author column (so the learned policy and simple baseline are on the
-    same demand model). Trains on the FULL 104-period rolling-forecast path
-    (no warm-up truncation) to mirror the benchmark objective.
+    Returns (best_params, train_mean_cost, xfavorite_params). Uses CV-Normal demand
+    to match the 'simple' author column (so the learned policy and simple baseline
+    are on the same demand model). Trains on the FULL 104-period rolling-forecast
+    path (no warm-up truncation) to mirror the benchmark objective.
+
+    HONEST FLOOR (training-path audit 2026-06-06, mirrors the OWMR reference
+    `scripts/one_warehouse_multi_retailer/run_asymmetric_learned_vs_gate.py`):
+    in addition to ``best_params`` (xbest = the single best-scoring individual ever
+    evaluated, the historically deployed endpoint), we ALSO return ``xfavorite_params``
+    = ``optimizer.current_param()`` = the CMA-ES distribution MEAN (es.result[5]).
+    xbest overfits the small per-generation training-seed batch; xfavorite is the
+    smoothed centre and often generalizes better on held-out replications. The caller
+    evaluates BOTH on the held-out block and deploys the best-of (downside-safe: it
+    never deploys worse than xbest). This local-CMAES API exposes ``current_param()``
+    exactly like the shared ``invman.es_mp.train`` optimizer the OWMR runner uses.
     """
     from invman.cmaes import CMAES
 
@@ -209,7 +222,9 @@ def train_soft_tree(forecast, depth, leaf_type, action_cap, generations, popsize
             best_cost = gen_best
             best_idx = costs.index(gen_best)
             best_params = params_batch[best_idx]
-    return best_params, best_cost
+    # xfavorite = CMA-ES distribution mean (es.result[5]); see docstring.
+    xfavorite_params = np.asarray(optimizer.current_param(), dtype=np.float32).tolist()
+    return best_params, best_cost, xfavorite_params
 
 
 def evaluate_soft_tree(forecast, params, depth, leaf_type, action_cap, replications, seed):
@@ -244,6 +259,14 @@ def main():
     parser.add_argument("--generations", type=int, default=40)
     parser.add_argument("--popsize", type=int, default=24)
     parser.add_argument("--learned_replications", type=int, default=2000)
+    parser.add_argument("--deploy_endpoint", choices=["floor", "xbest", "xfavorite"], default="floor",
+                        help="Which trained CMA-ES endpoint(s) are deployable for the learned "
+                             "soft tree (training-path audit 2026-06-06, mirrors the OWMR runner). "
+                             "'floor' (default) deploys the best-of {xbest, xfavorite} on the "
+                             "held-out block (xfavorite = optimizer.current_param() = the CMA-ES "
+                             "distribution mean, added as an honest-floor candidate; downside-safe). "
+                             "'xbest' reproduces the historical deploy-the-single-best-individual "
+                             "behavior EXACTLY; 'xfavorite' deploys only the distribution mean.")
     parser.add_argument("--output_json", default=None)
     args = parser.parse_args()
 
@@ -283,17 +306,42 @@ def main():
                 f"{dp_cost:>9.1f}{pub_dp:>9.1f}{dp_dpct:>7.2f} | {lt_cost:>9.1f}{lt_gap_dp:>8.2f}")
 
         if args.learned:
-            params, train_cost = train_soft_tree(
+            xbest_params, train_cost, xfavorite_params = train_soft_tree(
                 forecast, args.tree_depth, args.leaf_type, args.action_cap,
                 args.generations, args.popsize, args.seed)
-            learned_cost = evaluate_soft_tree(
-                forecast, params, args.tree_depth, args.leaf_type, args.action_cap,
+            # ---- HONEST FLOOR (additive; mirrors the OWMR reference runner) ----
+            # Evaluate BOTH endpoints on the held-out replication block and deploy
+            # the best-of {xbest, xfavorite}. There is NO warm-start anchor here
+            # (CMA-ES starts from a random init, not the gate), so the candidate set
+            # is exactly {xbest, xfavorite}. deploy_endpoint selects the deployable
+            # set: 'floor' (default) = best-of both; 'xbest' reproduces the historical
+            # deploy-the-single-best-individual behavior EXACTLY; 'xfavorite' = only
+            # the distribution mean. Downside-safe: the floor never deploys worse
+            # than xbest.
+            xbest_cost = evaluate_soft_tree(
+                forecast, xbest_params, args.tree_depth, args.leaf_type, args.action_cap,
                 args.learned_replications, args.seed + 99)
+            xfavorite_cost = evaluate_soft_tree(
+                forecast, xfavorite_params, args.tree_depth, args.leaf_type, args.action_cap,
+                args.learned_replications, args.seed + 99)
+            xbest_candidate = (xbest_cost, "trained_xbest", xbest_params)
+            xfavorite_candidate = (xfavorite_cost, "trained_xfavorite", xfavorite_params)
+            if args.deploy_endpoint == "xbest":
+                candidates = [xbest_candidate]
+            elif args.deploy_endpoint == "xfavorite":
+                candidates = [xfavorite_candidate]
+            else:  # "floor"
+                candidates = [xbest_candidate, xfavorite_candidate]
+            learned_cost, deployed_endpoint, _deployed_params = min(candidates, key=lambda c: c[0])
             learned_gap_dp = 100.0 * (learned_cost - dp_cost) / dp_cost
             row["learned_soft_tree_cost"] = learned_cost
             row["learned_soft_tree_gap_vs_dp_pct"] = learned_gap_dp
             row["learned_soft_tree_train_period_cost"] = train_cost
-            line += f" | {learned_cost:>9.1f}{learned_gap_dp:>8.2f}"
+            row["deploy_endpoint"] = args.deploy_endpoint
+            row["deployed_endpoint"] = deployed_endpoint
+            row["xbest_cost"] = xbest_cost
+            row["xfavorite_cost"] = xfavorite_cost
+            line += f" | {learned_cost:>9.1f}{learned_gap_dp:>8.2f} [{deployed_endpoint.split('_')[-1]}]"
 
         print(line)
         rows.append(row)

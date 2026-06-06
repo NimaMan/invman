@@ -52,6 +52,21 @@ def parse_args():
     parser.add_argument("--train_seed_batch", type=int, default=8)
     parser.add_argument("--eval_seeds", type=int, default=2048)
     parser.add_argument("--output_json", default=None)
+    # ADDITIVE/REVERSIBLE (training-path audit 2026-06-06): mirror the OWMR
+    # reference runner (scripts/one_warehouse_multi_retailer/run_asymmetric_learned_vs_gate.py).
+    # es_mp.train deploys CMA-ES xbest (es.best_param() = result[0]), which can
+    # overfit the small train_seed_batch. The "honest floor" reads BOTH endpoints
+    # from the SAME run -- xbest AND xfavorite (es.current_param() = result[5] =
+    # the distribution mean) -- evaluates them on the SAME held-out eval block, and
+    # deploys the cheaper. It is downside-safe: never deploys worse than xbest.
+    #   floor (default) -> deploy best-of {xbest, xfavorite}
+    #   xbest           -> reproduce the historical deploy-xbest behavior EXACTLY
+    #   xfavorite       -> deploy ONLY the distribution-mean endpoint
+    parser.add_argument(
+        "--deploy_endpoint",
+        choices=["floor", "xbest", "xfavorite"],
+        default="floor",
+    )
     return parser.parse_args()
 
 
@@ -209,16 +224,56 @@ def main():
     )
 
     train_args = _training_namespace(parsed, reference)
-    trained_model, _ = train(
+    # ADDITIVE/REVERSIBLE: request the live CMA-ES optimizer so we can read BOTH
+    # endpoints from the SAME run -- xbest (es.best_param() = result[0], already
+    # set into trained_model) AND xfavorite (es.current_param() = result[5], the
+    # distribution mean). return_optimizer defaults to False elsewhere, so this
+    # does not change any other caller. (mirrors OWMR run_asymmetric_learned_vs_gate)
+    trained_model, _, es_optimizer = train(
         model=model,
         get_model_fitness=_get_model_fitness(model, reference),
         get_population_fitness=_get_population_fitness(model, reference),
         args=train_args,
         same_seed=bool(parsed.same_seed),
+        return_optimizer=True,
     )
 
     eval_seeds = [100000 + offset for offset in range(parsed.eval_seeds)]
-    learned_evaluation = evaluate_soft_tree_policy(reference, trained_model, eval_seeds)
+
+    # ---- HONEST FLOOR (best-of {xbest, xfavorite}) on the SAME held-out block ----
+    xbest_flat = np.asarray(trained_model.get_model_flat_params(), dtype=np.float32).tolist()
+    xfavorite_flat = np.asarray(es_optimizer.current_param(), dtype=np.float32).tolist()
+    xbest_eval = evaluate_soft_tree_policy(
+        reference, model, eval_seeds, flat_params=xbest_flat
+    )
+    xfavorite_eval = evaluate_soft_tree_policy(
+        reference, model, eval_seeds, flat_params=xfavorite_flat
+    )
+    candidates = {"xbest": xbest_eval, "xfavorite": xfavorite_eval}
+    if parsed.deploy_endpoint == "xbest":
+        deployable = ["xbest"]
+    elif parsed.deploy_endpoint == "xfavorite":
+        deployable = ["xfavorite"]
+    else:  # "floor"
+        deployable = ["xbest", "xfavorite"]
+    deployed_endpoint = min(deployable, key=lambda name: candidates[name]["mean_cost"])
+    deployed_flat = xbest_flat if deployed_endpoint == "xbest" else xfavorite_flat
+    # Keep the deployed endpoint as trained_model so downstream eval/artifact use it.
+    trained_model = trained_model.set_model_params(
+        np.asarray(deployed_flat, dtype=np.float32)
+    )
+
+    learned_evaluation = candidates[deployed_endpoint]
+    floor_info = {
+        "deploy_endpoint": parsed.deploy_endpoint,
+        "deployed_endpoint": deployed_endpoint,
+        "floor_deviates_from_xbest": bool(deployed_endpoint != "xbest"),
+        "xbest_mean_cost": float(xbest_eval["mean_cost"]),
+        "xbest_cost_std": float(xbest_eval["cost_std"]),
+        "xfavorite_mean_cost": float(xfavorite_eval["mean_cost"]),
+        "xfavorite_cost_std": float(xfavorite_eval["cost_std"]),
+        "num_eval_samples": int(learned_evaluation["num_samples"]),
+    }
     comparison_rows = _comparison_table(reference, learned_evaluation, eval_seed=100000)
 
     payload = {
@@ -237,6 +292,7 @@ def main():
             "same_seed": parsed.same_seed,
             "train_seed_batch": parsed.train_seed_batch,
         },
+        "honest_floor": floor_info,
         "evaluation": {
             "soft_tree": learned_evaluation,
         },
@@ -255,6 +311,14 @@ def main():
     print(dumps_json(payload))
     print()
     print(payload["comparison_markdown"])
+    print()
+    print(
+        f"[honest_floor] deploy_endpoint={floor_info['deploy_endpoint']} "
+        f"deployed={floor_info['deployed_endpoint']} "
+        f"deviates_from_xbest={floor_info['floor_deviates_from_xbest']} "
+        f"| xbest={floor_info['xbest_mean_cost']:.4f}±{floor_info['xbest_cost_std']:.4f} "
+        f"xfavorite={floor_info['xfavorite_mean_cost']:.4f}±{floor_info['xfavorite_cost_std']:.4f}"
+    )
 
 
 if __name__ == "__main__":

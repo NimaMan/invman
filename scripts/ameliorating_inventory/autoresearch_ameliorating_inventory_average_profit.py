@@ -314,7 +314,15 @@ def train(kw_train, x0, popsize, generations, sigma_init, seed):
         history.append(float(np.max(profits)))
         gen_candidates.append(np.asarray(sols[int(np.argmax(profits))], dtype=np.float32))
     cma_best = np.asarray(es.best_param(), dtype=np.float32)
-    return cma_best, gen_candidates, history
+    # xfavorite = the CMA-ES distribution MEAN (es.current_param() = es.result[5]).
+    # The historical deployed endpoint is cma_best = xbest = es.best_param() = result[0]
+    # (the single best individual ever sampled, which can overfit the small training
+    # CRN batch). xfavorite is the mean of the search distribution -- the honest-floor
+    # endpoint from the training-path audit (TRAINING_PATH_AUDIT_2026_06_06.md). It is
+    # returned ADDITIVELY here so main() can add it to the existing best-of candidate
+    # set; nothing about the xbest path changes.
+    cma_xfavorite = np.asarray(es.current_param(), dtype=np.float32)
+    return cma_best, cma_xfavorite, gen_candidates, history
 
 
 def parse_args():
@@ -334,6 +342,14 @@ def parse_args():
     p.add_argument("--popsize", type=int, default=None)
     p.add_argument("--generations", type=int, default=None)
     p.add_argument("--eval_seeds", type=int, default=None)
+    p.add_argument("--deploy_endpoint", choices=["floor", "xbest", "xfavorite"], default="floor",
+                   help="Which trained CMA-ES endpoint(s) are deployable in the held-out "
+                        "best-of selection. 'floor' (default) adds the distribution-mean "
+                        "endpoint xfavorite (es.current_param() = result[5]) to the existing "
+                        "best-of set {xbest=cma_incumbent, order_up_to anchor, gen_best}; "
+                        "'xbest' reproduces the historical deploy-the-single-best-individual "
+                        "behavior (excludes xfavorite); 'xfavorite' deploys only the "
+                        "distribution mean (+anchors).")
     p.add_argument("--output_json", default=None)
     return p.parse_args()
 
@@ -368,13 +384,32 @@ def main():
 
     # --- CMA-ES (maximizing profit) ---
     t0 = time.time()
-    cma_best, gen_candidates, history = train(
+    cma_best, cma_xfavorite, gen_candidates, history = train(
         kw_train, cma_x0, popsize, generations, parsed.sigma_init, parsed.seed,
     )
     train_seconds = time.time() - t0
 
     # --- select on the held-out eval block (the reported number) ---
-    candidates = {"order_up_to_anchor": x0, "cma_incumbent": cma_best}
+    # The runner already deploys the best-of a candidate set on the held-out block
+    # (an honest floor): cma_incumbent = xbest = es.best_param(), order_up_to_anchor =
+    # warm-start gate anchor, gen_best = best per-generation incumbent. The training-
+    # path audit (TRAINING_PATH_AUDIT_2026_06_06.md) adds the CMA-ES distribution-MEAN
+    # endpoint xfavorite (= es.current_param() = result[5]) to that set ADDITIVELY: it
+    # is downside-safe (best-of can never deploy worse than xbest) and helps where
+    # xbest overfits the small training CRN batch.
+    #
+    # deploy_endpoint selects which TRAINED endpoint(s) are deployable:
+    #   floor (default) -> {xbest (cma_incumbent), xfavorite} both deployable, plus the
+    #                       always-present anchors (order_up_to gate, gen_best). This
+    #                       reproduces the prior behavior EXACTLY and only adds xfavorite.
+    #   xbest           -> ONLY the historical single-best individual (+anchors); the
+    #                       distribution mean is excluded. Reproduces prior deployment.
+    #   xfavorite       -> ONLY the distribution mean (+anchors); xbest excluded.
+    candidates = {"order_up_to_anchor": x0}
+    if parsed.deploy_endpoint in ("floor", "xbest"):
+        candidates["cma_incumbent"] = cma_best
+    if parsed.deploy_endpoint in ("floor", "xfavorite"):
+        candidates["cma_xfavorite"] = cma_xfavorite
     if history:
         sub = eval_seeds[: max(4, n_eval // 4)]
         best_gen_idx = int(np.argmax([
@@ -437,6 +472,19 @@ def main():
             "std_profit": float(learned["std_profit"]),
             "sem_profit": learned_sem,
             "final_gen_best_train_profit": history[-1] if history else None,
+            # Honest-floor endpoint diagnostics: held-out profit of each TRAINED
+            # endpoint that was deployable (None if excluded by --deploy_endpoint).
+            # floor_deployed_endpoint records which endpoint the best-of selected.
+            "deploy_endpoint": parsed.deploy_endpoint,
+            "xbest_profit": (
+                float(cand_evals["cma_incumbent"]["mean_profit"])
+                if "cma_incumbent" in cand_evals else None
+            ),
+            "xfavorite_profit": (
+                float(cand_evals["cma_xfavorite"]["mean_profit"])
+                if "cma_xfavorite" in cand_evals else None
+            ),
+            "floor_deployed_endpoint": learned_source,
         },
         "result": {
             "gap_to_bound": gap_to_bound,

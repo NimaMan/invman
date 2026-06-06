@@ -1,12 +1,20 @@
 # Paper Workspace
 
-This directory contains the new manuscript material for the problem extensions beyond the original
-lost-sales paper.
+This directory contains the self-contained manuscript for the compact-CMA-ES inventory-control
+benchmark study.
 
 Current scope:
 
 - vanilla / fixed-order-cost lost sales
-- multi-echelon (one-warehouse, K-retailer with special delivery; Van Roy 1997 / Gijsbrechts 2022)
+- dual sourcing
+- divergent multi-echelon (one-warehouse, K-retailer with special delivery; Van Roy 1997 /
+  Gijsbrechts 2022)
+- perishable inventory
+- general-network backorder
+- serial multi-echelon / Clark-Scarf
+- one-warehouse multi-retailer
+- ameliorating inventory
+- production / assembly / distribution networks
 
 Main files:
 
@@ -16,9 +24,16 @@ Main files:
 The manuscript is kept self-contained. The benchmark results tables are maintained directly inside
 `learning_inventory_control_policies_es.tex` instead of being generated through separate TeX partials.
 
-The multi-echelon section reports the learned soft-tree policy beating the published A3C savings on
-both Gijs settings (setting 1: 14.4% vs 8.95%; setting 2: 14.4% vs 12.09%); env validation against
-the published Van Roy constant base-stock costs is in the appendix. Reproduce the results with:
+The paper uses comparator-specific verdicts rather than a single leaderboard: beat a heuristic only
+under the same protocol, match proven optima, and report bound gaps or gate-matches explicitly. Recent
+updates include the seed-robust OWMR gate beat on Kaynov instance 12, the mixed
+production/assembly/distribution correction from best-of-seeds beat to gate-match, and the
+ImageNet-style baseline-ledger direction described in `../plan.md`.
+
+The divergent multi-echelon section reports the learned soft-tree policy improving on the
+in-environment constant base-stock by about 14.4% on both Gijs settings, with the published A3C
+savings (8.95% and 12.09%) listed as cross-protocol context; env validation against the published
+Van Roy constant base-stock costs is in the appendix. Reproduce the legacy multi-echelon results with:
 
 ```bash
 python scripts/multi_echelon/train_multi_echelon_policy.py --reference gijsbrechts2022_setting1 --budget full

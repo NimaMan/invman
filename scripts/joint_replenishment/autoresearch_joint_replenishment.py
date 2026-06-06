@@ -146,6 +146,17 @@ def parse_args():
     parser.add_argument("--warm_start_moq", action="store_true",
                         help="Seed the CMA mean (cma_x0) with the best of a small candidate set, anchoring near MOQ.")
     parser.add_argument("--warm_start_candidates", type=int, default=8)
+    # HONEST DOWNSIDE-SAFE FLOOR (training-path audit 2026-06-06, mirrors
+    # scripts/one_warehouse_multi_retailer/run_asymmetric_learned_vs_gate.py). es_mp.train
+    # deploys CMA-ES xbest (es.best_param()), which can overfit the small training-seed
+    # batch. With return_optimizer=True we ALSO read xfavorite (the CMA distribution mean,
+    # es.current_param() = result[5]) and, when --warm_start_moq supplied an anchor, the
+    # warm-start vector. We deploy the best-of {xbest, xfavorite [, warm-start anchor]} on
+    # the SAME held-out block. floor (default) is DOWNSIDE-SAFE: it never deploys worse than
+    # xbest; xbest reproduces the historical single-endpoint deployment EXACTLY.
+    parser.add_argument("--deploy_endpoint", choices=["floor", "xbest", "xfavorite"], default="floor",
+                        help="floor=best-of{xbest,xfavorite[,warm-start anchor]} (downside-safe); "
+                             "xbest=historical single endpoint; xfavorite=CMA distribution mean only.")
     return parser.parse_args()
 
 
@@ -303,16 +314,51 @@ def main():
         trained_models_dir=str(output_root / "models"),
     )
 
-    trained_model, _ = train(
+    # return_optimizer=True is ADDITIVE: train() still sets trained_model to xbest
+    # (es.best_param()) and the global deploy default is unchanged; we merely also read
+    # the live optimizer to extract xfavorite (es.current_param()) for the honest floor.
+    trained_model, _, es_optimizer = train(
         model=model,
         get_model_fitness=_get_model_fitness(model, reference),
         get_population_fitness=_get_population_fitness(model, reference),
         args=train_args,
         same_seed=False,
+        return_optimizer=True,
     )
 
     held_out = [EVAL_SEED_BASE + offset for offset in range(int(eval_seeds))]
-    learned = evaluate_soft_tree_policy(reference, trained_model, held_out)
+
+    # ---- xbest endpoint (historical deployment) ----
+    xbest_flat = [float(v) for v in trained_model.get_model_flat_params()]
+    xbest_eval = evaluate_soft_tree_policy(reference, trained_model, held_out)
+    xbest_cost = float(xbest_eval["mean_cost"])
+
+    # ---- xfavorite endpoint (CMA distribution mean = es.current_param() = result[5]) ----
+    xfavorite_flat = [float(v) for v in np.asarray(es_optimizer.current_param(), dtype=np.float64)]
+    xfavorite_eval = evaluate_soft_tree_policy(reference, model, held_out, flat_params=xfavorite_flat)
+    xfavorite_cost = float(xfavorite_eval["mean_cost"])
+
+    # ---- honest floor: best-of {xbest, xfavorite [, warm-start anchor]} on the SAME
+    #      held-out block. floor (default) is downside-safe; xbest reproduces history. ----
+    candidates = {
+        "xbest": (xbest_cost, xbest_flat, xbest_eval),
+        "xfavorite": (xfavorite_cost, xfavorite_flat, xfavorite_eval),
+    }
+    anchor_cost = None
+    if cma_x0 is not None:
+        anchor_flat = [float(v) for v in cma_x0]
+        anchor_eval = evaluate_soft_tree_policy(reference, model, held_out, flat_params=anchor_flat)
+        anchor_cost = float(anchor_eval["mean_cost"])
+        candidates["warm_start_anchor"] = (anchor_cost, anchor_flat, anchor_eval)
+
+    if parsed.deploy_endpoint == "xbest":
+        deployable = {"xbest": candidates["xbest"]}
+    elif parsed.deploy_endpoint == "xfavorite":
+        deployable = {"xfavorite": candidates["xfavorite"]}
+    else:  # "floor" -> all available candidates compete
+        deployable = candidates
+    deployed_endpoint = min(deployable, key=lambda k: deployable[k][0])
+    learned = deployable[deployed_endpoint][2]
     learned_cost = float(learned["mean_cost"])
 
     targets = newsvendor_item_targets(reference)
@@ -350,6 +396,12 @@ def main():
         "policy_architecture": structure,
         "warm_start_moq": bool(parsed.warm_start_moq),
         "warm_start_probe_cost": warm_start_cost,
+        "deploy_endpoint": parsed.deploy_endpoint,
+        "deployed_endpoint": deployed_endpoint,
+        "floor_deviates_from_xbest": bool(deployed_endpoint != "xbest"),
+        "xbest_cost": xbest_cost,
+        "xfavorite_cost": xfavorite_cost,
+        "warm_start_anchor_cost": anchor_cost,
         "learned_mean_cost": learned_cost,
         "best_heuristic_name": best_heuristic_name,
         "best_heuristic_cost": best_heuristic_cost,

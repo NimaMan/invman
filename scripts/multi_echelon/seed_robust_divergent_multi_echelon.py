@@ -73,6 +73,12 @@ def parse_args():
     p.add_argument("--sigma_init", type=float, default=2.0)
     p.add_argument("--temperature", type=float, default=0.25)
     p.add_argument("--run_tag", default="divergent_seed_robust")
+    # ADDITIVE/REVERSIBLE (training-path audit 2026-06-06): which CMA-ES endpoint(s)
+    # train_one may deploy. "floor" (default) deploys the cheaper of {xbest,
+    # xfavorite} per (design, depth) on the SAME eval seeds (downside-safe; never
+    # worse than xbest). "xbest" reproduces the historical run_experiment deployment
+    # EXACTLY (deploy the single best CMA-ES individual).
+    p.add_argument("--deploy_endpoint", choices=["floor", "xbest"], default="floor")
     return p.parse_args()
 
 
@@ -102,19 +108,30 @@ def main():
         runs = []
         for design in designs:
             for depth in depths:
-                run = _tmp.train_one(reference_name, design, depth, budget, ns, out_dir)
+                run = _tmp.train_one(
+                    reference_name, design, depth, budget, ns, out_dir,
+                    deploy_endpoint=parsed.deploy_endpoint,
+                )
                 runs.append(run)
         best = min(runs, key=lambda r: r["mean_cost"])
         savings = 100.0 * (gate_cost - best["mean_cost"]) / gate_cost
+        # floor bookkeeping: did the floor ever deploy xfavorite instead of xbest?
+        floor_deviated = any(r.get("deployed_endpoint") == "xfavorite" for r in runs)
         per_seed.append({
             "seed": seed,
             "gate_cost": gate_cost,
             "gate_yw": gate["warehouse_level"], "gate_yr": gate["retailer_level"],
             "best_learned_cost": float(best["mean_cost"]),
             "best_design": best["design"], "best_depth": best["depth"],
+            "best_deployed_endpoint": best.get("deployed_endpoint"),
+            "deploy_endpoint": parsed.deploy_endpoint,
+            "floor_deviated_from_xbest": floor_deviated,
             "savings_pct_vs_gate": savings,
             "all_runs": [{"design": r["design"], "depth": r["depth"],
-                          "mean_cost": r["mean_cost"], "std_cost": r["std_cost"]} for r in runs],
+                          "mean_cost": r["mean_cost"], "std_cost": r["std_cost"],
+                          "deployed_endpoint": r.get("deployed_endpoint"),
+                          "xbest_cost": r.get("xbest_cost"),
+                          "xfavorite_cost": r.get("xfavorite_cost")} for r in runs],
             "seconds": round(time.time() - t0, 1),
         })
         print(f"[seed {seed}] gate {gate_cost:.2f} (yw={gate['warehouse_level']},yr={gate['retailer_level']})  "
@@ -143,6 +160,8 @@ def main():
         "budget": parsed.budget,
         "designs": designs, "depths": depths,
         "n_seeds": n, "seeds": parsed.seeds,
+        "deploy_endpoint": parsed.deploy_endpoint,
+        "floor_deviated_any_seed": any(s.get("floor_deviated_from_xbest") for s in per_seed),
         "per_seed": per_seed,
         "learned_seed_mean": statistics.mean(learned),
         "learned_seed_std": statistics.stdev(learned) if n > 1 else 0.0,
