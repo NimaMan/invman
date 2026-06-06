@@ -1,0 +1,512 @@
+[
+  {
+    "problem": "lost_sales",
+    "subfamily": "vanilla (Zipkin 2008) + fixed_order_cost (Bijvank 2015)",
+    "instances": [
+      { "name": "vanilla_l4_p4_poisson5 (alias lit_poisson_p4_l4)", "dimensions": ["regime:lost_sales", "subproblem:vanilla", "demand:poisson", "mu:5", "leadtime:L4", "h:1", "p:4", "anchor:Zipkin2008_Table3a"], "literature_verified_flag": "true" },
+      { "name": "lit_poisson_p19_l4", "dimensions": ["regime:lost_sales", "subproblem:vanilla", "demand:poisson", "leadtime:L4", "p:19_high_penalty"], "literature_verified_flag": "absent (reference_costs.rs has no per-row flag; source=literature, carries published optimal 8.89)" },
+      { "name": "lit_poisson_p4_l6 / l8 / l10", "dimensions": ["regime:lost_sales", "subproblem:vanilla", "demand:poisson", "leadtime:L6/L8/L10_deep_pipeline"], "literature_verified_flag": "absent (source=literature or literature+computed but heuristic cells are full-precision repo-computed, e.g. myopic1=5.4140775)" },
+      { "name": "lit_geometric_p4_l4 .. lit_geometric_p19_l10 (8 rows)", "dimensions": ["regime:lost_sales", "subproblem:vanilla", "demand:geometric", "cv:high", "leadtime:L4-L10", "p:4_and_19"], "literature_verified_flag": "absent (source=literature+computed; M1/SVBS repo-computed)" },
+      { "name": "lit_mmpp2_pos_* / lit_mmpp2_neg_* (16 rows)", "dimensions": ["regime:lost_sales", "subproblem:vanilla", "demand:markov_modulated_poisson2", "autocorr:positive_p00=p11=0.9 / negative_p00=p11=0.1", "leadtime:L4-L10", "p:4_and_19"], "literature_verified_flag": "absent (source=computed; order qty on stationary marginal, cost on true MMPP2; no capped_base_stock)" },
+      { "name": "bijvank2015_table1_l2_p14_k5", "dimensions": ["regime:lost_sales", "subproblem:fixed_order_cost", "demand:poisson", "mu:5", "leadtime:L2", "h:1", "p:14", "K:5", "anchor:Bijvank2015_Table1", "exact_solvable"], "literature_verified_flag": "true" },
+      { "name": "fixed_order_cost full experiment grid 'lost_sales_style_full_grid_mu5'", "dimensions": ["regime:lost_sales", "subproblem:fixed_order_cost", "demand:{poisson,geometric,mmpp2_pos,mmpp2_neg}", "leadtime:L2/L4/L6/L8/L10", "p:4_and_19", "K:5_and_25", "size:80_instances"], "literature_verified_flag": "absent (README: larger grids not yet literature-verified)" }
+    ],
+    "baselines": {
+      "heuristics": ["vanilla: Myopic-1 (Zipkin 'Myopic')", "vanilla: Myopic-2", "vanilla: Standard Vector Base Stock (SVBS, Morton 1969/71)", "vanilla: better/capped base-stock (Zipkin 'Better vector base-stock' 4.80, corroborated Xin 2021)", "fixed-cost: (s,S)", "fixed-cost: (s,nQ)", "fixed-cost: modified (s,S,q)"],
+      "exact_solver": "fixed_order_cost: exact_value_iteration.rs — average-cost bounded DP / relative value iteration over the lost-sales pipeline (exact within inventory-position cap). VANILLA: NO in-repo exact solver — optima 4.73/8.89/5.31/etc. are carried published Zipkin DP values, NOT recomputed.",
+      "published_rows": ["VANILLA Zipkin 2008 Table 3(a) L=4 Poisson(5) h=1 p=4: Optimal 4.73, Myopic 5.06, Myopic-2 4.82, SVBS 5.83, Better-VBS 4.80", "FIXED-COST Bijvank 2015 Table 1 R=1 L=2 h=1 p=14 K=5 Poisson(5): Optimal 11.46, (s,S)=(17,23) 11.62, (s,nQ)=(17,7) 11.56, modified (s,S,q)=(17,23,7) 11.50", "No published DRL row in the lost-sales tables (Gijsbrechts 2022 carried as context only)"]
+    },
+    "verification": {
+      "status": "verified_rerun",
+      "published_value": "vanilla L4 Poisson5: optimal 4.73, myopic1 5.06, myopic2 4.82, svbs 5.83; fixed-cost Bijvank Table 1: optimal 11.46, (s,S) 11.62, (s,nQ) 11.56, modified (s,S,q) 11.50",
+      "reproduced_value": "VANILLA (horizon=100k, seed=123): myopic1=5.0569, myopic2=4.8208, svbs=5.8153 (within ~0.015). FIXED-COST (cap=24, exact DP): optimal=11.4631 (gap +0.0031, first_action=8), (s,S)=11.6181, (s,nQ)=11.5552, modified=11.4974 (gaps <0.005). Fixed-cost is a genuine EXACT solver match; vanilla optimum 4.73 is a carried Zipkin value (only the 3 heuristic rows re-run). CAVEAT: only vanilla_l4_p4_poisson5 carries true Zipkin numbers; rest of 33-instance grid is repo-computed.",
+      "rerun_method": "python -c via invman_rust: (1) ir.lost_sales_heuristics_all('Poisson',5.0,0,0,0,0,4,1.0,4.0,0.0,0.0,100000,123,0.2,200,0.995); (2) ir.lost_sales_fixed_order_cost_exact_literature_summary('bijvank2015_table1_l2_p14_k5',24). Both <1 min."
+    },
+    "results": [
+      { "claim": "Vanilla surface: learned policies best in 22/24 reported instances; on L4-Poisson4 depth-2 linear-leaf soft tree 4.7537 vs myopic2 4.8186 (-1.20%)", "seed_reporting": "single_seed", "at_risk": true },
+      { "claim": "Fixed-cost surface (48 instances): learned competitive/winning vs (s,S)/(s,nQ)/(s,S,q); canonical L4 Poisson K5 p4 learned ~8.73 vs heuristic ~9.20", "seed_reporting": "single_seed", "at_risk": true },
+      { "claim": "Canonical vanilla L4-Poisson p4 depth-2 soft tree within eval noise of published optimum 4.73 (learned 4.7537)", "seed_reporting": "multi_seed_mean_std", "at_risk": false }
+    ],
+    "reproduce_commands": [
+      "python -c \"import invman_rust as ir; print(ir.lost_sales_heuristics_all('Poisson',5.0,0,0,0,0,4,1.0,4.0,0.0,0.0,100000,123,0.2,200,0.995))\"",
+      "python -c \"import invman_rust as ir; import json; print(json.dumps(ir.lost_sales_fixed_order_cost_exact_literature_summary('bijvank2015_table1_l2_p14_k5',24), default=str))\"",
+      "python -c \"import invman_rust as ir; [print(n, ir.lost_sales_reference_costs(n)['source'], ir.lost_sales_reference_costs(n)['costs']) for n in ir.lost_sales_reference_instance_names()]\"",
+      "python -c \"import invman_rust as ir; g=ir.lost_sales_fixed_order_cost_expand_experiment_grid('lost_sales_style_full_grid_mu5'); print(len(g), g[0]['name'], g[-1]['name'])\"",
+      "python /home/nima/code/ml/invman/scripts/lost_sales/validate_reference_instance.py --num_seeds 3",
+      "python /home/nima/code/ml/invman/scripts/lost_sales/benchmark_full_suite.py --seed 42 --eval_seeds 10"
+    ]
+  },
+  {
+    "problem": "dual_sourcing",
+    "subfamily": "Gijsbrechts et al. 2022 Figure 9 small-scale family",
+    "instances": [
+      { "name": "dual_l2_ce105", "dimensions": ["regime:dual_sourcing_backlog", "leadtime:Lr2", "ce:105", "demand:U0-4", "cr:100", "h:5", "b:495", "primary_unit_test_instance"], "literature_verified_flag": "true (experiments/mod.rs grid hardcodes for all 6; references.rs has NO per-instance flag field)" },
+      { "name": "dual_l2_ce110", "dimensions": ["regime:dual_sourcing_backlog", "leadtime:Lr2", "ce:110", "demand:U0-4"], "literature_verified_flag": "true" },
+      { "name": "dual_l3_ce105", "dimensions": ["regime:dual_sourcing_backlog", "leadtime:Lr3", "ce:105", "demand:U0-4"], "literature_verified_flag": "true" },
+      { "name": "dual_l3_ce110", "dimensions": ["regime:dual_sourcing_backlog", "leadtime:Lr3", "ce:110", "demand:U0-4"], "literature_verified_flag": "true" },
+      { "name": "dual_l4_ce105", "dimensions": ["regime:dual_sourcing_backlog", "leadtime:Lr4", "ce:105", "demand:U0-4"], "literature_verified_flag": "true" },
+      { "name": "dual_l4_ce110", "dimensions": ["regime:dual_sourcing_backlog", "leadtime:Lr4", "ce:110", "demand:U0-4", "primary_reference_instance"], "literature_verified_flag": "true" }
+    ],
+    "baselines": {
+      "heuristics": ["single_index", "dual_index", "capped_dual_index (strongest; used as optimal proxy)", "tailored_base_surge"],
+      "exact_solver": "bounded DP: solve_bounded_average_cost_optimal_policy (relative value-iteration over truncated inventory box [-12,24]); NOT a proof-level unbounded optimum. For l_r=4 the truncated value sits ~0.2% BELOW the heuristics so it is unusable as a denominator; capped_dual_index is the optimal proxy there.",
+      "published_rows": ["Figure 9 optimality-gap labels (% above bounded-DP optimum): capped_dual_index 0.00-0.11%, dual_index 0.11-0.49%, single_index 0.56-2.44%, tailored_base_surge 0.00-0.99%, A3C 0.51-1.85%", "dual_l2_ce105: CDI 0.00 / DI 0.11 / SI 0.56 / TBS 0.06 / A3C 0.52", "dual_l4_ce110: CDI 0.11 / DI 0.49 / SI 2.44 / TBS 0.58 / A3C 1.33", "NO published absolute-cost table (only Figure 9 gap bar labels)"]
+    },
+    "verification": {
+      "status": "verified_rerun",
+      "published_value": "Figure 9 optimality gaps for dual_l2_ce105: CDI 0.00%, DI 0.11%, SI 0.56%, TBS 0.06% (and dual_l2_ce110: 0.03/0.18/1.03/0.99%)",
+      "reproduced_value": "dual_l2_ce105 (re-run, 10.4s): optimal_avg=216.770; CDI gap=0.0058% (pub 0.00), TBS=0.0615% (pub 0.06), DI=0.1164% (pub 0.11), SI=0.5675% (pub 0.56). dual_l2_ce110: optimal_avg=219.733; CDI=0.0301% (pub 0.03), DI=0.1784% (pub 0.18), TBS=0.9874% (pub 0.99), SI=1.0316% (pub 1.03). All within <=0.0075pp. l_r=3,4 rows NOT re-run this audit (minutes-scale, #[ignore]d) but externally validated 2026-06-04.",
+      "rerun_method": "python -c invman_rust.dual_sourcing_reference_benchmark_summary('dual_l2_ce105', inventory_lower=-12, inventory_upper=24, tolerance=1e-8, max_iterations=250, search_seed=123, search_horizon=6000, warm_up_periods_ratio=0.2) and same for 'dual_l2_ce110'."
+    },
+    "results": [
+      { "claim": "Learned soft tree MATCHES capped-dual-index optimal proxy on all 6 instances (within CDI's <=0.11% band), thereby clearing published A3C (gaps 0.51-1.85%). Headline match floor, robust.", "seed_reporting": "multi_seed_mean_std", "at_risk": false },
+      { "claim": "Learned soft tree BEATS CDI on 2 of 6 rows: dual_l2_ce110 by -0.009%, dual_l4_ce110 by -0.041%, held-out re-verified on disjoint seeds.", "seed_reporting": "single_seed", "at_risk": true },
+      { "claim": "Factor-screen negative gaps vs best heuristic (dual_l4_ce105 -0.1052%, dual_l2_ce105 axis-linear -0.0621%) presented as learned beating heuristic.", "seed_reporting": "single_seed", "at_risk": true }
+    ],
+    "reproduce_commands": [
+      "python -c \"import invman_rust; r=invman_rust.dual_sourcing_reference_benchmark_summary('dual_l2_ce105', inventory_lower=-12, inventory_upper=24, tolerance=1e-8, max_iterations=250, search_seed=123, search_horizon=6000, warm_up_periods_ratio=0.2); print(r['optimal']['average_cost']); [print(h['policy_name'], h['optimality_gap_pct'], h['published_optimality_gap_pct']) for h in r['heuristics']]\"",
+      "python -c \"import invman_rust; print(invman_rust.dual_sourcing_reference_benchmark_summary('dual_l2_ce110', inventory_lower=-12, inventory_upper=24, tolerance=1e-8, max_iterations=250, search_seed=123, search_horizon=6000, warm_up_periods_ratio=0.2))\"",
+      "python /home/nima/code/ml/invman/scripts/dual_sourcing/validate_reference_grid.py",
+      "python /home/nima/code/ml/invman/scripts/dual_sourcing/validate_reference_grid.py --references dual_l2_ce105 dual_l2_ce110",
+      "cargo test -p invman_rust dual_sourcing -- --ignored",
+      "python /home/nima/code/ml/invman/autoresearch/dual_sourcing_policy_search/run_factor_screen.py"
+    ]
+  },
+  {
+    "problem": "multi_echelon",
+    "subfamily": "serial (Clark-Scarf), assembly (Rosling), divergent_special_delivery (Van Roy/Gijs), production_assembly_distribution_network (Pirhooshyaran-Snyder), general_backorder_fixed_cost (Geevers/Kunnumkal-Topaloglu)",
+    "instances": [
+      { "name": "serial:snyder_shen_example_6_1", "dimensions": ["subfamily:serial", "regime:backorder", "N:3", "demand:normal(5,1)", "leadtime:L[2,1,1]", "echelon_holding:[2,2,3]", "penalty:37.12", "published_optimum:47.65"], "literature_verified_flag": "true (the one genuinely published anchor)" },
+      { "name": "serial:poisson_N1_N2_N3", "dimensions": ["subfamily:serial", "regime:backorder", "N:1/2/3", "demand:poisson(5)", "leadtime:L0=1", "reference_impl:stockpyl.ssm_serial", "optima:4.2208/16.7978/72.0435"], "literature_verified_flag": "reference-implementation-verified (matches stockpyl, NOT paper-printed)" },
+      { "name": "serial:two_stage_normal_and_five_stage_normal_poisson", "dimensions": ["subfamily:serial", "N:2/5", "demand:normal/poisson", "optima:166.2705/225.8672/226.8458", "stockpyl:problem_6_1/6_2a/6_2b"], "literature_verified_flag": "reference-implementation-verified (stockpyl-derived)" },
+      { "name": "assembly:two/three_component + heterogeneous (3 instances)", "dimensions": ["subfamily:assembly", "regime:backorder", "components:2/3/2", "demand:poisson(5)/poisson(4)", "solver_derived_cost:22.759/52.536/27.530"], "literature_verified_flag": "false (guarded by no_assembly_instance_is_literature_verified)" },
+      { "name": "divergent:van_roy1997_simple_problem", "dimensions": ["subfamily:divergent_special_delivery", "regime:hybrid_lost_sales_special_delivery", "K:1", "mode:van_roy_1997", "published_const_base_stock:51.7", "published_ndp:52.6"], "literature_verified_flag": "false" },
+      { "name": "divergent:van_roy1997_case_study1 (Gijs setting1)", "dimensions": ["subfamily:divergent_special_delivery", "K:10", "leadtime:lw2_lr2", "published_const_base_stock:1302", "published_ndp:1179", "published_a3c_savings:8.95%"], "literature_verified_flag": "false" },
+      { "name": "divergent:van_roy1997_case_study2 (Gijs setting2)", "dimensions": ["subfamily:divergent_special_delivery", "K:10", "leadtime:lw5_lr3", "published_const_base_stock:1449", "published_ndp:1318", "published_a3c_savings:12.09%"], "literature_verified_flag": "false" },
+      { "name": "divergent:gijsbrechts2022_setting1 / setting2 (paper-faithful search targets)", "dimensions": ["subfamily:divergent_special_delivery", "K:10", "mode:gijs_2022_pre_shipment_eq2", "demand_mean:5/0", "no_published_absolute_row", "primary_reference_instance:setting2"], "literature_verified_flag": "false" },
+      { "name": "padn:pirhooshyaran2021_single_node_cases_1-7", "dimensions": ["subfamily:production_assembly_distribution_network", "node_mode:single", "regime:newsvendor", "published_analytical_OUL:10.67..106.74", "published_cost:12.71/25.42/63.56/127.11"], "literature_verified_flag": "false flag on reference instances, BUT single-node analytical rows reproduced by re-run" },
+      { "name": "padn:serial_case3 + mixed_scn_fig1_table5 + pure_assembly_network", "dimensions": ["subfamily:production_assembly_distribution_network", "gates:60.24(serial)/297.69(mixed)/283.34(pure_assembly)", "table_only_serial_optima"], "literature_verified_flag": "false (faithful-but-no-published-anchor)" },
+      { "name": "gbk:geevers2023_general_set1 (CardBoard)", "dimensions": ["subfamily:general_backorder_fixed_cost", "regime:backorder", "topology:4supplier_4warehouse_5retailer", "demand:poisson(15)", "published_benchmark:10467", "published_ppo_best:8714"], "literature_verified_flag": "true" },
+      { "name": "gbk:geevers2023_general_set2 / set3 (order-per-edge)", "dimensions": ["subfamily:general_backorder_fixed_cost", "topology:4w_5r", "action:order_per_edge", "published_benchmark:4797", "published_ppo_best:4175/3935", "NOT_reproduced(+223%)"], "literature_verified_flag": "false (both set2 and set3)" },
+      { "name": "gbk:kunnumkal_topaloglu_divergent", "dimensions": ["subfamily:general_backorder_fixed_cost", "regime:backorder", "topology:1supplier_1warehouse_3retailer", "published_benchmark:4059", "published_drl:3724_cross_protocol"], "literature_verified_flag": "true" }
+    ],
+    "baselines": {
+      "heuristics": ["serial: exact Clark-Scarf echelon base-stock (optimal); newsvendor-per-echelon; lead-time-mean", "assembly: Rosling-reduced serial echelon base-stock", "divergent: best constant base-stock by grid search; min_shortage allocation", "padn: best pairwise base-stock gate (env's own, NOT a published optimum); single-node newsvendor", "gbk: constant node-base-stock at published levels"],
+      "exact_solver": "serial: exact Clark-Scarf recursive-newsvendor decomposition (TRUE optimum, mirrors stockpyl). divergent: bounded finite-horizon DP (repo-internal verifier, not published). padn: tiny finite_horizon_dp on a small serial network (repo-native). assembly: reuses serial exact solver via Rosling reduction. gbk: none (heuristic-only).",
+      "published_rows": ["serial: Snyder & Shen Ex6.1 optimal 47.65", "divergent: Van Roy const base-stock 51.7/1302/1449; best NDP 52.6/1179/1318; Gijs A3C savings 8.95%+/-0.13% / 12.09%+/-0.39%", "padn: Pirhooshyaran single-node OUL/cost (7 cases); serial Clark-Scarf optima (catalog-only)", "gbk: Geevers set1 10467 / PPO best 8714; set2 4797; set3 4797; Kunnumkal-Topaloglu 4059 / DRL 3724"]
+    },
+    "verification": {
+      "status": "verified_rerun (serial + gbk set1/KT + divergent const-base-stock + padn single-node); faithful_unverified (assembly, padn general-network); snapshot_only_not_rerun (divergent A3C relative rows, gbk set2/3, van_oers padn table-only)",
+      "published_value": "serial Snyder-Shen Ex6.1 = 47.65; divergent Van Roy const base-stock 51.7/1302/1449; padn single-node 12.71..127.11 (7 cases); gbk set1 = 10467, KT = 4059; gbk set2/3 = 4797 (NOT reproduced)",
+      "reproduced_value": "serial: 47.6654 (Ex6.1), Poisson N1/N2/N3 = 4.2211/16.7983/72.0467, 5-stage 225.867/226.846, 2-stage 166.271 (ALL re-run). divergent: Van Roy all 3 rows within 2% (51.77/1284.70/1437.96); A3C relative rows NOT reproduced. padn: single-node 7 cases to ~0.005 abs. gbk: set1 = 10384.9 (-0.78%), KT = 3933.3 (-3.1%), set2 = 15497 (+223%, NOT reproduced). assembly: could NOT re-run via bindings (no assembly env binding).",
+      "rerun_method": "ir.multi_echelon_serial_exact_normal_solution([3,2,2],[1,1,2],37.12,5,1)->47.6654; ir.multi_echelon_serial_exact_poisson_solution(...)->72.0467; ir.multi_echelon_van_roy_reproduction_summary(repo_audit_replications=20,seed=1); ir.production_assembly_distribution_network_literature_benchmark_summary(serial_replications=10000,seed=1234); ir.multi_echelon_general_backorder_fixed_cost_audit_base_stock('geevers2023_general_set1',replications=200,seed=1234)."
+    },
+    "results": [
+      { "claim": "serial: warm-started echelon soft tree ties Clark-Scarf optimum 47.6554 vs 47.65 (+0.011%). MATCH-only.", "seed_reporting": "single_seed", "at_risk": false },
+      { "claim": "divergent setting1: learned 779.81 vs best constant base-stock 911.39 -> -14.44%, exceeding A3C savings 8.95%.", "seed_reporting": "best_of_n", "at_risk": true },
+      { "claim": "divergent setting2: learned 973.55 vs corrected best constant 1137.79 -> -14.43%, exceeding A3C 12.09%.", "seed_reporting": "best_of_n", "at_risk": true },
+      { "claim": "padn serial case3: learned beats env gate 60.24 (seed123 57.25 -4.96%, seed321 54.96 -8.77%). Env-own-heuristic beat.", "seed_reporting": "single_seed", "at_risk": true },
+      { "claim": "padn pure-assembly: learned 274.90 vs gate 283.34 -> -2.98%. Env-own-heuristic beat.", "seed_reporting": "single_seed", "at_risk": true },
+      { "claim": "padn mixed distribution-assembly: CORRECTED to gate-match. 8 CMA seeds -> 306.10+/-22.89 (+2.82% vs gate 297.69, 4/8 below). Earlier -0.99% was best-of-3.", "seed_reporting": "multi_seed_mean_std", "at_risk": false },
+      { "claim": "gbk set1 (CardBoard): learned beats reproduced gate 10354.8 by 22.4% (seed123) and 26.7% (seed777).", "seed_reporting": "best_of_n", "at_risk": true },
+      { "claim": "gbk Kunnumkal-Topaloglu: learned beats reproduced gate 3930.4 by ~37% (seed123/seed777); both below published DRL 3724 (cross-protocol).", "seed_reporting": "best_of_n", "at_risk": true }
+    ],
+    "reproduce_commands": [
+      "python -c \"import invman_rust as ir; print(ir.multi_echelon_serial_exact_normal_solution([3,2,2],[1,1,2],37.12,5.0,1.0))\"",
+      "python -c \"import invman_rust as ir; print(ir.multi_echelon_serial_exact_poisson_solution([3,2,2],[1,1,2],37.12,5.0))\"",
+      "python -c \"import invman_rust as ir,json; print(json.dumps(ir.multi_echelon_van_roy_reproduction_summary(repo_audit_replications=20,seed=1),default=str))\"",
+      "python -c \"import invman_rust as ir,json; print(json.dumps(ir.multi_echelon_gijs_relative_verification_summary(repo_audit_replications=20,seed=1),default=str))\"",
+      "python -c \"import invman_rust as ir,json; print(json.dumps(ir.production_assembly_distribution_network_literature_benchmark_summary(serial_replications=10000,seed=1234),default=str))\"",
+      "python -c \"import invman_rust as ir; print(ir.multi_echelon_general_backorder_fixed_cost_audit_base_stock('geevers2023_general_set1',replications=200,seed=1234)['mean_cost'])\"",
+      "python -c \"import invman_rust as ir; print(ir.multi_echelon_general_backorder_fixed_cost_audit_base_stock('kunnumkal_topaloglu_divergent',replications=500,seed=1234)['mean_cost'])\"",
+      "python scripts/multi_echelon/train_multi_echelon_policy.py --reference gijsbrechts2022_setting1 --budget full",
+      "python scripts/multi_echelon_serial/benchmark_serial_clark_scarf.py",
+      "RAYON_NUM_THREADS=2 OMP_NUM_THREADS=2 python scripts/production_assembly_distribution_network/autoresearch_mixed_distribution_assembly_network.py --budget full --warm_start_flow 10 --seed 7 --run_tag mixed_flow10_verify",
+      "python scripts/general_backorder_fixed_cost/autoresearch_general_backorder_fixed_cost.py --reference kunnumkal_topaloglu_divergent --budget full"
+    ]
+  },
+  {
+    "problem": "one_warehouse_multi_retailer",
+    "subfamily": "OWMR (Kaynov et al. 2024), 3 regimes: lost_sales / backorder / partial_backorder",
+    "instances": [
+      { "name": "kaynov2024_instance_1", "dimensions": ["regime:backorder", "K:3", "symmetric", "demand:Poisson(3)", "leadtime:Lw2_Lr1", "cv:low"], "literature_verified_flag": "true (ROW PROVENANCE only, NOT tight numerical reproduction)" },
+      { "name": "kaynov2024_instance_2", "dimensions": ["regime:backorder", "K:3", "heterogeneous", "demand:Uniform(0,6)/Normal(3,1)/Poisson(3)", "leadtime:Lw2_Lr1"], "literature_verified_flag": "true (provenance)" },
+      { "name": "kaynov2024_instance_3", "dimensions": ["regime:backorder", "K:3", "heterogeneous", "cv:high", "leadtime:Lw2_Lr1"], "literature_verified_flag": "true (provenance)" },
+      { "name": "kaynov2024_instance_4", "dimensions": ["regime:backorder", "K:3", "demand:Poisson(3)", "leadtime:Lw2_Lr_asymmetric_1_2_3"], "literature_verified_flag": "true (provenance)" },
+      { "name": "kaynov2024_instance_5", "dimensions": ["regime:backorder", "K:3", "cv:high", "leadtime:Lw5_Lr3"], "literature_verified_flag": "true (provenance)" },
+      { "name": "kaynov2024_instance_6", "dimensions": ["regime:lost_sales", "K:3", "symmetric", "demand:Poisson(3)", "leadtime:Lw1_Lr1", "cv:low"], "literature_verified_flag": "true (provenance)" },
+      { "name": "kaynov2024_instance_7", "dimensions": ["regime:lost_sales", "K:3", "symmetric", "demand:Poisson(3)", "leadtime:Lw2_Lr1", "primary_reference_instance"], "literature_verified_flag": "true (provenance; reproduced by re-run -0.94%)" },
+      { "name": "kaynov2024_instance_8", "dimensions": ["regime:lost_sales", "K:3", "demand:Poisson(3)", "leadtime:Lw5_Lr1"], "literature_verified_flag": "true (provenance)" },
+      { "name": "kaynov2024_instance_9", "dimensions": ["regime:lost_sales", "K:3", "demand:Poisson(3)", "leadtime:Lw2_Lr_asymmetric_1_2_3"], "literature_verified_flag": "true (provenance)" },
+      { "name": "kaynov2024_instance_10", "dimensions": ["regime:lost_sales", "K:3", "cv:high", "leadtime:Lw5_Lr3"], "literature_verified_flag": "true (provenance)" },
+      { "name": "kaynov2024_instance_11", "dimensions": ["regime:partial_backorder", "K:3", "symmetric", "demand:Poisson(3)", "leadtime:Lw2_Lr1", "emergency_prob:0.8"], "literature_verified_flag": "true (provenance; reproduced by re-run +0.13%)" },
+      { "name": "kaynov2024_instance_12", "dimensions": ["regime:partial_backorder", "K:3", "heterogeneous", "cv:high", "emergency_prob:0.8", "learned_gate_beat_target"], "literature_verified_flag": "true (provenance)" },
+      { "name": "kaynov2024_instance_13", "dimensions": ["regime:partial_backorder", "K:10", "symmetric_high_cv", "demand:Normal(5,14)", "leadtime:Lw2_Lr2", "high_penalty:60"], "literature_verified_flag": "true (provenance)" },
+      { "name": "kaynov2024_instance_14", "dimensions": ["regime:partial_backorder", "K:10", "strongly_heterogeneous", "leadtime:Lw2_Lr2", "high_penalty:60"], "literature_verified_flag": "true (provenance)" }
+    ],
+    "baselines": {
+      "heuristics": ["echelon_base_stock + proportional allocation (Kaynov Eq.8 floor)", "echelon_base_stock + min_shortage allocation", "echelon_base_stock + random_sequential allocation", "grid-searched echelon base-stock 'gate' = better of {proportional, min_shortage}, re-scored on disjoint CRN block"],
+      "exact_solver": "Reduced finite-horizon DP on VERIFICATION_PROBLEM_INSTANCE (2 retailers, binary demand, 2-period). Optimal=8.485 dominates both heuristics (9.2225). Repo-native anchor (literature_verified=false), NOT a published number; no exact solver for full 100-period Kaynov instances.",
+      "published_rows": ["instance_7 (lost_sales): proportional -1406.27, min_shortage -1408.08, PPO -1405.08 (gap -0.09%)", "instance_11 (partial_backorder): proportional -1111.76, min_shortage -1109.96, PPO -971.86 (gap -12.58%)", "instance_12: proportional -1402.38, min_shortage -1406.43, PPO -1118.92 (-20.21%)", "instance_13 (K=10): proportional -101727.47, PPO -79727.39 (-21.63%)", "instance_14 (K=10): proportional -53358.86, PPO -42835.02 (-19.72%)", "Full PDF NOT byte-verified (Cloudflare bot wall)"]
+    },
+    "verification": {
+      "status": "verified_rerun (2 of 14 published rows + repo-native exact-DP anchor); remaining 12 rows reproduce ~1-6% off and are carried as table literals",
+      "published_value": "instance_7 lost_sales min_shortage published cost 1408.08; instance_11 partial_backorder proportional 1111.76. Plus repo-native exact-DP anchor optimal=8.485 (NOT published).",
+      "reproduced_value": "instance_7 min_shortage (S_w=44, S_r=[10,10,10], seed 2222, 100 periods x 1000 reps) -> 1394.82, gap -0.94% (tol 1.2%). instance_11 proportional (S_w=43, S_r=[6,6,6]) -> 1113.17, gap +0.13% (tol 0.5%). Exact-DP -> optimal 8.485, both heuristics 9.2225.",
+      "rerun_method": "ir.one_warehouse_multi_retailer_exact_dp_summary(); ir.one_warehouse_multi_retailer_get_reference_instance(name) + ir.one_warehouse_multi_retailer_simulate_policy('echelon_base_stock',[Sw,*Sr],...,periods=100,replications=1000,seed=2222,discount=1.0,allocation). Mean-filled warm start."
+    },
+    "results": [
+      { "claim": "Symmetric Poisson(3) K=3 (1/6/11/7): learned TIES grid-searched gate (0.0000%); warm-started constant leaf reproduces gate at gen 0. No win claimed.", "seed_reporting": "single_seed", "at_risk": false },
+      { "claim": "instance_12: learned per-retailer echelon_targets linear-leaf beats tuned gate by +1.33% (1154.09 vs 1169.59). This is the PAPER Table number.", "seed_reporting": "best_of_n", "at_risk": true },
+      { "claim": "instance_12 SEED-ROBUST restatement: +4.99% mean over 4 seeds (all positive +4.21..+7.17%); depth not the lever. Supersedes +1.33% but NOT in paper table.", "seed_reporting": "multi_seed_mean_std", "at_risk": false },
+      { "claim": "instance_12 vs published PPO: learned closes gap to within seed noise (mean +0.69%, range -0.13..+1.36%); seeds STRADDLE PPO line. No robust PPO beat.", "seed_reporting": "multi_seed_mean_std", "at_risk": true },
+      { "claim": "instance_13 (K=10 high-CV): linear-leaf beats gate by +6.44% (85974.79 vs 91890.25). PAPER Table win.", "seed_reporting": "single_seed", "at_risk": true },
+      { "claim": "instance_14 (K=10 strongly heterogeneous): learned TIES strong gate (50445.20, +0.00%). Search-limited. No win.", "seed_reporting": "single_seed", "at_risk": false },
+      { "claim": "Backorder/lost-sales K=3 (3/9/10): learned TIES gate exactly (+0.00%) on all three; below published PPO (no PPO claim).", "seed_reporting": "single_seed", "at_risk": false }
+    ],
+    "reproduce_commands": [
+      "python -c \"import invman_rust as ir; print(ir.one_warehouse_multi_retailer_exact_dp_summary())\"",
+      "# instance_7 min_shortage + instance_11 proportional via one_warehouse_multi_retailer_simulate_policy, periods=100, replications=1000, seed=2222, discount=1.0, mean-filled warm start (see verification.rerun_method)",
+      "RAYON_NUM_THREADS=2 OMP_NUM_THREADS=2 python scripts/one_warehouse_multi_retailer/run_heuristic_published_benchmark.py",
+      "for s in 841 842 844 845; do RAYON_NUM_THREADS=2 OMP_NUM_THREADS=2 python scripts/one_warehouse_multi_retailer/run_asymmetric_learned_vs_gate.py --reference kaynov2024_instance_12 --budget full --policy_action_mode echelon_targets_with_alloc_targets --policy_state_mode absolute_augmented --leaf_type linear --depth 3 --split_type axis_aligned --temperature 0.10 --warm_start_at_best_base_stock --sigma_init 0.05 --gate_search_paths 64 --training_episodes 800 --es_population 32 --train_seed_batch 24 --holdout_paths 4096 --train_allocation min_shortage --same_seed --seed $s; done",
+      "RAYON_NUM_THREADS=2 OMP_NUM_THREADS=2 python scripts/one_warehouse_multi_retailer/run_asymmetric_learned_vs_gate.py --reference kaynov2024_instance_12 --budget full --policy_action_mode echelon_targets --leaf_type linear --warm_start_at_best_base_stock --train_allocation proportional --same_seed",
+      "python scripts/one_warehouse_multi_retailer/verify_ppo_beat_disjoint_blocks.py"
+    ]
+  },
+  {
+    "problem": "perishable_inventory",
+    "subfamily": "De Moor 2022 Scenario A + Farrington 2025 Table 3",
+    "instances": [
+      { "name": "de_moor2022_m2_exp1_l1_cp7_lifo", "dimensions": ["regime:perishable", "issuing:lifo", "m:2", "leadtime:L1", "waste_cost:7", "states:121", "role:exact_verification", "cv:0.5"], "literature_verified_flag": "true (strict_literature_verified)" },
+      { "name": "de_moor2022_m2_exp2_l1_cp7_fifo", "dimensions": ["regime:perishable", "issuing:fifo", "m:2", "leadtime:L1", "waste_cost:7", "states:121", "role:primary+exact_verification", "cv:0.5"], "literature_verified_flag": "true (primary; strict_literature_verified)" },
+      { "name": "de_moor2022_m2_exp4_l1_cp10_fifo", "dimensions": ["regime:perishable", "issuing:fifo", "m:2", "leadtime:L1", "waste_cost:10", "states:121", "role:autoresearch_extra"], "literature_verified_flag": "table_only (figure3=None; re-derivable but no verification.rs assertion)" },
+      { "name": "de_moor2022_m3_exp2_l1_cp7_fifo", "dimensions": ["regime:perishable", "issuing:fifo", "m:3", "leadtime:L1", "waste_cost:7", "states:1331", "role:autoresearch_extra"], "literature_verified_flag": "table_only" },
+      { "name": "de_moor2022_m2_exp6_l2_cp7_fifo", "dimensions": ["regime:perishable", "issuing:fifo", "m:2", "leadtime:L2", "waste_cost:7", "states:1331", "pipeline:in_transit"], "literature_verified_flag": "table_only (first instance with genuine in-transit pipeline)" },
+      { "name": "de_moor2022_m4_exp6_l2_cp7_fifo", "dimensions": ["regime:perishable", "issuing:fifo", "m:4", "leadtime:L2", "waste_cost:7", "states:~1.3M", "role:practical_benchmark"], "literature_verified_flag": "table_only (exceeds 2000-state exact cap; Farrington -1432 VI / -1453 base-stock as stored anchors)" }
+    ],
+    "baselines": {
+      "heuristics": ["base_stock (single level S)", "bsp_low_ew (low-inventory/estimated-waste base-stock with threshold)"],
+      "exact_solver": "exact tabular value iteration (value_iteration_mdp.rs; gamma=0.99; midpoint-binned Gamma demand; capped at 2000 states) — re-derives De Moor optimal policy table + best base-stock + Farrington Table 3 VI return.",
+      "published_rows": ["Farrington 2025 Table 3 VI: FIFO -1457+/-59, LIFO -1553+/-61", "De Moor 2022 best base-stock: FIFO S=7, LIFO S=5", "De Moor 2022 9x9 optimal-policy tables FIFO/LIFO", "Farrington 2025 best base-stock FIFO -1474", "28 of 32 Scenario A rows are TABLE-ONLY (1331..1.77M states), not re-derived", "De Moor DQN/shaped-DQN NOT re-implemented"]
+    },
+    "verification": {
+      "status": "verified_rerun (genuine re-derivation of 3 independent published quantities for the four m=2/L=1 instances)",
+      "published_value": "Farrington 2025 Table 3 VI: FIFO -1457, LIFO -1553; De Moor S=7 FIFO / S=5 LIFO; 9x9 policy tables; Farrington base-stock FIFO -1474",
+      "reproduced_value": "FIFO: VI -1457.281 (rounded -1457), S=7, policy table matches=True; LIFO: VI -1552.991 (rounded -1553), S=5, matches=True; FlowNet base-stock FIFO published -1474 / observed -1475 (within tol 1.0)",
+      "rerun_method": "python3 -c ir.perishable_inventory_exact_mdp_summary('de_moor2022_m2_exp2_l1_cp7_fifo'); ...('de_moor2022_m2_exp1_l1_cp7_lifo'); ir.perishable_inventory_flownet_policy_verification_summary() — all matches_published_* True THIS audit."
+    },
+    "results": [
+      { "claim": "Learned depth-2 oblique-linear soft tree (21 params) beats best base-stock gate FIFO m2/exp2: -1457.90 vs -1475.08, +1.16%", "seed_reporting": "single_seed", "at_risk": true },
+      { "claim": "Learned beats gate LIFO m2/exp1: -1553.16 vs -1565.98, +0.82%", "seed_reporting": "single_seed", "at_risk": true },
+      { "claim": "Learned beats gate on 3 further instances (m3 exp2 +0.70%, m2/L2 exp6 +2.21%, m2 exp4 cp10 +1.44%)", "seed_reporting": "single_seed", "at_risk": true },
+      { "claim": "exact_slice_report: soft_tree_sigmoid_linear beats best heuristic FIFO ~15.6 units, LIFO ~14 units; soft_tree_linear LIFO worse basin (honest negative)", "seed_reporting": "single_seed", "at_risk": true }
+    ],
+    "reproduce_commands": [
+      "python3 -c \"import invman_rust as ir; s=ir.perishable_inventory_exact_mdp_summary('de_moor2022_m2_exp2_l1_cp7_fifo'); print(s['value_iteration_mean_return_rounded'], s['best_base_stock_level'], s['matches_published_value_iteration_mean_return'], s['matches_published_policy_table'], s['matches_published_base_stock_level'])\"",
+      "python3 -c \"import invman_rust as ir; s=ir.perishable_inventory_exact_mdp_summary('de_moor2022_m2_exp1_l1_cp7_lifo'); print(s['value_iteration_mean_return_rounded'], s['best_base_stock_level'])\"",
+      "python3 -c \"import invman_rust as ir; r=ir.perishable_inventory_flownet_policy_verification_summary(); print(r['summary']['all_observed_targets_within_tolerance'])\"",
+      "python3 /home/nima/code/ml/invman/scripts/perishable_inventory/autoresearch_perishable_inventory.py --reference de_moor2022_m2_exp2_l1_cp7_fifo --budget smoke --seed 123",
+      "python3 /home/nima/code/ml/invman/scripts/perishable_inventory/run_exact_slice_benchmark.py"
+    ]
+  },
+  {
+    "problem": "ameliorating_inventory",
+    "subfamily": "Pahr & Grunow 2025 'The Value of Blending' (average profit)",
+    "instances": [
+      { "name": "pahr_grunow2025_spirits_0001", "dimensions": ["A:10", "products:3", "regime:no_blending", "objective:average_profit", "maxInventory:50", "role:PRIMARY_verification_anchor", "LP_bound:1991.9344293376805"], "literature_verified_flag": "true" },
+      { "name": "pahr_grunow2025_port_wine", "dimensions": ["A:25", "products:2", "regime:blending_enabled", "objective:average_profit", "maxInventory:50", "role:SECONDARY_verification_anchor", "LP_bound:2444.8010643781136"], "literature_verified_flag": "true" },
+      { "name": "spirits_0002 (blending ON)", "dimensions": ["A:10", "products:3", "regime:blending_enabled", "maxInventory:50", "LP_bound:1991.9344293376805"], "literature_verified_flag": "absent (own re-solve test but NOT in references.rs REFERENCE_INSTANCES)" },
+      { "name": "spirits_1002 (capacity-constrained)", "dimensions": ["A:10", "products:3", "regime:blending_enabled", "maxInventory:30", "LP_bound:1663.8888177082856"], "literature_verified_flag": "absent (own re-solve test only; not in catalog)" }
+    ],
+    "baselines": {
+      "heuristics": ["best tuned order-up-to purchase 'gate' (grid 2..24); the keep/discard comparator", "(reduced-model only) newsvendor_purchase and two_dimensional_order_up_to + reduced-model finite_horizon_dp (Rust-only)"],
+      "exact_solver": "perfect-information steady-state LP (perfect_information_lp.rs::solve_upper_bound, microlp simplex) — published max_reward UPPER BOUND on average profit, NOT an achievable optimum. Rust-only, NO Python binding.",
+      "published_rows": ["spirits_0001 LP bound = 1991.9344293376805", "port_wine LP bound = 2444.8010643781136", "spirits_1002 LP bound = 1663.8888177082856", "spirits_0002 LP bound = 1991.9344293376805", "Pahr & Grunow report deep-RL within ~3.5% of bound using FULL 3-part action — NOT reproduced and NOT comparable to this repo's single-purchase-action gap"]
+    },
+    "verification": {
+      "status": "faithful_unverified (LP bound NOT re-run this audit — no Python binding; learned-policy env path WAS re-run)",
+      "published_value": "perfect-information LP bounds: spirits_0001 = 1991.9344293376805; port_wine = 2444.8010643781136; spirits_1002 = 1663.8888177082856; spirits_0002 = 1991.9344293376805",
+      "reproduced_value": "LP bound NOT re-run (no Python binding; needs cargo compile). In-crate tests/verification.rs RE-SOLVES the LP and asserts within 1e-3 (genuine reproduction, read not executed). Learned-policy env re-run: spirits_0001 smoke = 77.96+/-0.74 vs gate 20.07+/-0.95; full-budget = 115.07+/-0.44 vs gate 20.91.",
+      "rerun_method": "RAYON_NUM_THREADS=4 python scripts/ameliorating_inventory/autoresearch_ameliorating_inventory_average_profit.py --instance spirits_0001 --budget smoke --seed 20250604 (uses ameliorating_inventory_average_profit_soft_tree_population_rollout). LP bound re-solve requires cargo test (NOT run)."
+    },
+    "results": [
+      { "claim": "Learned price-reactive purchase soft tree beats best tuned order-up-to gate: spirits_0001 115.07+/-0.44 vs 20.91 (+450%); smoke reproduced 77.96 vs 20.07.", "seed_reporting": "single_seed", "at_risk": true },
+      { "claim": "port_wine learned 505.78+/-0.59 vs gate 133.78 (+278%).", "seed_reporting": "single_seed", "at_risk": true },
+      { "claim": "spirits_1002 (capacity) learned 130.49+/-0.50 vs gate 20.91 (+524%); gap to bound 92.2%.", "seed_reporting": "single_seed", "at_risk": true },
+      { "claim": "Gap to perfect-info LP UPPER BOUND remains large (94.2% spirits_0001, 79.3% port_wine), reported as a gap, never 'beaten'. NOT comparable to Pahr & Grunow ~3.5% DRL gap.", "seed_reporting": "single_seed", "at_risk": false }
+    ],
+    "reproduce_commands": [
+      "RAYON_NUM_THREADS=4 OMP_NUM_THREADS=4 python /home/nima/code/ml/invman/scripts/ameliorating_inventory/autoresearch_ameliorating_inventory_average_profit.py --instance spirits_0001 --budget smoke --seed 20250604",
+      "RAYON_NUM_THREADS=4 OMP_NUM_THREADS=4 python /home/nima/code/ml/invman/scripts/ameliorating_inventory/autoresearch_ameliorating_inventory_average_profit.py --instance port_wine --budget full --seed 20250604",
+      "python /home/nima/code/ml/invman/scripts/ameliorating_inventory/benchmark_repo_native_instance.py",
+      "cargo test -p invman_rust --lib problems::ameliorating_inventory::tests::verification -- --nocapture",
+      "python3 -c \"import json;print(json.load(open('/home/nima/code/ml/invman/outputs/autoresearch/ameliorating_inventory_average_profit_autoresearch/spirits_0001_d1_oblique_full.json'))['learned'])\""
+    ]
+  },
+  {
+    "problem": "joint_replenishment",
+    "subfamily": "Vanvuchelen, Gijsbrechts & Boute 2020 FTL two-item",
+    "instances": [
+      { "name": "vanvuchelen2020_small_scale_setting_5 (PRIMARY + Figure-3 anchor)", "dimensions": ["regime:backorder", "items:2", "truck_capacity:V6", "K:75", "minor:asymmetric_k[40,10]", "holding:low_h[1,1]", "shortage:b[19,19]", "demand:U[0,5]xU[0,3]", "gamma:0.99", "has_vi_optimum"], "literature_verified_flag": "absent (no literature_verified field; carried verbatim from Table 2)" },
+      { "name": "vanvuchelen2020_small_scale_setting_1..16 (16 Table-2 settings)", "dimensions": ["regime:backorder", "items:2", "truck_capacity:V6", "K:75", "h_in{1,5}", "b_in{19,95}", "minor_k_in{[10,10],[40,10]}", "gamma:0.99"], "literature_verified_flag": "absent (definitions match Table 2; no per-setting cost reproduced)" },
+      { "name": "VERIFICATION_PROBLEM_INSTANCE (reduced 4-period DP)", "dimensions": ["regime:backorder", "items:2", "periods:4", "self_consistency_only"], "literature_verified_flag": "false (repo_finite_horizon_self_consistency_comparator)" }
+    ],
+    "baselines": {
+      "heuristics": ["minimum_order_quantity (MOQ / (Q,S|T)) — strongest on all 16 settings", "dynamic_order_up_to (DYN-OUT) — dominated by MOQ"],
+      "exact_solver": "TWO: (1) in-crate reduced finite-horizon DP (4-period, self-consistency only); (2) infinite-horizon discounted VI specialised to setting 5 — reproduces published Figure-3 optimal ACTION q=(0,6) at state (5,0). Paper gives NO absolute optimal-cost table.",
+      "published_rows": ["Figure-3 optimal ACTION (setting 5, state (5,0)): q=(0,6) (verified verbatim, re-derived by VI)", "Figure-3 heuristic ACTION: q=(2,4) — STORED LITERAL; repo MOQ orders (0,6), NOT (2,4)", "Figure 2: heuristics 4-25% above optimal (no extractable numbers); repo setting-5 MOQ gap +19.64%", "No published per-setting absolute cost; paper PPO costs not carried"]
+    },
+    "verification": {
+      "status": "verified_rerun (published quantity is an ACTION q=(0,6), re-derived by VI; finite-horizon DP self-consistency reproduced; no published cost exists)",
+      "published_value": "Setting-5 Figure-3 optimal action q=(0,6) at state (5,0). No published absolute cost.",
+      "reproduced_value": "VI greedy action at (5,0) = (0,6), converged iter 2260, max delta 9.92e-09. Finite-horizon DP comparator: optimal (6,6) 266.386, MOQ (7,5) 386.101, DYN-OUT (6,6) 383.960 (matches README literals). Setting-5 VI-optimum mean cost 6347.108 is faithful but JSON/model gitignored, NOT re-run.",
+      "rerun_method": "invman_rust.joint_replenishment_exact_dp_summary(); and benchmark_vanvuchelen_settings.value_iteration_setting5(lo=-12,hi=18); g((5,0)). Both <2 min."
+    },
+    "results": [
+      { "claim": "Learned soft-tree beats MOQ on 6 of 16 settings: setting 5 +13.05%, 13 +11.44%, 14 +6.45%, 6 +4.23%, 9 +1.07%, 1 +0.51% (single optimizer seed 123)", "seed_reporting": "single_seed", "at_risk": true },
+      { "claim": "Setting 5: learned soft-tree +3.14% above VI optimum (6546.176 vs 6347.108), closing 84% of MOQ's +19.64% gap; beats MOQ -13.79% on all paths", "seed_reporting": "single_seed", "at_risk": true },
+      { "claim": "Setting 10: autoresearch flips loss to WIN gap -0.85%; 'robust across two seeds' s123 -0.79% / s777 -0.85%", "seed_reporting": "best_of_n", "at_risk": true },
+      { "claim": "Setting 7: closed to +0.09% near-tie (best of 7 seeds); never strictly flips, remains a loss to MOQ", "seed_reporting": "best_of_n", "at_risk": true },
+      { "claim": "MOQ dominates DYN-OUT on all 16; learned LOSES on high-cost h=5,b=95 family by -8.9% to -18.1% (policy-class limit)", "seed_reporting": "single_seed", "at_risk": false }
+    ],
+    "reproduce_commands": [
+      "python -c \"import invman_rust as ir; print(ir.joint_replenishment_exact_dp_summary())\"",
+      "cd /home/nima/code/ml/invman && python -c \"import sys; sys.path.insert(0,'scripts/joint_replenishment'); import benchmark_vanvuchelen_settings as bvs; g,it,d=bvs.value_iteration_setting5(lo=-12,hi=18); print(tuple(int(x) for x in g((5,0))[0]), it, d)\"",
+      "python -c \"import invman_rust as ir; print(ir.joint_replenishment_published_action_anchor())\"",
+      "RAYON_NUM_THREADS=2 OMP_NUM_THREADS=2 python scripts/joint_replenishment/benchmark_learned_vs_heuristics.py",
+      "RAYON_NUM_THREADS=2 OMP_NUM_THREADS=2 python scripts/joint_replenishment/autoresearch_joint_replenishment.py --budget full --warm_start_moq --reference vanvuchelen2020_small_scale_setting_5 --seed 123",
+      "RAYON_NUM_THREADS=2 python scripts/joint_replenishment/evaluate_setting5_vs_vi_optimum.py --eval_paths 4096"
+    ]
+  },
+  {
+    "problem": "joint_pricing_inventory",
+    "subfamily": "finite-horizon joint pricing-and-ordering (price-setting newsvendor)",
+    "instances": [
+      { "name": "VERIFICATION_PROBLEM_INSTANCE (Qin-2022-labeled exact verifier)", "dimensions": ["regime:lost_sales", "horizon:T5", "price_ladder:3_levels[7,9,11]", "discount:0.99", "max_order_quantity:4", "exact_DP_feasible:true", "leadtime:L0", "salvage:1.0"], "literature_verified_flag": "false" },
+      { "name": "PRIMARY_REFERENCE_INSTANCE / zhou2022_style_price_ladder", "dimensions": ["regime:lost_sales", "horizon:T18", "price_ladder:3_levels[8,10,12]", "demand:poisson_price_dependent[4.0,2.6,1.6]", "discount:0.99", "max_order_quantity:6", "no_exact_optimum:true", "leadtime:L0", "salvage:1.0"], "literature_verified_flag": "false" }
+    ],
+    "baselines": {
+      "heuristics": ["static_price_base_stock (order-up-to + fixed price index)", "inventory_sensitive_base_stock (order-up-to + markdown threshold)"],
+      "exact_solver": "finite_horizon_dp.rs solve_optimal_policy — backward-induction exact DP over (period, inventory), feasible on T=5 verifier; exposed via joint_pricing_inventory_exact_dp_summary().",
+      "published_rows": ["NONE reproduced. references.rs carries ZHOU_2022 / QIN_2022 / PRICE_SETTING_NEWSVENDOR_ANCHOR labels but ALL benchmark_policies entries are labels-only; none implemented, no numeric published row stored. Both instances literature_verified=false."]
+    },
+    "verification": {
+      "status": "faithful_unverified (env faithful, both repo-internal anchors re-ran and matched, but neither is a PUBLISHED per-instance number)",
+      "published_value": "No published per-instance optimal-profit number. Verification rests on (a) analytical critical-fractile newsvendor, (b) repo exact DP optimal -33.178121049724 first action (2,1) (self-consistency).",
+      "reproduced_value": "exact DP optimal -33.178121049724, first action (2,1); static -32.50820139235; inventory_sensitive -27.594377111812527. Critical-fractile y*=(3,2,2) matched by env brute force. Independent hand-coded Python DP reproduced -33.178121049724 within 1e-9. Learned benchmark: soft tree -216.0595, static -172.6349, inv-sensitive -171.5135, +25.15% profit.",
+      "rerun_method": "invman_rust.joint_pricing_inventory_exact_dp_summary(); critical-fractile via joint_pricing_inventory_step + joint_pricing_inventory_exact_verification_instance; independent lru_cache Python DP; python scripts/joint_pricing_inventory/benchmark_policies_against_exact_and_learned.py --replications 4096 --seed 777000."
+    },
+    "results": [
+      { "claim": "Exact-DP-anchored profit gaps on verifier: static_price_base_stock 2.02%, inventory_sensitive 16.83%. Re-ran exactly.", "seed_reporting": "none", "at_risk": false },
+      { "claim": "Trained depth-2 oblique/linear soft tree beats best heuristic by +25.15% profit on primary 18-period Poisson instance (216.060 vs 171.513), 4096 eval seeds.", "seed_reporting": "single_seed", "at_risk": true }
+    ],
+    "reproduce_commands": [
+      "python -c \"import invman_rust; print(dict(invman_rust.joint_pricing_inventory_exact_dp_summary()))\"",
+      "python -c \"import invman_rust; ref=dict(invman_rust.joint_pricing_inventory_exact_verification_instance()); pl=list(ref['price_levels']); [print(pi, invman_rust.joint_pricing_inventory_step(0,q,pi,d,pl,4.0,0.5,5.0)) for pi in range(3) for q in range(5) for d in range(4)]\"",
+      "python scripts/joint_pricing_inventory/benchmark_policies_against_exact_and_learned.py --replications 4096 --seed 777000",
+      "python scripts/joint_pricing_inventory/validate_against_exact_dp.py --simulation_replications 512 --simulation_seed 123",
+      "python scripts/joint_pricing_inventory/train_soft_tree_reference.py --depth 2 --leaf_type linear --seed 123 --eval_seeds 2048"
+    ]
+  },
+  {
+    "problem": "nonstationary_lot_sizing",
+    "subfamily": "Dehaybe, Catanzaro & Chevalier 2024 (HenriDeh/DRL_MMULS single-item)",
+    "instances": [
+      { "name": "dehaybe2024_lostsales_lt2_b5_k10_constant_5", "dimensions": ["regime:lost_sales", "forecast:constant_5", "L:2", "b:5", "K:10", "h:1", "cv:0.2", "H:32", "T:104"], "literature_verified_flag": "false" },
+      { "name": "dehaybe2024_lostsales_lt2_b5_k10_constant_10 (PRIMARY + verification anchor)", "dimensions": ["regime:lost_sales", "forecast:constant_10", "L:2", "b:5", "K:10", "h:1", "cv:0.2", "H:32", "T:104"], "literature_verified_flag": "false" },
+      { "name": "dehaybe2024_lostsales_lt2_b5_k10_constant_15", "dimensions": ["regime:lost_sales", "forecast:constant_15", "L:2", "b:5", "K:10"], "literature_verified_flag": "false" },
+      { "name": "dehaybe2024_lostsales_lt2_b5_k10_seasonal_1", "dimensions": ["regime:lost_sales", "forecast:seasonal_104period", "L:2", "b:5", "K:10"], "literature_verified_flag": "false" },
+      { "name": "dehaybe2024_lostsales_lt2_b5_k10_seasonal_2", "dimensions": ["regime:lost_sales", "forecast:seasonal_52period", "L:2", "b:5", "K:10"], "literature_verified_flag": "false" },
+      { "name": "dehaybe2024_lostsales_lt2_b5_k10_seasonal_4", "dimensions": ["regime:lost_sales", "forecast:seasonal_26period", "L:2", "b:5", "K:10"], "literature_verified_flag": "false" },
+      { "name": "dehaybe2024_lostsales_lt2_b5_k10_growth", "dimensions": ["regime:lost_sales", "forecast:linear_growth_5to15", "L:2", "b:5", "K:10"], "literature_verified_flag": "false" },
+      { "name": "dehaybe2024_lostsales_lt2_b5_k10_decline", "dimensions": ["regime:lost_sales", "forecast:linear_decline_15to5", "L:2", "b:5", "K:10"], "literature_verified_flag": "false" },
+      { "name": "constant_10_rolling_dp_reference (VerificationProblemInstance)", "dimensions": ["verification_anchor", "regime:lost_sales", "forecast:constant_10"], "literature_verified_flag": "false" },
+      { "name": "WORKED_EXAMPLE_REFERENCE (Section 4.2, reward -130)", "dimensions": ["regime:backorders", "mechanics_self_consistency_only", "L:1"], "literature_verified_flag": "false" },
+      { "name": "retail_like_weekly_trace (practical)", "dimensions": ["regime:lost_sales", "practical:repo_curated_semi_real", "L:2", "H:8", "T:32", "demand:poisson"], "literature_verified_flag": "absent (practical dataset, no field)" }
+    ],
+    "baselines": {
+      "heuristics": ["simple_s_s (closed-form (s,S): s=quantile at b/(b+h), S=s+EOQ; CV-Normal)", "rolling_dp_s_s (per-period Scarf-style finite-horizon DP, discount 0.99, 32-period tail; Poisson) - STRONGEST", "lead_time_base_stock (repo heuristic, no EOQ batching)"],
+      "exact_solver": "none (no exact/global optimum for the rolling-forecast path; rolling_dp_s_s is the strongest baseline, NOT presented as global optimum)",
+      "published_rows": ["author-CSV simple (s,S) constant_10: mean_cost=1832.9142436489014, shortage=0.0029443487165113735 (CV-Normal)", "author-CSV rolling-DP constant_10: mean_cost=1711.741, shortage=0.04793465748308879 (Poisson)", "author-CSV all 8 forecasts carried", "NO PPO/DRL number carried (ppo is a name only; EJOR full text inaccessible)"]
+    },
+    "verification": {
+      "status": "verified_rerun (against author COMPANION-CODE TESTBED CSVs, NOT a peer-reviewed EJOR article table; repo flag literature_verified=false is honest)",
+      "published_value": "Author companion-code testbed CSV. constant_10: simple (s,S) mean_cost=1832.9142436489014 / shortage 0.0029443487165113735; rolling-DP mean_cost=1711.741 / shortage 0.04793465748308879. Closed-form: simple (s,S) s=33.351246609652, S=47.49338223338295; rolling-DP first-period (28,42).",
+      "reproduced_value": "constant_10 simple_s_s @25000 reps: 1834.918166 (+0.109%), shortage 0.002871 — within 35.0 cost / 0.01 shortage tol. rolling_dp @25000 reps: 1714.147560 (+0.141%), shortage 0.048469. simple_s_s levels EXACT s=33.351246609652, S=47.493382233383. rolling_dp first-period (28,42) EXACT. growth simple_s_s: 1753.169 (-0.091%). Worked transition -130 confirmed. Non-constant rolling-DP (growth/decline/seasonal) did NOT finish in ~2 min (per-period 32-period DP x104).",
+      "rerun_method": "RAYON_NUM_THREADS=4 python via bindings: nonstationary_lot_sizing_simple_s_s_levels; nonstationary_lot_sizing_rolling_dp_s_s_levels; nonstationary_lot_sizing_simulate_policy('simple_s_s',...); nonstationary_lot_sizing_simulate_rolling_dp_policy(...). Constant-forecast cases fast (<5s simple, ~30-60s rolling-DP)."
+    },
+    "results": [
+      { "claim": "Learned CMA-ES soft tree beats rolling-DP on all 8/8 forecasts by -6.5% to -15.5% (constant_5 1026.3 vs 1214.9 = -15.52%; constant_10 1539.0 vs 1714.1 = -10.22%)", "seed_reporting": "single_seed", "at_risk": true },
+      { "claim": "Learned is cheapest policy on 5/8 instances; on seasonal_2/growth/decline beats DP but trails lead_time_base_stock by +0.35% to +3.46%", "seed_reporting": "single_seed", "at_risk": true },
+      { "claim": "Heuristic baselines reproduce author-CSV rows within 0.17% (verified ~0.11-0.14%)", "seed_reporting": "multi_seed_mean_std", "at_risk": false }
+    ],
+    "reproduce_commands": [
+      "RAYON_NUM_THREADS=4 python /home/nima/code/ml/invman/scripts/nonstationary_lot_sizing/run_literature_benchmark.py --replications 25000",
+      "RAYON_NUM_THREADS=4 python -c \"import invman_rust as ir; f=[10.0]*136; print(ir.nonstationary_lot_sizing_simple_s_s_levels(f[:32],2,1.0,5.0,10.0,'cv_normal',0.2)); print(ir.nonstationary_lot_sizing_rolling_dp_s_s_levels(f[:32],2,1.0,5.0,10.0,'poisson',0.99,32))\"",
+      "RAYON_NUM_THREADS=2 python /home/nima/code/ml/invman/scripts/nonstationary_lot_sizing/run_literature_benchmark.py --learned --tree_depth 2 --leaf_type linear --action_cap 100 --generations 150 --popsize 48 --learned_replications 10000 --output_json /tmp/learned.json",
+      "RAYON_NUM_THREADS=4 python /home/nima/code/ml/invman/scripts/nonstationary_lot_sizing/run_practical_benchmark.py",
+      "cargo test -p invman_rust nonstationary_lot_sizing"
+    ]
+  },
+  {
+    "problem": "procurement_removal_inventory",
+    "subfamily": "control-only reduction of Maggiar & Sadighian 2017",
+    "instances": [
+      { "name": "maggiar2017_style_fixed_returnability (PRIMARY)", "dimensions": ["regime:lost_sales", "demand:poisson", "mean:4.0", "periods:16", "init_inv:5", "returnable_cap:2", "removal_inactive", "discount:0.99"], "literature_verified_flag": "false (repo_native_instance_not_verified_against_literature)" },
+      { "name": "removal_active_returnability", "dimensions": ["regime:lost_sales", "demand:poisson", "mean:3.0", "periods:16", "init_inv:12", "init_returnable:8", "holding:1.0", "removal_channel_binds", "discount:0.99"], "literature_verified_flag": "false (repo_native_removal_active_instance)" },
+      { "name": "VERIFICATION_PROBLEM_INSTANCE (reduced exact-DP)", "dimensions": ["regime:lost_sales", "demand:discrete_support[0,1,2,3]", "periods:5", "init_inv:2", "returnable_cap:1", "discount:0.99", "exact_DP_solvable"], "literature_verified_flag": "false (repo_exact_solver_not_verified_against_literature)" }
+    ],
+    "baselines": {
+      "heuristics": ["interval_stock (order_up_to, remove_down_to) — structural optimum form per Maggiar & Sadighian Theorem 3.4; grid-tuned", "returnability_buffer_interval_stock (order_up_to, remove_down_to, returnable_buffer)"],
+      "exact_solver": "finite_horizon_dp.rs solve_optimal_policy — exact bounded backward-induction DP, ONLY on the small discrete-support VERIFICATION_PROBLEM_INSTANCE (periods=5); repo-native optimum, NOT published. The two benchmark instances (periods=16 Poisson) are NOT solved exactly.",
+      "published_rows": ["NONE. Maggiar & Sadighian 2017 only numerical example (Sec 7 Table 1) is a pricing-coupled NPV surface ~84000, not a control-only cost. Maggiar et al. 2025 NeurIPS reports returns family qualitatively only (Fig 23)."]
+    },
+    "verification": {
+      "status": "faithful_unverified (env faithful-to-STRUCTURE; what re-ran is repo-native self-consistency; NO published number exists)",
+      "published_value": "none — neither cited paper exposes a public procurement-removal control-only cost row",
+      "reproduced_value": "exact-DP optimal_discounted_cost = 31.78026111369698 (README claim 31.7802611137, match to 1e-10). Heuristic rows reproduced exactly: primary interval_stock (6,6) = 358.1067286254911; removal_active interval_stock (4,9) = 244.11666203081566. Worked-transition: period_cost=10.5 (assertions pass).",
+      "rerun_method": "invman_rust.procurement_removal_inventory_exact_dp_summary(); procurement_removal_inventory_simulate_policy('interval_stock', [6,6]/[4,9], seeds=range(500000,504096), discount=0.99); procurement_removal_inventory_step(...) worked transition."
+    },
+    "results": [
+      { "claim": "primary: soft_tree (depth-2) = 358.218 essentially TIES interval-stock 358.107 (0.03% behind). NOT a beat.", "seed_reporting": "single_seed", "at_risk": true },
+      { "claim": "removal_active: soft_tree = 251.727 is 3.1% BEHIND interval-stock 244.117. NOT a beat — heuristic wins.", "seed_reporting": "single_seed", "at_risk": true },
+      { "claim": "exact DP (reduced verifier) optimal 31.7802611137 dominates both heuristics (interval_stock 34.164, returnability_buffer 38.766) — re-run, holds.", "seed_reporting": "none", "at_risk": false }
+    ],
+    "reproduce_commands": [
+      "python -c \"import invman_rust as r; s=r.procurement_removal_inventory_exact_dp_summary(); print(s['optimal_discounted_cost'], s['optimal_first_action'])\"",
+      "python scripts/procurement_removal_inventory/benchmark_procurement_removal.py",
+      "python scripts/procurement_removal_inventory/benchmark_procurement_removal.py --train --eval_seeds 4096 --generations 80 --output_json outputs/procurement_removal_inventory/benchmark.json",
+      "python -c \"import invman_rust as r; print(r.procurement_removal_inventory_step(4,2,3,2,4,2,6.0,4.0,1.0,0.5,9.0))\""
+    ]
+  },
+  {
+    "problem": "random_yield_inventory",
+    "subfamily": "all-or-nothing batch yield (structural match to Yan et al. 2026)",
+    "instances": [
+      { "name": "VERIFICATION_PROBLEM_INSTANCE (exact-DP slice)", "dimensions": ["regime:backlog", "yield:all_or_nothing", "p:0.75", "leadtime:L2", "horizon:finite_T5", "demand:discrete_6pt", "gamma:0.99", "h:1", "b:9", "max_order_cap:8", "init_inv:4", "init_pipeline:[3,2]"], "literature_verified_flag": "false" },
+      { "name": "PRIMARY_REFERENCE_INSTANCE = yan2026_style_lt2_p075_discounted", "dimensions": ["regime:backlog", "yield:all_or_nothing", "p:0.75", "leadtime:L2", "horizon:finite_T12", "demand:poisson_mean4", "gamma:0.99", "h:1", "b:9", "c:1", "init_inv:6", "init_pipeline:[4,3]"], "literature_verified_flag": "false" },
+      { "name": "YAN_2026_SMALL_SCALE_FAMILY (catalog-only)", "dimensions": ["yield:all_or_nothing", "horizon:finite_discounted", "model_match:exact", "access:preview_only", "numbers_available:false"], "literature_verified_flag": "absent (do_not_use_for_repo_assertions)" },
+      { "name": "CHEN_2018_WNH_FAMILY (catalog-only)", "dimensions": ["yield:all_or_nothing", "policy:weighted_newsvendor", "access:bibliographic_only", "numbers_available:false"], "literature_verified_flag": "absent (do_not_use_for_repo_assertions)" },
+      { "name": "INDERFURTH_2015 binomial/proportional grids (different yield model)", "dimensions": ["yield:binomial_or_proportional", "horizon:infinite_avg_cost", "model_match:partial/special_case", "numbers_available:true_but_different_model"], "literature_verified_flag": "absent (related_model_aggregate_only)" }
+    ],
+    "baselines": {
+      "heuristics": ["linear_inflation (LIR): q=(1/p)*(S-X)^+; on VERIFICATION cost 47.7138 (+19.1% vs optimum); on PRIMARY 203.619 +/- 123.769", "weighted_newsvendor (WNH): yield-weighted gap, NOT inflated by 1/p (open fidelity question); VERIFICATION 60.3936 (+50.8%); PRIMARY 222.436 +/- 66.918"],
+      "exact_solver": "Exact reduced finite-horizon discounted DP (finite_horizon_dp.rs::solve_optimal_policy), full enumeration over demand x yield tree; lead_time==2 only, discrete demand, capped action. Optimal on VERIFICATION = 40.0599, first action 4.",
+      "published_rows": ["NONE usable: Yan 2026 / Chen 2018 paywalled, no public per-instance table. Inderfurth & Kiesmueller 2015 publishes numbers but for a DIFFERENT yield model (carries over only the F=1/p inflation factor). All three citations metadata-verified 2026-05."]
+    },
+    "verification": {
+      "status": "faithful_unverified (self-consistent-only; reproduced number is repo's OWN exact-DP anchor, NOT a literature number)",
+      "published_value": "none (no public per-instance number; Yan 2026 / Chen 2018 paywalled; Inderfurth 2015 different model)",
+      "reproduced_value": "exact-DP slice: optimal_discounted_cost=40.05989760985441, first action 4, LIR=47.71379457283354, WNH=60.39357514301890 — matches README repo-native anchor to full precision. Simulation slice: LIR=203.619+/-123.769, WNH=222.436+/-66.918 over 2000 seeds — matches README exactly.",
+      "rerun_method": "invman_rust.random_yield_inventory_exact_dp_summary() (0.15s); invman_rust.random_yield_inventory_policy_discounted_cost_summary(policy_name in {linear_inflation,weighted_newsvendor}, ref=random_yield_inventory_primary_reference_instance(), seeds=range(123,2123), demand_distribution='poisson')."
+    },
+    "results": [
+      { "claim": "README/experiments: learned soft-tree (depth 3, 600ep) = 196.661, beats LIR (203.619) by 3.4% and WNH (222.436) by 11.6% on PRIMARY, 2000 seeds", "seed_reporting": "single_seed", "at_risk": true },
+      { "claim": "Seed-robust outputs: d1_linear b8 (800ep) over 4 seeds {123,456,789,2026} = 196.73 +/- 3.35; ALL 4 beat LIR (mean +4.25% +/- 1.67%)", "seed_reporting": "multi_seed_mean_std", "at_risk": true },
+      { "claim": "Single-config saved runs contradict headline: tree_primary_d3_linear.json soft-tree=307.01 (WORSE than LIR by -48.7%); only the d1 b8 800-ep config beats LIR", "seed_reporting": "single_seed", "at_risk": true }
+    ],
+    "reproduce_commands": [
+      "python -c \"import invman_rust, json; print(json.dumps({k:v for k,v in invman_rust.random_yield_inventory_exact_dp_summary().items() if k!='verification_reference'}, indent=1))\"",
+      "python /home/nima/code/ml/invman/scripts/random_yield_inventory/validate_against_exact_dp.py --simulation_seeds 256",
+      "python /home/nima/code/ml/invman/scripts/random_yield_inventory/benchmark_policies_vs_exact_and_heuristics.py",
+      "python /home/nima/code/ml/invman/scripts/random_yield_inventory/benchmark_policies_vs_exact_and_heuristics.py --train_soft_tree --depth 1 --leaf_type linear --training_episodes 800 --es_population 16 --train_seed_batch 8 --seed 456",
+      "python -c \"import json,statistics; fs=['/home/nima/code/ml/invman/outputs/random_yield_inventory/tree_primary_d1_linear_b8_s%d.json'%s for s in (123,456,789,2026)]; st=[json.load(open(f))['evaluation']['soft_tree']['mean_cost'] for f in fs]; print('soft_tree %.2f +/- %.2f'%(statistics.mean(st),statistics.pstdev(st)))\""
+    ]
+  },
+  {
+    "problem": "spare_parts_inventory",
+    "subfamily": "single-echelon periodic-review repairable (trainable env) + Kranenburg 2006 continuous-review lateral-transshipment (verification-only)",
+    "instances": [
+      { "name": "single_echelon_repairable_operational_spares (PRIMARY)", "dimensions": ["regime:backorder", "review:periodic", "repairable:deterministic_repair_return", "horizon:17_periods", "installed_base:12", "L_proc:3", "L_repair:2", "p_fail:0.08", "downtime_cost:20", "trainable_env"], "literature_verified_flag": "false" },
+      { "name": "VERIFICATION_PROBLEM_INSTANCE (reduced exact-DP)", "dimensions": ["regime:backorder", "review:periodic", "repairable", "horizon:4_periods", "discount:0.99", "installed_base:3", "L_proc:2", "L_repair:2", "p_fail:0.4", "max_order:4", "exact_dp_tractable"], "literature_verified_flag": "false" },
+      { "name": "kranenburg2006_table5_2 (35 rows)", "dimensions": ["model:continuous_review_METRIC", "multi_location", "lateral_transshipment", "emergency_replenishment", "analytical_exact", "different_model_from_env"], "literature_verified_flag": "true" },
+      { "name": "van_oers2024_table1 (no_am / upstream_am / downstream_am)", "dimensions": ["echelons:2", "review:periodic", "serial", "additive_manufacturing", "recorded_table_only", "frozen_snapshot"], "literature_verified_flag": "false" }
+    ],
+    "baselines": {
+      "heuristics": ["base_stock (order-up-to S; benchmark S=5, best-constant S=6)", "lead_time_mean_cover (safety_buffer over expected lead-time failures; buffer=1.0)"],
+      "exact_solver": "finite_horizon_dp.rs solve_optimal_policy — bounded backward-induction DP, tractable only on the reduced VERIFICATION_PROBLEM_INSTANCE; self-consistency comparator, NOT a published optimum. Plus the Kranenburg analytical exact solver (R* enumeration) for the SEPARATE lateral-transshipment sub-family.",
+      "published_rows": ["Kranenburg 2006 Table 5.2 base case: Situation1 R*=9.09 C=91.90; Situation3 R*=6.10 C=63.00; ratio 1.46 (all 35 rows re-run and matched within 0.02)", "van Oers 2024 Table 1 no-AM: enumeration 100.0/99.57; newsvendor 117.0/99.08; echelon_separation 105.9/99.36 (RECORDED ONLY, frozen, not re-run)", "van Oers 2024 downstream-AM: enumeration 71.98; echelon_separation 72.01 (recorded only)"]
+    },
+    "verification": {
+      "status": "verified_rerun (ONLY for the Kranenburg analytical lateral-transshipment module, which is structurally DIFFERENT from the trainable env); trainable env = faithful_unverified; van_oers table = snapshot_only_not_rerun",
+      "published_value": "Kranenburg 2006 Table 5.2 base case (m=0.001): Situation1 R1*=9.09 C1=91.90; Situation3 R3*=6.10 C3=63.00; ratio 1.46 (35 rows, TU/e thesis Ch.5 p.107)",
+      "reproduced_value": "All 35/35 rows within table-rounding tolerance 0.02; worst abs diff 0.005. Base case R1*=9.0900 C1=91.9000, R3*=6.1000 C3=63.0000, ratio=1.4587. Repo-native exact DP: optimal=28.39366, base_stock=28.39366 (gap 0.0), lead_time_mean_cover=28.91225 (gap 0.519) — DP weakly dominates both but matches NO published number.",
+      "rerun_method": "looped spare_parts_inventory_kranenburg_reference_instances() -> spare_parts_inventory_kranenburg_exact_summary(name) over all 35 rows checking all_within_tolerance; and spare_parts_inventory_exact_dp_summary(). Both <2s."
+    },
+    "results": [
+      { "claim": "Learned soft-tree (depth2, oblique, linear, T=0.10) beats best constant base-stock S=6 by 1.34% out-of-sample (53.06 vs 53.78) on 4096-seed holdout; beats S=5 by 15.77% and lead_time_mean_cover by 42.92%.", "seed_reporting": "best_of_n", "at_risk": true },
+      { "claim": "Re-run reproduction: soft_tree=50.72 vs best-constant S=6=54.44 = 6.84% on 512-seed holdout; consolidated 4096-seed JSON reproduced 53.06 vs 53.78 = 1.34% exactly.", "seed_reporting": "single_seed", "at_risk": true },
+      { "claim": "Repo-native exact DP weakly dominates both heuristics on reduced verifier (optimal 28.394 <= base_stock 28.394 <= lead_time_mean_cover 28.912).", "seed_reporting": "none", "at_risk": false }
+    ],
+    "reproduce_commands": [
+      "python -c \"import invman_rust as m; rows=m.spare_parts_inventory_kranenburg_reference_instances(); n=sum(m.spare_parts_inventory_kranenburg_exact_summary(r['name'])['published_table_comparison']['all_within_tolerance'] for r in rows); print(n, '/', len(rows))\"",
+      "python -c \"import invman_rust as m; s=m.spare_parts_inventory_exact_dp_summary(); print(s['optimal_discounted_cost'], s['base_stock_gap_to_optimal'], s['lead_time_mean_cover_gap_to_optimal'])\"",
+      "python scripts/spare_parts_inventory/benchmark_spare_parts_inventory.py --holdout_seeds 4096 --holdout_seed_start 900000",
+      "python scripts/spare_parts_inventory/benchmark_spare_parts_inventory.py --holdout_seeds 512 --holdout_seed_start 900000",
+      "python scripts/spare_parts_inventory/train_soft_tree_reference.py --seed 123 --depth 2 --temperature 0.10"
+    ]
+  },
+  {
+    "problem": "vendor_managed_inventory",
+    "subfamily": "Sui, Gosavi & Lin 2010 consignment VMI (reduced single-retailer slice + truck-dispatch family)",
+    "instances": [
+      { "name": "PRIMARY_REFERENCE_INSTANCE / giannoccaro2010_style_single_retailer", "dimensions": ["regime:lost_sales", "single_retailer", "periods:24", "demand:poisson_mean2.5", "stockout:5.0", "dc_capacity:10", "max_shipment:5", "discount:0.99", "repo_chosen_no_published_anchor"], "literature_verified_flag": "false (SUI_GOSAVI_LIN_2010_REFERENCE.literature_verified=false)" },
+      { "name": "low_penalty", "dimensions": ["regime:lost_sales", "stockout:2.0", "perturbation_of_primary"], "literature_verified_flag": "false" },
+      { "name": "high_penalty", "dimensions": ["regime:lost_sales", "stockout:9.0", "perturbation_of_primary", "widest_learned_loss"], "literature_verified_flag": "false" },
+      { "name": "low_demand", "dimensions": ["regime:lost_sales", "demand:poisson_mean1.5", "perturbation_of_primary"], "literature_verified_flag": "false" },
+      { "name": "high_demand", "dimensions": ["regime:lost_sales", "demand:poisson_mean3.5", "perturbation_of_primary"], "literature_verified_flag": "false" },
+      { "name": "VERIFICATION_PROBLEM_INSTANCE (exact-DP verifier)", "dimensions": ["regime:lost_sales", "periods:5", "discrete_demand_support:{0,1,2,3}", "discount:0.99", "small_enough_for_exact_DP"], "literature_verified_flag": "false (repo-native self-consistency verifier)" },
+      { "name": "SUI_GOSAVI_LIN_2010_GOSAVI_CASE_STUDY_WORKED_EXAMPLE (newsvendor handout)", "dimensions": ["compound_poisson", "single_retailer_single_product", "cycle_time:{30,40,50}", "newsvendor_order_up_to"], "literature_verified_flag": "false (instructor TEACHING HANDOUT, NOT peer-reviewed)" },
+      { "name": "SUI_GOSAVI_LIN_2010_CASE_DEFINITIONS (8-case truck-dispatch)", "dimensions": ["truck_dispatch", "multi_retailer:10", "multi_product:2", "continuous_time", "structural_interpretation_not_transcribed"], "literature_verified_flag": "false (repo-constructed interpretation; does not reproduce paywalled table)" }
+    ],
+    "baselines": {
+      "heuristics": ["retailer_base_stock (grid-tuned level)", "dc_reserve_base_stock (grid-tuned level x DC reserve)", "paper_mean_demand (MDH order-up-to, truck-dispatch)", "paper_newsvendor (newsvendor order-up-to + truck allocation)"],
+      "exact_solver": "finite_horizon_dp::solve_optimal_policy on reduced discrete-demand single-retailer instance — EXISTS in Rust, used only by in-crate dominance test; NOT exposed as a Python binding, so NOT used as the benchmark optimality ceiling.",
+      "published_rows": ["NONE for the reduced slice (repo-chosen instance, no published number)", "Gosavi instructor HANDOUT newsvendor: MDH S=15, six-sigma S=31.53, newsvendor S=26.96 (reproduced exactly, but a handout)", "Peer-reviewed Sui/Gosavi/Lin 2010 RL-vs-newsvendor profit table: PAYWALLED, not carried"]
+    },
+    "verification": {
+      "status": "faithful_unverified (NO peer-reviewed paper number reproduced; handout + env step + heuristic baseline re-run confirmed, but a handout is NOT literature verification)",
+      "published_value": "Paper results table paywalled / no numeric rows carried. Only OPEN numbers are the Gosavi INSTRUCTOR HANDOUT newsvendor values: MDH=15, six-sigma=31.53, newsvendor=26.96 (NOT a peer-reviewed number).",
+      "reproduced_value": "vendor_managed_inventory_newsvendor_worked_case_summary(): mean_demand_rate=0.375, cycle_demand_mean=15.0, cycle_demand_variance=30.3646, MDH=15.0, six_sigma=31.53122, newsvendor=26.99054 (within tol). Worked transition period_cost=6.0 matches tests.rs. Re-tuned low_penalty retailer_base_stock held-out mean=103.012347 — bit-identical to ledger.",
+      "rerun_method": "invman_rust.vendor_managed_inventory_newsvendor_worked_case_summary(); vendor_managed_inventory_step(...); plus benchmark_reduced_single_retailer.tune_retailer_base_stock/heuristic_held_out_samples for low_penalty. Exact DP NOT exposed to Python, NOT re-run."
+    },
+    "results": [
+      { "claim": "low_penalty FLIPS to a clean WIN: learned soft tree (d3/t0.1/warm-start) = 102.69 vs tuned heuristic 103.01, gap -0.31%.", "seed_reporting": "single_seed", "at_risk": true },
+      { "claim": "primary loss closed from -1.76% to statistical tie (+0.05%); high_penalty -2.40% -> +0.30%; high_demand -0.91% -> +1.12% (single config).", "seed_reporting": "single_seed", "at_risk": true },
+      { "claim": "README baseline: learned (constant leaf, no warm-start, d2) LOSES on 4/5 (primary -1.76%, low_penalty -0.16%, high_penalty -2.40%, high_demand -0.91%); marginally wins low_demand (+0.10%).", "seed_reporting": "single_seed", "at_risk": false }
+    ],
+    "reproduce_commands": [
+      "python -c \"import invman_rust as m; print(m.vendor_managed_inventory_newsvendor_worked_case_summary())\"",
+      "python -c \"import invman_rust as m; print(m.vendor_managed_inventory_step(dc_on_hand=4,retailer_on_hand=1,retailer_pipeline=1,shipment_quantity=2,realized_demand=3,dc_replenishment_quantity=2,dc_capacity=5,shipment_cost_per_unit=0.4,dc_holding_cost_per_unit=0.3,retailer_holding_cost_per_unit=0.6,stockout_cost_per_unit=4.0))\"",
+      "RAYON_NUM_THREADS=2 OMP_NUM_THREADS=2 python scripts/vendor_managed_inventory/benchmark_reduced_single_retailer.py --quick",
+      "RAYON_NUM_THREADS=2 OMP_NUM_THREADS=2 python scripts/vendor_managed_inventory/autoresearch_vendor_managed_inventory.py --description audit --budget full --instance low_penalty --tree_leaf_type linear --tree_depth 3 --tree_temperature 0.1 --warm_start base_stock --seed 777"
+    ]
+  },
+  {
+    "problem": "decentralized_inventory_control",
+    "subfamily": "four-stage Beer-Game serial under local information (closed-form board-game port + reusable env.rs MDP)",
+    "instances": [
+      { "name": "beer_game_classic_four_stage (PRIMARY)", "dimensions": ["regime:serial_backlog", "stages:4", "leadtime:ship[2,2,2,2]_order[0,1,1,1]", "demand:deterministic_step_4to8", "horizon:36week", "holding:0.5", "backlog:1.0", "anchor:sterman_S'[28,28,28,20]"], "literature_verified_flag": "absent (no field; carries published_sterman_benchmark Some(204) but env.rs does NOT reproduce it: anchor->378, best base-stock->278)" },
+      { "name": "STERMAN_1989_CLASSIC_BENCHMARK (published row, closed-form only)", "dimensions": ["published_row:sterman_anchor_adjust", "per_agent[46,50,54,54]", "total:204", "scope:closed_form_board_game_only"], "literature_verified_flag": "absent (notes warn 204 is a property of closed-form bookkeeping only, env.rs yields 378)" },
+      { "name": "VERIFICATION_PROBLEM_INSTANCE (reduced exact-DP)", "dimensions": ["regime:serial_backlog", "stages:2", "horizon:3periods", "discount:0.99", "demand:bernoulli{0,1}p=0.5", "max_order:4", "base_stock:3", "scope:repo_internal_only"], "literature_verified_flag": "false (repo_exact_solver_not_verified_against_literature)" }
+    ],
+    "baselines": {
+      "heuristics": ["base_stock (installation base-stock)", "sterman_anchor_adjust (anchor-and-adjust with targets/adjustment-times/supply-line-weights)"],
+      "exact_solver": "finite_horizon_dp.rs bounded backward-induction DP over the reduced 2-agent/3-period VERIFICATION_PROBLEM_INSTANCE; test-only, NOT a Python binding; provably dominates both heuristics on the reduced instance. The classic 4-stage 36-week instance has NO exact optimum carried.",
+      "published_rows": ["Sterman(1989)/Edali-Yasarcan(2014) anchor-and-adjust per-stage [46,50,54,54], total 204 (closed-form board-game only; 204 is the value its R-port emits, NOT a transcribed published table)", "Oroojlooyjadid et al.(2022) Sterman row 45.13 — DELIBERATELY NOT carried (different benchmark, formula/timing do not line up)"]
+    },
+    "verification": {
+      "status": "verified_rerun (closed-form board-game 204 reproduced); faithful_unverified (env.rs as a benchmark, yields 378/278)",
+      "published_value": "Sterman/Edali-Yasarcan anchor-and-adjust: per-stage [46,50,54,54], total 204 (36-week classic Beer Game)",
+      "reproduced_value": "closed-form classic_board_game.rs: per-stage [46.0,50.0,54.0,54.0], total 204.0 (EXACT). env.rs under SAME params: sterman_anchor_adjust = 378.0; best base-stock S=24 = 278.0 (env.rs does NOT reproduce 204). Clark-Scarf constant-demand serial-optimum: 4-stage 0.0, 2-stage 0.0 (both reproduced).",
+      "rerun_method": "python scripts/decentralized_inventory_control/measure_env_vs_closedform.py -> closed-form [46,50,54,54]/204, env.rs sterman 378, base_stock best S=24->278. Clark-Scarf check via decentralized_inventory_control_policy_rollout_from_paths('base_stock',...): 4-stage->0.0, 2-stage->0.0."
+    },
+    "results": [],
+    "reproduce_commands": [
+      "python /home/nima/code/ml/invman/scripts/decentralized_inventory_control/measure_env_vs_closedform.py",
+      "python -c \"import invman_rust; print(invman_rust.decentralized_inventory_control_classic_sterman_literature_summary())\"",
+      "python -c \"import invman_rust as r; print(r.decentralized_inventory_control_policy_rollout_from_paths('base_stock',[32.0]*4,[0]*4,[0]*4,[[8,8],[8,8],[8,8],[8,8,8,8]],[[],[8,8],[8,8],[8,8]],[8]*4,[8]*4,[8.0]*4,[8]*4,[8]*100,[0.0]*4,[0.5]*4,[1.0]*4,1.0))\"",
+      "python -c \"import invman_rust; print([n for n in dir(invman_rust) if 'decentralized' in n])\""
+    ]
+  }
+]
