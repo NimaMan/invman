@@ -70,13 +70,33 @@ deeper symmetric tree extends the gate-beat; the PPO-scalar gap is structurally 
 the N(5,14) demand-convention ambiguity makes that scalar the least trustworthy of the
 suite.
 
-## What changed vs the prior plateau (preliminary; under agent review)
+## What changed vs the prior plateau — RESOLVED by the A0 ablation
 
-Prior sessions saturated at 1139.34 (−1.82%) with depth-2 axis-aligned local restart
-chains; richer/larger searches overfit the small training batch and fell back to the gate.
-This campaign moved the frontier with two untried levers, but the **load-bearing one is
-not yet isolated** (depth-3 vs absolute_augmented vs more training paths vs gentle sigma
-are confounded in the winning config). An ablation is part of the spawned review.
+Prior sessions saturated at 1139.34 (−1.82%) with depth-2 axis-aligned **local restart
+chains** (tiny sigma, small training batch 8–16); richer/larger searches overfit the small
+batch and the honest floor fell back to the gate. The winning campaign config confounded
+depth-3 / more-training-paths / gentle-sigma / fresh-warm-start-at-gate.
+
+The **A0 ablation** runs depth-2 in the *exact* winning protocol (fresh warm-start at the
+gate, σ=0.05, batch24, pop32×800), same 4 seeds as the depth-3 cell:
+
+| Depth | seed-mean ± std (N=4) | gate beat | vs PPO scalar |
+| --- | ---: | ---: | ---: |
+| depth-2 | 1116.01 ± 7.02 | +4.58% (all seeds +) | +0.26% (3/4 below; straddles) |
+| depth-3 | 1111.23 ± 7.06 | +4.99% (all seeds +) | +0.69% (3/4 below; straddles) |
+
+**Depth is NOT the load-bearing lever.** The depth-3 advantage is −4.78 cost units, and
+|effect|/pooled-std = 0.68 (< 1) — indistinguishable from optimizer-seed noise. The lever
+that broke the 1139 plateau is the **training protocol** (fresh warm-start *at the gate* +
+gentle σ + batch24 + long budget), which lifts *both* depths to ~1111–1116. The prior
+plateau was an artifact of the local-restart-chain + small-batch protocol, not a depth-2
+representation ceiling.
+
+**Robust, mechanism-honest claim:** a warm-started, gentle-σ, adequately-batched soft tree
+(depth-2 is sufficient; depth-3 adds nothing beyond seed noise) **beats the same-protocol
+gate by ~+4.6–5.0% as a 4-seed mean, every seed positive**. It does **not** robustly beat
+the cross-protocol PPO scalar (seeds straddle it under both depths). Reproduce A0:
+`outputs/owmr_ppo_campaign/ablation_depth/` (depth-2) vs the depth-3 cell above.
 
 ## Reproduce
 
