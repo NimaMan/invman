@@ -100,9 +100,47 @@ Result:
 - published PPO `79727.39`
 - learned vs PPO `-5.8598%`
 
+This improved the prior symmetric learned policy by `1575.4951` cost units and improved the first
+per-retailer restart by `70.2078` cost units. It is now superseded by the decoupled allocation-target
+result below.
+
+## Decoupled allocation-target restart
+
+Command:
+
+```bash
+RAYON_NUM_THREADS=2 OMP_NUM_THREADS=2 \
+python scripts/one_warehouse_multi_retailer/run_asymmetric_learned_vs_gate.py \
+  --reference kaynov2024_instance_13 \
+  --budget full \
+  --policy_action_mode echelon_targets_with_alloc_targets \
+  --leaf_type linear \
+  --warm_start_at_best_base_stock \
+  --init_params_npy outputs/one_warehouse_multi_retailer/asymmetric_learned/models/asym_kaynov2024_instance_13_echelon_targets_linear_d2_axis_aligned_t0.1_pop24_gen200_batch16_proportional_crn_sig0p25_seed735_1692_200/model_params.npy \
+  --sigma_init 0.10 \
+  --gate_search_paths 64 \
+  --training_episodes 200 \
+  --es_population 24 \
+  --train_seed_batch 16 \
+  --holdout_paths 4096 \
+  --train_allocation min_shortage \
+  --same_seed \
+  --seed 737 \
+  --output_json outputs/one_warehouse_multi_retailer/asymmetric_learned/kaynov2024_instance_13_echelon_targets_with_alloc_targets_restart_from_sigma0.25_sigma0.10_seed737.json
+```
+
+Result:
+
+- learned `84340.5725 +/- 89.6731`, deployed `trained_xbest`, evaluated under proportional
+- initializer `84399.2900`
+- gate `91890.2542 +/- 99.5618`
+- paired gate - learned `+7549.6816 +/- 53.6098`
+- published PPO `79727.39`
+- learned vs PPO `-5.7862%`
+
 This is the current best repo-native result for `kaynov2024_instance_13`. It improves the prior
-symmetric learned policy by `1575.4951` cost units and improves the first per-retailer restart by
-`70.2078` cost units. The remaining PPO gap is `4671.9000` cost units.
+symmetric learned policy by `1634.2126` cost units and the per-retailer target checkpoint by
+`58.7175` cost units. The remaining PPO gap is `4613.1825` cost units.
 
 ## Negative / limiting evidence
 
@@ -151,9 +189,10 @@ breaking direction and produces a real multi-SEM gate improvement, but it still 
 
 Next bounded directions:
 
-- continue per-retailer restarts from the `84399.2900` checkpoint with smaller sigma values;
-- try `echelon_targets_with_alloc_targets` from the same checkpoint so rationing priorities can
-  differ from replenishment targets;
+- continue decoupled allocation-target restarts from the `84340.5725` checkpoint with smaller sigma
+  values;
 - retry absolute-state augmentation only with a much smaller sigma or fixed-path distillation;
+- add a residual/windowed target policy so the tree controls corrections around the incumbent rather
+  than full absolute order-up-to levels;
 - investigate whether PPO's advantage comes from non-base-stock action timing rather than target
   asymmetry alone.
