@@ -130,7 +130,16 @@ def train(
     limit_env_time=False,
     min_steps=100,
     max_steps=5000,
+    return_optimizer=False,
 ):
+    # ADDITIVE/REVERSIBLE (training-path audit 2026-06-06): ``return_optimizer``
+    # defaults to False so the historical return signature ``(model, fitness_hist)``
+    # and the deployed endpoint (CMA-ES ``xbest`` via ``es.best_param()``) are
+    # UNCHANGED for every existing caller. When True, the live ``es`` optimizer is
+    # also returned so a caller can read the distribution-mean endpoint
+    # ``es.current_param()`` (CMA-ES ``xfavorite`` = ``es.result[5]``) WITHOUT this
+    # function silently flipping the global default deployment. This is the only
+    # clean way to extract both endpoints from the SAME run.
     def _log_terminal(message):
         print(message)
         history.append(message)
@@ -247,4 +256,6 @@ def train(
         "training_run_metadata",
         {"es_population_protocol": population_scheduler.summarize(population_hist)},
     )
+    if return_optimizer:
+        return model, fitness_hist, es
     return model, fitness_hist

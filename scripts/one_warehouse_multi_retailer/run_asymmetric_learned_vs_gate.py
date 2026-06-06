@@ -603,7 +603,7 @@ def run_one(reference, budget_name, leaf_type, policy_action_mode, train_allocat
             depth=2, temperature=0.10, split_type="axis_aligned",
             training_episodes=None, es_population=None, train_seed_batch=None,
             holdout_paths=None, policy_state_mode="normalized", same_seed=False,
-            train_on_fixed_paths=False):
+            train_on_fixed_paths=False, deploy_endpoint="floor"):
     budget = _resolve_budget(
         budget_name,
         training_episodes=training_episodes,
@@ -735,7 +735,14 @@ def run_one(reference, budget_name, leaf_type, policy_action_mode, train_allocat
         if fixed_train_paths is not None
         else _get_population_fitness(model, reference, train_allocation, policy_action_mode)
     )
-    trained_model, fitness_hist = train(
+    # ADDITIVE/REVERSIBLE (training-path audit 2026-06-06): request the live CMA-ES
+    # optimizer so we can read BOTH endpoints from the SAME run -- xbest
+    # (es.best_param() = result[0], the historical deployed endpoint) AND xfavorite
+    # (es.current_param() = result[5] = the distribution mean). The default
+    # deploy_endpoint="floor" reproduces the prior behavior EXACTLY (xfavorite is
+    # simply added as one more honest-floor candidate); the global train() default
+    # is untouched.
+    trained_model, fitness_hist, es_optimizer = train(
         model=model,
         get_model_fitness=_get_model_fitness(
             model, reference, train_allocation, policy_action_mode
@@ -743,9 +750,11 @@ def run_one(reference, budget_name, leaf_type, policy_action_mode, train_allocat
         get_population_fitness=population_fitness,
         args=train_args,
         same_seed=bool(same_seed),
+        return_optimizer=True,
     )
     train_seconds = time.time() - t_train
     trained_flat = np.asarray(trained_model.get_model_flat_params(), dtype=np.float32).tolist()
+    xfavorite_flat = np.asarray(es_optimizer.current_param(), dtype=np.float32).tolist()
     trained_model_params_npy = (
         Path(train_args.trained_models_dir)
         / f"{train_args.experiment_name}_{trained_model.num_params}_{budget['training_episodes']}"
@@ -757,6 +766,14 @@ def run_one(reference, budget_name, leaf_type, policy_action_mode, train_allocat
         reference, trained_model, trained_flat, policy_action_mode, eval_allocs, holdout_paths
     )
     learned_best_alloc = min(learned_eval, key=lambda a: learned_eval[a]["mean"])
+
+    # ---- evaluate the CMA-ES distribution-MEAN endpoint (xfavorite) on the SAME
+    # held-out block (paired). Always recorded for the audit; only ADDED to the
+    # deployable candidate set under deploy_endpoint in {floor, xfavorite}. ----
+    xfavorite_eval = _eval_allocs(
+        reference, model, xfavorite_flat, policy_action_mode, eval_allocs, holdout_paths
+    )
+    xfavorite_best_alloc = min(xfavorite_eval, key=lambda a: xfavorite_eval[a]["mean"])
 
     # ---- honest warm-start floor (only when an anchor exists) ----
     anchor_eval = None
@@ -782,15 +799,31 @@ def run_one(reference, budget_name, leaf_type, policy_action_mode, train_allocat
         direct_init_best_alloc = min(direct_init_eval, key=lambda a: direct_init_eval[a]["mean"])
 
     trained_cost = learned_eval[learned_best_alloc]["mean"]
-    candidates = [
-        (
-            trained_cost,
-            learned_best_alloc,
-            learned_eval[learned_best_alloc]["costs"],
-            "trained_xbest",
-            learned_eval[learned_best_alloc]["sem"],
-        )
-    ]
+    xfavorite_cost = xfavorite_eval[xfavorite_best_alloc]["mean"]
+    xbest_candidate = (
+        trained_cost,
+        learned_best_alloc,
+        learned_eval[learned_best_alloc]["costs"],
+        "trained_xbest",
+        learned_eval[learned_best_alloc]["sem"],
+    )
+    xfavorite_candidate = (
+        xfavorite_cost,
+        xfavorite_best_alloc,
+        xfavorite_eval[xfavorite_best_alloc]["costs"],
+        "trained_xfavorite",
+        xfavorite_eval[xfavorite_best_alloc]["sem"],
+    )
+    # deploy_endpoint selects which trained endpoint(s) are deployable:
+    #   floor (default) -> {xbest, xfavorite} both in the honest-floor set (+anchors)
+    #   xbest           -> ONLY xbest (reproduces the historical deployment exactly)
+    #   xfavorite       -> ONLY the distribution-mean endpoint (+anchors)
+    if deploy_endpoint == "xbest":
+        candidates = [xbest_candidate]
+    elif deploy_endpoint == "xfavorite":
+        candidates = [xfavorite_candidate]
+    else:  # "floor"
+        candidates = [xbest_candidate, xfavorite_candidate]
     if anchor_eval is not None:
         candidates.append((
             anchor_eval[anchor_best_alloc]["mean"],
@@ -890,6 +923,12 @@ def run_one(reference, budget_name, leaf_type, policy_action_mode, train_allocat
         },
         "trained_cost": trained_cost,
         "trained_best_allocation": learned_best_alloc,
+        "deploy_endpoint": deploy_endpoint,
+        "xbest_cost": trained_cost,
+        "xfavorite_cost": xfavorite_cost,
+        "xfavorite_best_allocation": xfavorite_best_alloc,
+        "xbest_gap_pct_vs_gate": (gate_cost - trained_cost) / gate_cost * 100.0,
+        "xfavorite_gap_pct_vs_gate": (gate_cost - xfavorite_cost) / gate_cost * 100.0,
         "anchor_cost": (None if anchor_eval is None else anchor_eval[anchor_best_alloc]["mean"]),
         "init_cost": (None if init_eval is None else init_eval[init_best_alloc]["mean"]),
         "init_best_allocation": init_best_alloc,
@@ -970,6 +1009,13 @@ def parse_args():
     p.add_argument("--train_on_fixed_paths", action="store_true",
                    help="Optimize each CMA-ES population on a fixed explicit demand-path block. "
                         "Uses train_seed_batch as the number of training paths.")
+    p.add_argument("--deploy_endpoint", choices=["floor", "xbest", "xfavorite"], default="floor",
+                   help="Which trained CMA-ES endpoint(s) are deployable. ADDITIVE/REVERSIBLE: "
+                        "'floor' (default) adds the distribution-mean endpoint xfavorite "
+                        "(es.current_param() = result[5]) to the honest-floor candidate set "
+                        "{xbest, xfavorite, anchors}; 'xbest' reproduces the historical "
+                        "deploy-the-single-best-individual behavior EXACTLY; 'xfavorite' deploys "
+                        "only the distribution mean (+anchors).")
     p.add_argument("--output_json", default=None)
     return p.parse_args()
 
@@ -1000,6 +1046,7 @@ def main():
         policy_state_mode=parsed.policy_state_mode,
         same_seed=parsed.same_seed,
         train_on_fixed_paths=parsed.train_on_fixed_paths,
+        deploy_endpoint=parsed.deploy_endpoint,
     )
 
     train_mode = "fixedpaths" if parsed.train_on_fixed_paths else "sampled"
