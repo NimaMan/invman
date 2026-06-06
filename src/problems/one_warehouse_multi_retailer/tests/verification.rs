@@ -10,8 +10,9 @@ use crate::problems::one_warehouse_multi_retailer::finite_horizon_dp::{
 };
 use crate::problems::one_warehouse_multi_retailer::heuristics::echelon_base_stock_orders;
 use crate::problems::one_warehouse_multi_retailer::references::{
-    KAYNOV_2024_REFERENCE, PRIMARY_REFERENCE_INSTANCE, TABLE_A3_INSTANCES,
-    VERIFICATION_PROBLEM_INSTANCE, WORKED_TRANSITION_REFERENCE,
+    get_reference_instance, list_reference_instances, KAYNOV_2024_REFERENCE,
+    PRIMARY_REFERENCE_INSTANCE, TABLE_A3_INSTANCES, VERIFICATION_PROBLEM_INSTANCE,
+    WORKED_TRANSITION_REFERENCE,
 };
 use crate::problems::one_warehouse_multi_retailer::rollout::{
     policy_action_from_tree, OneWarehouseMultiRetailerRolloutConfig, PolicyActionMode,
@@ -36,6 +37,16 @@ fn reference_set_has_expected_shape() {
         -1406.27
     );
     assert_eq!(VERIFICATION_PROBLEM_INSTANCE.retailer_lead_times, &[1, 1]);
+
+    // Sibling-standard accessors mirror the slice and look up by name.
+    let names = list_reference_instances();
+    assert_eq!(names.len(), TABLE_A3_INSTANCES.len());
+    assert_eq!(names[0], TABLE_A3_INSTANCES[0].name);
+    assert_eq!(
+        get_reference_instance(PRIMARY_REFERENCE_INSTANCE.name).map(|i| i.name),
+        Some(PRIMARY_REFERENCE_INSTANCE.name)
+    );
+    assert!(get_reference_instance("does_not_exist").is_none());
 }
 
 #[test]

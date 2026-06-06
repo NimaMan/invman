@@ -1,7 +1,12 @@
 use pyo3::prelude::*;
+use pyo3::types::PyDict;
 use pyo3::wrap_pyfunction;
 
 use crate::core::policies::soft_tree::{build_action_spec, parse_leaf_type, parse_split_type};
+use crate::problems::ameliorating_inventory::lp_dataset_loader::{
+    load_port_wine, load_spirits_0001, LoadedLpDataset,
+};
+use crate::problems::ameliorating_inventory::perfect_information_lp::solve_upper_bound;
 use crate::problems::ameliorating_inventory::average_profit_blending_env::AverageProfitBlendingConfig;
 use crate::problems::ameliorating_inventory::average_profit_rollout::{
     population_rollout as average_profit_population_rollout, rollout as average_profit_rollout,
@@ -617,7 +622,59 @@ fn ameliorating_inventory_average_profit_soft_tree_population_rollout(
     average_profit_population_rollout(&params_batch, &config, &seeds)
 }
 
+/// Re-run the perfect-information LP upper bound for one reference instance and return its value(s).
+///
+/// Mirrors the `*_summary` exact-solver bindings (e.g. `random_yield_inventory_exact_dp_summary`):
+/// it actually solves the model in-crate so the audit can RE-RUN the bound rather than only carry a
+/// snapshot. `reference_name` accepts the catalogued reference-instance names
+/// (`pahr_grunow2025_spirits_0001`, `pahr_grunow2025_port_wine`) and the short dataset aliases
+/// (`spirits_0001`, `port_wine`). Returns a dict with the re-solved bound plus the dataset-carried
+/// published anchor (and the gap) for comparison.
+#[pyfunction]
+#[pyo3(signature = (reference_name = "pahr_grunow2025_spirits_0001"))]
+fn ameliorating_inventory_perfect_info_lp_bound_summary(
+    py: Python<'_>,
+    reference_name: &str,
+) -> PyResult<PyObject> {
+    let LoadedLpDataset { inputs, anchor } = match reference_name {
+        "pahr_grunow2025_spirits_0001" | "spirits_0001" => load_spirits_0001(),
+        "pahr_grunow2025_port_wine" | "port_wine" => load_port_wine(),
+        other => {
+            return Err(pyo3::exceptions::PyKeyError::new_err(format!(
+                "unknown ameliorating reference instance '{other}'; expected one of \
+                 'pahr_grunow2025_spirits_0001'/'spirits_0001' or \
+                 'pahr_grunow2025_port_wine'/'port_wine'"
+            )))
+        }
+    };
+    let solution = solve_upper_bound(&inputs);
+
+    let dict = PyDict::new_bound(py);
+    dict.set_item("reference_name", reference_name)?;
+    dict.set_item("instance", inputs.instance.clone())?;
+    // Re-solved (re-run) perfect-information LP upper bound.
+    dict.set_item("upper_bound_max_reward", solution.max_reward)?;
+    dict.set_item("upper_bound_purchasing", solution.purchasing)?;
+    dict.set_item("upper_bound_production", solution.production.clone())?;
+    dict.set_item(
+        "upper_bound_inventory_position",
+        solution.inventory_position.clone(),
+    )?;
+    // Dataset-carried published companion anchor + reproduction gap.
+    dict.set_item("published_max_reward", anchor.max_reward)?;
+    dict.set_item("published_purchasing", anchor.purchasing)?;
+    dict.set_item(
+        "max_reward_gap_to_published",
+        (solution.max_reward - anchor.max_reward).abs(),
+    )?;
+    Ok(dict.into_any().unbind().into())
+}
+
 pub fn register_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add_function(wrap_pyfunction!(
+        ameliorating_inventory_perfect_info_lp_bound_summary,
+        m
+    )?)?;
     m.add_function(wrap_pyfunction!(
         ameliorating_inventory_soft_tree_rollout,
         m

@@ -20,9 +20,10 @@ use crate::problems::multi_echelon::heuristics::{
     parse_stationary_policy_kind, search_stationary_policy,
 };
 use crate::problems::multi_echelon::references::{
-    ExactVerificationReference, MultiEchelonReferenceInstance, PublishedBenchmarkReference,
-    GIJSBRECHTS_2022_REFERENCE, LITERATURE_REFERENCE_INSTANCES, PRIMARY_REFERENCE_INSTANCE,
-    VAN_ROY_1997_CASE_STUDY, VERIFICATION_PROBLEM_INSTANCE, WORKED_TRANSITION_REFERENCE,
+    get_reference_instance, ExactVerificationReference, MultiEchelonReferenceInstance,
+    PublishedBenchmarkReference, GIJSBRECHTS_2022_REFERENCE, LITERATURE_REFERENCE_INSTANCES,
+    PRIMARY_REFERENCE_INSTANCE, VAN_ROY_1997_CASE_STUDY, VERIFICATION_PROBLEM_INSTANCE,
+    WORKED_TRANSITION_REFERENCE,
 };
 use crate::problems::multi_echelon::rollout::{
     build_policy_features_with_mode, parse_demand_distribution, parse_policy_action_mode,
@@ -467,14 +468,9 @@ fn multi_echelon_list_reference_instances(py: Python<'_>) -> PyResult<Vec<PyObje
 
 #[pyfunction]
 fn multi_echelon_get_reference_instance(py: Python<'_>, name: &str) -> PyResult<PyObject> {
-    let reference = LITERATURE_REFERENCE_INSTANCES
-        .iter()
-        .find(|reference| reference.name == name)
-        .ok_or_else(|| {
-            PyErr::new::<pyo3::exceptions::PyKeyError, _>(format!(
-                "unknown reference instance '{name}'"
-            ))
-        })?;
+    let reference = get_reference_instance(name).ok_or_else(|| {
+        PyErr::new::<pyo3::exceptions::PyKeyError, _>(format!("unknown reference instance '{name}'"))
+    })?;
     literature_reference_to_py(py, reference)
 }
 

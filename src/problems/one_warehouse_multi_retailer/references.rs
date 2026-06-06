@@ -604,3 +604,21 @@ pub const VERIFICATION_PROBLEM_INSTANCE: ExactVerificationReference = ExactVerif
     max_action_levels: &[3, 3, 3],
     notes: "Repo-native exact verifier shaped after the lost-sales OWMR setting with positive lead times. Two retailers, binary demand support, and a two-period horizon keep the finite-horizon dynamic program cheap enough for routine testing. The carried echelon base-stock heuristic parameters are exact-searched within the verifier.",
 };
+
+/// Sibling-standard accessors over the carried published reference instances. Mirrors the pattern
+/// used by lost_sales/dual_sourcing/perishable_inventory: a fn returning the slice of instance
+/// names and a fn looking an instance up by name.
+pub fn list_reference_instances() -> Vec<&'static str> {
+    TABLE_A3_INSTANCES
+        .iter()
+        .map(|instance| instance.name)
+        .collect()
+}
+
+pub fn get_reference_instance(
+    name: &str,
+) -> Option<&'static OneWarehouseMultiRetailerReferenceInstance> {
+    TABLE_A3_INSTANCES
+        .iter()
+        .find(|instance| instance.name == name)
+}

@@ -10,8 +10,9 @@ use crate::problems::multi_echelon::finite_horizon_dp::{
     ExactHeuristicKind, ExactPolicyEvaluation,
 };
 use crate::problems::multi_echelon::references::{
-    GIJSBRECHTS_2022_REFERENCE, LITERATURE_REFERENCE_INSTANCES, PRIMARY_REFERENCE_INSTANCE,
-    VAN_ROY_1997_CASE_STUDY, VERIFICATION_PROBLEM_INSTANCE, WORKED_TRANSITION_REFERENCE,
+    get_reference_instance, list_reference_instances, GIJSBRECHTS_2022_REFERENCE,
+    LITERATURE_REFERENCE_INSTANCES, PRIMARY_REFERENCE_INSTANCE, VAN_ROY_1997_CASE_STUDY,
+    VERIFICATION_PROBLEM_INSTANCE, WORKED_TRANSITION_REFERENCE,
 };
 
 fn nested_pipeline_vec(pipelines: &[&[u32]]) -> Vec<Vec<u32>> {
@@ -324,6 +325,16 @@ fn reference_catalog_matches_gijs_and_van_roy() {
         VAN_ROY_1997_CASE_STUDY.published_constant_base_stock_levels,
         &[330, 23]
     );
+
+    // Sibling-standard accessors mirror the slice and look up by name.
+    let names = list_reference_instances();
+    assert_eq!(names.len(), LITERATURE_REFERENCE_INSTANCES.len());
+    assert_eq!(names[0], LITERATURE_REFERENCE_INSTANCES[0].name);
+    assert_eq!(
+        get_reference_instance(PRIMARY_REFERENCE_INSTANCE.name).map(|i| i.name),
+        Some(PRIMARY_REFERENCE_INSTANCE.name)
+    );
+    assert!(get_reference_instance("does_not_exist").is_none());
 }
 
 #[test]

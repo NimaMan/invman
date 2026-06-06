@@ -453,3 +453,19 @@ pub const WORKED_TRANSITION_REFERENCE: WorkedTransitionReference = WorkedTransit
     expected_next_retailer_pipeline: WORKED_NEXT_RETAILER_PIPELINES,
     expected_period_cost: 2.0,
 };
+
+/// Sibling-standard accessors over the carried published reference instances. Mirrors the pattern
+/// used by lost_sales/dual_sourcing/perishable_inventory: a fn returning the slice of instance
+/// names and a fn looking an instance up by name.
+pub fn list_reference_instances() -> Vec<&'static str> {
+    LITERATURE_REFERENCE_INSTANCES
+        .iter()
+        .map(|instance| instance.name)
+        .collect()
+}
+
+pub fn get_reference_instance(name: &str) -> Option<&'static MultiEchelonReferenceInstance> {
+    LITERATURE_REFERENCE_INSTANCES
+        .iter()
+        .find(|instance| instance.name == name)
+}

@@ -18,9 +18,9 @@ use crate::problems::one_warehouse_multi_retailer::heuristics::{
     echelon_base_stock_orders, policy_rollout_from_paths, simulate_policy,
 };
 use crate::problems::one_warehouse_multi_retailer::references::{
-    ExactVerificationReference, OneWarehouseMultiRetailerReferenceInstance,
-    PublishedBenchmarkReference, KAYNOV_2024_REFERENCE, PRIMARY_REFERENCE_INSTANCE,
-    TABLE_A3_INSTANCES, VERIFICATION_PROBLEM_INSTANCE,
+    get_reference_instance, ExactVerificationReference,
+    OneWarehouseMultiRetailerReferenceInstance, PublishedBenchmarkReference, KAYNOV_2024_REFERENCE,
+    PRIMARY_REFERENCE_INSTANCE, TABLE_A3_INSTANCES, VERIFICATION_PROBLEM_INSTANCE,
 };
 use crate::problems::one_warehouse_multi_retailer::rollout::{
     build_initial_state, parse_policy_action_mode, parse_policy_state_mode, population_rollout,
@@ -713,14 +713,9 @@ fn one_warehouse_multi_retailer_get_reference_instance(
     py: Python<'_>,
     name: &str,
 ) -> PyResult<PyObject> {
-    let reference = TABLE_A3_INSTANCES
-        .iter()
-        .find(|reference| reference.name == name)
-        .ok_or_else(|| {
-            PyErr::new::<pyo3::exceptions::PyKeyError, _>(format!(
-                "unknown reference instance '{name}'"
-            ))
-        })?;
+    let reference = get_reference_instance(name).ok_or_else(|| {
+        PyErr::new::<pyo3::exceptions::PyKeyError, _>(format!("unknown reference instance '{name}'"))
+    })?;
     reference_instance_to_py(py, reference)
 }
 
