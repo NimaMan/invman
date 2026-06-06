@@ -124,11 +124,20 @@ $48$-instance fixed-cost surface. On the six dual-sourcing instances of \citet{g
 the learned soft tree matches the capped dual-index heuristic --- itself a $\le0.11\%$ proxy for the
 bounded-DP optimum --- on every instance, and thus sits well inside the band that the published A3C
 learner ($0.51$--$1.85\%$ gap) does not reach. On both reported multi-echelon settings a
-direct-level soft tree improves on the best in-environment constant base-stock by $\approx 14.4\%$. On
+direct-level soft tree improves on the best in-environment constant base-stock by $14.7\%\pm1.6\%$ and
+$12.0\%\pm2.3\%$ over five optimizer seeds (the published A3C figures, $8.95\%/12.09\%$, are
+cross-protocol context). On
 three further problems, a compact soft tree beats the best base-stock gate for perishable inventory
-($+1.16\%$ and $+0.82\%$ under FIFO and LIFO issuing), beats the published constant-base-stock
+($+1.171\%\pm0.002\%$ and $+0.840\%\pm0.034\%$ under FIFO and LIFO issuing, five-seed means), beats the published constant-base-stock
 benchmark of a general-network backorder system by over $20\%$, and matches the proven serial
 (Clark--Scarf) optimum.
+On the remaining networked rows we report comparator-specific verdicts rather than a single
+leaderboard claim: the one-warehouse multi-retailer policy robustly beats the same-protocol tuned
+gate on the asymmetric three-retailer ($+4.63\%$) and high-CV ten-retailer ($+7.16\%$) instances
+(six-seed means, all seeds below the gate) but does not robustly beat the published PPO scalar;
+the ameliorating-inventory result beats a purchase-only gate while remaining a large gap-to-bound;
+and the production/assembly/distribution network is reported as learned-versus-own-heuristic
+research, with the mixed topology now treated as a gate-match rather than a beat.
 
 The policies carry tens to a few hundred parameters, are trained without per-problem hyperparameter
 tuning, and the reported single-state actions are validated against an independent rollout. The
@@ -186,19 +195,22 @@ Our contributions are as follows.
     production/assembly/distribution network:
     they beat strong heuristics where the comparator is a heuristic, match proven optima where it is
     optimal (the dual-sourcing capped dual-index proxy and the serial Clark--Scarf optimum), and clear
-    published DRL where a baseline exists --- using one
+    the published A3C reference on dual sourcing while treating cross-protocol PPO rows as context ---
+    using one
     optimization loop and per-problem horizons of thousands to tens of thousands of periods, without
     per-problem hyperparameter tuning. Learned policies are instance-best in $22/24$ vanilla and
     $47/48$ fixed-cost lost-sales instances, match the capped dual-index optimal proxy on all six
     dual-sourcing instances, and improve on the best in-environment constant base-stock by
-    $\approx 14.4\%$ on both multi-echelon settings; on the three further benchmark problems a soft tree beats the
+    $14.7\%\pm1.6\%$ and $12.0\%\pm2.3\%$ (five-seed means) on the two multi-echelon settings; on the three further benchmark problems a soft tree beats the
     best base-stock gate for perishable inventory, beats the published benchmark of a general-network
     backorder system by over $20\%$, and matches the proven serial Clark--Scarf optimum. On the final
-    three problems the same recipe beats the strongest tuned base-stock-and-allocation gate beyond
-    sampling error on the harder one-warehouse multi-retailer instances, raises long-run average profit
-    far above the best order-up-to purchase policy under the ameliorating-inventory profit objective,
-    and beats a faithful production/assembly/distribution network's own best pairwise base-stock by
-    $\approx 4$--$9\%$.
+    three problems the same recipe now has deliberately narrower verdicts: on one-warehouse
+    multi-retailer it gives seed-robust same-protocol gate beats on the asymmetric three-retailer and
+    high-CV ten-retailer instances while not claiming a robust PPO beat; on ameliorating inventory it raises long-run
+    average profit far above the best order-up-to purchase policy while reporting the gap to the
+    perfect-information LP as a bound; and on the production/assembly/distribution network it beats
+    the environment's own pairwise base-stock on the serial and pure-assembly topologies while the
+    mixed topology is a seed-noisy gate-match.
     \item \textbf{Action parameterization as policy design.} We formalize and evaluate a family of
     policy-owned decoders (soft-gated direct quantity, soft-gated ordinal quantity, soft trees with
     linear leaves) and per-problem action geometries (capped-dual-index coordinates; direct-level
@@ -1688,23 +1700,24 @@ seeds).
 
 Table~\ref{tab:me-results} reports the best in-environment constant base-stock, the best learned
 policy under each action design, and the learned policy's improvement over the constant base-stock,
-alongside the published A3C improvement. The direct-estimation policy improves on the best constant
-base-stock by $\approx 14.4\%$ on both settings. The grid-action policy, restricted to $y^w\le 100$,
-stays about $230\%$ \emph{above} the benchmark.
+alongside the published A3C improvement. Over $5$ independent CMA-ES seeds the direct-estimation
+policy improves on the best constant base-stock by $14.7\%\pm1.6\%$ (setting~1) and $12.0\%\pm2.3\%$
+(setting~2), with all $5$ seeds below the gate on both settings, so the beat is robust to optimizer
+initialization. The grid-action policy, restricted to $y^w\le 100$, stays about $230\%$ \emph{above}
+the benchmark.
 \paragraph{Interpretation.}
 The gap between the two action designs is the central finding: the grid policy fails not because of
 the environment or the learner but because its action space cannot reach the operating region. This
 is the action-space trap in its starkest form --- the same soft tree, optimizer, and horizon, with
-only the decoder's reachable level set changed, swing from $\approx14\%$ better than the constant
-base-stock to more than $200\%$ worse. The best tree depth is instance-dependent (depth~2 for
-setting~1, depth~3 for setting~2), and the design-by-depth sweep selects it automatically. One
-comparison caveat is important: our $14.4\%$ improvement and the published A3C improvements
-($8.95\%$, $12.09\%$) are computed against \emph{different} baselines and under \emph{different} cost
-conventions --- our improvement is relative to the best in-environment constant base-stock under the
+only the decoder's reachable level set changed, swing from $\approx 12$--$15\%$ better than the constant
+base-stock to more than $200\%$ worse. The best tree depth is instance-dependent (the design-by-depth
+sweep over $\{2,3\}$ selects it per seed automatically). One comparison caveat is important: our
+$14.7\%$ / $12.0\%$ seed-mean improvements and the published A3C improvements ($8.95\%$, $12.09\%$)
+are computed against \emph{different} baselines and under \emph{different} cost conventions --- our
+improvement is the $5$-seed mean relative to the best in-environment constant base-stock under the
 Gijsbrechts et al.\ (2022) cost convention, whereas the A3C figures are relative to the published
-Van Roy et al.\ (1997) constant base-stock under the original cost convention --- so the cross-method
-comparison is indicative of the
-direct design's strength rather than a strictly like-for-like ranking.
+Van Roy et al.\ (1997) constant base-stock under the original cost convention --- so we report the A3C
+numbers as cross-protocol \emph{context}, not as a head-to-head beat.
 
 \begin{table}[!htbp]
 \centering
@@ -1717,13 +1730,17 @@ constant base-stock; the last row is the published A3C improvement over constant
 \toprule
 Policy / metric & Setting 1 & Setting 2 \\
 \midrule
-Best const.\ base-stock $(y^w,y^r)$ & $(300,25)\to 911.4$ & $(525,25)\to 1137.8$ \\
+Best const.\ base-stock $(y^w,y^r)$ & $(300,25)\to 910.3$ & $(525,25)\to 1138.0$ \\
 Grid tree & $3085.7$ & $3795.1$ \\
-Direct tree (ours) & $\mathbf{779.8}$ & $\mathbf{973.6}$ \\
-Improvement vs.\ best const. & $\mathbf{14.4\%}$ & $\mathbf{14.4\%}$ \\
-Published A3C improvement & $8.95\%$ & $12.09\%$ \\
+Direct tree (ours), seed-mean & $\mathbf{776.2\pm14.3_{\rm seed}}$ & $\mathbf{1001.1\pm25.6_{\rm seed}}$ \\
+Improvement vs.\ best const. & $\mathbf{14.7\%\pm1.6\%}$ & $\mathbf{12.0\%\pm2.3\%}$ \\
+Published A3C improvement (context) & $8.95\%$ & $12.09\%$ \\
 \bottomrule
 \end{tabular}
+\par\medskip\footnotesize Mean $\pm$ standard deviation over $5$ independent CMA-ES seeds, against the
+env's own grid-searched best constant base-stock gate (the same-protocol comparator, seed-mean
+$910.3\pm0.5$ / $1138.0\pm0.4$); all $5$ seeds beat the gate on both settings. The published A3C row is
+\emph{cross-protocol context} (a different algorithm and cost convention), not a head-to-head beat.
 \end{table}
 \FloatBarrier
 
@@ -1989,11 +2006,13 @@ Issuing rule & FIFO \emph{or} LIFO \\
 
 Table~\ref{tab:perish-results} compares the best learned depth-2 oblique-linear soft tree against the
 best base-stock gate under the common-random-number protocol. On both instances the learned policy
-\emph{beats} the gate by a margin that is many times its paired standard error: on FIFO it improves
-the discounted return from $-1475.08$ to $-1457.90$ ($+1.16\%$, $\approx9.5\times$ the paired SEM),
-and on LIFO from $-1565.98$ to $-1553.16$ ($+0.82\%$, $\approx6.6\times$ the paired SEM). Both margins
-are statistically clear gate beats, and both were obtained by selecting on the disjoint validation
-block (Section~\ref{sec:perishable-setup}).
+\emph{beats} the gate, and the beat is seed-robust: over $5$ independent CMA-ES seeds the FIFO
+improvement is $+1.171\%\pm0.002\%$ and the LIFO improvement is $+0.840\%\pm0.034\%$, with all $5$
+seeds beating the gate on both (the cross-seed standard deviation is negligible against the mean
+margin, so the gain is not a single-seed artifact). The headline single-seed FIFO return improves
+from $-1475.08$ to $-1457.90$ and LIFO from $-1565.98$ to $-1553.16$, each many times its paired
+standard error, and both were obtained by selecting on the disjoint validation block
+(Section~\ref{sec:perishable-setup}).
 
 \paragraph{Interpretation.}
 The headline is the \emph{like-for-like gate beat}: under one shared Monte-Carlo estimator, a $21$-
@@ -2024,8 +2043,8 @@ Policy / metric & FIFO ($S=7$) & LIFO ($S=5$) \\
 \midrule
 Best base-stock gate & $-1475.08$ & $-1565.98$ \\
 Learned soft tree (ours) & $\mathbf{-1457.90}$ & $\mathbf{-1553.16}$ \\
-Improvement over gate $\Delta\%$ & $\mathbf{+1.16\%}$ & $\mathbf{+0.82\%}$ \\
-Gain / paired SEM & $\approx 9.5\times$ & $\approx 6.6\times$ \\
+Improvement over gate $\Delta\%$ ($5$-seed mean) & $\mathbf{+1.171\%\pm0.002\%}$ & $\mathbf{+0.840\%\pm0.034\%}$ \\
+Gain / paired SEM (headline seed) & $\approx 9.5\times$ & $\approx 6.6\times$ \\
 \midrule
 VI optimum (analytic, context) & $-1457.28$ & $-1552.99$ \\
 \bottomrule
@@ -2034,7 +2053,9 @@ VI optimum (analytic, context) & $-1457.28$ & $-1552.99$ \\
 the \emph{same} Monte-Carlo estimator and the gate is the exact optimum within the base-stock family.
 The VI-optimum row is the analytic discounted return under midpoint-binned Gamma demand and is not
 on the same estimator (the gate sits $\approx1\%$ below it purely from that mismatch); we report it
-as context, not as a separate improvement claim. Selection is on a disjoint validation block;
+as context, not as a separate improvement claim. The $\Delta\%$ row is the mean $\pm$ cross-seed
+standard deviation over $5$ independent CMA-ES seeds (all $5$ beat the gate on both instances);
+the negated-cost values shown are the headline seed. Selection is on a disjoint validation block;
 selecting on the evaluation block instead flips FIFO to a small ($\approx-0.49\%$) loss.
 \end{table}
 \FloatBarrier
@@ -2406,16 +2427,16 @@ Benchmark base-stock levels & $[82,100,64,83,35,35,35,35,35]$ \\
 Table~\ref{tab:gbk-results} reports the published constant node-base-stock benchmark, our
 in-environment reproduction of it (the gate), the best learned policy, and --- as a clearly labeled
 cross-protocol context row --- the paper's PPO best. The learned soft tree, operating in the
-per-node order-up-to coordinate system, reduces the long-run average cost to $8{,}034.8\pm17.6$, an improvement of $22.4\%$
-over the reproduced constant node-base-stock benchmark ($10{,}354.8$); a second independent CMA-ES seed
-reaches $7{,}590.7\pm19.2$ ($-26.7\%$). Both margins are many times the standard error of the mean, so
-they are genuine out-of-sample gains rather than evaluation-seed noise, and they are robust to the
-optimizer's initialization. Generation~0 reproduces the benchmark ($10{,}378.6$), confirming the
-warm-start, so the $\approx 2{,}300$--$2{,}800$ cost reduction is exactly what CMA-ES adds on top of the
-heuristic.
+per-node order-up-to coordinate system, reduces the long-run average cost to a $5$-seed mean of
+$7{,}837.0\pm189.7$, an improvement of $24.3\%\pm1.8\%$ over the reproduced constant node-base-stock
+benchmark ($10{,}354.8$), with all $5$ independent CMA-ES seeds below the gate. The cross-seed standard
+deviation ($1.8\%$) is far smaller than the mean margin ($24.3\%$), so the gain is robust to optimizer
+initialization, not evaluation-seed noise. Generation~0 reproduces the benchmark ($10{,}378.6$),
+confirming the warm-start, so the $\approx 2{,}500$ cost reduction is exactly what CMA-ES adds on top of
+the heuristic.
 
 \paragraph{Interpretation.}
-The like-for-like result is the $22.4$--$26.7\%$ improvement over the constant node-base-stock
+The like-for-like result is the $24.3\%\pm1.8\%$ ($5$-seed) improvement over the constant node-base-stock
 benchmark on the \emph{same} environment under a paired CRN comparison: putting the policy in the
 benchmark's per-node order-up-to coordinate system and letting a state-dependent tree modulate the
 targets --- rather than enlarging or replacing the action space --- is the operative lever, consistent
@@ -2424,10 +2445,10 @@ despite the carried family name, the environment charges holding and backorder c
 fixed ordering cost (Eq.~\eqref{eq:gbk-cost}); the section title reflects the model actually
 implemented and verified, not a setup-cost variant. Second, the published PPO best ($8{,}714$) is a
 \emph{cross-protocol} figure: it is produced by a different learner under the paper's own training and
-evaluation protocol, whereas our numbers come from the paired held-out CRN protocol above. Our learned
-policy lands $679$--$1{,}123$ below that PPO figure, which is suggestive of the design's strength but is
-\emph{not} a head-to-head PPO beat, and we do not claim one. The defensible claim is the paired,
-same-environment improvement over the published constant node-base-stock benchmark.
+evaluation protocol, whereas our numbers come from the paired held-out CRN protocol above. All $5$ of our
+learned seeds also land below that PPO figure (seed-mean $\approx 877$ below it), which is suggestive of
+the design's strength but is \emph{not} a head-to-head PPO beat, and we do not claim one. The defensible
+claim is the paired, same-environment improvement over the published constant node-base-stock benchmark.
 
 \begin{table}[!htbp]
 \centering
@@ -2445,17 +2466,19 @@ Policy / metric & Held-out cost & $\Delta\%$ vs.\ benchmark \\
 Published const.\ node-base-stock benchmark & $10{,}467$ & --- \\
 Reproduced benchmark (paired gate) & $10{,}354.8$ & $-1.1\%$ (vs.\ published) \\
 Warm-start (gen.\ 0 $=$ benchmark) & $10{,}378.6 \pm 10.6$ & $+0.2\%$ \\
-Learned soft tree, seed 123 (ours) & $\mathbf{8{,}034.8 \pm 17.6}$ & $\mathbf{-22.4\%}$ \\
-Learned soft tree, seed 777 (ours) & $\mathbf{7{,}590.7 \pm 19.2}$ & $\mathbf{-26.7\%}$ \\
+Learned soft tree, $5$-seed mean (ours) & $\mathbf{7{,}837.0 \pm 189.7_{\rm seed}}$ & $\mathbf{-24.3\%\pm1.8\%}$ \\
 \addlinespace[2pt]
 \multicolumn{3}{l}{\footnotesize Cross-protocol context (not head-to-head):} \\
 Published PPO best \citep{geevers2024cardboard} & $8{,}714$ & cross-protocol \\
 \bottomrule
 \end{tabular}
-\par\medskip\footnotesize The like-for-like comparator is the constant node-base-stock benchmark on
-the same environment; both learned seeds beat it by $>22\%$ under the paired CRN comparison
-($\gg 2\times$ SEM). The PPO figure is reported only as context; the learned policy lands
-$679$--$1{,}123$ below it, but under a different protocol, so it is not claimed as a head-to-head beat.
+\par\medskip\footnotesize The learned row is the mean $\pm$ cross-seed standard deviation over $5$
+independent CMA-ES seeds (per-seed held-out costs $8{,}034.8$, $7{,}590.7$, $7{,}685.9$, $7{,}909.8$,
+$7{,}963.6$; all $5$ below the gate, each $\gg 2\times$ its own evaluation SEM). The like-for-like
+comparator is the constant node-base-stock benchmark on the same environment; all $5$ seeds beat it by
+$23$--$27\%$ under the paired CRN comparison. The PPO figure is reported only as context; all $5$ seeds
+land below it (seed-mean $\approx 877$ lower), but under a different protocol, so it is not claimed as a
+head-to-head beat.
 \end{table}
 \FloatBarrier
 
@@ -2473,8 +2496,8 @@ environment reproduces the published cost $4{,}059$ to within $-3.0\%$ (mean $\a
 three retailer fill rates $\approx 98.6\%$); this reproduction is looser than the set-1 row
 ($-1.1\%$), as detailed in the validation appendix. The instance is treated as literature-verified, and
 the learned soft tree --- warm-started at those same levels and trained under the identical
-per-node order-up-to design --- beats the reproduced benchmark by $\approx 37\%$ across two
-independent optimizer seeds.
+per-node order-up-to design --- beats the reproduced benchmark by $36.8\%\pm0.3\%$ across five
+independent optimizer seeds (all $5$ below the gate).
 
 \begin{table}[!htbp]
 \centering
@@ -2493,16 +2516,17 @@ Policy / metric & Held-out cost & $\Delta\%$ vs.\ benchmark \\
 Published const.\ node-base-stock benchmark & $4{,}059$ & --- \\
 Reproduced benchmark (paired gate) & $3{,}930.4$ & $-3.0\%$ (vs.\ published) \\
 Warm-start (gen.\ 0 $=$ benchmark) & $3{,}913.5 \pm 31.8$ & $-0.4\%$ \\
-Learned soft tree, seed 123 (ours) & $\mathbf{2{,}469.1 \pm 7.6}$ & $\mathbf{-37.2\%}$ \\
-Learned soft tree, seed 777 (ours) & $\mathbf{2{,}477.9 \pm 8.0}$ & $\mathbf{-37.0\%}$ \\
+Learned soft tree, $5$-seed mean (ours) & $\mathbf{2{,}484.6 \pm 11.3_{\rm seed}}$ & $\mathbf{-36.8\%\pm0.3\%}$ \\
 \addlinespace[2pt]
 \multicolumn{3}{l}{\footnotesize Cross-protocol context (not head-to-head):} \\
 Published DRL best (source thesis) & $3{,}724$ & cross-protocol \\
 \bottomrule
 \end{tabular}
-\par\medskip\footnotesize The like-for-like comparator is the constant node-base-stock benchmark on
-the same environment; both learned seeds beat it by $\approx 37\%$ under the paired CRN comparison
-($\gg 2\times$ SEM). The published DRL figure is reported only as context (a different learner under
+\par\medskip\footnotesize The learned row is the mean $\pm$ cross-seed standard deviation over $5$
+independent CMA-ES seeds (per-seed held-out costs $2{,}469.1$, $2{,}477.9$, $2{,}488.4$, $2{,}498.4$,
+$2{,}489.0$; all $5$ below the gate). The like-for-like comparator is the constant node-base-stock
+benchmark on the same environment; all $5$ seeds beat it by $\approx 37\%$ under the paired CRN
+comparison. The published DRL figure is reported only as context (a different learner under
 the source thesis's own protocol); the learned policy lands below it, but under a different protocol,
 so it is not claimed as a head-to-head beat.
 \end{table}
@@ -2969,9 +2993,11 @@ $(S^w,S^1,\dots,S^K)$, reproducing the gate to within numerical error on identic
 which CMA-ES searches outward. This floor is essential: \emph{without} it the richer per-retailer
 geometry is not a free win --- at screening it \emph{loses} to the gate by $-12.79\%$ on the
 heterogeneous instance, because the optimizer cannot locate the base-stock region in the larger
-search space; \emph{with} the floor the same instance flips to a $+1.33\%$ win. A raw per-retailer
-order geometry without a gate-reproducing anchor loses by $-50.84\%$,
-confirming the floor, not the representation, is what makes the per-retailer class usable.
+search space; \emph{with} the floor the same instance first flips to a single-seed $+1.33\%$ held-out
+win and, under the later fresh-warm-start / gentle-$\sigma$ protocol, to a seed-robust $+4.63\%$
+gate beat ($6$-seed mean, all six seeds below the gate). A raw per-retailer order geometry without a gate-reproducing anchor loses by $-50.84\%$,
+confirming the floor and training protocol, not mere representation size, are what make the
+per-retailer class usable.
 
 \subsection{Experiment setup}
 \label{sec:owmr-setup}
@@ -2993,12 +3019,14 @@ so a beat against it transitively implies a policy at least as good as the publi
 published PPO row is reported as the strongest \emph{learned} reference, not as the keep/discard gate.
 
 \paragraph{Evaluation protocol.}
-Policies are trained with warm-started CMA-ES (population $32$, $600$ generations at full budget) and
-evaluated under the common-random-number protocol of Section~\ref{sec:methods-eval}: the gate grid is
-searched on a $64$-path block (argmin verified stable against $96/256$), and learned policy and gate
-are re-scored on a disjoint $4096$-path held-out block under the deployed allocation. A win is claimed
-only when the paired-difference advantage exceeds its standard error. The deployed policy is the
-better of the trained CMA-ES incumbent and the gate-reproducing warm-start anchor.
+Policies are trained with warm-started CMA-ES (population $32$, full-budget campaigns of
+$400$--$800$ generations) and evaluated under the common-random-number protocol of
+Section~\ref{sec:methods-eval}: the gate grid is searched on a $64$-path block (argmin verified
+stable against $96/256$), and learned policy and gate are re-scored on a disjoint $4096$-path held-out
+block under the deployed allocation. A same-seed win is claimed only when the paired-difference
+advantage exceeds its standard error; a headline configuration is claimed only when a small
+independent CMA-seed block has the same sign. The deployed policy is the better of the trained CMA-ES
+incumbent and the gate-reproducing warm-start anchor.
 
 \begin{table}[!htbp]
 \centering
@@ -3025,56 +3053,65 @@ retailers.
 \subsection{Results}
 \label{sec:owmr-results}
 
-Table~\ref{tab:owmr-results} reports the learned per-retailer soft tree against the tuned gate on
-the held-out block. The learned policy \emph{beats the tuned gate beyond sampling error on two of the
-three instances}, and ties on the third. On the heterogeneous $K{=}3$ instance it improves the
-$100$-period cost from $1169.59$ to $1154.09$ ($+1.33\%$, paired advantage $+15.50\pm0.97$,
-$\approx16\times$ SEM) by learning state-dependent per-retailer deviations from the shared base-stock.
-On the symmetric high-CV $K{=}10$ instance a linear-leaf policy improves the cost from $91890.25$ to
-$85974.79$ ($+6.44\%$, paired $+5915.47\pm49.50$, $\approx120\times$ SEM), closing most of the gap to
-the published PPO (from $15.26\%$ to $7.84\%$); here the exploitable structure is \emph{dynamic
-state-dependence under high demand variance} (a constant-leaf shared base-stock only ties), not
-per-retailer heterogeneity. On the hardest, strongly heterogeneous $K{=}10$ instance the learned
-policy \emph{ties} the gate: with the per-retailer warm-start floor the trained incumbent lands above
-the strong asymmetric gate within budget, so the deployed policy falls back to the gate-reproducing
-anchor. This tie is \emph{search-limited}, not representation-limited --- the gate lies inside the
-learned policy's class, but CMA-ES cannot improve on it over the $10$-dimensional target space in
-$600$ generations.
+Table~\ref{tab:owmr-results} reports the learned soft tree against the tuned gate on the held-out
+block. The seed-robust headline is the asymmetric $K{=}3$ row: a depth-2 axis-aligned linear-leaf
+tree, freshly warm-started at the gate and trained with gentle $\sigma=0.05$ on $24$ common-random
+training paths per generation, improves the $100$-period cost from $1169.59$ to
+$1115.44\pm5.51$ across six independent CMA seeds ($+4.63\%$ against the gate; all six seeds beat
+it). The training protocol is the load-bearing lever: fresh gate warm-start, moderate initial
+variance, enough training paths, and a long enough budget; tree depth is not (depth-3 gives no
+reliable advantage over depth-2 within optimizer-seed noise).
+
+On the high-CV symmetric $K{=}10$ instance the depth-3 soft tree improves the cost from the
+same-protocol gate $91890.25$ to a $6$-seed mean $85310\pm946$ ($+7.16\%$ against the gate; all six
+seeds beat it), so this row is now a seed-robust gate beat. On the hardest, strongly heterogeneous
+$K{=}10$ instance the deployed policy still ties the gate: with the warm-start floor the trained
+incumbent lands above the strong asymmetric gate within budget, so the deployed policy falls back to
+the gate-reproducing anchor. This tie is \emph{search-limited}, not representation-limited --- the
+gate lies inside the learned policy's class, but CMA-ES does not improve on it over the larger target
+space within the current budget.
 
 \paragraph{Interpretation.}
-The honest headline is that the learned soft tree \emph{beats the strongest tuned heuristic gate}
-beyond sampling error on the heterogeneous $K{=}3$ instance and the high-CV symmetric $K{=}10$
-instance, and ties it on the hardest heterogeneous $K{=}10$ instance. On all three rows the
-gate is itself stronger than the published base-stock and sits between it and the published
-PPO; the learned policy does \emph{not} beat the published PPO, which remains the strongest learned
-policy on every row ($-3.14\%$, $-7.84\%$, $-17.77\%$ relative to PPO). The mechanism behind the wins
-is the generalized per-retailer warm-start floor of Section~\ref{sec:owmr-policy}: it converts a rich
-but hard-to-optimize action geometry from a screening-stage loss into a robust held-out win.
+The honest headline is therefore narrower than a best-seed story and stronger than the old plateau:
+the learned soft tree \emph{robustly beats the strongest same-protocol tuned heuristic gate} on both
+the asymmetric $K{=}3$ partial-backorder instance ($+4.63\%$, all six seeds) and the high-CV
+$K{=}10$ instance ($+7.16\%$, all six seeds), and ties the hardest heterogeneous $K{=}10$ row. The
+published PPO scalar is reported only as cross-protocol context: on $K{=}3$ the six-seed costs
+straddle the PPO line (the seed-mean is $+0.31\%$ below PPO and five of six seeds fall below it, but
+the seed spread exceeds the mean margin, so the beat is not robust), and on the $K{=}10$ rows PPO
+remains cheaper (the high-CV seed-mean is $\approx 7\%$ above PPO, $0/6$ below). We therefore do
+\emph{not} claim a robust PPO beat on any row. The mechanism is the generalized warm-start floor plus
+the adequately batched, moderate-variance training protocol of Section~\ref{sec:owmr-policy}; depth-3
+adds no reliable advantage over depth-2 on the headline $K{=}3$ row.
 
 \begin{table}[!htbp]
 \centering
 \small
-\caption{OWMR asymmetric / high-CV instances: best learned per-retailer soft tree vs.\ the strongest
-tuned echelon base-stock $+$ allocation gate, common-random-number evaluation ($4096$ held-out
-paths, horizon $100$). Costs are $100$-period undiscounted totals (lower is better). $\Delta\%$ is the
-learned policy's improvement over the gate; ``paired $\pm$ SEM'' is the gate$-$learned advantage on
-identical paths (a win requires it to exceed its SEM). The published PPO column is the strongest
-\emph{learned} reference of \citet{kaynov2024owmr}, not the keep/discard gate.}
+\caption{OWMR asymmetric / high-CV instances: learned soft tree vs.\ the strongest tuned echelon
+base-stock $+$ allocation gate, common-random-number evaluation ($4096$ held-out paths, horizon
+$100$). Costs are $100$-period undiscounted totals (lower is better). $\Delta\%$ is the learned
+policy's improvement over the gate. The first two rows report optimizer-seed mean $\pm$ standard
+deviation over $6$ independent CMA seeds (all $6$ beat the gate); the third row is the deployed
+warm-start floor. The published PPO column is the strongest \emph{learned} reference of
+\citet{kaynov2024owmr}, reported as cross-protocol context rather than a keep/discard gate.}
 \label{tab:owmr-results}
-\begin{tabular}{lccccc}
+\begin{tabular}{llcccc}
 \toprule
-Instance & Learned & Gate & $\Delta\%$ & Paired $\pm$ SEM & Published PPO \\
+Instance & Evidence & Learned & Gate & $\Delta\%$ & Published PPO \\
 \midrule
-heterogeneous-$3$ & $\mathbf{1154.09}$  & $1169.59$  & $\mathbf{+1.33\%}$ & $+15.50\pm0.97$    & $1118.92$ \\
-high-CV symmetric-$10$ & $\mathbf{85974.79}$ & $91890.25$ & $\mathbf{+6.44\%}$ & $+5915.47\pm49.50$ & $79727.39$ \\
-heterogeneous-$10$ & $50445.20$ & $50445.20$ & $+0.00\%$ & $+0.00\pm0.00$ & $42835.02$ \\
+heterogeneous-$3$ & depth-2 seed mean ($N=6$) & $\mathbf{1115.44\pm5.51_{\rm seed}}$ & $1169.59$ & $\mathbf{+4.63\%}$ & $1118.92$ \\
+high-CV symmetric-$10$ & depth-3 seed mean ($N=6$) & $\mathbf{85310\pm946_{\rm seed}}$ & $91890.25$ & $\mathbf{+7.16\%}$ & $79727.39$ \\
+heterogeneous-$10$ & deployed warm-start floor & $50445.20$ & $50445.20$ & $+0.00\%$ & $42835.02$ \\
 \bottomrule
 \end{tabular}
 \par\medskip\footnotesize The comparator is the strongest tuned heuristic gate (itself stronger than
-the published base-stock); the learned policy beats it beyond SEM on the heterogeneous three-retailer
-and high-CV symmetric ten-retailer instances and ties it on the search-limited heterogeneous
-ten-retailer instance. The learned policy does not beat the published PPO ($-3.14\%$, $-7.84\%$,
-$-17.77\%$ relative to PPO), which remains the strongest learned policy on every row.
+the published base-stock). Both learned rows are seed-robust gate beats: all $6$ seeds beat the gate
+on each (heterogeneous-$3$ mean$-$std $=+4.16\%$, high-CV mean$-$std $=+6.13\%$ still clear it).
+Depth is not the lever on heterogeneous-$3$ (the depth-3 analogue is inside optimizer-seed noise of
+depth-2). The learned policy does not claim a robust published-PPO beat: the heterogeneous-$3$ seed
+block straddles the PPO scalar (seed-mean $+0.31\%$ below, $5/6$ seeds below), the high-CV seed-mean
+is $\approx 7\%$ above PPO ($0/6$ below), and PPO remains cheaper on the heterogeneous ten-retailer
+row.
 \end{table}
 \FloatBarrier
 
@@ -3100,9 +3137,9 @@ exceeding its standard error). Across these regimes the published PPO of
 policy stays below PPO here; we make no PPO claim. The takeaway is one of \emph{robustness}:
 the per-retailer geometry does not degrade when moved from partial backorder to full
 backorder or lost sales (including under lead-time asymmetry and long leads), reproducing the
-strongest in-repo heuristic exactly; the genuine held-out \emph{beats} of
-Table~\ref{tab:owmr-results} remain confined to the heterogeneous and high-CV
-partial-backorder instances where there is dynamic structure the static gate cannot express.
+strongest in-repo heuristic exactly. The promoted seed-robust \emph{beats} in
+Table~\ref{tab:owmr-results} are the asymmetric three-retailer partial-backorder instance and the
+high-CV ten-retailer instance, both now reported as $6$-seed means with every seed below the gate.
 
 \begin{table}[!htbp]
 \centering
@@ -3590,14 +3627,15 @@ distribution split and the assembly $\min(\cdot)$ production starve downstream s
 environment's own best pairwise base-stock needs much higher order-up-to levels (gates $297.69$ and
 $283.34$ per period, against $60.24$ for the serial case). On the pure assembly network the learned
 tree beats this gate by $-2.98\%$ ($274.90\pm0.17$ vs $283.34$, outside the held-out standard error by
-$\approx40\times$); on the mixed network it is at parity-to-marginally-better, beating the gate by up
-to $-0.99\%$ ($294.73\pm0.92$ vs $297.69$) on the best of three CMA seeds while a third seed sits
-$+2.9\%$ above it. As for the serial case, these comparators are the \emph{environment's own}
-grid-searched best heuristic on a faithful but not literature-verified environment --- the
-source paper gives no analytical optimum for mixed or assembly networks (only random-search, DFO,
-Spearmint, and DNN benchmarks) --- so these are research learned-beats-(or-matches)-own-heuristic
-results across serial, mixed distribution-plus-assembly, and pure-assembly structures, and are
-\emph{not} published-number beats.
+$\approx40\times$). On the mixed distribution-and-assembly network, the later seed-robust audit
+corrects the earlier best-of-three draft: at the paper's actual flow-$10$ warm start, eight
+independent CMA seeds have seed-mean $306.10\pm22.89$, which is $+2.82\%$ above the $297.69$ gate,
+with four of eight seeds below the gate. The right verdict is therefore parity / gate-match, not a
+robust beat. As for the serial case, these comparators are the \emph{environment's own} grid-searched
+best heuristic on a faithful but not literature-verified environment --- the source paper gives no
+analytical optimum for mixed or assembly networks (only random-search, DFO, Spearmint, and DNN
+benchmarks) --- so these are research learned-versus-own-heuristic results across serial, mixed
+distribution-plus-assembly, and pure-assembly structures, and are \emph{not} published-number beats.
 
 \begin{table}[!htbp]
 \centering
@@ -3621,7 +3659,7 @@ Learned soft tree, depth $3$, seed $123$       & $\mathbf{57.85\pm0.25}$ & $\mat
 \midrule
 \multicolumn{4}{l}{\emph{Mixed distribution-and-assembly network} (gate $297.69$, echelon order-up-to $[36,13,7]$)} \\
 Best pairwise base-stock (gate)                & $297.69\pm0.67$ & --- & --- \\
-Learned soft tree, depth $2$ (best of $3$ seeds) & $\mathbf{294.73\pm0.92}$ & $\mathbf{-0.99\%}$ & $\approx 3\times$ \\
+Learned soft tree, depth $2$ (seed mean, $N=8$) & $306.10\pm22.89_{\rm seed}$ & $+2.82\%$ & gate-match \\
 \midrule
 \multicolumn{4}{l}{\emph{Pure assembly network} (gate $283.34$, echelon order-up-to $[52,52,52]$)} \\
 Best pairwise base-stock (gate)                & $283.34\pm0.20$ & --- & --- \\
@@ -3629,9 +3667,13 @@ Learned soft tree, depth $2$, seed $123$        & $\mathbf{274.90\pm0.17}$ & $\m
 \bottomrule
 \end{tabular}
 \par\medskip\footnotesize The comparator is the environment's own best heuristic on a faithful but
-not literature-verified environment; the result is a research learned-beats-own-heuristic
-comparison, not a published-number beat. The serial optimum $47.65$ (Section~\ref{sec:serial}) is
-structurally unreachable by this environment's local pairwise policy and is not used as a target here.
+not literature-verified environment; the result is a research learned-versus-own-heuristic
+comparison, not a published-number beat. The serial case-3 and pure-assembly rows are single-/two-seed
+results (a multi-seed audit is pending); only the mixed-network row was re-run as a seed-robust
+aggregate. The mixed row is reported as seed-noisy parity: the seed mean
+is above the gate, but $4/8$ seeds fall below it, so an honest deployment floor treats the row as a
+gate-match rather than a beat. The serial optimum $47.65$ (Section~\ref{sec:serial}) is structurally
+unreachable by this environment's local pairwise policy and is not used as a target here.
 \end{table}
 \FloatBarrier
 
@@ -3667,7 +3709,7 @@ small tree or linear ordinal head suffices; under a fixed cost the gated decoder
 \emph{whether} from \emph{how much} are what avoid the never-order collapse; in dual sourcing the
 capped-dual-index coordinates are what let the policy reach the near-optimal region a raw-quantity
 decoder cannot express; and in multi-echelon the direct-level design is the difference between a
-$\approx 14\%$ improvement and a policy more than $200\%$ worse. The managerial reading is that
+$\approx 12$--$15\%$ improvement and a policy more than $200\%$ worse. The managerial reading is that
 choosing the control representation --- ideally the coordinate system of the best known heuristic ---
 is a more reliable lever than enlarging the network. This is, we believe, the most transferable
 finding in the paper, and it is precisely the lever the most recent DRL literature has converged on
@@ -3709,12 +3751,13 @@ carries any learned-policy claim (Appendix~\ref{app:validation}), and every resu
 one of three honest verdicts. We \emph{beat} a comparator only when it is a heuristic and the margin
 clears the held-out standard error under common random numbers (general-network backorder by over
 $20\%$; ameliorating inventory's order-up-to gate by a wide margin; one-warehouse multi-retailer on the
-instances with exploitable dynamic structure; the production/assembly/distribution network's own best
-pairwise base-stock). We \emph{match}, and say so explicitly, when the comparator is provably optimal
+seed-robust asymmetric three-retailer gate row; the production/assembly/distribution network's own
+serial and pure-assembly pairwise base-stock gates). We \emph{match}, and say so explicitly, when the comparator is provably optimal
 or a near-optimal proxy: the dual-sourcing soft tree sits inside the capped-dual-index policy's own
 $\le 0.11\%$ optimality band --- comfortably inside the band the published A3C learner does not reach
 --- and the serial soft tree recovers the Clark--Scarf optimum to $+0.011\%$; neither is framed as a
-win. And we report a \emph{gap to a bound} without ever calling it ``beaten'': the ameliorating-inventory
+win. We also report \emph{gate-matches} when seed variation does not support a learned beat, as in the
+mixed production/assembly topology. And we report a \emph{gap to a bound} without ever calling it ``beaten'': the ameliorating-inventory
 gap to the perfect-information LP is structural (a single scalar purchase lever against the bound's full
 three-part hindsight issuance) and is not comparable to the $\sim\!3.5\%$ deep-RL gap of
 \citet{pahrGrunow2025}, who act in the full action space. Two comparisons we flag as indicative rather
@@ -3723,6 +3766,13 @@ improvement computed against a different baseline and cost convention than the p
 This accounting is deliberately conservative, and it is where we believe a portable ES study can be
 most useful to a field with a reproducibility problem: not by topping a leaderboard, but by stating
 exactly what kind of claim each number supports.
+Operationally, the next artifact should be a versioned baseline ledger behind the paper tables: for
+each problem family it records the published instance specification, demand process, cost convention,
+lead-time or network structure, strongest in-repo heuristic, exact optimum or bound where available,
+trained-policy performance, paired-CRN standard error, and one of the verdict types above. That ledger
+is the practical route toward an ImageNet-like inventory-management benchmark: future learners should
+be scored against clear, reproducible, like-for-like baselines rather than against shifting paper
+tables.
 
 \section{Conclusion, limitations, and future work}
 \label{sec:conclusion}
@@ -3747,12 +3797,16 @@ and the multi-echelon improvement is computed against a different baseline and c
 published A3C figures. (ii)~The high-penalty, autocorrelated MMPP lost-sales instances at the longest
 lead times ($L=8,10$) remain won by classical heuristics, indicating a real gap for stationary compact
 policies under regime-switching demand and deep pipelines. (iii)~We do not beat the strongest published
-PPO on the one-warehouse multi-retailer instances, which remains the best learned policy on every row
-there; our wins on that problem are over the tuned heuristic gate, not over PPO. (iv)~The
+PPO on the one-warehouse multi-retailer instances in a robust, like-for-like way: the asymmetric
+three-retailer seed block straddles the published PPO scalar, the high-CV ten-retailer seed-mean is
+$\approx 7\%$ above PPO ($0/6$ seeds below), and PPO remains cheaper on the hardest row; our wins on
+that problem (asymmetric $K{=}3$ and high-CV $K{=}10$, both $6$-seed gate beats) are over the tuned
+same-protocol heuristic gate, not over PPO. (iv)~The
 ameliorating-inventory gap is to a perfect-information \emph{upper bound} and is structural; it is
 reported, never beaten. (v)~The production/assembly/distribution network result is a research result on
 a faithful but \emph{not} literature-anchored environment: the learned policy beats the environment's
-own best heuristic, not a published cost. (vi)~Methodologically, CMA-ES --- though far more
+own best heuristic on the serial and pure-assembly topologies, while the mixed topology is a seed-noisy
+gate-match, and none of these is a published cost. (vi)~Methodologically, CMA-ES --- though far more
 sample-efficient than A3C here --- is still data-hungry relative to settings with scarce historical
 demand, and its population-based evaluation cost grows with the covariance dimension, so very large
 parameterizations may need restricted, diagonal, or separable covariance structures.
