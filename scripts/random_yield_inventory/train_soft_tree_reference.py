@@ -206,7 +206,7 @@ def main():
             "seed": parsed.seed,
             "same_seed": parsed.same_seed,
             "train_seed_batch": parsed.train_seed_batch,
-            "action_cap": model.action_spec["max_values"][0],
+            "action_cap": model.max_values[0],
         },
         "evaluation": {
             "soft_tree": learned_evaluation,
