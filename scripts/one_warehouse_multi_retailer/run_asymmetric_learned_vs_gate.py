@@ -370,7 +370,9 @@ def _resolve_budget(budget_name, training_episodes=None, es_population=None,
     return budget
 
 
-def _expand_soft_tree_params_to_model(params, model, old_input_dim, old_action_dim, action_map):
+def _expand_soft_tree_params_to_model(
+    params, model, old_input_dim, old_action_dim, action_map, action_bias_offsets=None
+):
     """Embed an older soft-tree layout into the current model layout.
 
     New input features get zero weights, so a normalized-state checkpoint can be
@@ -385,6 +387,10 @@ def _expand_soft_tree_params_to_model(params, model, old_input_dim, old_action_d
     old_input_dim = int(old_input_dim)
     old_action_dim = int(old_action_dim)
     if len(action_map) != new_action_dim or any(idx >= old_action_dim for idx in action_map):
+        return None
+    if action_bias_offsets is None:
+        action_bias_offsets = [0.0] * new_action_dim
+    if len(action_bias_offsets) != new_action_dim:
         return None
 
     old_prefix = num_internal * old_input_dim + num_internal
@@ -430,7 +436,7 @@ def _expand_soft_tree_params_to_model(params, model, old_input_dim, old_action_d
     new_bias = np.zeros((num_leaves, new_action_dim), dtype=np.float32)
     for new_idx, old_idx in enumerate(action_map):
         new_weights[:, new_idx, :old_input_dim] = old_weights[:, old_idx, :]
-        new_bias[:, new_idx] = old_bias[:, old_idx]
+        new_bias[:, new_idx] = old_bias[:, old_idx] + float(action_bias_offsets[new_idx])
     new_weights_len = num_leaves * new_action_dim * new_input_dim
     new_flat[new_prefix:new_prefix + new_weights_len] = new_weights.reshape(-1)
     new_flat[new_prefix + new_weights_len:] = new_bias.reshape(-1)
@@ -457,7 +463,36 @@ def _expand_init_params_for_model(params, model, reference, policy_action_mode):
     if normalized_input_dim != new_input_dim:
         input_candidates.append(normalized_input_dim)
 
-    action_candidates = [(new_action_dim, list(range(new_action_dim)))]
+    action_candidates = [(new_action_dim, list(range(new_action_dim)), None)]
+    symmetric_min_values = None
+    if str(model.leaf_type) == "linear" and common.is_symmetric_retailer_case(reference):
+        symmetric_model = common.build_soft_tree_model(
+            reference,
+            depth=int(model.depth),
+            temperature=float(model.temperature),
+            split_type=str(model.split_type),
+            leaf_type=str(model.leaf_type),
+            policy_action_mode="symmetric_echelon_targets",
+            policy_state_mode="normalized",
+        )
+        symmetric_min_values = [float(v) for v in symmetric_model.min_values]
+
+    def symmetric_bias_offsets(action_map):
+        if symmetric_min_values is None:
+            return None
+        new_min_values = [float(v) for v in model.min_values]
+        return [
+            symmetric_min_values[old_idx] - new_min_values[new_idx]
+            for new_idx, old_idx in enumerate(action_map)
+        ]
+
+    if policy_action_mode == "echelon_targets":
+        # Embed a symmetric_echelon_targets checkpoint (W, shared R) into the
+        # per-retailer geometry by copying the shared retailer target to every
+        # retailer output. The linear-leaf old-min offset preserves the incumbent
+        # across discrete_grid -> vector_quantity action transforms.
+        action_map = [0] + [1] * num_retailers
+        action_candidates.append((2, action_map, symmetric_bias_offsets(action_map)))
     if policy_action_mode == "echelon_targets_with_alloc_targets":
         old_action_dim = num_retailers + 1
         if old_action_dim != new_action_dim:
@@ -465,17 +500,21 @@ def _expand_init_params_for_model(params, model, reference, policy_action_mode):
                 (
                     old_action_dim,
                     list(range(old_action_dim)) + list(range(1, old_action_dim)),
+                    None,
                 )
             )
+        action_map = [0] + [1] * num_retailers + [1] * num_retailers
+        action_candidates.append((2, action_map, symmetric_bias_offsets(action_map)))
 
     for old_input_dim in input_candidates:
-        for old_action_dim, action_map in action_candidates:
+        for old_action_dim, action_map, action_bias_offsets in action_candidates:
             expanded = _expand_soft_tree_params_to_model(
                 params,
                 model,
                 old_input_dim=old_input_dim,
                 old_action_dim=old_action_dim,
                 action_map=action_map,
+                action_bias_offsets=action_bias_offsets,
             )
             if expanded is not None and expanded.size == len(model.get_model_flat_params()):
                 return expanded.tolist()
