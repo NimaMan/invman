@@ -32,9 +32,8 @@ Single-item, periodic-review ameliorating inventory where the product *improves*
 ## Verification
 
 - **Published number:** perfect-information LP bounds — spirits_0001 = 1991.9344293376805; port_wine = 2444.8010643781136; spirits_1002 = 1663.8888177082856; spirits_0002 = 1991.9344293376805.
-- **Re-run reproduced:** the LP bound was **NOT re-run this audit** (no Python binding; re-solving requires a `cargo test` compile that was not run). The in-crate `tests/verification.rs` genuinely RE-SOLVES the LP with the `microlp` simplex and asserts the freshly computed value matches the published `max_reward` within `1e-3` — but it was **read, not executed** this audit. The learned-policy env path WAS re-run: spirits_0001 smoke = 77.96 ± 0.74 vs gate 20.07 ± 0.95; full-budget = 115.07 ± 0.44 vs gate 20.91.
-- **Verdict:** `faithful_unverified` — bound not executed (Rust-only re-solve test is genuine but was not run); env path executed.
-- **Verification debt (ledger):** add an `ameliorating_inventory_perfect_information_upper_bound` Python binding so the bound is re-runnable in <2 min — this would upgrade ameliorating from `faithful_unverified` to `verified_rerun`. The bound is also an UPPER BOUND, not an achievable optimum, so even when re-run it anchors a *gap*, never a "beat."
+- **Re-run reproduced (debt CLOSED 2026-06-06):** the perfect-information LP bound is now exposed as the Python binding `ameliorating_inventory_perfect_info_lp_bound_summary(reference_name)` and **re-runs in <1 s**, reproducing the companion (Pahr–Grunow 2025 companion code) anchors to ~1e-8: spirits_0001 = **1991.9344293931** (companion 1991.9344293377), port_wine = **2444.801** (companion 2444.801). The learned-policy env path was also re-run: spirits_0001 smoke = 77.96 ± 0.74 vs gate 20.07 ± 0.95; full-budget = 115.07 ± 0.44 vs gate 20.91.
+- **Verdict:** the **LP bound is now verified-by-rerun against the companion code** (reference-impl, not a peer-reviewed paper table); the **trainable env remains `faithful_unverified`** (no published *achieved cost* is reproduced by it). The LP is an UPPER BOUND, not an achievable optimum, so it anchors a *gap*, never a "beat."
 
 ## Results (learned policy)
 
