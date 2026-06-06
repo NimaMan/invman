@@ -129,3 +129,32 @@ order rate cannot express base-stock), confirming the leaf-class lever.
 
 This is a RESEARCH result on a non-literature-verified env: it shows the learned policy beats
 the env's own best pairwise base-stock, NOT that it reproduces or beats any published cost.
+
+## Mixed distribution-and-assembly network: seed-ROBUST verdict (2026-06-06)
+
+The mixed-network row (`autoresearch_mixed_distribution_assembly_network.py`, gate 297.69,
+echelon OUL [36,13,7]) was originally reported in the paper as a -0.99% beat (294.73)
+**on the best of three CMA seeds** — a seed cherry-pick. A seed-robust re-audit at the **paper's
+actual config** (`--warm_start_flow 10`; full details in
+`scripts/production_assembly_distribution_network/MIXED_ASSEMBLY_SEED_ROBUST_2026_06_06.md`)
+finds this is NOT a robust beat — it STRADDLES the gate:
+
+- **flow=10 (paper config), 8 seeds** (123/321/777 from the committed ledger + 7/42/555/888/999
+  added, run_tag `mixed_flow10_verify`): per-seed 277.70 / 285.07 / 294.73 / 295.30 / 306.25 /
+  313.07 / 333.48 / 343.18 → seed-mean **306.10 ± 22.89 = +2.82% vs gate, 4/8 below gate**.
+  Honest-floor deployed ≈ 292.9 ≈ gate. NOT a robust beat (mean above gate), but NOT "cannot
+  beat" either (4/8 seeds below, best 277.70 = −6.71%) — high optimizer-seed variance.
+- VERDICT: **straddles the gate within large seed noise → report as parity / gate-match, not a
+  beat.** Root cause is seed-fragility from no clean gate anchor: the `vector_quantity` linear
+  leaf normalizes every state feature by a DYNAMIC per-step scale (`build_policy_state`), so it
+  cannot exactly reproduce the gate's affine `order = clip(level - position)` (unlike the OWMR
+  `echelon_targets` target-position head, which IS gate-invertible). No clean gen-0 = gate
+  warm-start → seeds scatter ±22.9. The principled fix is a **residual gate-backbone head**
+  (`action = base_stock_gate + Δ_tree`) anchoring every seed at the gate — a policy-architecture
+  change, deferred as follow-up.
+- WARM-START VALUE DOMINATES: flow=5 → ~380 (+28%, starves, gen0~864); flow=10 → 306 (+2.8%,
+  straddles); gate-OUL-constant → ~345 (+16%, over-orders). The paper's mixed row should be
+  rewritten as the flow=10 seed-mean gate-match (306.1±22.9, +2.8%, 4/8 below), never best-of-N.
+- SUPERSEDED: the earlier flow=5 baseline (+27.8%, 0/5 below) and the `seed_robust_*` design
+  sweep (gate-OUL-constant / flat-flow=5 anchors, "+16%, 0/5 below") used the WRONG warm-start;
+  flow=10 is canonical. That runner + its honest floor remain useful tooling.
