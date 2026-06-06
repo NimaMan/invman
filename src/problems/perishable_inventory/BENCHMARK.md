@@ -52,6 +52,8 @@ Note: `m=4` and `m=5` experiments 6 and 8 all report `−1432 / −1453` — tha
 
 ## Results (learned policy)
 
+- **RESOLVED — seed-robust (≥5 seeds, full budget, 2026-06-06): ROBUST BEATS.** Driving `autoresearch_perishable_inventory.py` over 5 CMA-ES seeds (no code fix needed — the "soft_tree import" brick was stale; scripts already migrated): **FIFO `m2_exp2_l1_cp7` = +1.171% ± 0.002% (5/5; learned reaches the VI optimum)**, **LIFO `m2_exp1_l1_cp7` = +0.840% ± 0.034% (5/5)**, plus extra cells FIFO cp10 +1.43% / LIFO cp10 +0.61% (5/5 each). Margins ≫ cross-seed std → robust beats vs the same-protocol base-stock gate; the single-seed headline below is confirmed seed-robust. (The eval-block-selection sensitivity noted earlier did not flip any FIFO/LIFO headline at N=5.)
+
 Best learned **depth-2 oblique-split, linear-leaf soft tree (21 params)**, warm-started at the encoded best base-stock level (generation-0 reproduces the gate to within its SEM), CMA-ES, selected on a disjoint validation block, scored on 2048 held-out CRN eval seeds (horizon 465, γ=0.99). Versus the same-protocol Monte-Carlo base-stock gate:
 
 | instance | gate (MC) | learned (MC) | Δ vs gate | seed status |

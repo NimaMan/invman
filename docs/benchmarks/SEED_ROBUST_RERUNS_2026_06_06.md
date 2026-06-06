@@ -267,3 +267,36 @@ The existing N=4 picture (LIR = linear_inflation gate; soft tree vs LIR, discoun
 
 These are all MED ("if time") items; the four HIGH/MED claims that WERE re-run (divergent ×2,
 gbk ×2, dual_sourcing, joint_pricing) are the mandated priority and are complete.
+
+---
+
+## Completed (formerly deferred) — bricked-runner fix pass, 2026-06-06
+
+The 3 deferred runners were fixed/driven; their ≥5-seed verdicts (these SUPERSEDE the provisional
+notes above):
+
+| Claim | Old | 5-seed mean ± std vs same-protocol gate | Verdict |
+|---|---|---|---|
+| **perishable FIFO** (m2 exp2 cp7) | single +1.16% | **+1.171% ± 0.002%** (5/5; learned reaches VI optimum) | **ROBUST BEAT** |
+| **perishable LIFO** (m2 exp1 cp7) | single +0.82% | **+0.840% ± 0.034%** (5/5) | **ROBUST BEAT** |
+| **perishable** (extra: FIFO cp10 +1.43%, LIFO cp10 +0.61%) | — | 5/5 each | **ROBUST BEAT** |
+| **nonstationary "beats DP 8/8"** | single, 8/8 vs DP | vs strongest in-repo gate min(simple_s_s, lead_time_base_stock): **−1.65% ± 1.48%**, robust beat on **2/8**, robustly ABOVE on 2/8 | **PARITY** (8/8 holds only vs the *weaker* rolling-DP comparator = context) |
+| **random_yield** (SUPERSEDES the N=4 +4.25% above) | provisional +4.25% (N=4) | LIR gate: soft-tree **227.36 ± 29.77 vs gate 203.58 ± 5.68**, **0/5 below** | **LOSS** (prior +4.25% was an unreproducible older code path) |
+
+Fixes: random_yield `train_soft_tree_reference.py:209` `Policy.action_spec` → `max_values`
+(committed 25d7397). perishable + nonstationary needed NO code change — the "soft_tree import" /
+"no seeded runner" brick descriptions were **stale** (scripts already migrated; a seeded runner exists).
+
+**Cross-cutting root cause (random_yield, diagnosed — NOT changed):** `es_mp.train` returns CMA-ES
+`xbest` (best on the small training-seed batch → overfits, large held-out tail risk). Returning
+`xfavorite` (distribution mean) + a larger/shared `train_seed_batch` is the recommended **repo-wide**
+robustness fix — the most likely lever to shrink the optimizer-seed variance behind several
+parity/loss verdicts. Flagged for a dedicated training-path audit.
+
+### Updated honest seed-robust scoreboard (all re-run claims)
+- **ROBUST BEATS vs same-protocol gate:** divergent s1 (−14.7%), divergent s2 (−12.0%), gbk set1
+  (−24.3%), gbk KT (−36.8%), joint_pricing (+28.8%), perishable FIFO/LIFO (+1.17%/+0.84% +2 extra),
+  OWMR het-3 (+4.63%), OWMR high-CV-10 (+7.16%).
+- **PARITY / NOT A ROBUST BEAT:** dual_sourcing (matches CDI), mixed-assembly (straddles gate),
+  nonstationary (parity vs strongest gate).
+- **LOSS:** random_yield (0/5 vs LIR gate).

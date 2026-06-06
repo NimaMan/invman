@@ -42,8 +42,9 @@ An order placed now arrives after exactly `L` periods. Orders are rounded to nea
 
 ## Results (learned policy)
 
-- **Carried headline (single-seed, at-risk):** README/experiments report a learned soft-tree (depth 3, linear leaf, 600 ep, CMA-ES population 32) = **196.661** on PRIMARY (2000 held-out seeds), beating LIR (203.619) by 3.4% and WNH (222.436) by 11.6%. This is a **single-seed** result — **NOT yet seed-robust**. The repo's own seed-robust standard (mean ± std over ≥5 seeds) is not met by this headline.
-- **Seed-robust slice (4 seeds, still at-risk):** `d1_linear b8` (depth 1, linear leaf, 800 ep, train_seed_batch 8) over 4 seeds {123,456,789,2026} = **196.73 ± 3.35**; all 4 beat LIR (mean **+4.25% ± 1.67%**). This uses 4 seeds, **below the ≥5-seed seed-robust bar**, so it is flagged at-risk.
+- **RESOLVED — seed-robust (≥5 seeds, 2026-06-06): the learned soft tree LOSES to the gate.** With the bricked report-path fixed (`action_spec`→`max_values`, commit 25d7397), a clean 5-seed run {123,456,789,2026,555} gives soft-tree **227.36 ± 29.77** vs the LIR gate **203.58 ± 5.68** (discounted cost) → **0/5 below gate, robustly above**. The prior provisional +4.25% (N=4) was an **unreproducible older code path** and is superseded. Root cause (diagnosed, not fixed here): `es_mp.train` returns CMA-ES `xbest` (overfits the small training-seed batch → large held-out tail risk, e.g. seed 555 = 277.71); the repo-wide fix is to return `xfavorite` + a larger `train_seed_batch`. **Verdict: NOT a beat (loss).** PPO/WNH are context only.
+- **Carried headline (single-seed, SUPERSEDED):** README/experiments report a learned soft-tree (depth 3, linear leaf, 600 ep, CMA-ES population 32) = **196.661** on PRIMARY (2000 held-out seeds). This is a **single-seed** result — superseded by the seed-robust loss above.
+- **Prior 4-seed slice (SUPERSEDED):** `d1_linear b8` over {123,456,789,2026} = 196.73 ± 3.35, +4.25% — does NOT reproduce under the current runner (older code path).
 - **Contradicting saved run (honesty flag):** `tree_primary_d3_linear.json` records soft-tree = **307.01**, which is WORSE than LIR by −48.7%. The headline d=3/600ep number and this saved d=3 artifact disagree; only the `d1 b8 800-ep` configuration robustly beats LIR. Treat the gate-beat as **fragile / config-dependent**, not established.
 
 ## Reproduce

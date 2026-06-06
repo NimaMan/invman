@@ -62,7 +62,8 @@ Canonical slice (all eight forecasts): `L=2, b=5, K=10, h=1, c=0, CV=0.2, H=32, 
 
 ## Results (learned policy)
 
-- **CARRIED, but SINGLE-SEED — NOT yet seed-robust (`at_risk`):** A learned CMA-ES soft tree is reported to beat `rolling_dp_s_s` on all 8/8 forecasts by −6.5% to −15.5% (e.g. constant_5 1026.3 vs 1214.9 = −15.52%; constant_10 1539.0 vs 1714.1 = −10.22%), and to be the cheapest policy on 5/8 instances (on seasonal_2/growth/decline it beats DP but trails `lead_time_base_stock` by +0.35% to +3.46%). **`seed_reporting = single_seed`.** Per the repo's seed-robust reporting standard (mean±std over ≥5 optimizer seeds, never single/best-of-N), this beat is **NOT yet seed-robust** and must not be carried as an established result.
+- **RESOLVED — seed-robust (8 instances × 5 seeds, full budget, 2026-06-06): PARITY vs the strongest in-repo gate.** The "8/8" holds only against the *weaker* `rolling_dp_s_s` comparator (learned robustly undercuts it on all 8, −5% to −12%, every seed — but the rolling DP is a per-period heuristic, NOT the strongest gate, so it is **context**). Against the strongest same-protocol gate `min(simple_s_s, lead_time_base_stock)`: learned seed-mean gap = **−1.65% ± 1.48%** (margin < cross-seed std), a **robust beat on only 2/8** (constant_5, constant_10) and robustly **ABOVE** on 2/8 (seasonal_2, growth). **Verdict: PARITY, not a robust 8/8 beat.** Recommended wording: "robustly undercuts the rolling-DP comparator 8/8, but matches (does not robustly beat) the strongest in-repo base-stock heuristic." DP optimum / forecast-DP = context only.
+- **Carried single-seed "8/8 beats DP" (SUPERSEDED):** the prior single-seed framing against `rolling_dp_s_s`; superseded by the seed-robust parity verdict above.
 - **Seed-robust / verified:** the heuristic baselines reproduce the author-CSV rows within ~0.11–0.14% (≤0.17% bound). This is the `multi_seed_mean_std`, not-at-risk result.
 
 ## Reproduce
