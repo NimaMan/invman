@@ -1,0 +1,14 @@
+{
+  "problem": "one_warehouse_multi_retailer",
+  "instance": 14,
+  "backbone": "soft_tree",
+  "depth": 2,
+  "split_type": "oblique",
+  "leaf_type": "linear",
+  "temperature": 0.1,
+  "action_head": "echelon_targets",
+  "per_retailer_targets": true,
+  "features": ["on_hand", "backlog", "pipeline"],
+  "warm_start": "gate_invertible",
+  "rationale": "Run-1 gen-1 robust gate-beat winner on instance_14 at small budget (5/5 seeds below gate, mean+std<gate, -0.138%): oblique-split per-retailer linear-leaf echelon_targets, gate-invertible warm start. Saved for the --budget full confirmation run."
+}

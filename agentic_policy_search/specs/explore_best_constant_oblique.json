@@ -1,0 +1,18 @@
+{
+  "action_head": "echelon_targets",
+  "backbone": "soft_tree",
+  "depth": 2,
+  "features": [
+    "on_hand",
+    "backlog",
+    "pipeline"
+  ],
+  "instance": 14,
+  "leaf_type": "constant",
+  "per_retailer_targets": true,
+  "problem": "one_warehouse_multi_retailer",
+  "rationale": "Filled the untried echelon_targets x constant leaf x oblique split niche by crossing the echelon-target head from the robust linear-oblique elite with the constant-leaf oblique geometry from the archive best, hypothesizing simpler per-retailer echelon targets may retain robust gate improvement without allocation-head overfitting.",
+  "split_type": "oblique",
+  "temperature": 0.1,
+  "warm_start": "gate_invertible"
+}

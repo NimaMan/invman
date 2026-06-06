@@ -1,0 +1,14 @@
+{
+  "problem": "one_warehouse_multi_retailer",
+  "instance": 14,
+  "backbone": "soft_tree",
+  "depth": 2,
+  "split_type": "axis_aligned",
+  "leaf_type": "linear",
+  "temperature": 0.10,
+  "action_head": "echelon_targets",
+  "per_retailer_targets": true,
+  "features": ["on_hand", "backlog", "pipeline"],
+  "warm_start": "gate_invertible",
+  "rationale": "MVP smoke: per-retailer echelon targets, gate-invertible warm start; should reproduce the gate at gen-0 and deploy at the gate floor."
+}

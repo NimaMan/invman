@@ -1,0 +1,14 @@
+{
+  "problem": "one_warehouse_multi_retailer",
+  "instance": 14,
+  "backbone": "soft_tree",
+  "depth": 1,
+  "split_type": "axis_aligned",
+  "leaf_type": "linear",
+  "temperature": 0.25,
+  "action_head": "direct_orders",
+  "per_retailer_targets": true,
+  "features": ["on_hand", "pipeline"],
+  "warm_start": "none",
+  "rationale": "expressiveness ablation: raw per-retailer orders, no gate anchor (proportional only)"
+}

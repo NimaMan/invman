@@ -1,0 +1,14 @@
+{
+  "problem": "one_warehouse_multi_retailer",
+  "instance": 14,
+  "backbone": "soft_tree",
+  "depth": 2,
+  "split_type": "axis_aligned",
+  "leaf_type": "linear",
+  "temperature": 0.10,
+  "action_head": "magic_head",
+  "per_retailer_targets": true,
+  "features": ["on_hand"],
+  "warm_start": "gate_invertible",
+  "rationale": "invalid enum on purpose"
+}
