@@ -295,15 +295,18 @@ Instance & Learned & Gate & $\Delta\%$ & Paired $\pm$ SEM & Published PPO \\
 \midrule
 instance\_12 & $\mathbf{1154.09}$  & $1169.59$  & $\mathbf{+1.33\%}$ & $+15.50\pm0.97$    & $1118.92$ \\
 instance\_13 & $\mathbf{85974.79}$ & $91890.25$ & $\mathbf{+6.44\%}$ & $+5915.47\pm49.50$ & $79727.39$ \\
-instance\_14 & $50445.20$ & $50445.20$ & $+0.00\%$ & $+0.00\pm0.00$ & $42835.02$ \\
+instance\_14 & $\mathbf{44105.01\pm337.3_{\rm seed}}$ & $50445.20$ & $\mathbf{+12.57\%}$ & --- & $42835.02$ \\
 \bottomrule
 \end{tabular}
 \par\medskip\footnotesize Winning geometry / leaf: instance\_12 per-retailer \texttt{echelon\_targets}
 (linear), instance\_13 symmetric \texttt{echelon\_targets} (linear), instance\_14 per-retailer
-\texttt{echelon\_targets} (ties under both linear and constant leaves). The comparator is the
+\texttt{echelon\_targets} (\emph{constant} leaf, oblique split, depth-2; a $10$-seed mean,
+all ten seeds below the gate). The comparator is the
 strongest \emph{in-repo} heuristic gate (itself stronger than Kaynov's published base-stock); the
-learned policy beats it beyond SEM on instance\_12 and instance\_13 and ties it on the search-limited
-instance\_14. The learned policy does not beat the published PPO ($-3.14\%$, $-7.84\%$, $-17.77\%$
-relative to PPO), which remains the strongest learned policy on every row.
+learned policy beats it beyond SEM on instance\_12 and instance\_13, and the constant-leaf geometry
+found by the agentic policy-structure search turns the formerly search-limited
+instance\_14 into a robust $+12.57\%$ gate beat. The learned policy does not beat the published PPO,
+which on instance\_14 remains $\approx 3\%$ cheaper ($44105.01$ vs $42835.02$); PPO is cross-protocol
+context only.
 \end{table}
 \FloatBarrier
