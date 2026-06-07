@@ -106,6 +106,58 @@ pub const SHEOPURI_2010_REFERENCE: PublishedBenchmarkReference = PublishedBenchm
     notes: "This paper extends the classical dual-sourcing policy family beyond the original dual-index rule. It is the right policy-family source for capped or weighted dual-sourcing heuristics, but it is not the source of the six exact Figure 9 benchmark gap labels used by Gijsbrechts et al. (2022).",
 };
 
+// Three-tier CDI-optimality taxonomy (docs/benchmarks/DUAL_SOURCING_INSTANCE_TAXONOMY_2026_06_07.md).
+// The six Gijsbrechts rows above are Tier A (CDI-optimal, gap <= 0.12% to the bounded-DP optimum).
+// The two synthetic rows below are ADDITIVE explorations of the harder end of the *reachable*
+// regime, found by a validated-box bounded-DP sweep over expedite premium / penalty / demand
+// variability at l_r=2 (the only lead time where the bounded DP is validatable in budget):
+//   - Tier B (moderate): largest U[0,4] gap found, +0.188% single-path.
+//   - Tier C (hardest demonstrable): largest gap in the whole sweep, +0.305% single-path /
+//     +0.160% out-of-sample; the lever is high demand variability (U[0,8]).
+// HONEST FRAMING: no genuinely hard (>=5%) regime exists. CDI is heuristics-excellent across the
+// reachable space; these rows document degrees of excellence, not a CDI-failure cliff. They are
+// NOT Gijsbrechts published rows (no published cost/gap exists for them) -- they are repo-native
+// taxonomy probes with a bounded-DP optimum as the denominator.
+pub const DUAL_SOURCING_TAXONOMY_SOURCE: &str =
+    "invman repo-native CDI-optimality taxonomy (2026-06-07), bounded-DP optimum denominator";
+pub const DUAL_SOURCING_TAXONOMY_URL: &str =
+    "docs/benchmarks/DUAL_SOURCING_INSTANCE_TAXONOMY_2026_06_07.md";
+
+pub const DUAL_SOURCING_TAXONOMY_INSTANCES: [DualSourcingReferenceInstance; 2] = [
+    DualSourcingReferenceInstance {
+        name: "dual_l2_ce110_b50_u04_catB",
+        source: DUAL_SOURCING_TAXONOMY_SOURCE,
+        url: DUAL_SOURCING_TAXONOMY_URL,
+        regular_lead_time: 2,
+        expedited_lead_time: 0,
+        regular_order_cost: 100.0,
+        expedited_order_cost: 110.0,
+        holding_cost: 5.0,
+        shortage_cost: 50.0,
+        regular_max_order_size: 12,
+        expedited_max_order_size: 12,
+        demand_low: 0,
+        demand_high: 4,
+        notes: "category:B(moderate); CDI gap-to-bounded-DP-optimum +0.188% single-path (largest U[0,4] cell in the 2026-06-07 sweep); validated box (-24,48), DP_opt 219.173; not a published row.",
+    },
+    DualSourcingReferenceInstance {
+        name: "dual_l2_ce110_b50_u08_catC",
+        source: DUAL_SOURCING_TAXONOMY_SOURCE,
+        url: DUAL_SOURCING_TAXONOMY_URL,
+        regular_lead_time: 2,
+        expedited_lead_time: 0,
+        regular_order_cost: 100.0,
+        expedited_order_cost: 110.0,
+        holding_cost: 5.0,
+        shortage_cost: 50.0,
+        regular_max_order_size: 12,
+        expedited_max_order_size: 12,
+        demand_low: 0,
+        demand_high: 8,
+        notes: "category:C(hardest demonstrable); CDI gap-to-bounded-DP-optimum +0.305% single-path / +0.160% out-of-sample (largest in the 2026-06-07 sweep, lever = demand variability U[0,8]); validated box (-40,72), DP_opt 435.217; gap < path noise, CDI ~ optimum; not a published row.",
+    },
+];
+
 pub const DUAL_SOURCING_REFERENCE_INSTANCES: [DualSourcingReferenceInstance; 6] = [
     DualSourcingReferenceInstance {
         name: "dual_l2_ce105",
@@ -311,9 +363,17 @@ pub fn list_reference_instances() -> &'static [DualSourcingReferenceInstance] {
     &DUAL_SOURCING_REFERENCE_INSTANCES
 }
 
+/// The two additive CDI-optimality-taxonomy probe instances (Tier B / Tier C).
+/// Kept separate from the six published Gijsbrechts rows so the published-grid
+/// validators and Figure-9 drift guards see exactly the six rows they expect.
+pub fn list_taxonomy_instances() -> &'static [DualSourcingReferenceInstance] {
+    &DUAL_SOURCING_TAXONOMY_INSTANCES
+}
+
 pub fn get_reference_instance(name: &str) -> Option<&'static DualSourcingReferenceInstance> {
     DUAL_SOURCING_REFERENCE_INSTANCES
         .iter()
+        .chain(DUAL_SOURCING_TAXONOMY_INSTANCES.iter())
         .find(|instance| instance.name == name)
 }
 

@@ -17,16 +17,20 @@ Single-item, periodic-review dual-sourcing model of Gijsbrechts et al. (2022). T
 
 ## Reference instances
 
-The six instances are the full cross of regular lead time `l_r in {2,3,4}` and expedited unit cost `c_e in {105,110}`. All share `l_e=0`, `c_r=100`, `h=5`, `b=495`, demand `U{0,1,2,3,4}`, and order caps `12`. (`literature/references.rs::DUAL_SOURCING_REFERENCE_INSTANCES`.)
+The six published instances are the full cross of regular lead time `l_r in {2,3,4}` and expedited unit cost `c_e in {105,110}`. All share `l_e=0`, `c_r=100`, `h=5`, `b=495`, demand `U{0,1,2,3,4}`, and order caps `12`. (`literature/references.rs::DUAL_SOURCING_REFERENCE_INSTANCES`.) Two ADDITIVE taxonomy-probe rows (`literature/references.rs::DUAL_SOURCING_TAXONOMY_INSTANCES`, kept in a separate array so the published-grid validators see exactly the six Gijs rows) extend the harder end of the *reachable* regime.
 
-| instance | dimensions covered | key params | literature_verified flag |
-|---|---|---|---|
-| `dual_l2_ce105` (primary unit-test instance) | regime:dual_sourcing_backlog; leadtime:`l_r`=2; `c_e`=105; demand:U0-4; `c_r`=100; `h`=5; `b`=495 | l_r=2, l_e=0, c_r=100, c_e=105, h=5, b=495, caps 12 | true (grid hardcoded for all 6 in `experiments/mod.rs`; `references.rs` has NO per-instance flag field) |
-| `dual_l2_ce110` | leadtime:`l_r`=2; `c_e`=110; demand:U0-4 | l_r=2, c_e=110, else as above | true |
-| `dual_l3_ce105` | leadtime:`l_r`=3; `c_e`=105 | l_r=3, c_e=105, else as above | true |
-| `dual_l3_ce110` | leadtime:`l_r`=3; `c_e`=110 | l_r=3, c_e=110, else as above | true |
-| `dual_l4_ce105` | leadtime:`l_r`=4; `c_e`=105 | l_r=4, c_e=105, else as above | true |
-| `dual_l4_ce110` (primary reference instance) | leadtime:`l_r`=4; `c_e`=110; demand:U0-4 | l_r=4, c_e=110, else as above | true |
+**Three-tier CDI-optimality taxonomy** (by CDI gap to the bounded-DP optimum; see `docs/benchmarks/DUAL_SOURCING_INSTANCE_TAXONOMY_2026_06_07.md`). HONEST FRAMING: no genuinely hard (`>=5%`) regime exists — CDI is heuristics-excellent across the whole reachable space; the tiers grade *degrees of excellence*. **A** = CDI-optimal (gap `<=0.12%`); **B** = moderate (`~0.12-0.20%`); **C** = hardest demonstrable (`+0.305%` single-path / `+0.160%` out-of-sample, lever = demand variability).
+
+| instance | category | dimensions covered | key params | literature_verified flag |
+|---|---|---|---|---|
+| `dual_l2_ce105` (primary unit-test instance) | **A** | regime:dual_sourcing_backlog; leadtime:`l_r`=2; `c_e`=105; demand:U0-4; `c_r`=100; `h`=5; `b`=495 | l_r=2, l_e=0, c_r=100, c_e=105, h=5, b=495, caps 12 | true (grid hardcoded for all 6 in `experiments/mod.rs`; `references.rs` has NO per-instance flag field) |
+| `dual_l2_ce110` | **A** | leadtime:`l_r`=2; `c_e`=110; demand:U0-4 | l_r=2, c_e=110, else as above | true |
+| `dual_l3_ce105` | **A** | leadtime:`l_r`=3; `c_e`=105 | l_r=3, c_e=105, else as above | true |
+| `dual_l3_ce110` | **A** | leadtime:`l_r`=3; `c_e`=110 | l_r=3, c_e=110, else as above | true |
+| `dual_l4_ce105` | **A** | leadtime:`l_r`=4; `c_e`=105 | l_r=4, c_e=105, else as above | true |
+| `dual_l4_ce110` (primary reference instance) | **A** | leadtime:`l_r`=4; `c_e`=110; demand:U0-4 | l_r=4, c_e=110, else as above | true |
+| `dual_l2_ce110_b50_u04_catB` | **B** | leadtime:`l_r`=2; `c_e`=110; `b`=50; demand:U0-4 | l_r=2, c_e=110, b=50, U[0,4], else as above | false (repo-native taxonomy probe; CDI gap +0.188% single-path; bounded-DP opt 219.173) |
+| `dual_l2_ce110_b50_u08_catC` | **C** | leadtime:`l_r`=2; `c_e`=110; `b`=50; **demand:U0-8** (high variability) | l_r=2, c_e=110, b=50, **U[0,8]**, else as above | false (repo-native taxonomy probe; CDI gap +0.305% single-path / +0.160% OOS; bounded-DP opt 435.217) |
 
 ## Baselines
 
@@ -60,6 +64,7 @@ The six instances are the full cross of regular lead time `l_r in {2,3,4}` and e
   - `l_r=4,c_e=110`: CDI 220.879 / learned 220.789 (-0.041, match)
 - **"Beats CDI on 2 of 6 rows" (`dual_l2_ce110` by -0.009%, `dual_l4_ce110` by -0.041%): single-seed, NOT yet seed-robust.** The manifest marks this `seed_reporting: single_seed`, `at_risk: true` (held-out re-verified on disjoint seeds, but not a mean±std over >=5 optimizer seeds). The margins are economically negligible and sit inside CDI's own `<=0.11%` optimality band; the paper deliberately frames them as *matches*, not wins.
 - **Factor-screen negative gaps vs best heuristic** (`dual_l4_ce105` -0.1052%, `dual_l2_ce105` axis-linear -0.0621%): **single-seed, NOT yet seed-robust** (manifest `single_seed`, `at_risk: true`). Treat as exploratory, not as the learned policy genuinely beating the heuristic.
+- **Tier-C (hardest demonstrable) — seed-robust learned vs CDI (full budget, 5 optimizer seeds):** on `dual_l2_ce110_b50_u08_catC` the CDI-warm-start soft tree scores **437.880 ± 1.506** vs CDI **435.203** — gap **+0.615% ± 0.346%, 0/5 seeds beat CDI: robust-LOSS.** CDI wins seed-robustly; the learned policy does not even *match* it here. This is the honest, expected outcome: the room to optimum (+0.16% out-of-sample) is below the ±0.27% path-to-path noise, so CMA-ES has no reliable signal and drifts off the warm-start. **There is NO learned beat anywhere in the dual-sourcing reachable regime; dual sourcing is heuristics-excellent.** (Run: `scripts/dual_sourcing/seed_robust_learned_vs_cdi_tier_c.py`; full taxonomy in `docs/benchmarks/DUAL_SOURCING_INSTANCE_TAXONOMY_2026_06_07.md`.)
 
 ## Reproduce
 

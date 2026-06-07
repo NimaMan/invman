@@ -155,18 +155,43 @@ percent**, and at the hardest cell it is **inside the path-sampling noise**. The
 
 ---
 
+## Seed-robust learned-policy vs CDI on the Tier-C cell (measured)
+
+Run: `scripts/dual_sourcing/seed_robust_learned_vs_cdi_tier_c.py`, spec
+`soft_tree_axis_constant_capped_dual_index_delta_smallcap_targets` (the CDI-warm-start
+factorized-CDI soft tree), **full** CMA-ES budget (1500 episodes, pop ≤128, train
+horizon 2000, eval horizon 10000, 3 eval seeds), 5 optimizer seeds,
+`RAYON_NUM_THREADS=2 OMP_NUM_THREADS=2 --mp_num_processors 2`.
+
+| optimizer seed | learned cost | CDI cost | gap% vs CDI |
+|---:|---:|---:|---:|
+| 9001 | 437.498 | 435.203 | +0.527 |
+| 9002 | 439.206 | 435.203 | +0.920 |
+| 9003 | 439.785 | 435.203 | +1.053 |
+| 9004 | 437.393 | 435.203 | +0.503 |
+| 9005 | 435.519 | 435.203 | +0.073 |
+| **mean ± std** | **437.880 ± 1.506** | 435.203 | **+0.615 ± 0.346** |
+
+**#beat CDI: 0/5. Verdict: robust-LOSS** (CDI wins seed-robustly; the learned soft
+tree does not even match CDI here). The best seed (9005) reaches +0.073 % — essentially
+CDI — but the optimizer cannot *robustly* recover the CDI warm-start under the higher
+U[0,8] demand variance. (Screening budget is worse: +1.64 %.) This is the **honest,
+expected** outcome: with the room to optimum (+0.16 % OOS) buried below the ±0.27 %
+path-to-path noise, CMA-ES has no reliable gradient to exploit, so it drifts off the
+warm-start rather than tightening onto the optimum. **No learned beat exists at the
+hardest reachable cell.**
+
 ## Verdict and learned-policy implication
 
 - **Dual sourcing is heuristics-excellent across its reachable regime.** CDI is, for
   all practical purposes, optimal; the three tiers describe *degrees of excellence*,
   not a CDI-failure cliff.
-- A learned policy **cannot be expected to robustly beat CDI** on the Tier-C cell:
-  the room to optimum (+0.16 % OOS) is below the +0.27 % path-to-path noise. The
-  honest target for a learned policy here is a **seed-robust match** of CDI (which the
-  existing soft-tree already achieves on the 6 Gijs rows — see
-  `SEED_ROBUST_RERUNS_2026_06_06.md`). The learned-vs-CDI experiment on Tier-C is run
-  for completeness and is expected to report **parity, not a beat** (see the second
-  commit / BENCHMARK.md Results update).
+- A learned policy **does not beat — and at Tier-C does not even robustly match — CDI**:
+  measured gap +0.615 % ± 0.346 %, 0/5 seeds below CDI. The room to optimum (+0.16 % OOS)
+  is below the path noise, so there is no robust signal for the optimizer. (On the 6
+  Gijs Tier-A rows the same soft-tree family *does* seed-robustly match CDI — see
+  `SEED_ROBUST_RERUNS_2026_06_06.md` — because those cells are lower-variance and the
+  warm-start holds.)
 - Contrast with the genuinely hard families in this repo (OWMR instance_14 +12.57 %
   gate-beat; PADN mixed −2.20 %): those have real structural slack that a learned
   policy exploits. Dual sourcing does **not**, and we say so.
