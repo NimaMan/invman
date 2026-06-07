@@ -21,6 +21,18 @@
 //   --working-dir <path>    default <base>   (ReadOnly dir Codex runs in)
 //   --model <name>          default none     (Codex default model)
 //   where <base> = /home/nima/code/ml/invman/agentic_policy_search
+//
+// PROBLEM-AWARE DEFAULTS (additive; OWMR untouched): when --problem ==
+// production_assembly_distribution_network (PADN), any of {--oracle, --gate-spec, --archive,
+// --instance, --budget} left at the OWMR default is re-pointed to the PADN counterpart:
+//   --oracle    -> <base>/evaluate_policy_spec_padn.py
+//   --gate-spec -> <base>/specs/gate_anchor_padn_residual_base_stock.json
+//   --archive   -> <base>/agent/archive_padn.jsonl   (separate file: PADN/OWMR niches never mix)
+//   --instance  -> 0   (PADN is a single fixed instance; the oracle parses-and-ignores it)
+//   --budget    -> the OWMR 'small'/'tiny' tier is MAPPED to PADN 'screening'/'smoke' (the agent
+//                  default 'small' is not a PADN budget); a valid PADN budget passes through.
+// An explicit flag ALWAYS wins over the problem default. The brain prompt + the niche DSL are also
+// routed by problem (see brain.rs::build_brain and actions.rs::dsl_for).
 // Env: APS_STUB_BRAIN truthy -> deterministic stub proposer (no Codex), see brain.rs.
 //
 // WIRING (copied from beden examples/minimal-agents/minimal_tool_agent.rs):
@@ -90,7 +102,7 @@ mod actions;
 mod brain;
 
 use actions::{ArchiveAction, EvaluatePolicySpecAction};
-use brain::{build_brain, owmr_system_prompt};
+use brain::{build_brain, system_prompt_for};
 
 const BASE_DIR: &str = "/home/nima/code/ml/invman/agentic_policy_search";
 
@@ -114,6 +126,13 @@ struct Config {
     top_k: usize,
 }
 
+/// The PADN problem id. When --problem is this, the oracle / gate-spec / archive / budget defaults
+/// are routed to the PADN counterparts (deliverable 3). OWMR defaults are kept for every other
+/// problem (byte-for-byte unchanged).
+const PADN_PROBLEM: &str = "production_assembly_distribution_network";
+/// Valid PADN budget tiers (must match evaluate_policy_spec_padn.py's BUDGETS).
+const PADN_BUDGETS: &[&str] = &["smoke", "screening", "full"];
+
 impl Config {
     fn from_args() -> Result<Self, String> {
         let base = PathBuf::from(BASE_DIR);
@@ -132,6 +151,14 @@ impl Config {
             top_k: 5,
         };
 
+        // Track which path/budget/instance flags the user EXPLICITLY set, so problem-aware defaults
+        // only fill in the ones left at the OWMR default (an explicit flag always wins).
+        let mut set_oracle = false;
+        let mut set_gate_spec = false;
+        let mut set_archive = false;
+        let mut set_budget = false;
+        let mut set_instance = false;
+
         let mut args = std::env::args().skip(1);
         while let Some(flag) = args.next() {
             let mut take = || {
@@ -143,23 +170,36 @@ impl Config {
                 "--instance" => {
                     cfg.instance = take()?
                         .parse()
-                        .map_err(|e| format!("--instance must be an integer: {e}"))?
+                        .map_err(|e| format!("--instance must be an integer: {e}"))?;
+                    set_instance = true;
                 }
                 "--seeds" => {
                     cfg.seeds = take()?
                         .parse()
                         .map_err(|e| format!("--seeds must be an integer: {e}"))?
                 }
-                "--budget" => cfg.budget = take()?,
+                "--budget" => {
+                    cfg.budget = take()?;
+                    set_budget = true;
+                }
                 "--generations" => {
                     cfg.generations = take()?
                         .parse()
                         .map_err(|e| format!("--generations must be an integer: {e}"))?
                 }
                 "--python" => cfg.python_bin = take()?,
-                "--oracle" => cfg.oracle_cli = PathBuf::from(take()?),
-                "--gate-spec" => cfg.gate_spec = PathBuf::from(take()?),
-                "--archive" => cfg.archive = PathBuf::from(take()?),
+                "--oracle" => {
+                    cfg.oracle_cli = PathBuf::from(take()?);
+                    set_oracle = true;
+                }
+                "--gate-spec" => {
+                    cfg.gate_spec = PathBuf::from(take()?);
+                    set_gate_spec = true;
+                }
+                "--archive" => {
+                    cfg.archive = PathBuf::from(take()?);
+                    set_archive = true;
+                }
                 "--working-dir" => cfg.working_dir = PathBuf::from(take()?),
                 "--model" => cfg.model = Some(take()?),
                 "--top-k" => {
@@ -169,6 +209,47 @@ impl Config {
                 }
                 "-h" | "--help" => return Err("help".to_string()),
                 other => return Err(format!("unknown flag `{other}`")),
+            }
+        }
+
+        // PROBLEM-AWARE DEFAULTS (deliverable 3, additive): for PADN, route the oracle / gate-spec /
+        // archive / budget / instance to the PADN counterparts UNLESS the user set them explicitly.
+        // This keeps the PADN archive separate from the OWMR archive (so niches never mix) and
+        // ensures a valid PADN --budget is passed (the agent default 'small' is OWMR's tier and is
+        // not a PADN budget). OWMR is untouched.
+        if cfg.problem == PADN_PROBLEM {
+            if !set_oracle {
+                cfg.oracle_cli = base.join("evaluate_policy_spec_padn.py");
+            }
+            if !set_gate_spec {
+                cfg.gate_spec = base.join("specs/gate_anchor_padn_residual_base_stock.json");
+            }
+            if !set_archive {
+                cfg.archive = base.join("agent/archive_padn.jsonl");
+            }
+            if !set_instance {
+                // PADN is a single fixed instance; the oracle parses-and-ignores --instance, but
+                // default it to 0 (the mixed SCN) rather than OWMR's 14 for honest provenance.
+                cfg.instance = 0;
+            }
+            if !set_budget {
+                // Map the OWMR default 'small' to PADN's 'screening' (the comparable mid tier).
+                cfg.budget = "screening".to_string();
+            } else {
+                // Map any OWMR tier the caller passed onto the nearest PADN tier; pass a valid PADN
+                // budget through unchanged. Reject an unmappable tier loudly (no silent fallback).
+                cfg.budget = match cfg.budget.as_str() {
+                    "tiny" => "smoke".to_string(),
+                    "small" => "screening".to_string(),
+                    b if PADN_BUDGETS.contains(&b) => b.to_string(),
+                    other => {
+                        return Err(format!(
+                            "--budget={other:?} is not a valid PADN budget (expected one of {} or an \
+                             OWMR tier tiny/small to map)",
+                            PADN_BUDGETS.join("/")
+                        ));
+                    }
+                };
             }
         }
 
@@ -224,6 +305,7 @@ fn run() -> Result<(), String> {
     };
     let archive = ArchiveAction {
         archive_path: cfg.archive.clone(),
+        problem: cfg.problem.clone(),
     };
 
     // The CLI source that drives the loop; the gate allows ONLY this source for our two actions.
@@ -261,6 +343,7 @@ fn run() -> Result<(), String> {
     omurga
         .register_action(ArchiveAction {
             archive_path: cfg.archive.clone(),
+            problem: cfg.problem.clone(),
         })
         .map_err(|e| format!("failed to register archive action: {e}"))?;
 
@@ -274,7 +357,7 @@ fn run() -> Result<(), String> {
     let identity = AgentIdentity::new("agentic_policy_search", "Agentic Policy Search")
         .with_description("OWMR policy-structure proposer (Codex brain) scored by the invman oracle")
         .with_tools_enabled(true)
-        .with_system_prompt(owmr_system_prompt(&cfg.problem, cfg.instance));
+        .with_system_prompt(system_prompt_for(&cfg.problem, cfg.instance));
 
     let plug = AgentPlug::new(identity, omurga, BeyinPlug::direct(Arc::clone(&brain)));
 
@@ -475,6 +558,7 @@ fn print_summary(
 ) -> Result<(), String> {
     let archive = ArchiveAction {
         archive_path: cfg.archive.clone(),
+        problem: cfg.problem.clone(),
     };
     let all = archive
         .top_k(usize::MAX)

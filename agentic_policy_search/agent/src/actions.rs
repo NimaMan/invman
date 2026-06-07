@@ -59,9 +59,15 @@
 //       (niche = action_head|leaf_type|split_type), best-first, capped at k. This is the MAP-Elites
 //       quality-diversity parent set: it turns the ~5 near-duplicate top_k rows (all collapsing to
 //       one niche) into structurally-DISTINCT parents to recombine across.
-//     * untried_niches(cap) -> niches in the finite (action_head x leaf_type x split_type) DSL
-//       cross-product that have NO archived row yet (concrete exploration targets), with the total
-//       niche count for a coverage signal.
+//     * untried_niches(cap) -> niches in the finite DSL cross-product that have NO archived row yet
+//       (concrete exploration targets), with the total niche count for a coverage signal.
+//
+//   PROBLEM-AWARE NICHES (additive): the enumerators are now problem-aware via `dsl_for(problem)`
+//   (ArchiveAction carries the problem id). OWMR keeps its EXACT prior 4x2x2=16-cell grid (heads x
+//   leaf x split; per_retailer_targets stays in the finer signature only). PADN uses its own grid:
+//   {residual_base_stock, vector_quantity} x {constant, linear} x {oblique, axis_aligned} x
+//   per_echelon{per_relation, per_echelon} = 16 cells (per_echelon IS a first-class niche cell for
+//   PADN, per the plan). OWMR keys/counts are byte-for-byte unchanged (granularity_in_niche=false).
 //   top_k, append_row, deployed_cost_of, read_rows, and the row schema are UNCHANGED; the helpers
 //   are pure read-side derivations recomputed from the canonical archive each generation, so they
 //   never diverge from what append_row wrote.
@@ -85,27 +91,93 @@ use serde_json::{Map, Value, json};
 // =================================================================================================
 // DSL STRUCTURAL ENUMERATIONS  (single source of truth = README.md "Policy-spec DSL" section,
 // lines ~95-104). These mirror the README contract so untried_niches can enumerate the finite
-// (action_head x leaf_type x split_type) cross-product. If the README DSL gains an axis value,
-// these MUST be updated in lockstep (documented coupling; the README is the contract).
+// (action_head x leaf_type x split_type [x granularity]) cross-product. If a DSL gains an axis
+// value, these MUST be updated in lockstep (documented coupling; the README is the contract).
+//
+// PROBLEM-AWARE DOMAINS (additive): the agent now serves TWO problems, each with its OWN action-
+// head set and granularity axis. The domains below are selected by problem id via `dsl_for`, so
+// untried_niches / diverse_elites / tried_signatures enumerate the correct cross-product per
+// problem. OWMR keeps its EXACT prior domains (behaviour unchanged); PADN adds its own.
+//   OWMR : heads {echelon_targets, symmetric_echelon_targets, echelon_targets_with_alloc_targets,
+//                 direct_orders} x leaf {constant, linear} x split {oblique, axis_aligned}.
+//          The granularity axis is `per_retailer_targets` (bool), NOT part of the niche key.
+//   PADN : heads {residual_base_stock, vector_quantity} x leaf {constant, linear}
+//                 x split {oblique, axis_aligned}.
+//          The granularity axis is `per_echelon` -- a STRING enum {per_relation, per_echelon}
+//          (matching policy_spec_compiler_padn.py) -- and for PADN it IS part of the niche key
+//          (per_relation vs per_echelon is a first-class structural cell, per the plan).
 // =================================================================================================
 
-/// All `action_head` enum values from the README DSL.
+// ---- OWMR DSL domains (unchanged from the original OWMR-only agent) -------------------------- //
+/// All OWMR `action_head` enum values from the README DSL.
 pub const ACTION_HEAD_DOMAIN: &[&str] = &[
     "echelon_targets",
     "symmetric_echelon_targets",
     "echelon_targets_with_alloc_targets",
     "direct_orders",
 ];
-/// All `leaf_type` enum values from the README DSL.
+/// All OWMR `leaf_type` enum values from the README DSL.
 pub const LEAF_TYPE_DOMAIN: &[&str] = &["constant", "linear"];
-/// All `split_type` enum values from the README DSL.
+/// All OWMR `split_type` enum values from the README DSL.
 pub const SPLIT_TYPE_DOMAIN: &[&str] = &["oblique", "axis_aligned"];
 
-// The MAP-Elites NICHE key is the 3 axes action_head x leaf_type x split_type (a small,
-// low-cardinality descriptor chosen because the live archive shows these collapse to one cell).
-// Depth, features, per_retailer, backbone, warm_start are part of the finer SIGNATURE but not the
-// niche key, to keep the cell count small (4 x 2 x 2 = 16) without every spec becoming its own
-// niche. The niche key is built inline by `niche_key` / `untried_niches`.
+// ---- PADN DSL domains (additive; mirrors policy_spec_compiler_padn.py's enum sets) ----------- //
+/// The PADN problem id (routes the agent onto the PADN DSL domains).
+pub const PADN_PROBLEM: &str = "production_assembly_distribution_network";
+/// All PADN `action_head` enum values (residual_base_stock preferred; vector_quantity allowed).
+pub const PADN_ACTION_HEAD_DOMAIN: &[&str] = &["residual_base_stock", "vector_quantity"];
+/// All PADN `leaf_type` enum values.
+pub const PADN_LEAF_TYPE_DOMAIN: &[&str] = &["constant", "linear"];
+/// All PADN `split_type` enum values.
+pub const PADN_SPLIT_TYPE_DOMAIN: &[&str] = &["oblique", "axis_aligned"];
+/// The PADN `per_echelon` granularity values: per-echelon residual tying vs one residual per
+/// relation. A STRING enum (matches policy_spec_compiler_padn.py PER_ECHELON_MODES). PADN folds
+/// this into the niche key (a first-class structural cell), so it is enumerated here.
+pub const PADN_PER_ECHELON_DOMAIN: &[&str] = &["per_relation", "per_echelon"];
+
+/// The per-problem DSL descriptor: the structural domains the niche enumerators cross-product over.
+/// `granularity_values` is the set of values for the granularity axis: a single sentinel "" for
+/// OWMR (whose per_retailer_targets stays in the finer signature only, NOT the niche), or the
+/// per_echelon string enum for PADN. `granularity_in_niche` controls whether that axis is folded
+/// into the MAP-Elites niche key.
+struct ProblemDsl {
+    action_heads: &'static [&'static str],
+    leaf_types: &'static [&'static str],
+    split_types: &'static [&'static str],
+    granularity_field: &'static str,
+    granularity_values: &'static [&'static str],
+    granularity_in_niche: bool,
+}
+
+/// Select the DSL descriptor for a problem id. Unknown ids fall back to the OWMR DSL (the historic
+/// default), so existing OWMR callers are byte-for-byte unaffected.
+fn dsl_for(problem: &str) -> ProblemDsl {
+    if problem == PADN_PROBLEM {
+        ProblemDsl {
+            action_heads: PADN_ACTION_HEAD_DOMAIN,
+            leaf_types: PADN_LEAF_TYPE_DOMAIN,
+            split_types: PADN_SPLIT_TYPE_DOMAIN,
+            granularity_field: "per_echelon",
+            granularity_values: PADN_PER_ECHELON_DOMAIN,
+            granularity_in_niche: true,
+        }
+    } else {
+        ProblemDsl {
+            action_heads: ACTION_HEAD_DOMAIN,
+            leaf_types: LEAF_TYPE_DOMAIN,
+            split_types: SPLIT_TYPE_DOMAIN,
+            granularity_field: "per_retailer_targets",
+            granularity_values: &[""],
+            granularity_in_niche: false,
+        }
+    }
+}
+
+// The MAP-Elites NICHE key is action_head x leaf_type x split_type (+ the granularity axis for
+// PADN). It is a small, low-cardinality descriptor chosen because the live archive shows these
+// collapse to one cell. Depth, features, backbone, warm_start are part of the finer SIGNATURE but
+// not the niche key, to keep the cell count small without every spec becoming its own niche. The
+// niche key is built by `niche_key` / `untried_niches`, both problem-aware.
 
 /// Read a spec string field, returning a "?" placeholder (never a panic) when absent/non-string.
 fn spec_str(spec: &Value, key: &str) -> String {
@@ -132,10 +204,18 @@ pub fn structural_signature(spec: &Value) -> String {
     let action_head = spec_str(spec, "action_head");
     let leaf_type = spec_str(spec, "leaf_type");
     let split_type = spec_str(spec, "split_type");
-    let per_retailer = spec
+    // Granularity axis: OWMR uses per_retailer_targets (bool), PADN uses per_echelon (a STRING enum
+    // per_relation|per_echelon). The signature reads whichever the spec carries (a spec only sets
+    // the field for its own problem), accepting either a bool or a string, so the same signature
+    // function serves both problems without threading the problem id through every read.
+    let granularity = spec
         .get("per_retailer_targets")
-        .and_then(Value::as_bool)
-        .map(|b| b.to_string())
+        .or_else(|| spec.get("per_echelon"))
+        .map(|v| match v {
+            Value::Bool(b) => b.to_string(),
+            Value::String(s) => s.to_ascii_lowercase(),
+            other => other.to_string(),
+        })
         .unwrap_or_else(|| "?".to_string());
     let warm_start = spec_str(spec, "warm_start");
     let mut features: Vec<String> = spec
@@ -155,28 +235,47 @@ pub fn structural_signature(spec: &Value) -> String {
         features.join(",")
     };
     format!(
-        "head={action_head}|leaf={leaf_type}|split={split_type}|backbone={backbone}|depth={depth}|per_retailer={per_retailer}|features={features}|warm_start={warm_start}"
+        "head={action_head}|leaf={leaf_type}|split={split_type}|backbone={backbone}|depth={depth}|granularity={granularity}|features={features}|warm_start={warm_start}"
     )
 }
 
-/// The NICHE key (a 3-axis subset of the full signature) used for MAP-Elites bucketing: just
-/// action_head|leaf_type|split_type. Returns the pipe-joined cell key.
-fn niche_key(spec: &Value) -> String {
-    format!(
+/// The NICHE key (a low-axis subset of the full signature) used for MAP-Elites bucketing:
+/// action_head|leaf_type|split_type, plus the granularity axis when the problem folds it into the
+/// niche (PADN's per_echelon). Returns the pipe-joined cell key. Problem-aware via `dsl`.
+fn niche_key(spec: &Value, dsl: &ProblemDsl) -> String {
+    let base = format!(
         "head={}|leaf={}|split={}",
         spec_str(spec, "action_head"),
         spec_str(spec, "leaf_type"),
         spec_str(spec, "split_type"),
-    )
+    );
+    if dsl.granularity_in_niche {
+        // PADN's per_echelon is a STRING enum (per_relation | per_echelon); read it as a string.
+        let g = spec_str(spec, dsl.granularity_field);
+        format!("{base}|{}={g}", dsl.granularity_field)
+    } else {
+        base
+    }
 }
 
-/// A niche descriptor object {action_head, leaf_type, split_type} for the prompt/context.
-fn niche_descriptor(action_head: &str, leaf_type: &str, split_type: &str) -> Value {
-    json!({
+/// A niche descriptor object {action_head, leaf_type, split_type} (plus the granularity field when
+/// the problem folds it into the niche) for the prompt/context. `granularity` is (field, value)
+/// where value is the string enum member (e.g. ("per_echelon", "per_relation")).
+fn niche_descriptor(
+    action_head: &str,
+    leaf_type: &str,
+    split_type: &str,
+    granularity: Option<(&str, &str)>,
+) -> Value {
+    let mut obj = json!({
         "action_head": action_head,
         "leaf_type": leaf_type,
         "split_type": split_type,
-    })
+    });
+    if let (Some((field, value)), Some(map)) = (granularity, obj.as_object_mut()) {
+        map.insert(field.to_string(), Value::String(value.to_string()));
+    }
+    obj
 }
 
 /// Monotonic counter to disambiguate temp spec filenames written within the same nanosecond.
@@ -368,11 +467,19 @@ impl Action for EvaluatePolicySpecAction {
 pub struct ArchiveAction {
     /// Absolute path to archive.jsonl.
     pub archive_path: PathBuf,
+    /// The problem id, selecting the DSL domains the niche enumerators cross-product over. Empty /
+    /// unknown -> the OWMR DSL (the historic default), so existing OWMR callers are unaffected.
+    pub problem: String,
 }
 
 impl ArchiveAction {
     pub fn name() -> ActionName {
         ActionName::new("invman.archive").expect("hardcoded action name is valid")
+    }
+
+    /// The DSL descriptor for this archive's problem (problem-aware niche cross-product).
+    fn dsl(&self) -> ProblemDsl {
+        dsl_for(&self.problem)
     }
 
     /// The honest ranking key: result.deployed_cost (min of trained, gate). Rows missing the key
@@ -543,6 +650,7 @@ impl ArchiveAction {
     /// top_k parents with one structurally-distinct representative per niche.
     pub fn diverse_elites(&self, k: usize) -> Result<Vec<Value>, ActionError> {
         let rows = self.read_rows()?;
+        let dsl = self.dsl();
         // niche_key -> index of the best row in that niche
         let mut best_per_niche: BTreeMap<String, usize> = BTreeMap::new();
         for (i, row) in rows.iter().enumerate() {
@@ -550,7 +658,7 @@ impl ArchiveAction {
                 Some(s) if s.is_object() => s,
                 _ => continue, // malformed row -> skip, never panic
             };
-            let key = niche_key(spec);
+            let key = niche_key(spec, &dsl);
             match best_per_niche.get(&key) {
                 Some(&cur) if Self::deployed_cost_of(&rows[cur]) <= Self::deployed_cost_of(row) => {}
                 _ => {
@@ -574,10 +682,18 @@ impl ArchiveAction {
                     .and_then(|r| r.get("gate_gap_pct"))
                     .cloned()
                     .unwrap_or(Value::Null);
+                let granularity = if dsl.granularity_in_niche {
+                    spec.get(dsl.granularity_field)
+                        .and_then(Value::as_str)
+                        .map(|g| (dsl.granularity_field, g))
+                } else {
+                    None
+                };
                 let niche = niche_descriptor(
                     spec.get("action_head").and_then(Value::as_str).unwrap_or("?"),
                     spec.get("leaf_type").and_then(Value::as_str).unwrap_or("?"),
                     spec.get("split_type").and_then(Value::as_str).unwrap_or("?"),
+                    granularity,
                 );
                 json!({
                     "niche": niche,
@@ -602,20 +718,40 @@ impl ArchiveAction {
     /// a coverage signal. These are concrete exploration targets the prompt prefers on novelty.
     pub fn untried_niches(&self, cap: usize) -> Result<(Vec<Value>, usize, usize), ActionError> {
         let rows = self.read_rows()?;
+        let dsl = self.dsl();
         let mut occupied: BTreeSet<String> = BTreeSet::new();
         for row in &rows {
             if let Some(spec) = row.get("spec").filter(|s| s.is_object()) {
-                occupied.insert(niche_key(spec));
+                occupied.insert(niche_key(spec, &dsl));
             }
         }
-        let n_total = ACTION_HEAD_DOMAIN.len() * LEAF_TYPE_DOMAIN.len() * SPLIT_TYPE_DOMAIN.len();
+        // The granularity axis multiplies the cell count only when it is folded into the niche
+        // (PADN's per_echelon string enum). For OWMR (granularity_in_niche=false) the sentinel ""
+        // value yields a single pass, so OWMR's cell count + keys are byte-for-byte unchanged.
+        let n_total = dsl.action_heads.len()
+            * dsl.leaf_types.len()
+            * dsl.split_types.len()
+            * dsl.granularity_values.len();
         let mut untried = Vec::new();
-        for &head in ACTION_HEAD_DOMAIN {
-            for &leaf in LEAF_TYPE_DOMAIN {
-                for &split in SPLIT_TYPE_DOMAIN {
-                    let key = format!("head={head}|leaf={leaf}|split={split}");
-                    if !occupied.contains(&key) {
-                        untried.push(niche_descriptor(head, leaf, split));
+        for &head in dsl.action_heads {
+            for &leaf in dsl.leaf_types {
+                for &split in dsl.split_types {
+                    for &grain in dsl.granularity_values {
+                        let granularity = if dsl.granularity_in_niche {
+                            Some((dsl.granularity_field, grain))
+                        } else {
+                            None
+                        };
+                        // Build the same key shape niche_key produces, so occupancy lines up.
+                        let key = match granularity {
+                            Some((field, value)) => {
+                                format!("head={head}|leaf={leaf}|split={split}|{field}={value}")
+                            }
+                            None => format!("head={head}|leaf={leaf}|split={split}"),
+                        };
+                        if !occupied.contains(&key) {
+                            untried.push(niche_descriptor(head, leaf, split, granularity));
+                        }
                     }
                 }
             }

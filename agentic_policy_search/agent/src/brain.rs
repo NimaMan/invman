@@ -36,6 +36,17 @@
 // (robust gate-beat = all seeds below gate AND mean+std < gate) so the proposer optimizes the right
 // objective rather than a lucky single seed.
 //
+// PROBLEM-AWARE PROMPT (additive; OWMR untouched): build_brain ROUTES the system prompt by problem.
+// production_assembly_distribution_network (PADN) gets padn_system_prompt -- the PADN-DSL sibling of
+// owmr_system_prompt. PADN has NO published DRL/PPO baseline, so the PADN prompt states the gate is
+// the ONLY comparator (PPO is not even cross-protocol context), describes the PADN DSL
+// (action_head residual_base_stock [preferred, warm_start gate_residual_zero] vs vector_quantity;
+// per_echelon vs per_relation granularity; depth/split/leaf/temperature/features matching
+// policy_spec_compiler_padn.py), the SAME hard novelty rule, and that the residual BACKBONE (the
+// gate OUL) is FIXED -- the brain must NOT try to learn it. The StubProposerBrain gains a parallel
+// PADN variant rotation (padn_variant) so a stub-driven PADN loop emits evaluable PADN specs; its
+// OWMR rotation is byte-for-byte unchanged.
+//
 // NOVELTY PRESSURE (the fix for the verified re-proposal plateau): the per-generation context built
 // in main.rs no longer feeds a flat top_k-by-cost (which collapsed to ~5 near-duplicates of the
 // single archived best, so Codex deterministically re-emitted it). Instead it carries
@@ -152,7 +163,104 @@ then stop.\n"
     )
 }
 
+/// The PADN problem id (routes build_brain onto the PADN system prompt + PADN DSL).
+pub const PADN_PROBLEM: &str = "production_assembly_distribution_network";
+
+/// The PADN system prompt: the production_assembly_distribution_network sibling of
+/// owmr_system_prompt. PADN has NO published DRL/PPO baseline -- the ONLY comparator is the env-own
+/// pairwise base-stock GATE, so the prompt forbids treating PPO as a comparator at all (it is not
+/// even cross-protocol context here). It states the PADN DSL (residual_base_stock preferred with
+/// warm_start gate_residual_zero; vector_quantity allowed; per_echelon vs per_relation granularity;
+/// depth/split/leaf/temperature/features), the HARD novelty rule (never re-propose a tried
+/// signature; vary >=1 axis; prefer untried niches), and that the residual BACKBONE (the gate OUL)
+/// is FIXED -- the brain must NOT try to learn the gate's order-up-to levels.
+pub fn padn_system_prompt(problem: &str, instance: u32) -> String {
+    format!(
+        "You are the policy-STRUCTURE proposer for an automated inventory-control search on the \
+MIXED production_assembly_distribution_network (PADN: a 6-node distribution+assembly-AND supply \
+network; node 1 distributes to {{2,3}}, nodes 4,5 are assembly-AND fed by both 2 and 3; 8 supply \
+relations; demand N(5,1) at nodes 4 and 5).\n\
+\n\
+OBJECTIVE (the only success metric): discover a policy-spec that ROBUSTLY beats the in-repo \
+env-own pairwise base-stock GATE on {problem} (instance {instance} = the mixed SCN). Robust \
+gate-beat means: EVERY evaluation seed is strictly below the gate cost AND mean+std < gate cost. \
+Anything weaker is parity / gate-match, not a win. PADN has NO published DRL/PPO baseline: there \
+is NO PPO comparator at all -- do NOT mention or target PPO. The gate is the ONLY baseline.\n\
+\n\
+FIXED BACKBONE (hard): the residual head's backbone is the gate's grid-searched order-up-to (OUL) \
+levels, supplied by the harness. You MUST NOT try to learn, re-search, or re-specify the gate OUL \
+-- the backbone is fixed and the search optimizes only the bounded RESIDUAL on top of it. There is \
+no spec field for the OUL; do not invent one.\n\
+\n\
+WHAT YOU DO each turn: study the archive evidence in the context, then propose EXACTLY ONE new \
+policy-spec that recombines or mutates the best structures to try to beat the gate. Change the \
+STRUCTURE (action head, granularity, state-dependent leaf, split type, depth, feature basis), not \
+the continuous parameters -- an inner CMA-ES owns those and is warm-started at the gate anchor. The \
+context gives you (a) `diverse_elites`: the BEST spec per DISTINCT STRUCTURAL NICHE (action_head x \
+leaf_type x split_type x per_echelon), best-first -- structurally-different parents to recombine \
+ACROSS, not one winner to copy; (b) `tried_signatures`: every structure already evaluated with its \
+best deployed_cost and whether it robustly beat the gate; (c) `best_signature`: the current archive \
+best; (d) `untried_niches`: structural niches not yet tried, with coverage \
+`n_occupied_niches`/`n_total_niches`.\n\
+\n\
+NOVELTY REQUIREMENT (hard): you MUST NOT propose any spec whose signature equals an entry in \
+`tried_signatures` -- re-proposing a tried structure is a wasted generation and is forbidden. Your \
+proposal MUST differ from `best_signature` on AT LEAST ONE structural axis (action_head, leaf_type, \
+split_type, depth, per_echelon, features). Prefer to either (i) FILL one of the `untried_niches` \
+(set its action_head/leaf_type/split_type/per_echelon to that cell), or (ii) RECOMBINE two \
+STRUCTURALLY DIFFERENT `diverse_elites`. The signature IGNORES temperature and continuous params \
+(CMA-ES owns those), so changing only temperature does NOT count as a new structure. In your \
+one-sentence `rationale`, name which structural axis you changed versus `best_signature` (or which \
+untried niche you filled / which two elites you crossed) and the hypothesis.\n\
+\n\
+You make this happen by calling the body tool `invman.evaluate_policy_spec` EXACTLY ONCE, with \
+`arguments` set to a COMPACT JSON STRING of the policy-spec DSL object. Do not call any other tool \
+and do not call it more than once. The DSL object MUST have this shape (problem and instance are \
+fixed):\n\
+{{\n\
+  \"problem\": \"{problem}\",\n\
+  \"instance\": {instance},\n\
+  \"backbone\": \"soft_tree\",\n\
+  \"depth\": <int >= 1>,\n\
+  \"split_type\": \"oblique\" | \"axis_aligned\",\n\
+  \"leaf_type\": \"constant\" | \"linear\",\n\
+  \"temperature\": <float > 0>,\n\
+  \"action_head\": \"residual_base_stock\" | \"vector_quantity\",\n\
+  \"per_echelon\": \"per_echelon\" | \"per_relation\",\n\
+  \"warm_start\": \"gate_residual_zero\" | \"none\",\n\
+  \"features\": [subset of \"finished_inventory\",\"raw_inventory\",\"pipeline\",\
+\"internal_backlog\",\"external_backlog\",\"backlog\",\"remaining_horizon\",\"scale\"],\n\
+  \"rationale\": \"<one sentence: which structure you changed/recombined and the hypothesis>\"\n\
+}}\n\
+\n\
+PREFERENCE + constraints (every emitted spec must be evaluable): PREFER \
+action_head=\"residual_base_stock\" with warm_start=\"gate_residual_zero\" -- the residual is 0 at \
+generation-0, so the policy reproduces the gate BYTE-EXACT at gen-0 and any improvement is real and \
+downside-safe (no seed can deploy above the gate). warm_start=\"gate_residual_zero\" is VALID ONLY \
+with action_head=\"residual_base_stock\" (the harness rejects it on vector_quantity). \
+action_head=\"vector_quantity\" emits direct per-relation orders (no exact gate anchor) and MUST use \
+warm_start=\"none\". per_echelon=\"per_echelon\" ties the residual within each of the 3 echelons \
+(fewer parameters, smoother); per_echelon=\"per_relation\" gives one independent residual per supply \
+relation (more capacity). Do NOT carry, learn, or re-specify the gate's order-up-to backbone \
+levels (no `backbone_levels`, no `learn_backbone`) -- the harness rejects it. After the tool \
+returns, briefly state deployed_cost and whether it was a robust gate-beat, then stop.\n"
+    )
+}
+
 /// Build the proposer brain. Default = real CodexBrain (ReadOnly); stub iff APS_STUB_BRAIN is truthy.
+/// Route the system prompt by problem: PADN -> padn_system_prompt, else owmr_system_prompt. Used for
+/// BOTH the AgentIdentity guidance (main.rs) AND the CodexBrain config, so Codex never sees a
+/// mismatched DSL (e.g. OWMR action heads leaking into a PADN turn and producing an invalid spec).
+pub fn system_prompt_for(problem: &str, instance: u32) -> String {
+    if problem == "production_assembly_distribution_network" {
+        padn_system_prompt(problem, instance)
+    } else {
+        owmr_system_prompt(problem, instance)
+    }
+}
+
+/// The system prompt is ROUTED by problem: PADN gets padn_system_prompt, every other problem keeps
+/// owmr_system_prompt (OWMR behaviour byte-for-byte unchanged).
 ///
 /// `working_dir` is the directory Codex runs `codex exec` in (ReadOnly): point it at the
 /// agentic_policy_search dir so the brain can read the README/DSL if it chooses. `model` is the
@@ -169,14 +277,19 @@ pub fn build_brain(
         );
         return Arc::new(StubProposerBrain::new(problem.to_string(), instance));
     }
-    eprintln!("[brain] using real CodexBrain (ReadOnly sandbox)");
+    let (brain_name, system_prompt) = if problem == PADN_PROBLEM {
+        ("brain.codex.padn", padn_system_prompt(problem, instance))
+    } else {
+        ("brain.codex.owmr", owmr_system_prompt(problem, instance))
+    };
+    eprintln!("[brain] using real CodexBrain (ReadOnly sandbox) [{brain_name}]");
     let config = CodexBrainConfig::new()
-        .with_name("brain.codex.owmr")
+        .with_name(brain_name)
         .with_sandbox(CodexSandbox::ReadOnly)
         .with_session_strategy(CodexSessionStrategy::Ephemeral)
         .with_working_dir(Some(working_dir))
         .with_model(model)
-        .with_system_prompt(owmr_system_prompt(problem, instance));
+        .with_system_prompt(system_prompt);
     Arc::new(CodexBrain::new(config))
 }
 
@@ -196,9 +309,13 @@ impl StubProposerBrain {
         Self { problem, instance }
     }
 
-    /// A small rotation of structurally distinct OWMR specs. Index modulo length selects one, so the
-    /// loop proposes a different structure each generation.
+    /// A small rotation of structurally distinct specs. Index modulo length selects one, so the
+    /// loop proposes a different structure each generation. Problem-aware: PADN gets a PADN-DSL
+    /// rotation; every other problem keeps the EXACT OWMR rotation (unchanged).
     fn variant(&self, idx: usize) -> Value {
+        if self.problem == PADN_PROBLEM {
+            return self.padn_variant(idx);
+        }
         // (backbone, depth, split, leaf, temp, head, per_retailer, features)
         let variants: &[(&str, u64, &str, &str, f64, &str, bool, &[&str])] = &[
             ("linear", 0, "axis_aligned", "linear", 0.0, "echelon_targets", false, &["on_hand", "backlog", "pipeline"]),
@@ -223,6 +340,40 @@ impl StubProposerBrain {
             "rationale": format!(
                 "stub deterministic variant {} ({} backbone, {} leaf, {} head)",
                 idx % variants.len(), backbone, leaf, head
+            ),
+        })
+    }
+
+    /// A small rotation of structurally distinct, EVALUABLE PADN specs (matches
+    /// policy_spec_compiler_padn.py's enum sets). Variant 0 is the gate-invertible residual anchor
+    /// (gen-0 == gate byte-exact); the rest vary the leaf / split / depth / granularity / head so a
+    /// stub-driven PADN loop exercises distinct niches. vector_quantity uses warm_start="none"
+    /// (no gate anchor), all others use the residual head with warm_start="gate_residual_zero".
+    fn padn_variant(&self, idx: usize) -> Value {
+        // (depth, split, leaf, temp, head, per_echelon, warm_start, features)
+        let variants: &[(u64, &str, &str, f64, &str, &str, &str, &[&str])] = &[
+            (2, "oblique", "constant", 0.25, "residual_base_stock", "per_echelon", "gate_residual_zero", &["finished_inventory", "raw_inventory", "pipeline", "remaining_horizon"]),
+            (2, "oblique", "linear", 0.25, "residual_base_stock", "per_relation", "gate_residual_zero", &["finished_inventory", "raw_inventory", "pipeline", "internal_backlog", "remaining_horizon"]),
+            (2, "axis_aligned", "linear", 0.15, "residual_base_stock", "per_echelon", "gate_residual_zero", &["finished_inventory", "pipeline", "external_backlog", "remaining_horizon"]),
+            (3, "oblique", "linear", 0.20, "vector_quantity", "per_relation", "none", &["finished_inventory", "raw_inventory", "pipeline", "internal_backlog", "external_backlog", "remaining_horizon"]),
+        ];
+        let (depth, split, leaf, temp, head, per_echelon, warm_start, features) =
+            variants[idx % variants.len()];
+        json!({
+            "problem": self.problem,
+            "instance": self.instance,
+            "backbone": "soft_tree",
+            "depth": depth,
+            "split_type": split,
+            "leaf_type": leaf,
+            "temperature": temp,
+            "action_head": head,
+            "per_echelon": per_echelon,
+            "warm_start": warm_start,
+            "features": features,
+            "rationale": format!(
+                "stub deterministic PADN variant {} ({} head, {} leaf, {} split, {})",
+                idx % variants.len(), head, leaf, split, per_echelon
             ),
         })
     }

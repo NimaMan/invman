@@ -263,6 +263,113 @@ fn pairwise_base_stock_first_action_matches_reference_freeze() {
     assert_eq!(action, base_stock.first_action);
 }
 
+/// Gate-invertibility of the ResidualBaseStock head: at the all-zero warm-start the
+/// residual (Delta == 0) must reproduce the pairwise base-stock gate's order vector
+/// BYTE-EXACT for every demand realization. This is the executing proof that
+/// generation-0 == gate (anchor_cost == gate_cost) for the PADN fast-follow — the lab's
+/// verification bar is a re-running assertion, not a frozen snapshot.
+#[test]
+fn residual_base_stock_zero_params_reproduces_pairwise_gate_byte_exact() {
+    use crate::core::policies::soft_tree::{build_action_spec, SoftTreeLeafType, SoftTreeSplitType};
+    use crate::problems::multi_echelon::production_assembly_distribution_network::demand::{
+        DemandDistributionKind, DemandModel,
+    };
+    use crate::problems::multi_echelon::production_assembly_distribution_network::rollout::{
+        edge_requests, NetworkInventoryRolloutConfig,
+    };
+
+    let inst = &VERIFICATION_PROBLEM_INSTANCE;
+    let graph = build_graph(
+        inst.num_nodes,
+        inst.source_nodes,
+        inst.node_modes,
+        inst.external_supplier_lead_times,
+        inst.edges,
+    );
+    let state = initialize_state(
+        &graph,
+        inst.initial_finished_inventory,
+        inst.initial_raw_inventory_by_relation,
+        inst.initial_internal_backlog_by_edge,
+        inst.initial_external_backlog,
+        &nested_vec(inst.initial_supply_pipelines),
+    )
+    .expect("state must build");
+
+    let relations = supply_relation_count(&graph);
+    let oul = inst.base_stock_levels.to_vec();
+    assert_eq!(oul.len(), relations, "gate OUL must be per supply relation");
+
+    let depth = 1usize;
+    let demand_means = vec![0.0f64; graph.num_nodes];
+    let zero_demands = vec![0usize; graph.num_nodes];
+    let input_dim = build_policy_state(&graph, &state, &demand_means, &zero_demands, inst.periods)
+        .expect("policy state must build")
+        .len();
+
+    // Order box well above the tiny verification gate OUL, so the clamp is a no-op at Delta=0.
+    let min_values = vec![0usize; relations];
+    let max_values = vec![60usize; relations];
+    let action_spec = build_action_spec("residual_base_stock", min_values, max_values, None)
+        .expect("residual action spec must build")
+        .with_backbone(Some(oul.clone()), None);
+
+    let demand_models = (0..graph.num_nodes)
+        .map(|_| DemandModel {
+            kind: DemandDistributionKind::Deterministic,
+            param1: 0.0,
+            param2: 0.0,
+        })
+        .collect::<Vec<_>>();
+
+    let config = NetworkInventoryRolloutConfig {
+        input_dim,
+        depth,
+        action_spec,
+        periods: inst.periods,
+        graph: graph.clone(),
+        demand_models,
+        holding_costs: inst.holding_costs.to_vec(),
+        backlog_costs: inst.backlog_costs.to_vec(),
+        discount_factor: inst.discount_factor,
+        temperature: 1.0,
+        split_type: SoftTreeSplitType::Oblique,
+        leaf_type: SoftTreeLeafType::Linear,
+    };
+
+    // All-zero flat params for the depth-1 linear-leaf residual tree.
+    let num_internal = (1usize << depth) - 1;
+    let num_leaves = 1usize << depth;
+    let flat_len = num_internal * input_dim
+        + num_internal
+        + num_leaves * relations * input_dim
+        + num_leaves * relations;
+    let zeros = vec![0.0f32; flat_len];
+
+    let demand_cases: Vec<Vec<usize>> = vec![
+        vec![0usize; graph.num_nodes],
+        vec![1usize; graph.num_nodes],
+        {
+            let mut d = vec![0usize; graph.num_nodes];
+            if let Some(last) = d.last_mut() {
+                *last = 2;
+            }
+            d
+        },
+    ];
+
+    for demand in demand_cases {
+        let residual = edge_requests(&zeros, &state, &demand, &config)
+            .expect("residual edge_requests must compute");
+        let gate = pairwise_base_stock_requests(&graph, &state, &oul, &demand)
+            .expect("gate requests must compute");
+        assert_eq!(
+            residual, gate,
+            "zero-param residual head must reproduce the pairwise base-stock gate byte-exact (demand {demand:?})"
+        );
+    }
+}
+
 #[test]
 fn exact_dp_dominates_pairwise_base_stock() {
     let optimal = solve_optimal_policy(&VERIFICATION_PROBLEM_INSTANCE)

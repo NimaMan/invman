@@ -19,6 +19,13 @@ pub enum SoftTreeActionMode {
     ScalarQuantity,
     VectorQuantity,
     DiscreteGrid,
+    /// Gate-backbone residual head: the decoded order is `gate_order + round(Delta)`,
+    /// where `gate_order` is supplied by a problem-specific gate (e.g. pairwise
+    /// base-stock) and `Delta` is the SIGNED soft-tree residual from
+    /// `action_residual_signed_from_flat_params` (identity leaf transform, so
+    /// `Delta == 0` at the all-zero warm-start => the head reproduces the gate
+    /// byte-exact). Requires `backbone_levels`; the problem rollout fuses the two.
+    ResidualBaseStock,
 }
 
 #[derive(Clone, Debug)]
@@ -28,6 +35,28 @@ pub struct SoftTreeActionSpec {
     pub min_values: Vec<usize>,
     pub max_values: Vec<usize>,
     pub allowed_values: Option<Vec<Vec<usize>>>,
+    /// For `ResidualBaseStock`: the fixed gate order-up-to level per action dimension
+    /// (the structural backbone the residual is added to). `None` for all other modes.
+    pub backbone_levels: Option<Vec<usize>>,
+    /// For `ResidualBaseStock`: optional per-dimension group index (length == action_dim)
+    /// that ties the residual within groups by averaging (e.g. per-echelon). `None` =>
+    /// an independent residual per dimension (per-relation). Averaging zeros is zero, so
+    /// this never breaks the `Delta == 0` gate-invertibility at the warm-start.
+    pub residual_group_of: Option<Vec<usize>>,
+}
+
+impl SoftTreeActionSpec {
+    /// Attach the gate backbone (and optional residual grouping) for `ResidualBaseStock`.
+    /// Additive builder so existing `build_action_spec` callers are unaffected.
+    pub fn with_backbone(
+        mut self,
+        backbone_levels: Option<Vec<usize>>,
+        residual_group_of: Option<Vec<usize>>,
+    ) -> Self {
+        self.backbone_levels = backbone_levels;
+        self.residual_group_of = residual_group_of;
+        self
+    }
 }
 
 pub fn parse_split_type(split_type: &str) -> PyResult<SoftTreeSplitType> {
@@ -59,8 +88,9 @@ pub fn parse_action_mode(action_mode: &str) -> PyResult<SoftTreeActionMode> {
         "scalar_quantity" | "scalar" => Ok(SoftTreeActionMode::ScalarQuantity),
         "vector_quantity" | "vector" => Ok(SoftTreeActionMode::VectorQuantity),
         "discrete_grid" | "grid" => Ok(SoftTreeActionMode::DiscreteGrid),
+        "residual_base_stock" | "residual" => Ok(SoftTreeActionMode::ResidualBaseStock),
         _ => Err(PyValueError::new_err(format!(
-            "unknown soft tree action mode '{action_mode}'; expected 'scalar_quantity', 'vector_quantity', or 'discrete_grid'"
+            "unknown soft tree action mode '{action_mode}'; expected 'scalar_quantity', 'vector_quantity', 'discrete_grid', or 'residual_base_stock'"
         ))),
     }
 }
@@ -107,6 +137,8 @@ pub fn build_action_spec(
         min_values,
         max_values,
         allowed_values,
+        backbone_levels: None,
+        residual_group_of: None,
     })
 }
 
@@ -273,7 +305,12 @@ fn leaf_output_from_flat_params(
 fn project_action_value(action_value: &[f32], action_spec: &SoftTreeActionSpec) -> Vec<usize> {
     let mut projected = Vec::with_capacity(action_spec.action_dim);
     match action_spec.action_mode {
-        SoftTreeActionMode::ScalarQuantity | SoftTreeActionMode::VectorQuantity => {
+        // ResidualBaseStock never reaches this projection (its order is decoded in the
+        // problem rollout: gate_order + round(signed residual), then clamped there). It is
+        // listed here only to keep the match exhaustive; round+clip is a sane no-harm default.
+        SoftTreeActionMode::ScalarQuantity
+        | SoftTreeActionMode::VectorQuantity
+        | SoftTreeActionMode::ResidualBaseStock => {
             for (dim_idx, value) in action_value.iter().enumerate() {
                 let min_value = action_spec.min_values[dim_idx] as f32;
                 let max_value = action_spec.max_values[dim_idx] as f32;
@@ -475,6 +512,76 @@ pub fn action_vector_continuous_from_flat_params(
         }
     }
     Ok(action_value)
+}
+
+/// Signed residual soft-tree head (IDENTITY leaf transform; exact neutral element 0).
+///
+/// Returns the soft mixture of per-leaf RAW outputs as SIGNED `f32` deltas, with NO
+/// min/softplus/sigmoid transform applied. This is the load-bearing detail of the
+/// `ResidualBaseStock` head: at the all-zero warm-start every leaf output is exactly 0
+/// (constant leaf = 0 slice; linear leaf = bias(0) + weights(0)*state = 0), and the
+/// convex leaf-probability mixture of identical-zero leaf outputs is 0 for ANY split
+/// weights, so the returned delta is EXACTLY 0 (split-independent). The caller computes
+/// `order = clamp(gate_order + round(delta), min, max)`, so delta=0 reproduces the gate
+/// byte-exact (gate-invertible warm-start). NOTE: `min`/`max` bounds are intentionally
+/// NOT applied here — the caller clamps `gate + delta` to the per-dimension order box.
+pub fn action_residual_signed_from_flat_params(
+    state: &[f32],
+    flat_params: &[f32],
+    input_dim: usize,
+    depth: usize,
+    temperature: f32,
+    split_type: SoftTreeSplitType,
+    leaf_type: SoftTreeLeafType,
+    action_dim: usize,
+) -> PyResult<Vec<f32>> {
+    if temperature <= 0.0 {
+        return Err(PyValueError::new_err("temperature must be positive"));
+    }
+    if action_dim == 0 {
+        return Err(PyValueError::new_err(
+            "residual action head requires at least one dimension",
+        ));
+    }
+    let (weights_end, bias_end, num_leaves) =
+        validate_soft_tree_flat_params(flat_params.len(), input_dim, depth, leaf_type, action_dim)?;
+    if state.len() != input_dim {
+        return Err(PyValueError::new_err(format!(
+            "state length {} does not match input_dim {}",
+            state.len(),
+            input_dim
+        )));
+    }
+
+    let split_weights = &flat_params[..weights_end];
+    let split_bias = &flat_params[weights_end..bias_end];
+    let leaf_probs = soft_tree_leaf_probabilities(
+        state,
+        split_weights,
+        split_bias,
+        depth,
+        temperature,
+        split_type,
+    );
+
+    let mut delta = vec![0.0f32; action_dim];
+    for (leaf_idx, leaf_prob) in leaf_probs.iter().enumerate() {
+        let leaf_output = leaf_output_from_flat_params(
+            state,
+            flat_params,
+            input_dim,
+            bias_end,
+            num_leaves,
+            leaf_idx,
+            leaf_type,
+            action_dim,
+        );
+        for action_idx in 0..action_dim {
+            // Identity transform: the neutral element is exactly 0 at zero params.
+            delta[action_idx] += leaf_prob * leaf_output[action_idx];
+        }
+    }
+    Ok(delta)
 }
 
 pub fn uncapped_scalar_action_from_flat_params(

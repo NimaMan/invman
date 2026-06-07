@@ -5,11 +5,13 @@ use rand::SeedableRng;
 use rayon::prelude::*;
 
 use crate::core::policies::soft_tree::{
-    action_vector_from_flat_params, SoftTreeActionSpec, SoftTreeLeafType, SoftTreeSplitType,
+    action_residual_signed_from_flat_params, action_vector_from_flat_params, SoftTreeActionMode,
+    SoftTreeActionSpec, SoftTreeLeafType, SoftTreeSplitType,
 };
 use crate::problems::multi_echelon::production_assembly_distribution_network::demand::{
     sample_demand, validate_demand_model, DemandModel,
 };
+use crate::problems::multi_echelon::production_assembly_distribution_network::heuristics::pairwise_base_stock_requests;
 use crate::problems::multi_echelon::production_assembly_distribution_network::env::{
     build_policy_state, initialize_state, step_state, supply_relation_count, validate_state,
     NetworkInventoryGraph, NetworkInventoryState,
@@ -98,7 +100,7 @@ fn validate_config(
     Ok(())
 }
 
-fn edge_requests(
+pub(crate) fn edge_requests(
     flat_params: &[f32],
     state: &NetworkInventoryState,
     realized_external_demands: &[usize],
@@ -116,6 +118,76 @@ fn edge_requests(
         realized_external_demands,
         config.periods,
     )?;
+
+    // Gate-backbone residual head: order = clamp(gate_order + round(Delta), min, max).
+    // The gate_order is the EXACT pairwise base-stock order for this state + the SAME
+    // realized demands fed to step_state, and Delta == 0 at the all-zero warm-start, so
+    // generation-0 reproduces the gate byte-exact (gate-invertible). The tree's
+    // normalized policy_state only steers the bounded residual; env dynamics are untouched.
+    if config.action_spec.action_mode == SoftTreeActionMode::ResidualBaseStock {
+        let backbone = config.action_spec.backbone_levels.as_ref().ok_or_else(|| {
+            PyValueError::new_err(
+                "residual_base_stock action mode requires backbone_levels (the gate OUL per relation)",
+            )
+        })?;
+        let gate_orders = pairwise_base_stock_requests(
+            &config.graph,
+            state,
+            backbone,
+            realized_external_demands,
+        )?;
+        let mut delta = action_residual_signed_from_flat_params(
+            &policy_state,
+            flat_params,
+            config.input_dim,
+            config.depth,
+            config.temperature,
+            config.split_type,
+            config.leaf_type,
+            config.action_spec.action_dim,
+        )?;
+        // Optional per-group tying (e.g. per-echelon): average the residual within each
+        // group. Averaging zeros is zero, so this preserves the Delta=0 gate anchor.
+        if let Some(groups) = config.action_spec.residual_group_of.as_ref() {
+            if groups.len() != delta.len() {
+                return Err(PyValueError::new_err(
+                    "residual_group_of length must match action_dim",
+                ));
+            }
+            let num_groups = groups.iter().copied().max().map(|m| m + 1).unwrap_or(0);
+            let mut sums = vec![0.0f32; num_groups];
+            let mut counts = vec![0.0f32; num_groups];
+            for (idx, &group) in groups.iter().enumerate() {
+                sums[group] += delta[idx];
+                counts[group] += 1.0;
+            }
+            for (idx, &group) in groups.iter().enumerate() {
+                delta[idx] = if counts[group] > 0.0 {
+                    sums[group] / counts[group]
+                } else {
+                    0.0
+                };
+            }
+        }
+        if gate_orders.len() != delta.len()
+            || config.action_spec.min_values.len() != delta.len()
+            || config.action_spec.max_values.len() != delta.len()
+        {
+            return Err(PyValueError::new_err(
+                "residual head: backbone/action_dim/min/max lengths must all equal the supply-relation count",
+            ));
+        }
+        let mut orders = Vec::with_capacity(gate_orders.len());
+        for relation_idx in 0..gate_orders.len() {
+            let rounded_delta = delta[relation_idx].round() as i32;
+            let raw_order = gate_orders[relation_idx] as i32 + rounded_delta;
+            let lo = config.action_spec.min_values[relation_idx] as i32;
+            let hi = config.action_spec.max_values[relation_idx] as i32;
+            orders.push(raw_order.clamp(lo, hi) as usize);
+        }
+        return Ok(orders);
+    }
+
     action_vector_from_flat_params(
         &policy_state,
         flat_params,

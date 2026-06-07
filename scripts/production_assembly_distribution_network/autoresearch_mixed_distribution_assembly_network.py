@@ -262,27 +262,69 @@ def _warm_start_flow(depth: int, leaf_type: str, flow: float) -> np.ndarray:
     return flat
 
 
-def population_costs(params_batch, depth, leaf_type, split_type, temperature, seeds):
+def population_costs(
+    params_batch,
+    depth,
+    leaf_type,
+    split_type,
+    temperature,
+    seeds,
+    action_mode="vector_quantity",
+    backbone_levels=None,
+    residual_group_of=None,
+):
+    """Mean per-period population costs via the Rust population rollout.
+
+    ADDITIVE action-head kwargs (defaults reproduce the original vector_quantity call
+    byte-identically -- backbone_levels/residual_group_of=None means the bindings build
+    a plain vector_quantity action spec with no backbone, exactly as before):
+      action_mode        "vector_quantity" (direct per-relation order) or
+                         "residual_base_stock" (order = clamp(gate_order + round(Delta))).
+      backbone_levels    gate OUL per supply relation; REQUIRED by the Rust residual head
+                         when action_mode == "residual_base_stock".
+      residual_group_of  optional per-relation group id to TIE the residual within a group
+                         (e.g. per-echelon); averaging zeros is zero so the gate anchor at
+                         the all-zero warm start is preserved.
+    """
     res = ir.production_assembly_distribution_network_soft_tree_population_rollout(
-        params_batch, INPUT_DIM, depth, MIN_VALUES, MAX_VALUES, "vector_quantity",
+        params_batch, INPUT_DIM, depth, MIN_VALUES, MAX_VALUES, action_mode,
         NUM_NODES, SOURCE_NODES, NODE_MODES, EXT_LEAD, EDGE_FROM, EDGE_TO, EDGE_LEAD,
         INIT_FINISHED, INIT_RAW, INIT_IBL, INIT_EBL, INIT_PIPES,
         PERIODS, DEMAND_KINDS, DEMAND_P1, HOLDING, BACKLOG,
         seeds, DEMAND_P2, DISCOUNT, temperature, split_type, leaf_type, None,
+        backbone_levels, residual_group_of,
     )
     return np.asarray(res) / PERIODS
 
 
-def soft_tree_cost_on_paths(flat, depth, leaf_type, split_type, temperature, paths):
+def soft_tree_cost_on_paths(
+    flat,
+    depth,
+    leaf_type,
+    split_type,
+    temperature,
+    paths,
+    action_mode="vector_quantity",
+    backbone_levels=None,
+    residual_group_of=None,
+):
+    """Mean / stderr per-period held-out cost of `flat` on explicit demand paths.
+
+    ADDITIVE action-head kwargs (see population_costs); defaults reproduce the original
+    vector_quantity call byte-identically. For action_mode == "residual_base_stock" with
+    the all-zero `flat`, this returns the gate cost EXACTLY (gen-0 == gate, verified
+    in-crate), provided backbone_levels is the searched gate OUL per relation.
+    """
     costs = []
     flat = list(flat)
     for realized in paths:
         total = ir.production_assembly_distribution_network_soft_tree_rollout_from_paths(
-            flat, INPUT_DIM, depth, MIN_VALUES, MAX_VALUES, "vector_quantity",
+            flat, INPUT_DIM, depth, MIN_VALUES, MAX_VALUES, action_mode,
             NUM_NODES, SOURCE_NODES, NODE_MODES, EXT_LEAD, EDGE_FROM, EDGE_TO, EDGE_LEAD,
             INIT_FINISHED, INIT_RAW, INIT_IBL, INIT_EBL, INIT_PIPES,
             realized, DEMAND_KINDS, DEMAND_P1, HOLDING, BACKLOG,
             DEMAND_P2, DISCOUNT, temperature, split_type, leaf_type, None,
+            backbone_levels, residual_group_of,
         )
         costs.append(total / PERIODS)
     arr = np.asarray(costs)

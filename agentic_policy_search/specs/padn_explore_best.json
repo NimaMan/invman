@@ -1,0 +1,21 @@
+{
+  "action_head": "residual_base_stock",
+  "backbone": "soft_tree",
+  "depth": 2,
+  "features": [
+    "finished_inventory",
+    "raw_inventory",
+    "pipeline",
+    "internal_backlog",
+    "external_backlog",
+    "remaining_horizon"
+  ],
+  "instance": 0,
+  "leaf_type": "linear",
+  "per_echelon": "per_relation",
+  "problem": "production_assembly_distribution_network",
+  "rationale": "Filled the untried residual_base_stock/linear/oblique/per_relation niche by changing leaf_type versus best_signature, hypothesizing linear leaves can make relation-specific residual corrections state-sensitive while retaining the exact gate anchor.",
+  "split_type": "oblique",
+  "temperature": 0.25,
+  "warm_start": "gate_residual_zero"
+}

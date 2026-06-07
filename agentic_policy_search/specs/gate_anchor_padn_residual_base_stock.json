@@ -1,0 +1,13 @@
+{
+  "problem": "production_assembly_distribution_network",
+  "backbone": "soft_tree",
+  "depth": 2,
+  "split_type": "oblique",
+  "leaf_type": "constant",
+  "temperature": 0.25,
+  "action_head": "residual_base_stock",
+  "per_echelon": "per_echelon",
+  "warm_start": "gate_residual_zero",
+  "features": ["finished_inventory", "raw_inventory", "pipeline", "internal_backlog", "external_backlog", "remaining_horizon"],
+  "rationale": "residual=0 reproduces the pairwise base-stock gate exactly at gen-0"
+}

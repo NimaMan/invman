@@ -1,6 +1,6 @@
 # Runtime artifacts of agentic_policy_search (regenerable; not source).
 agent/target/
-agent/archive.jsonl
+agent/archive*.jsonl
 outputs/
 __pycache__/
 *.pyc

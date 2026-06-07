@@ -195,7 +195,9 @@ fn policy_performance_summary_to_py(
     temperature=0.25,
     split_type="oblique",
     leaf_type="constant",
-    allowed_values=None
+    allowed_values=None,
+    backbone_levels=None,
+    residual_group_of=None
 ))]
 fn production_assembly_distribution_network_soft_tree_rollout(
     flat_params: Vec<f32>,
@@ -228,6 +230,8 @@ fn production_assembly_distribution_network_soft_tree_rollout(
     split_type: &str,
     leaf_type: &str,
     allowed_values: Option<Vec<Vec<usize>>>,
+    backbone_levels: Option<Vec<usize>>,
+    residual_group_of: Option<Vec<usize>>,
 ) -> PyResult<f64> {
     let graph = build_graph(
         num_nodes,
@@ -249,7 +253,8 @@ fn production_assembly_distribution_network_soft_tree_rollout(
     let config = NetworkInventoryRolloutConfig {
         input_dim,
         depth,
-        action_spec: build_action_spec(action_mode, min_values, max_values, allowed_values)?,
+        action_spec: build_action_spec(action_mode, min_values, max_values, allowed_values)?
+            .with_backbone(backbone_levels, residual_group_of),
         periods,
         graph,
         demand_models: build_demand_models(demand_kinds, demand_param1s, demand_param2s)?,
@@ -294,7 +299,9 @@ fn production_assembly_distribution_network_soft_tree_rollout(
     temperature=0.25,
     split_type="oblique",
     leaf_type="constant",
-    allowed_values=None
+    allowed_values=None,
+    backbone_levels=None,
+    residual_group_of=None
 ))]
 fn production_assembly_distribution_network_soft_tree_population_rollout(
     params_batch: Vec<Vec<f32>>,
@@ -327,6 +334,8 @@ fn production_assembly_distribution_network_soft_tree_population_rollout(
     split_type: &str,
     leaf_type: &str,
     allowed_values: Option<Vec<Vec<usize>>>,
+    backbone_levels: Option<Vec<usize>>,
+    residual_group_of: Option<Vec<usize>>,
 ) -> PyResult<Vec<f64>> {
     let graph = build_graph(
         num_nodes,
@@ -348,7 +357,8 @@ fn production_assembly_distribution_network_soft_tree_population_rollout(
     let config = NetworkInventoryRolloutConfig {
         input_dim,
         depth,
-        action_spec: build_action_spec(action_mode, min_values, max_values, allowed_values)?,
+        action_spec: build_action_spec(action_mode, min_values, max_values, allowed_values)?
+            .with_backbone(backbone_levels, residual_group_of),
         periods,
         graph,
         demand_models: build_demand_models(demand_kinds, demand_param1s, demand_param2s)?,
@@ -392,7 +402,9 @@ fn production_assembly_distribution_network_soft_tree_population_rollout(
     temperature=0.25,
     split_type="oblique",
     leaf_type="constant",
-    allowed_values=None
+    allowed_values=None,
+    backbone_levels=None,
+    residual_group_of=None
 ))]
 fn production_assembly_distribution_network_soft_tree_rollout_from_paths(
     flat_params: Vec<f32>,
@@ -424,6 +436,8 @@ fn production_assembly_distribution_network_soft_tree_rollout_from_paths(
     split_type: &str,
     leaf_type: &str,
     allowed_values: Option<Vec<Vec<usize>>>,
+    backbone_levels: Option<Vec<usize>>,
+    residual_group_of: Option<Vec<usize>>,
 ) -> PyResult<f64> {
     let graph = build_graph(
         num_nodes,
@@ -445,7 +459,8 @@ fn production_assembly_distribution_network_soft_tree_rollout_from_paths(
     let config = NetworkInventoryRolloutConfig {
         input_dim,
         depth,
-        action_spec: build_action_spec(action_mode, min_values, max_values, allowed_values)?,
+        action_spec: build_action_spec(action_mode, min_values, max_values, allowed_values)?
+            .with_backbone(backbone_levels, residual_group_of),
         periods: realized_demands.len(),
         graph,
         demand_models: build_demand_models(demand_kinds, demand_param1s, demand_param2s)?,
