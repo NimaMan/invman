@@ -22,8 +22,7 @@
 
 % ---------------------------------------------------------------------------
 % Inline TikZ for the policy-architecture figures (Sections 3.1 and 4.2).
-% Visual style adapted from Izaak Neutelings' neural-network-zoo (Sept 2021),
-% as in the prior version of the paper and in figures/policy_architecture.tex.
+% Visual style adapted from Izaak Neutelings' neural-network-zoo (Sept 2021).
 % amsmath/amssymb/graphicx are already loaded above; xcolor is loaded just below; we do not redefine
 % them here. We guard the color/style definitions so they cannot clash with
 % anything declared earlier.
@@ -510,8 +509,9 @@ paired cost difference becomes statistically meaningful. Each problem's reported
 single-state actions are independently validated against an independent rollout, with the cross-check detailed
 in that problem's section.%
 \footnote{\emph{Reproducibility.} The code, the policy forwards, the worked-example script, and the
-named instance anchors used in the validation appendices (e.g.\ \texttt{lit\_poisson\_p4\_l4},
-\texttt{bijvank2015\_table1\_l2\_p14\_k5}) are available in our open-source repository, where the
+instances used in the validation appendices (e.g.\ the canonical Poisson lost-sales instance
+($p=4$, $L=4$) and the Bijvank et al.\ (2015) Table~1 instance ($L=2$, $p=14$, $K=5$)) are available in
+our open-source repository, where the
 independent policy-forward implementations used for the cross-checks are also exposed.}
 
 \section{Lost sales and fixed-cost lost sales}
@@ -1769,34 +1769,10 @@ $910.3\pm0.5$ / $1138.0\pm0.4$); all $5$ seeds beat the best constant base-stock
 \FloatBarrier
 
 % ---------------------------------------------------------------------------
-% Perishable inventory section.
-%
-% INPUT-ABLE FRAGMENT: this file is \input{} into the manuscript
-% learning_inventory_control_policies_es.tex and reuses ITS preamble macros
-% and TikZ styles (envbox, envsupply/envstock/envsink/envlost,
-% reqflow/matflow/demandflow/lostflow, ltlabel/reqlabel, costH/costP/costK,
-% the boxed "Per-period event sequence" panel, booktabs). It defines NO new
-% styles and contains NO \documentclass.
-%
-% ALGORITHMIC / DATA-PROVENANCE NOTE (every number is sourced from the repo):
-%   Instance + dynamics : src/problems/perishable_inventory/env.rs (step_state,
-%       apply_demand_to_inventory FIFO/LIFO, waste = oldest leftover bucket),
-%       flownet/formulation.rs (event schedule: serve demand -> expire oldest ->
-%       age + inbound receipt), references.rs (de_moor2022_m2_exp2_l1_cp7_fifo
-%       and de_moor2022_m2_exp1_l1_cp7_lifo: mu=4, cov=0.5 rounded Gamma,
-%       shelf life m=2, lead time L=1, h=1, shortage p=5, waste cp=7,
-%       procurement c=3, order cap 10, horizon 465, warm-up 100).
-%   Objective sign      : rollout.rs discounted_return_after_warmup returns
-%       sum_t (-cost_t) gamma^t over the post-warm-up window (gamma=0.99), so
-%       reported numbers are NEGATED discounted costs (higher / less negative is
-%       better) -- the De Moor (2022) / Farrington (2025) return convention.
-%   Results             : outputs/autoresearch/perishable_inventory_autoresearch/
-%       results.tsv and the two *_d2_oblique_full.json files (commit 01c657a;
-%       committed at 222d46f). FIFO learned -1457.9032, best base-stock -1475.0825
-%       (+1.16%, paired SEM 1.815 -> 9.5x), LIFO learned -1553.1608,
-%       best base-stock -1565.9833 (+0.82%, paired SEM 1.949 -> 6.6x). VI optima
-%       -1457.28 / -1552.99 (rounded -1457 / -1553) are the ANALYTIC reference,
-%       context only (estimator mismatch, literature/README.md).
+% Perishable inventory section. Reported numbers follow the De Moor (2022) /
+% Farrington (2025) return convention: discounted post-warm-up returns are
+% negated costs (higher / less negative is better). The value-iteration optima
+% are an analytic reference reported for context only.
 % ---------------------------------------------------------------------------
 \section{Perishable inventory}
 \label{sec:perishable}
@@ -1992,7 +1968,7 @@ Section~\ref{sec:methods-eval}. Three \emph{disjoint} seed blocks are used: a se
 seeds) drives CMA-ES, the best generation is then chosen on a \emph{separate validation block} ($512$
 seeds), and the selected policy is reported on a third \emph{held-out evaluation block} ($2048$ seeds,
 horizon $465$). Selecting on the disjoint validation block is essential: it yields the heuristic-beating
-policy reported below, whereas selecting the incumbent on the evaluation block itself overfits the
+policy reported below, whereas selecting the trained CMA-ES solution on the evaluation block itself overfits the
 estimator and flips the FIFO result to a small ($\approx-0.49\%$) loss. The best base-stock is scored
 on the identical evaluation block.
 
@@ -2142,16 +2118,7 @@ which the best base-stock policy is already close to the exact optimum.
 % General-network backorder inventory control (Geevers, van Hezewijk & Mes, 2024;
 % the "CardBoard Company" general network), experiment set 1.
 %
-% INPUT-ABLE SECTION. No \documentclass. Relies on the manuscript preamble for:
-%   - TikZ env styles: envbox, envsupply, envstock, envsink, reqflow, matflow,
-%     demandflow, costH, costP, costK, reqlabel, ltlabel, envtitle (Sec. preamble);
-%   - the boxed per-period event-sequence panel idiom (cf. fig:env-multiechelon,
-%     fig:env-dual);
-%   - booktabs, \FloatBarrier (placins), \citep{geevers2024cardboard}, \btheta.
-%
-% ALGORITHMIC DESCRIPTION (faithful to the Rust env it documents):
-%   src/problems/multi_echelon/general_backorder_fixed_cost/{env.rs,heuristics.rs,
-%   rollout.rs,references.rs}. One period, in code order (advance_to_decision_state):
+% Per-period event sequence:
 %   (1) receive supplier->warehouse and warehouse->retailer deliveries due now;
 %   (2) suppliers ship the warehouse orders placed last period (unit lead time);
 %   (3) each warehouse fulfils current retailer orders, rationing by retailer
@@ -2160,12 +2127,11 @@ which the best base-stock policy is already close to the exact optimum.
 %   (5) leftover stock clears outstanding warehouse->retailer and retailer->customer
 %       backorders; (6) cost = warehouse holding (0.6) + retailer holding (1.0)
 %       + retailer/customer backorder (19.0); warehouse backorder cost = 0.0.
-%   IMPORTANT: despite the family/folder name "..._fixed_cost", the env charges NO
-%   fixed/setup ordering cost -- only holding + backorder (verified in env.rs:
-%   period_cost = holding_cost + warehouse_backorder_cost + customer_backorder_cost).
-%   Policy: node_base_stock_targets -- a soft tree emits a 9-dim per-node order-up-to
-%   target vector; warehouses raise IP to target, retailers raise a single
-%   weight-sampled upstream edge's IP to target (set-1 relative-rationing routing).
+%   This network charges NO fixed/setup ordering cost -- only holding + backorder.
+%   Policy: a soft tree emits a 9-dim per-node order-up-to target vector;
+%   warehouses raise inventory position to target, each retailer raises a single
+%   weight-sampled upstream edge's inventory position to target (set-1 relative-
+%   rationing routing).
 % =============================================================================
 
 \section{General-network backorder inventory control}
@@ -2402,14 +2368,14 @@ The comparator is the published \emph{constant node-base-stock} benchmark of
 \citet{geevers2024cardboard} at levels $[82,100,64,83,35,35,35,35,35]$ (tuned to a $98\%$ retailer
 fill-rate target), published cost $10{,}467$. This is the like-for-like, same-environment comparator
 that the learned policy must beat. We re-derive it in the environment ($\approx 10{,}355$, gap
-$-1.1\%$, $3$ seeds $\times\,500$ replications); this reproduction is the keep/discard comparator. The paper
+$-1.1\%$, $3$ seeds $\times\,500$ replications); this reproduction is the like-for-like comparator. The paper
 also reports a PPO learner with best cost $8{,}714$; we report it only as a context row, because it is
 a \emph{cross-protocol} reference (a different learner under the paper's own training and evaluation
 protocol), \emph{not} a head-to-head comparison under our paired evaluation. The policy is trained with
 warm-started CMA-ES (depth $\in\{1,2\}$, oblique splits, constant leaves, $\sigma=0.2$) and evaluated
 under a paired common-random-number protocol: held-out base seeds (from $500{,}000$, stride $1{,}000$,
 disjoint from the training block at $10{,}000$), each a $100$-period path with a $50$-period warm-up
-cut; the full budget averages $2{,}000$ held-out paths and the \emph{same} seed block scores both the
+cut; the training configuration averages $2{,}000$ held-out paths and the \emph{same} seed block scores both the
 warm-start (benchmark) and the learned policy.
 
 \begin{table}[!htbp]
@@ -2560,31 +2526,13 @@ so it is not claimed as a head-to-head beat.
 % =====================================================================
 % Serial multi-echelon (Clark--Scarf) problem section.
 %
-% INPUT-ABLE FRAGMENT: this file carries no \documentclass / preamble.
-% It is \input by learning_inventory_control_policies_es.tex and reuses
-% that manuscript's preamble styles (envbox/envsupply/envstock/envsink,
-% reqflow/matflow/demandflow, costH, reqlabel/ltlabel, the boxed
-% per-period event panel, booktabs) and bibitem labels.
-%
 % FRAMING: MATCH-ONLY. The comparator is a PROVEN OPTIMUM (the
 % Clark--Scarf / Snyder & Shen Example 6.1 value 47.65), so the honest
 % ceiling is to REPRODUCE it. Nothing here claims to "beat" the optimum.
-%
-% SOURCED NUMBERS (every figure is traceable to a repo file):
-%   - Instance / dynamics / MDP convention:
-%       src/problems/multi_echelon/serial/{env.rs,exact.rs,verification.rs}
-%   - Proven optimum 47.65 (Snyder & Shen Example 6.1):
-%       serial/verification.rs (env_simulation_reproduces_snyder_shen_example_6_1)
-%   - Exact recursive-newsvendor solver value 47.6654 (paper table value 47.67):
-%       serial/exact.rs ; outputs/.../snyder_shen_example_6_1_d1_oblique_full.json
-%       (exact_solver_optimum = 47.66539330768766)
-%   - Env-simulation reproduction ~+0.06% (paper appendix value 47.64):
-%       serial/verification.rs docstring ("reproduces 47.65 to ~+0.06%")
-%   - Learned warm-started direct-level soft tree = 47.6554:
-%       outputs/autoresearch/multi_echelon_serial_autoresearch/results.tsv
-%       (full budget: learned_cost 47.6554, match_pct 99.9887, gap +0.0113%)
-%   - L>=2 downstream-stage under-counting limitation:
-%       serial/env.rs "KNOWN LIMITATION" docstring
+% Key numbers: exact recursive-newsvendor solver 47.6654 (table value 47.67);
+% environment-simulation reproduction of 47.65 to ~+0.06%; learned warm-started
+% direct-level soft tree 47.6554 (99.99% match). The model has a known
+% downstream-stage under-counting limitation for lead times L>=2.
 % =====================================================================
 
 \section{Serial multi-echelon (Clark--Scarf)}
@@ -2791,7 +2739,7 @@ stage-$1$ backorder penalty $p=37.12$. The comparator is the \emph{proven optimu
 the Clark--Scarf / Snyder \& Shen value $47.65$. Because this comparator is an optimum and not a
 heuristic, this is a \emph{match-only} problem: the target is to reproduce $47.65$, never to beat it.
 For reference, our exact recursive-newsvendor solver returns $47.6654$
-(reported as $47.67$ in the appendix env-fidelity table), and the
+(reported in the environment-validation table of Appendix~\ref{app:serial-validation}), and the
 environment simulation under the exact echelon base-stock levels reproduces $47.65$ to about $+0.06\%$
 with continuous Normal demand. The policy is trained with
 warm-started CMA-ES and evaluated under the long-run-average protocol of
@@ -3010,12 +2958,12 @@ the tuned heuristic; the \emph{per-retailer} geometry (one target per
 retailer) is the natural asymmetric generalization of the heuristic and is the lever we test.
 
 \paragraph{The decisive lever: a per-retailer warm-start floor.}
-The keep/discard floor is the heuristic-reproducing CMA-ES warm start (Section~\ref{sec:methods-cmaes}). We
+The warm-start floor is the heuristic-reproducing CMA-ES initialization (Section~\ref{sec:methods-cmaes}). We
 generalize this warm start from the two-control symmetric geometry to \emph{any} control dimension:
 the leaves are seeded so that generation~0 emits the best heuristic's full per-retailer target vector
 $(S^w,S^1,\dots,S^K)$, reproducing the best heuristic to within numerical error on identical demand paths, after
 which CMA-ES searches outward. This floor is essential: \emph{without} it the richer per-retailer
-geometry is not a free win --- at screening it \emph{loses} to the best heuristic by $-12.79\%$ on the
+geometry is not a free win --- in a short low-budget training run it \emph{loses} to the best heuristic by $-12.79\%$ on the
 heterogeneous instance, because the optimizer cannot locate the base-stock region in the larger
 search space; \emph{with} the floor the same instance first flips to a single-seed $+1.33\%$ held-out
 win and, under the later fresh-warm-start / gentle-$\sigma$ protocol, to a seed-robust $+4.61\%$
@@ -3044,17 +2992,17 @@ for the heterogeneous $K{=}10$ instance), under the better of \{proportional,
 min-shortage\} allocation, then re-scored on a disjoint held-out block. This best heuristic is already
 substantially stronger than the published base-stock and sits between it and the published PPO,
 so a beat against it transitively implies a policy at least as good as the published base-stock. The
-published PPO row is reported as the strongest \emph{learned} reference, not as the keep/discard comparator.
+published PPO row is reported as the strongest \emph{learned} reference, not as the like-for-like comparator.
 
 \paragraph{Evaluation protocol.}
-Policies are trained with warm-started CMA-ES (population $32$, full-budget campaigns of
-$400$--$800$ generations) and evaluated under the common-random-number protocol of
+Policies are trained with warm-started CMA-ES (population $32$, $400$--$800$ generations) and
+evaluated under the common-random-number protocol of
 Section~\ref{sec:methods-eval}: the heuristic grid is searched on a $64$-path block (argmin verified
 stable against $96/256$), and learned policy and best heuristic are re-scored on a disjoint $4096$-path held-out
-block under the deployed allocation. A same-seed win is claimed only when the paired-difference
+block under the selected allocation. A same-seed win is claimed only when the paired-difference
 advantage exceeds its standard error; a headline configuration is claimed only when a small
-independent CMA-seed block has the same sign. The deployed policy is the better of the trained CMA-ES
-incumbent and the heuristic-reproducing warm-start anchor.
+independent CMA-seed block has the same sign. The reported policy is the better of the trained CMA-ES
+solution and the heuristic-reproducing warm-start anchor.
 
 \begin{table}[!htbp]
 \centering
@@ -3091,18 +3039,18 @@ variance, enough training paths, and a long enough budget; tree depth is not (de
 reliable advantage over depth-2 within optimizer-seed noise).
 
 On the high-CV symmetric $K{=}10$ instance the depth-3 soft tree improves the cost from the
-same-protocol best heuristic $91890.25$ to a $5$-seed mean $85395\pm1031$ ($+7.07\%$ against the best heuristic; all six
+same-protocol best heuristic $91890.25$ to a $5$-seed mean $85395\pm1031$ ($+7.07\%$ against the best heuristic; all five
 seeds beat it), so this row is now a seed-robust beat over the best heuristic. The hardest, strongly heterogeneous
-$K{=}10$ instance --- which an earlier hand-search could only \emph{tie} (the trained incumbent landed
-above the strong asymmetric heuristic within budget, so the deployed policy fell back to the heuristic-reproducing
+$K{=}10$ instance --- which an earlier manual search could only \emph{tie} (the trained CMA-ES solution landed
+above the strong asymmetric heuristic within budget, so the reported policy fell back to the heuristic-reproducing
 anchor) --- is now also a robust beat over the best heuristic. A search over the decoder classes
 discovered that the decisive change here is the \emph{leaf class}: a
-\emph{constant}-leaf, oblique-split, per-retailer depth-2 \texttt{echelon\_targets} tree improves the
+\emph{constant}-leaf, oblique-split, per-retailer depth-2 echelon order-up-to targets tree improves the
 $100$-period cost from the same-protocol best heuristic $50445.20$ to a five-seed mean $44170.26\pm450.4$
 ($+12.44\%$ against the best heuristic; all five seeds below it, $\mathrm{std}\approx1.0\%$ of the mean). The
 former tie was therefore \emph{action-design-limited}, not representation- or search-limited: the
 best heuristic lies inside the learned policy's class, but only the constant-leaf geometry --- which the
-linear-leaf hand-search never tried --- lets CMA-ES realize the improvement within budget.
+linear-leaf manual search never tried --- lets CMA-ES realize the improvement within budget.
 
 \paragraph{Interpretation.}
 The honest headline is therefore narrower than a best-seed story and stronger than the old plateau:
@@ -3128,9 +3076,9 @@ adds no reliable advantage over depth-2 on the headline $K{=}3$ row.
 base-stock $+$ allocation heuristic, common-random-number evaluation ($4096$ held-out paths, horizon
 $100$). Costs are $100$-period undiscounted totals (lower is better). $\Delta\%$ is the learned
 policy's improvement over the best heuristic. The first two rows report optimizer-seed mean $\pm$ standard
-deviation over $6$ independent CMA seeds (all $6$ beat the best heuristic); the third row is the deployed
+deviation over $5$ independent CMA seeds (all $5$ beat the best heuristic); the third row is the reported
 warm-start floor. The published PPO column is the strongest \emph{learned} reference of
-\citet{kaynov2024owmr}, reported as cross-protocol context rather than a keep/discard comparator.}
+\citet{kaynov2024owmr}, reported as cross-protocol context rather than a like-for-like comparator.}
 \label{tab:owmr-results}
 \begin{tabular}{llcccc}
 \toprule
@@ -3147,7 +3095,7 @@ on each (heterogeneous-$3$ mean$-$std $=+4.09\%$, high-CV mean$-$std $=+5.95\%$,
 mean$-$std $=+11.55\%$ still clear it). The heterogeneous-$10$ row uses the \emph{constant}-leaf,
 oblique-split, per-retailer geometry found by a search over the decoder classes
 (std $\approx1.0\%$ of the mean); the linear-leaf
-hand-search only tied this row.
+manual search only tied this row.
 Depth is not the lever on heterogeneous-$3$ (the depth-3 analogue is inside optimizer-seed noise of
 depth-2). The learned policy does not claim a robust published-PPO beat: the heterogeneous-$3$ seed
 block straddles the PPO scalar (seed-mean $+0.29\%$ below, $4/5$ seeds below), the high-CV seed-mean
@@ -3168,17 +3116,17 @@ demand; $L_w{=}2$), and a \emph{lost-sales} instance with heterogeneous demand a
 the best heuristic's full Cartesian grid tractable. Table~\ref{tab:owmr-results-regimes} reports the
 results under the identical protocol of Table~\ref{tab:owmr-results}.
 
-On all three the learned per-retailer soft tree \emph{matches} (ties) the best tuned in-repo
+On all three the learned per-retailer soft tree \emph{matches} (ties) the best tuned in-environment
 heuristic to within numerical error rather than beating it: with the per-retailer warm-start
-floor the trained CMA-ES incumbent lands above the strong heuristic on the held-out block, so
-the deployed policy falls back to the heuristic-reproducing anchor (paired advantage $0.00$, not
+floor the trained CMA-ES solution lands above the strong heuristic on the held-out block, so
+the selected policy falls back to the heuristic-reproducing anchor (paired advantage $0.00$, not
 exceeding its standard error). Across these regimes the published PPO of
 \citet{kaynov2024owmr} is \emph{cheaper} than both the learned policy and the best heuristic
 ($-1.05\%$, $-1.96\%$, $-6.43\%$ for the learned policy relative to PPO), so the learned
 policy stays below PPO here; we make no PPO claim. The takeaway is one of \emph{robustness}:
 the per-retailer geometry does not degrade when moved from partial backorder to full
 backorder or lost sales (including under lead-time asymmetry and long leads), reproducing the
-strongest in-repo heuristic exactly. The promoted seed-robust \emph{beats} in
+strongest in-environment heuristic exactly. The promoted seed-robust \emph{beats} in
 Table~\ref{tab:owmr-results} are the asymmetric three-retailer partial-backorder instance, the
 high-CV ten-retailer instance, and --- via the constant-leaf geometry from the decoder-class search --- the
 strongly heterogeneous ten-retailer instance, all now reported as multi-seed means with every seed
@@ -3195,7 +3143,7 @@ $100$-period undiscounted totals (lower is better). $\Delta\%$ is the learned po
 improvement over the best heuristic; ``paired $\pm$ SEM'' is the best-heuristic$-$learned advantage on identical
 paths (a win requires it to exceed its SEM). Published PPO and base-stock (the better of the
 proportional/min-shortage rows) are the $-$reward references of \citet{kaynov2024owmr}. On all
-three the learned policy ties the best heuristic (deployed policy $=$ heuristic-reproducing warm-start
+three the learned policy ties the best heuristic (reported policy $=$ heuristic-reproducing warm-start
 anchor) and stays below the published PPO.}
 \label{tab:owmr-results-regimes}
 \begin{tabular}{lcccccc}
@@ -3208,9 +3156,9 @@ lost-sales, long-lead heterogeneous & $1782.27$ & $1782.27$ & $+0.00\%$ & $+0.00
 \bottomrule
 \end{tabular}
 \par\medskip\footnotesize All learned policies use the linear-leaf per-retailer
-echelon-targets geometry under min-shortage allocation. The trained CMA-ES
-incumbent's held-out cost was above the best heuristic on every instance ($1793.11$, $1584.47$,
-$1802.12$ respectively), so the deployed policy is the heuristic-reproducing warm-start anchor and
+echelon order-up-to targets geometry under min-shortage allocation. The trained CMA-ES
+solution's held-out cost was above the best heuristic on every instance ($1793.11$, $1584.47$,
+$1802.12$ respectively), so the reported policy is the heuristic-reproducing warm-start anchor and
 the comparison is an exact tie. The published base-stock column is the cheaper of Kaynov's
 proportional/min-shortage rows; the learned policy is below the published PPO on all three
 ($-1.05\%$, $-1.96\%$, $-6.43\%$), so no PPO beat is claimed.
@@ -3367,12 +3315,12 @@ This problem has two reference points of different kinds, and we treat them diff
 $2444.80$ for the port-wine instance) is an \emph{upper bound} under hindsight and full LP issuance: our
 exact LP solver \emph{re-solves} this program and reproduces both published bounds to within $10^{-3}$ (an
 executing fidelity reproduction, not a stored constant), and we report the \emph{gap} to it but never treat it
-as an achievable target. (ii)~The like-for-like keep/discard \emph{heuristic} is the best tuned order-up-to
+as an achievable target. (ii)~The like-for-like \emph{heuristic} is the best tuned order-up-to
 purchase (the level $S$ maximizing profit on the same evaluation block); beating it is a legitimate
 win.
 
 \paragraph{Evaluation protocol.}
-Policies are trained with warm-started CMA-ES (full budget: population $16$, $60$ generations) and
+Policies are trained with warm-started CMA-ES (population $16$, $60$ generations) and
 evaluated under the common-random-number protocol of Section~\ref{sec:methods-eval} on a held-out
 block ($12{,}000$-period horizon, $24$ paired seeds disjoint from training). A win over the best heuristic is
 claimed only when the paired-difference advantage exceeds its standard error.
@@ -3397,7 +3345,7 @@ port wine    & $25$ & $2$ (ages $\{9,19\}$), blending     & $2444.80$ \\
 \label{sec:amelior-results}
 
 Table~\ref{tab:amelior-results} reports the learned price-reactive purchase policy against the best
-tuned order-up-to heuristic at full budget. On both instances the learned policy \emph{beats the best heuristic by a
+tuned order-up-to heuristic. On both instances the learned policy \emph{beats the best heuristic by a
 wide, statistically unambiguous margin}: on the spirits instance it raises average profit from
 $20.91$ to $115.07$ ($+94.16$, $+450\%$, $\approx140\times$ the paired SEM), and on the port-wine instance
 from $133.78$ to $505.78$ ($+372.00$, $+278\%$, $\approx610\times$ the paired SEM). The mechanism is
@@ -3614,7 +3562,7 @@ correction \emph{around} the best heuristic rather than the order itself:
 \end{equation}
 where $q^{\mathrm{bs},r}_t$ is the pairwise base-stock heuristic's order on relation $r$ and $\Delta^{r}_t$
 is the soft-tree residual (identity leaf, signed). Because the residual vanishes at zero parameters,
-\emph{generation~0 reproduces the best heuristic byte-exact} (proven by an in-crate test), and \emph{every}
+\emph{generation~0 reproduces the best heuristic exactly} (the residual is identically zero at zero parameters, so the two policies coincide), and \emph{every}
 optimizer seed is therefore anchored at the best heuristic by construction; CMA-ES then searches outward in the
 residual space only. This restores the heuristic-reproducing warm-start floor that the linear-leaf flow head
 lacked on the mixed network, which is what makes the per-seed result robust there.
@@ -3724,9 +3672,9 @@ Policy / config & Held-out cost ($\pm$ SEM) & $\Delta\%$ vs best heuristic & SEM
 \midrule
 Best pairwise base-stock (order-up-to $[8,7,9]$) & $60.24$ & --- & --- \\
 Flow warm-start (generation $0$)               & $70.85\pm0.61$ & $+17.6\%$ & --- \\
-Learned soft tree, depth $2$, seed $123$       & $\mathbf{57.25\pm0.22}$ & $\mathbf{-4.96\%}$ & $\approx 14\times$ \\
-Learned soft tree, depth $2$, seed $321$       & $\mathbf{54.96\pm0.23}$ & $\mathbf{-8.77\%}$ & $\approx 23\times$ \\
-Learned soft tree, depth $3$, seed $123$       & $\mathbf{57.85\pm0.25}$ & $\mathbf{-3.97\%}$ & $\approx 10\times$ \\
+Learned soft tree, depth $2$, run $1$          & $\mathbf{57.25\pm0.22}$ & $\mathbf{-4.96\%}$ & $\approx 14\times$ \\
+Learned soft tree, depth $2$, run $2$          & $\mathbf{54.96\pm0.23}$ & $\mathbf{-8.77\%}$ & $\approx 23\times$ \\
+Learned soft tree, depth $3$                   & $\mathbf{57.85\pm0.25}$ & $\mathbf{-3.97\%}$ & $\approx 10\times$ \\
 \midrule
 \multicolumn{4}{l}{\emph{Mixed distribution-and-assembly network} (best heuristic $297.69$, echelon order-up-to $[36,13,7]$)} \\
 Best pairwise base-stock                        & $297.69\pm0.67$ & --- & --- \\
@@ -3735,7 +3683,7 @@ Residual-head soft tree (seed mean, $N=5$)     & $\mathbf{291.136\pm2.49_{\rm se
 \midrule
 \multicolumn{4}{l}{\emph{Pure assembly network} (best heuristic $283.34$, echelon order-up-to $[52,52,52]$)} \\
 Best pairwise base-stock                        & $283.34\pm0.20$ & --- & --- \\
-Learned soft tree, depth $2$, seed $123$        & $\mathbf{274.90\pm0.17}$ & $\mathbf{-2.98\%}$ & $\approx 40\times$ \\
+Learned soft tree, depth $2$                     & $\mathbf{274.90\pm0.17}$ & $\mathbf{-2.98\%}$ & $\approx 40\times$ \\
 \bottomrule
 \end{tabular}
 \par\medskip\footnotesize The comparator is the environment's own best heuristic on a faithful but
@@ -3843,7 +3791,7 @@ most useful to a field with a reproducibility problem: not by topping a leaderbo
 exactly what kind of claim each number supports.
 Operationally, the next artifact should be a versioned baseline ledger behind the paper tables: for
 each problem family it records the published instance specification, demand process, cost convention,
-lead-time or network structure, strongest in-repo heuristic, exact optimum or bound where available,
+lead-time or network structure, strongest in-environment heuristic, exact optimum or bound where available,
 trained-policy performance, paired-CRN standard error, and one of the verdict types above. That ledger
 is the practical route toward an ImageNet-like inventory-management benchmark: future learners should
 be scored against clear, reproducible, like-for-like baselines rather than against shifting paper
@@ -4109,7 +4057,7 @@ Before using the vanilla lost-sales simulator and heuristic stack for learned-po
 validate the canonical Poisson instance against the published/reference costs used in the lost-sales
 literature \citep{Zipkin2008OldSystems,Xin2021CappedBaseStock}. The validation instance has
 $h=1$, $p=4$, $L=4$, and $D_t\sim\mathrm{Poisson}(5)$. Table~\ref{tab:vanilla-lost-sales-validation} reports the reference
-costs and an independent rollout reproduction for the heuristic policies (horizon $10^5$, seed $123$). This is
+costs and an independent rollout reproduction for the heuristic policies (horizon $10^5$). This is
 an implementation-fidelity check, not a learned-policy result.
 
 \begin{table}[!htbp]
@@ -4240,9 +4188,8 @@ instances, well inside the heuristic's own optimality band.
 dual-index (CDI) optimality gaps of \citet{gijsbrechts2022drl} within $0.01$ percentage points on all
 six instances ($l_e=0$, $c_r=100$, $h=5$, $b=495$, demand $U\{0,\dots,4\}$), validating the CDI
 control as the optimal proxy used in the dual-sourcing experiments; the published A3C gaps are listed
-for context. The $l_r=2$ rows are re-run by default in the verification suite; the $l_r=3,4$ rows use
-a minutes-scale bounded-DP and are gated (run on demand), with reproduced gaps confirmed within
-tolerance.}
+for context. The $l_r=2$ rows are inexpensive to reproduce; the $l_r=3,4$ rows use a more expensive
+bounded-DP solver but were confirmed within tolerance.}
 \label{tab:ds-figure9-validation}
 \begin{tabular}{lcccc}
 \toprule
