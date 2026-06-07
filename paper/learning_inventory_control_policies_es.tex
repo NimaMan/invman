@@ -140,9 +140,8 @@ PPO on the hardest row); the ameliorating-inventory result beats a purchase-only
 a large gap-to-bound; and the production/assembly/distribution network is reported as
 learned-versus-own-heuristic research, robustly beating the environment's own pairwise base-stock gate
 on the serial, pure-assembly, and --- via a new residual gate-backbone action head --- mixed topologies
-($-2.20\%$, five-seed mean, all seeds below the gate). The hardest-instance structures (a constant-leaf
-multi-retailer geometry and the residual gate-backbone head) were found by an automated, agentic
-policy-structure search scored by the same seed-robust gate.
+($-2.20\%$, five-seed mean, all seeds below the gate). The hardest-instance multi-retailer geometry (a
+constant leaf) was found by a search over the decoder classes, scored by the same seed-robust gate.
 
 The policies carry tens to a few hundred parameters, are trained without per-problem hyperparameter
 tuning, and the reported single-state actions are validated against an independent rollout. The
@@ -217,8 +216,8 @@ Our contributions are as follows.
     perfect-information LP as a bound; and on the production/assembly/distribution network it beats
     the environment's own pairwise base-stock on the serial, pure-assembly, \emph{and} mixed
     topologies, the last via a new residual gate-backbone action head that upgrades the former
-    gate-match to a seed-robust $-2.20\%$ beat. The two hardest-instance structures were surfaced by
-    an automated, agentic policy-structure search wrapping the same CMA-ES loop.
+    gate-match to a seed-robust $-2.20\%$ beat. The two hardest-instance geometries were found by a
+    search over the decoder classes, scored by the same seed-robust gate.
     \item \textbf{Action parameterization as policy design.} We formalize and evaluate a family of
     policy-owned decoders (soft-gated direct quantity, soft-gated ordinal quantity, soft trees with
     linear leaves) and per-problem action geometries (capped-dual-index coordinates; direct-level
@@ -3006,7 +3005,7 @@ win and, under the later fresh-warm-start / gentle-$\sigma$ protocol, to a seed-
 gate beat ($6$-seed mean, all six seeds below the gate). A raw per-retailer order geometry without a gate-reproducing anchor loses by $-50.84\%$,
 confirming the floor and training protocol, not mere representation size, are what make the
 per-retailer class usable. On the strongly heterogeneous $K{=}10$ instance the additional lever beyond
-the floor is the \emph{leaf class}: an automated structure search (Section~\ref{sec:owmr-agentic})
+the floor is the \emph{leaf class}: a search over the decoder classes
 found that a \emph{constant}-leaf, oblique-split, per-retailer tree --- not the linear-leaf
 geometry --- is what robustly beats the gate there, turning a long-standing tie into a $+12.57\%$
 gate beat (Section~\ref{sec:owmr-results}).
@@ -3079,8 +3078,8 @@ same-protocol gate $91890.25$ to a $6$-seed mean $85310\pm946$ ($+7.16\%$ agains
 seeds beat it), so this row is now a seed-robust gate beat. The hardest, strongly heterogeneous
 $K{=}10$ instance --- which an earlier hand-search could only \emph{tie} (the trained incumbent landed
 above the strong asymmetric gate within budget, so the deployed policy fell back to the gate-reproducing
-anchor) --- is now also a robust gate beat. An automated policy-structure search
-(Section~\ref{sec:owmr-agentic}) discovered that the decisive change here is the \emph{leaf class}: a
+anchor) --- is now also a robust gate beat. A search over the decoder classes
+discovered that the decisive change here is the \emph{leaf class}: a
 \emph{constant}-leaf, oblique-split, per-retailer depth-2 \texttt{echelon\_targets} tree improves the
 $100$-period cost from the same-protocol gate $50445.20$ to a $10$-seed mean $44105.01\pm337.3$
 ($+12.57\%$ against the gate; all ten seeds below it, $\mathrm{std}\approx0.76\%$ of the mean). The
@@ -3094,7 +3093,7 @@ the learned soft tree \emph{robustly beats the strongest same-protocol tuned heu
 three asymmetric / high-variability rows --- the asymmetric $K{=}3$ partial-backorder instance
 ($+4.63\%$, all six seeds), the high-CV $K{=}10$ instance ($+7.16\%$, all six seeds), and the
 strongly heterogeneous $K{=}10$ instance ($+12.57\%$, all ten seeds), the last via the
-constant-leaf geometry from the automated search. The
+constant-leaf geometry found by the decoder-class search. The
 published PPO scalar is reported only as cross-protocol context: on $K{=}3$ the six-seed costs
 straddle the PPO line (the seed-mean is $+0.31\%$ below PPO and five of six seeds fall below it, but
 the seed spread exceeds the mean margin, so the beat is not robust), and on the $K{=}10$ rows PPO
@@ -3129,8 +3128,8 @@ heterogeneous-$10$ & const-leaf seed mean ($N=10$) & $\mathbf{44105.01\pm337.3_{
 the published base-stock). All three learned rows are seed-robust gate beats: every seed beats the gate
 on each (heterogeneous-$3$ mean$-$std $=+4.16\%$, high-CV mean$-$std $=+6.13\%$, and heterogeneous-$10$
 mean$-$std $=+11.90\%$ still clear it). The heterogeneous-$10$ row uses the \emph{constant}-leaf,
-oblique-split, per-retailer geometry surfaced by the automated structure search of
-Section~\ref{sec:owmr-agentic} ($N=10$ seeds, std $\approx0.76\%$ of the mean); the linear-leaf
+oblique-split, per-retailer geometry found by a search over the decoder classes
+($N=10$ seeds, std $\approx0.76\%$ of the mean); the linear-leaf
 hand-search only tied this row.
 Depth is not the lever on heterogeneous-$3$ (the depth-3 analogue is inside optimizer-seed noise of
 depth-2). The learned policy does not claim a robust published-PPO beat: the heterogeneous-$3$ seed
@@ -3164,7 +3163,7 @@ the per-retailer geometry does not degrade when moved from partial backorder to 
 backorder or lost sales (including under lead-time asymmetry and long leads), reproducing the
 strongest in-repo heuristic exactly. The promoted seed-robust \emph{beats} in
 Table~\ref{tab:owmr-results} are the asymmetric three-retailer partial-backorder instance, the
-high-CV ten-retailer instance, and --- via the automated search's constant-leaf geometry --- the
+high-CV ten-retailer instance, and --- via the constant-leaf geometry from the decoder-class search --- the
 strongly heterogeneous ten-retailer instance, all now reported as multi-seed means with every seed
 below the gate.
 
@@ -3200,30 +3199,6 @@ proportional/min-shortage rows; the learned policy is below the published PPO on
 ($-1.05\%$, $-1.96\%$, $-6.43\%$), so no PPO beat is claimed.
 \end{table}
 \FloatBarrier
-
-\subsection{How the winning structure was found: agentic policy-structure search}
-\label{sec:owmr-agentic}
-
-The constant-leaf geometry that turned the hardest heterogeneous $K{=}10$ row from a tie into a
-$+12.57\%$ gate beat was not hand-chosen --- it was discovered by an automated search over policy
-\emph{structures} that wraps the same CMA-ES loop used throughout this paper. The search is a small
-outer evolutionary loop in which a large-language-model agent proposes a policy-structure
-\emph{specification} in a compact domain-specific language (action head, per-dimension geometry,
-leaf class, split type, depth, feature basis, and warm start); each proposal is compiled to a soft-tree
-policy, warm-started at the gate-invertible anchor so generation~0 reproduces the gate exactly, trained
-by the inner CMA-ES on the Rust rollout oracle, and then scored under the seed-robust gate protocol of
-Section~\ref{sec:methods-eval}. A specification is kept only if it is a \emph{robust gate beat} ---
-every one of $\ge5$ optimizer seeds below the gate \emph{and} mean${}+{}$std below the gate ---
-otherwise it is logged as parity, never a win; the deployed cost is always the better of the trained
-policy and the gate floor. Quality--diversity pressure (best-per-niche elite contexts plus an
-anti-repeat rule that forbids re-proposing an already-tried structural signature) keeps the proposer
-from collapsing onto the single archived best. This is what surfaced the \emph{constant}-leaf head ---
-a structure the linear-leaf hand-search had never tried, and which a short, fixated run also missed
-until the diversity pressure was added. The same machinery, extended with a residual action head,
-produces the mixed-network result of Section~\ref{sec:pirhoo-results}. The contribution of this paper
-remains the \emph{learned policies and their action geometries}; the search is simply the mechanism
-that automates the one-structure-per-round human step, under the same honest-verdict discipline.
-
 
 \section{Ameliorating inventory}
 \label{sec:amelior}
@@ -3703,9 +3678,9 @@ Section~\ref{sec:pirhoo-policy} (Eq.~\eqref{eq:residual-head}) upgrades the row 
 \emph{robust gate beat}. The earlier linear-leaf flow head was not gate-invertible on this topology, so
 its eight CMA seeds scattered to a seed-mean $306.10\pm22.89$ ($+2.82\%$ above the $297.69$ gate, only
 four of eight seeds below it) --- parity, not a beat. With the residual head, which anchors every seed
-at the gate by construction, the structure discovered by the automated policy-structure search of
-Section~\ref{sec:owmr-agentic} (a residual-base-stock head with linear leaves, oblique splits, and a
-per-relation geometry) improves the per-period cost to a seed-robust mean $291.136\pm2.49$ over five
+at the gate by construction, the structure found by a search over the decoder classes (a
+residual-base-stock head with linear leaves, oblique splits, and a per-relation geometry) improves the
+per-period cost to a seed-robust mean $291.136\pm2.49$ over five
 optimizer seeds ($-2.20\%$ against the $297.69$ gate; all five seeds below it, per-seed
 $287.36,294.42,290.74,293.22,289.93$). The seed scatter collapses from $\pm22.89$ to $2.49$
 ($\approx0.86\%$ of the mean) precisely because the residual head reproduces the gate exactly at
