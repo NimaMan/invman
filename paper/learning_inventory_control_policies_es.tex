@@ -3609,9 +3609,12 @@ each relation), the simplest reproducible known-good point, and the search refin
 \paragraph{A residual gate-backbone action head.}
 On the richer \emph{mixed} distribution-and-assembly topology the flow warm-start is not gate-invertible:
 the scale-normalized leaf cannot reproduce the tuned pairwise base-stock gate exactly, so CMA-ES seeds
-start off-gate and scatter widely, leaving the row only at parity (Section~\ref{sec:pirhoo-results}). To
-fix this we introduce a \emph{residual gate-backbone} action head, a new action geometry in which the
-learned policy outputs a signed correction \emph{around} the gate rather than the order itself:
+start off-gate and scatter widely, leaving the row only at parity (Section~\ref{sec:pirhoo-results}). The
+fix follows a simple design principle: rather than relying on the optimizer to \emph{rediscover} the
+gate from an arbitrary initialization, we build the gate \emph{into} the policy as its backbone and let
+the search learn only a small correction on top of it. Concretely, we introduce a \emph{residual
+gate-backbone} action head, a new action geometry in which the learned policy outputs a signed
+correction \emph{around} the gate rather than the order itself:
 \begin{equation}
     \label{eq:residual-head}
     q^{r}_t \;=\; \mathrm{clamp}\!\bigl(\,q^{\mathrm{gate},r}_t + \mathrm{round}(\Delta^{r}_t),\ 0,\ \bar q^{r}\bigr),
