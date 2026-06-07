@@ -1377,6 +1377,19 @@ published A3C learner, with optimality gaps of $0.51$--$1.85\%$, does not reach.
 not the learner's capacity, is what makes this attainable: a raw direct-order decoder cannot express
 the capped dual-index control and does not reach this level.
 
+\paragraph{A heuristic-near-optimal anchor.} CDI's near-optimality here is a robust property of the
+problem, not an artifact of these six instances. Sweeping the levers that most stress static
+dual-sourcing control --- the expedited premium $c_e-c_r$, the penalty-to-holding ratio, demand
+variability, and the expedited order capacity --- the capped dual-index cost stays within $0.4\%$ of
+the \emph{exact} bounded-DP optimum on every cell whose value iteration we could validate
+(Appendix~\ref{app:ds-validation}). Dual sourcing is therefore the suite's
+\emph{heuristic-near-optimal anchor}: a regime in which a compact static heuristic already captures
+essentially all attainable value, so the right outcome for a learned policy is to \emph{match} it ---
+which the ES policy does, seed-robustly --- not to beat it. This is the deliberate counterpoint to
+the multi-echelon and one-warehouse problems, where the structured gate is well short of optimal and
+the same ES recipe improves on it by double-digit margins; together they show the method behaving
+correctly across the difficulty range the suite spans.
+
 \begin{table}[!htbp]
 \centering
 \small
@@ -4198,6 +4211,20 @@ bounded-DP cost is mildly inconsistent --- it falls slightly below the simulated
 and widening the bounds to remove the truncation is computationally prohibitive at $l_r=4$. The
 capped dual-index proxy is near-exact to within its published gap and is evaluated on the identical
 common-random-number rollout as the learned policies.
+
+\paragraph{Robustness of CDI's near-optimality (regime sweep).} The proxy choice is further justified
+by a direct regime sweep at $l_r=2$, where the bounded-DP value iteration \emph{can} be validated by
+widening the inventory box until the average cost plateaus. Across the expedited premium
+$c_e-c_r\in\{10,30,60,100\}$, penalty-to-holding ratios up to $b/h=40$, demand variability (uniform
+supports $U\{0,\dots,4\}$ and $U\{0,\dots,8\}$), and expedited capacities from $1$ (severely
+constrained) to $12$ (effectively uncapacitated), the capped dual-index cost stays within $0.4\%$ of
+the \emph{validated} bounded-DP optimum on every cell (maximum gap $\approx0.31\%$ on a fixed path,
+$\approx0.16\%$ out-of-sample --- below the path-to-path sampling noise). CDI's near-optimality is
+thus a structural property of this single-item dual-sourcing model, not a feature of the six
+benchmark rows; this is why we treat dual sourcing as a \emph{heuristic-near-optimal anchor} and
+report a match to CDI as the intended outcome. A learned soft tree trained directly on the
+highest-variability cell still does not beat CDI (a seed-robust loss of $+0.6\%$), consistent with
+there being essentially no optimality gap left to close.
 
 Table~\ref{tab:ds-figure9-validation} makes the proxy's fidelity explicit: the environment reproduces
 the published Figure~9 capped-dual-index optimality gaps within $0.01$ percentage points on all six
