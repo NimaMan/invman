@@ -10,6 +10,9 @@ crate-type = ["cdylib", "rlib"]
 [features]
 default = []
 python-extension = ["pyo3/extension-module"]
+# Reusable in-crate PPO trainer (candle autodiff). Optional so the default build
+# stays candle-free; enable with `--features ppo`. Promote to default once stable.
+ppo = ["dep:candle-core", "dep:candle-nn"]
 
 [dependencies]
 microlp = "0.4.0"
@@ -18,3 +21,9 @@ rand = "0.8"
 rand_distr = "0.4"
 rayon = "=1.7.0"
 statrs = "0.18"
+# PPO trainer backend (pure-Rust CPU autodiff). Gated behind the `ppo` feature.
+# Pinned to 0.9.x: 0.10+ adds a non-optional `tokenizers` dep that forces rayon ^1.10
+# (conflicts with the crate's rayon =1.7.0 pin) and bloats the build. 0.9.2 needs only
+# rayon ^1.7.0 (compatible) and keeps its rand 0.9 as a dev-dep, so production stays on rand 0.8.
+candle-core = { version = "0.9", optional = true }
+candle-nn = { version = "0.9", optional = true }

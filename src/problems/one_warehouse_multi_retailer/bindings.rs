@@ -983,5 +983,8 @@ pub fn register_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
         one_warehouse_multi_retailer_build_raw_state,
         m
     )?)?;
+    // Reusable Rust PPO trainer entry point (feature-gated behind `ppo`).
+    #[cfg(feature = "ppo")]
+    crate::problems::one_warehouse_multi_retailer::ppo_bindings::register_py(m)?;
     Ok(())
 }

@@ -89,8 +89,14 @@ def get_config(argv=None):
     parser.add_argument(
         "--training_method",
         default="cma",
-        choices=["cma"],
-        help="Parameter optimizer.",
+        choices=["cma", "ppo"],
+        help=(
+            "Policy trainer. 'cma' = gradient-free CMA-ES over the policy "
+            "parameter vector via es_mp.train (the default param-vector path). "
+            "'ppo' = the reusable Rust PPO trainer (a neural actor-critic, "
+            "gradient-based); it does NOT use the es_mp ask/tell loop -- invoke it "
+            "via invman.ppo_trainer.train_ppo(problem, ...)."
+        ),
     )
     parser.add_argument("--training_episodes", default=500, type=int, help="Number of ES iterations.")
     parser.add_argument("--mp_num_processors", default=4, type=int, help="Worker processes for parallel rollouts.")

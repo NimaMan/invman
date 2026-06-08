@@ -110,6 +110,12 @@ class PopulationScheduler:
 
 
 def get_es_optimizer(model, args):
+    if args.training_method == "ppo":
+        raise NotImplementedError(
+            "training_method='ppo' is a neural actor-critic trainer and does not use the "
+            "es_mp ask/tell loop. Invoke the reusable Rust PPO trainer directly via "
+            "invman.ppo_trainer.train_ppo(problem, ...) instead."
+        )
     if args.training_method != "cma":
         raise NotImplementedError(f"Unsupported optimizer '{args.training_method}'. Only CMA-ES is supported.")
     return CMAES(
