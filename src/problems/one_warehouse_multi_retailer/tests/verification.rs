@@ -166,6 +166,110 @@ fn proportional_allocation_floors_per_kaynov_eq_8_and_leaves_remainder_at_wareho
     assert!(shipments.iter().sum::<usize>() <= 5);
 }
 
+/// Gate-invertibility of the warehouse-holdback head (mirrors the PADN test
+/// `residual_base_stock_zero_params_reproduces_pairwise_gate_byte_exact`): at the
+/// ALL-ZERO warm-start the `EchelonTargetsWithHoldback` mode must decode IDENTICAL
+/// echelon orders + retailer targets to the plain `EchelonTargets` mode AND a holdback
+/// of EXACTLY 0, across several states. Zero holdback leaves `release_capacity` equal to
+/// the available warehouse inventory, so generation-0 reproduces the gate/heuristic
+/// release byte-exact and the new structural DOF can only help from there.
+#[test]
+fn holdback_zero_params_reproduces_echelon_targets_byte_exact() {
+    use crate::core::policies::soft_tree::{SoftTreeLeafType, SoftTreeSplitType};
+
+    let reference = VERIFICATION_PROBLEM_INSTANCE; // 2 retailers (K = 2)
+    // All states share the verification instance's pipeline SHAPE (warehouse pipeline len 1,
+    // per-retailer pipeline len 1) so a single normalized input_dim applies to every one.
+    let states = [
+        initialize_state(
+            reference.initial_warehouse_inventory,
+            reference.initial_warehouse_pipeline,
+            reference.initial_retailer_inventory,
+            &nested_pipeline_vec(reference.initial_retailer_pipeline),
+        )
+        .expect("state must build"),
+        initialize_state(5, &[2], &[2, 0], &nested_pipeline_vec(&[&[1], &[2]]))
+            .expect("state must build"),
+        initialize_state(0, &[4], &[-1, 3], &nested_pipeline_vec(&[&[0], &[1]]))
+            .expect("state must build"),
+    ];
+
+    let num_retailers = reference.initial_retailer_inventory.len();
+    let input_dim = crate::problems::one_warehouse_multi_retailer::rollout::expected_policy_input_dim(
+        &states[0],
+        PolicyStateMode::Normalized,
+    );
+    let depth = 2usize; // the production best-known OWMR structure is depth-2 constant-leaf oblique
+
+    // Shared config skeleton (constant leaves, oblique splits): only the action arm differs.
+    let make_config = |action_mode: PolicyActionMode, min_values: Vec<usize>, max_values: Vec<usize>| {
+        OneWarehouseMultiRetailerRolloutConfig {
+            input_dim,
+            depth,
+            action_spec: build_action_spec("vector_quantity", min_values, max_values, None)
+                .expect("action spec must build"),
+            periods: reference.periods,
+            demand_models: vec![],
+            allocation_policy:
+                crate::problems::one_warehouse_multi_retailer::allocation::AllocationPolicy::Proportional,
+            retailer_target_inventory_positions: None,
+            holding_cost_warehouse: reference.holding_cost_warehouse,
+            holding_cost_retailers: reference.holding_cost_retailers.to_vec(),
+            penalty_costs_retailers: reference.penalty_costs_retailers.to_vec(),
+            customer_behavior: reference.customer_behavior,
+            emergency_shipment_probability: reference.emergency_shipment_probability,
+            discount_factor: reference.discount_factor,
+            policy_action_mode: action_mode,
+            policy_state_mode: PolicyStateMode::Normalized,
+            temperature: 0.25,
+            split_type: SoftTreeSplitType::Oblique,
+            leaf_type: SoftTreeLeafType::Constant,
+        }
+    };
+
+    // K+1 echelon targets for plain EchelonTargets; K+2 for the holdback head (one extra
+    // signed control). Bounds are the same on the shared dims; the holdback dim's bounds are
+    // unused for the signed tail decode (kept consistent for the spec validator).
+    let target_max = vec![6, 4, 4]; // [warehouse, r1, r2]
+    let echelon_config =
+        make_config(PolicyActionMode::EchelonTargets, vec![0; num_retailers + 1], target_max.clone());
+    let mut holdback_max = target_max.clone();
+    holdback_max.push(0); // the holdback dim's [min,max] box is irrelevant to the signed tail
+    let holdback_config = make_config(
+        PolicyActionMode::EchelonTargetsWithHoldback,
+        vec![0; num_retailers + 2],
+        holdback_max,
+    );
+
+    let num_internal = (1usize << depth) - 1;
+    let num_leaves = 1usize << depth;
+    // Constant-leaf flat layout: split_weights (num_internal*input_dim) + split_bias
+    // (num_internal) + leaves (num_leaves*action_dim).
+    let echelon_flat = vec![0.0f32; num_internal * input_dim + num_internal + num_leaves * (num_retailers + 1)];
+    let holdback_flat = vec![0.0f32; num_internal * input_dim + num_internal + num_leaves * (num_retailers + 2)];
+
+    for state in states.iter() {
+        let echelon_action = policy_action_from_tree(&echelon_flat, state, &echelon_config)
+            .expect("echelon action must compute");
+        let holdback_action = policy_action_from_tree(&holdback_flat, state, &holdback_config)
+            .expect("holdback action must compute");
+        assert_eq!(
+            holdback_action.warehouse_holdback,
+            Some(0),
+            "zero-param holdback head must decode h == 0"
+        );
+        assert_eq!(
+            holdback_action.orders, echelon_action.orders,
+            "zero-param holdback orders must equal the plain EchelonTargets orders byte-exact"
+        );
+        assert_eq!(
+            holdback_action.retailer_target_inventory_positions,
+            echelon_action.retailer_target_inventory_positions,
+            "zero-param holdback retailer targets must equal the EchelonTargets targets byte-exact"
+        );
+    }
+}
+
 #[test]
 fn symmetric_echelon_target_mode_expands_shared_retailer_target() {
     let reference = VERIFICATION_PROBLEM_INSTANCE;

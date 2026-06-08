@@ -115,7 +115,8 @@ Honest reporting is structural, not optional:
   "leaf_type": "linear",            // constant | linear   (state-dependent vs flat)
   "temperature": 0.25,
   "action_head": "echelon_targets", // echelon_targets | symmetric_echelon_targets
-                                     // | echelon_targets_with_alloc_targets | direct_orders
+                                     // | echelon_targets_with_alloc_targets
+                                     // | echelon_targets_with_holdback | direct_orders
   "per_retailer_targets": true,      // grow control dim to per-retailer vs one shared target
   "features": ["on_hand", "backlog", "pipeline"],   // feature basis (pipeline-aware)
   "warm_start": "gate_invertible",   // gate_invertible | none
@@ -126,6 +127,13 @@ Constraints the compiler enforces (feasibility — every emitted spec must be ev
 - `direct_orders` / raw heads are allowed but lose without a gate anchor; the compiler still
   honours `warm_start`. Decoder must clip-to-position / project onto physical caps.
 - `echelon_targets` with `per_retailer_targets=true` ⇒ `control_dim = K+1` (warehouse + K retailers).
+- `echelon_targets_with_holdback` (per_retailer) ⇒ `control_dim = K+2`: the K+1 echelon targets PLUS
+  one SIGNED-residual warehouse-holdback control `h`. The release step rations against
+  `release_capacity = max(warehouse_available − round(h).max(0), 0)`, so the held-back `h` units stay
+  centrally and feed the prob-0.8 partial-backorder emergency channel (cheap central risk pooling).
+  `h` decodes via the identity-leaf tail of `action_targets_with_signed_tail_from_flat_params`, so it
+  is EXACTLY 0 at the gate-invertible warm-start ⇒ generation-0 reproduces the plain `echelon_targets`
+  release byte-exact and the DOF can only help from there.
 - Unknown enum values ⇒ `compiled_ok=false` with an explicit message (no silent coercion).
 
 ## evaluate I/O contract (oracle return)

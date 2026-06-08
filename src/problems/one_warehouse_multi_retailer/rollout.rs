@@ -5,7 +5,8 @@ use rand::{Rng, SeedableRng};
 use rayon::prelude::*;
 
 use crate::core::policies::soft_tree::{
-    action_vector_from_flat_params, SoftTreeActionSpec, SoftTreeLeafType, SoftTreeSplitType,
+    action_targets_with_signed_tail_from_flat_params, action_vector_from_flat_params,
+    SoftTreeActionSpec, SoftTreeLeafType, SoftTreeSplitType,
 };
 use crate::problems::one_warehouse_multi_retailer::allocation::{
     min_shortage_shipments, proportional_shipments, random_sequential_shipments, AllocationPolicy,
@@ -25,6 +26,17 @@ pub enum PolicyActionMode {
     EchelonTargets,
     EchelonTargetsWithAllocTargets,
     SymmetricEchelonTargets,
+    /// Echelon order-up-to targets (warehouse + K retailers, decoded exactly like
+    /// `EchelonTargets`) PLUS one extra SIGNED-residual control `h` (the central
+    /// warehouse holdback), decoded via the identity-leaf tail of
+    /// `action_targets_with_signed_tail_from_flat_params` so `h == 0` at the all-zero
+    /// warm-start. The release step rations against
+    /// `release_capacity = max(warehouse_available - round(h).max(0), 0)` BEFORE the
+    /// usual allocation, and the held-back units stay at the warehouse where they feed
+    /// the prob-0.8 partial-backorder emergency channel (env.rs:240-271). `h == 0`
+    /// reproduces the `EchelonTargets` behavior byte-exact (gate-invertible); control
+    /// dim is `K + 2` (warehouse target, K retailer targets, 1 holdback).
+    EchelonTargetsWithHoldback,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -59,6 +71,10 @@ pub struct OneWarehouseMultiRetailerRolloutConfig {
 pub struct PolicyAction {
     pub orders: Vec<usize>,
     pub retailer_target_inventory_positions: Option<Vec<usize>>,
+    /// Central warehouse holdback `h` (non-negative units retained at the warehouse before
+    /// the retailer allocation). `None` for every mode except `EchelonTargetsWithHoldback`;
+    /// `Some(0)` there reproduces the no-holdback `EchelonTargets` release exactly.
+    pub warehouse_holdback: Option<usize>,
 }
 
 pub fn parse_policy_state_mode(value: &str) -> PyResult<PolicyStateMode> {
@@ -83,8 +99,11 @@ pub fn parse_policy_action_mode(value: &str) -> PyResult<PolicyActionMode> {
         "symmetric_echelon_targets" | "symmetric_targets" | "shared_retailer_targets" => {
             Ok(PolicyActionMode::SymmetricEchelonTargets)
         }
+        "echelon_targets_with_holdback"
+        | "echelon_base_stock_targets_with_holdback"
+        | "targets_with_holdback" => Ok(PolicyActionMode::EchelonTargetsWithHoldback),
         other => Err(PyValueError::new_err(format!(
-            "unsupported policy_action_mode '{other}'; expected 'direct_orders', 'echelon_targets', 'echelon_targets_with_alloc_targets', or 'symmetric_echelon_targets'"
+            "unsupported policy_action_mode '{other}'; expected 'direct_orders', 'echelon_targets', 'echelon_targets_with_alloc_targets', 'symmetric_echelon_targets', or 'echelon_targets_with_holdback'"
         ))),
     }
 }
@@ -115,6 +134,8 @@ fn validate_config(
         PolicyActionMode::DirectOrders | PolicyActionMode::EchelonTargets => num_retailers + 1,
         PolicyActionMode::EchelonTargetsWithAllocTargets => 1 + 2 * num_retailers,
         PolicyActionMode::SymmetricEchelonTargets => 2,
+        // K echelon targets (warehouse + K retailers) plus one signed holdback control.
+        PolicyActionMode::EchelonTargetsWithHoldback => num_retailers + 2,
     };
     if config.action_spec.action_dim != expected_action_dim {
         return Err(PyValueError::new_err(format!(
@@ -143,6 +164,7 @@ fn validate_config(
         && config.policy_action_mode != PolicyActionMode::EchelonTargets
         && config.policy_action_mode != PolicyActionMode::EchelonTargetsWithAllocTargets
         && config.policy_action_mode != PolicyActionMode::SymmetricEchelonTargets
+        && config.policy_action_mode != PolicyActionMode::EchelonTargetsWithHoldback
     {
         return Err(PyValueError::new_err(
             "min_shortage rollout requires retailer_target_inventory_positions",
@@ -253,51 +275,91 @@ pub fn policy_action_from_tree(
     state: &OneWarehouseMultiRetailerState,
     config: &OneWarehouseMultiRetailerRolloutConfig,
 ) -> PyResult<PolicyAction> {
-    let actions = action_vector(flat_params, state, config)?;
-    match config.policy_action_mode {
-        PolicyActionMode::DirectOrders => Ok(PolicyAction {
-            orders: actions,
-            retailer_target_inventory_positions: config.retailer_target_inventory_positions.clone(),
-        }),
-        PolicyActionMode::EchelonTargets => {
-            if actions.len() < 2 {
-                return Err(PyValueError::new_err(
-                    "echelon target mode requires warehouse and retailer targets",
-                ));
-            }
-            Ok(PolicyAction {
-                orders: echelon_base_stock_orders(state, actions[0], &actions[1..])?,
-                retailer_target_inventory_positions: Some(actions[1..].to_vec()),
-            })
+    // The holdback mode decodes via the hybrid bounded-targets + signed-tail head; every
+    // other mode keeps the existing pure-bounded projection (byte-identical behavior).
+    if config.policy_action_mode == PolicyActionMode::EchelonTargetsWithHoldback {
+        let num_retailers = state.retailer_inventory.len();
+        let policy_state = build_policy_state(state, config.periods, config.policy_state_mode)?;
+        let (targets, signed_tail) = action_targets_with_signed_tail_from_flat_params(
+            &policy_state,
+            flat_params,
+            config.input_dim,
+            config.depth,
+            config.temperature,
+            config.split_type,
+            config.leaf_type,
+            &config.action_spec,
+        )?;
+        if targets.len() != num_retailers + 1 {
+            return Err(PyValueError::new_err(
+                "echelon target mode with holdback requires warehouse + per-retailer targets plus one holdback control",
+            ));
         }
-        PolicyActionMode::EchelonTargetsWithAllocTargets => {
-            let num_retailers = state.retailer_inventory.len();
-            if actions.len() != 1 + 2 * num_retailers {
-                return Err(PyValueError::new_err(
-                    "echelon target mode with allocation targets requires warehouse, retailer order targets, and retailer allocation targets",
-                ));
+        // h is a SIGNED residual: round, then floor at 0 (a holdback is non-negative; the
+        // release step also clamps against the available warehouse stock). signed_tail == 0
+        // at the zero-param warm-start => h == 0 => byte-exact EchelonTargets release.
+        let holdback = signed_tail.round().max(0.0) as usize;
+        Ok(PolicyAction {
+            orders: echelon_base_stock_orders(state, targets[0], &targets[1..])?,
+            retailer_target_inventory_positions: Some(targets[1..].to_vec()),
+            warehouse_holdback: Some(holdback),
+        })
+    } else {
+        let actions = action_vector(flat_params, state, config)?;
+        match config.policy_action_mode {
+            PolicyActionMode::DirectOrders => Ok(PolicyAction {
+                orders: actions,
+                retailer_target_inventory_positions: config
+                    .retailer_target_inventory_positions
+                    .clone(),
+                warehouse_holdback: None,
+            }),
+            PolicyActionMode::EchelonTargets => {
+                if actions.len() < 2 {
+                    return Err(PyValueError::new_err(
+                        "echelon target mode requires warehouse and retailer targets",
+                    ));
+                }
+                Ok(PolicyAction {
+                    orders: echelon_base_stock_orders(state, actions[0], &actions[1..])?,
+                    retailer_target_inventory_positions: Some(actions[1..].to_vec()),
+                    warehouse_holdback: None,
+                })
             }
-            let order_targets_end = 1 + num_retailers;
-            Ok(PolicyAction {
-                orders: echelon_base_stock_orders(
-                    state,
-                    actions[0],
-                    &actions[1..order_targets_end],
-                )?,
-                retailer_target_inventory_positions: Some(actions[order_targets_end..].to_vec()),
-            })
-        }
-        PolicyActionMode::SymmetricEchelonTargets => {
-            if actions.len() != 2 {
-                return Err(PyValueError::new_err(
-                    "symmetric echelon target mode requires exactly two controls",
-                ));
+            PolicyActionMode::EchelonTargetsWithAllocTargets => {
+                let num_retailers = state.retailer_inventory.len();
+                if actions.len() != 1 + 2 * num_retailers {
+                    return Err(PyValueError::new_err(
+                        "echelon target mode with allocation targets requires warehouse, retailer order targets, and retailer allocation targets",
+                    ));
+                }
+                let order_targets_end = 1 + num_retailers;
+                Ok(PolicyAction {
+                    orders: echelon_base_stock_orders(
+                        state,
+                        actions[0],
+                        &actions[1..order_targets_end],
+                    )?,
+                    retailer_target_inventory_positions: Some(actions[order_targets_end..].to_vec()),
+                    warehouse_holdback: None,
+                })
             }
-            let retailer_targets = vec![actions[1]; state.retailer_inventory.len()];
-            Ok(PolicyAction {
-                orders: echelon_base_stock_orders(state, actions[0], &retailer_targets)?,
-                retailer_target_inventory_positions: Some(retailer_targets),
-            })
+            PolicyActionMode::SymmetricEchelonTargets => {
+                if actions.len() != 2 {
+                    return Err(PyValueError::new_err(
+                        "symmetric echelon target mode requires exactly two controls",
+                    ));
+                }
+                let retailer_targets = vec![actions[1]; state.retailer_inventory.len()];
+                Ok(PolicyAction {
+                    orders: echelon_base_stock_orders(state, actions[0], &retailer_targets)?,
+                    retailer_target_inventory_positions: Some(retailer_targets),
+                    warehouse_holdback: None,
+                })
+            }
+            PolicyActionMode::EchelonTargetsWithHoldback => unreachable!(
+                "EchelonTargetsWithHoldback is handled by the dedicated branch above"
+            ),
         }
     }
 }
@@ -310,17 +372,26 @@ fn retailer_shipments<R: Rng + ?Sized>(
 ) -> PyResult<Vec<usize>> {
     let available_warehouse_inventory =
         (state.warehouse_inventory + state.warehouse_pipeline[0] as i32).max(0) as usize;
+    // Central warehouse holdback (EchelonTargetsWithHoldback only): retain `h` units at the
+    // warehouse BEFORE the retailer allocation, so the allocator rations only against
+    // release_capacity = max(available - h, 0). The held-back units are never shipped here,
+    // so they remain in warehouse_ending_inventory (env.rs:214) and feed the prob-0.8
+    // partial-backorder emergency channel (env.rs:240-271). h == 0 (the gate-invertible
+    // warm-start) leaves release_capacity == available_warehouse_inventory, reproducing the
+    // existing release byte-exact; every other mode has warehouse_holdback == None.
+    let release_capacity = match policy_action.warehouse_holdback {
+        Some(h) => available_warehouse_inventory.saturating_sub(h),
+        None => available_warehouse_inventory,
+    };
     match config.allocation_policy {
         AllocationPolicy::Proportional => {
-            proportional_shipments(available_warehouse_inventory, &policy_action.orders[1..])
+            proportional_shipments(release_capacity, &policy_action.orders[1..])
         }
-        AllocationPolicy::RandomSequential => random_sequential_shipments(
-            rng,
-            available_warehouse_inventory,
-            &policy_action.orders[1..],
-        ),
+        AllocationPolicy::RandomSequential => {
+            random_sequential_shipments(rng, release_capacity, &policy_action.orders[1..])
+        }
         AllocationPolicy::MinShortage => min_shortage_shipments(
-            available_warehouse_inventory,
+            release_capacity,
             &policy_action.orders[1..],
             &retailer_inventory_positions(state)?,
             policy_action

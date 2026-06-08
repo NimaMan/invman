@@ -577,6 +577,15 @@ def build_soft_tree_model(
         retailer_max_values = max_values[1:]
         max_values = [max_values[0]] + retailer_max_values + retailer_max_values
         control_dim = 1 + 2 * len(reference["retailer_lead_times"])
+    elif policy_action_mode == "echelon_targets_with_holdback":
+        # K+1 echelon targets PLUS one signed warehouse-holdback control. The holdback dim
+        # is a SIGNED residual (identity-leaf tail, h == 0 at the zero-param warm-start), so
+        # its [min,max] box is not used by the decoder; we carry a generous holdback cap as
+        # the max purely to keep the spec well-formed. The cap is sized to the largest
+        # echelon target (an upper bound on plausible central pooling).
+        holdback_max = int(max(max_values))
+        max_values = list(max_values) + [holdback_max]
+        control_dim = len(reference["retailer_lead_times"]) + 2
     else:
         control_dim = len(reference["retailer_lead_times"]) + 1
     return Policy(

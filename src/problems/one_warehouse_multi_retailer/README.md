@@ -162,7 +162,12 @@ Search coverage / what moved the needle:
 - `heuristics/echelon_base_stock.rs` — echelon base-stock order computation
 - `finite_horizon_dp.rs` — reduced exact DP + heuristic / soft-tree evaluators
 - `rollout.rs` — soft-tree rollout, feature construction, action modes
-  (`direct_orders` / `echelon_targets` / `symmetric_echelon_targets`)
+  (`direct_orders` / `echelon_targets` / `echelon_targets_with_alloc_targets` /
+  `symmetric_echelon_targets` / `echelon_targets_with_holdback`). The holdback mode adds one
+  SIGNED-residual control `h` (identity-leaf tail, `h == 0` at the zero-param warm-start =>
+  byte-exact `echelon_targets` release) and rations against
+  `release_capacity = max(warehouse_available − round(h).max(0), 0)`; the held-back units stay at
+  the warehouse and feed the prob-0.8 partial-backorder emergency channel (central risk pooling)
 - `references.rs` — `KAYNOV_2024_REFERENCE`, 14-instance `TABLE_A3_INSTANCES`,
   `PRIMARY_REFERENCE_INSTANCE` (= instance 7), `WORKED_TRANSITION_REFERENCE`,
   `VERIFICATION_PROBLEM_INSTANCE`

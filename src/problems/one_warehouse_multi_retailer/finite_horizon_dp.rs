@@ -423,6 +423,12 @@ fn soft_tree_action(
                 Some(retailer_targets),
             ))
         }
+        // The exact finite-horizon DP simulates the bounded action vector only; it has no
+        // release-capacity (holdback) plumbing. The holdback head is trained/scored via the
+        // stochastic rollout oracle, not the tiny-instance exact DP, so this fails loudly.
+        PolicyActionMode::EchelonTargetsWithHoldback => Err(PyValueError::new_err(
+            "echelon_targets_with_holdback is not supported by the exact finite-horizon DP; use the rollout oracle",
+        )),
     }
 }
 

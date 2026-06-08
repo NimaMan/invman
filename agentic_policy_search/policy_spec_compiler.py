@@ -111,6 +111,7 @@ ACTION_HEADS = (
     "echelon_targets",
     "symmetric_echelon_targets",
     "echelon_targets_with_alloc_targets",
+    "echelon_targets_with_holdback",
     "direct_orders",
 )
 WARM_STARTS = ("gate_invertible", "none")
@@ -123,10 +124,11 @@ _NORMALIZED_FEATURES = {"on_hand", "backlog", "pipeline", "scale", "total_positi
 _ABSOLUTE_FEATURES = {"absolute", "absolute_position", "raw_position", "absolute_augmented"}
 SUPPORTED_FEATURES = _NORMALIZED_FEATURES | _ABSOLUTE_FEATURES
 
-# Per-retailer (asymmetric-capable) heads grow the control dim to K+1 or 1+2K.
+# Per-retailer (asymmetric-capable) heads grow the control dim to K+1, 1+2K, or K+2.
 _PER_RETAILER_HEADS = (
     "echelon_targets",
     "echelon_targets_with_alloc_targets",
+    "echelon_targets_with_holdback",
     "direct_orders",
 )
 # Target heads support both proportional and min_shortage allocation (they emit a
@@ -136,7 +138,12 @@ _TARGET_HEADS = (
     "echelon_targets",
     "symmetric_echelon_targets",
     "echelon_targets_with_alloc_targets",
+    "echelon_targets_with_holdback",
 )
+# Heads with a trailing SIGNED-residual control (the warehouse holdback h). For these the
+# gate-invertible warm start zeroes the tail dim (identity neutral => h == 0) instead of
+# bounded-inverting it, so generation-0 reproduces the plain echelon release byte-exact.
+_HOLDBACK_HEADS = ("echelon_targets_with_holdback",)
 
 
 @dataclass
@@ -344,14 +351,25 @@ def attach_gate_warm_start(
     w_level = int(gate_warehouse_level)
     r_levels = [int(v) for v in gate_retailer_levels]
     head = compiled.policy_action_mode
+    signed_tail_dims: tuple[int, ...] = ()
     if head == "symmetric_echelon_targets":
         target_vector = [w_level, int(round(float(np.mean(r_levels))))]
     elif head == "echelon_targets_with_alloc_targets":
         target_vector = [w_level] + r_levels + r_levels
+    elif head == "echelon_targets_with_holdback":
+        # K+1 echelon targets + 1 signed holdback control. The trailing holdback dim is the
+        # identity-leaf SIGNED residual; warm-start it to the neutral element 0 (=> h == 0)
+        # so generation-0 reproduces the plain echelon (gate) release byte-exact. The 0 here
+        # is a placeholder for the dim's target slot; _warm_start_flat_params ignores the
+        # value for signed-tail dims and forces leaf-output 0.
+        target_vector = [w_level] + r_levels + [0]
+        signed_tail_dims = (len(target_vector) - 1,)
     else:  # echelon_targets
         target_vector = [w_level] + r_levels
 
-    warm_flat, warm_started = _warm_start_flat_params(compiled.model, target_vector)
+    warm_flat, warm_started = _warm_start_flat_params(
+        compiled.model, target_vector, signed_tail_dims=signed_tail_dims
+    )
     compiled.warm_flat = warm_flat if warm_started else None
     compiled.warm_started = bool(warm_started)
     return compiled

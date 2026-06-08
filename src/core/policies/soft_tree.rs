@@ -584,6 +584,122 @@ pub fn action_residual_signed_from_flat_params(
     Ok(delta)
 }
 
+/// Hybrid head: bounded targets for the leading dims + ONE signed-residual tail dim.
+///
+/// Decodes `action_dim` leaf outputs in a SINGLE leaf-probability pass and splits them:
+///   - dims `0 .. action_dim-1` : the SAME bounded `vector_quantity` projection used by
+///     `action_vector_from_flat_params` (per-dim `min + sigmoid(leaf)*(max-min)` for
+///     constant/sigmoid leaves, `min + softplus(leaf)` for linear leaves), then rounded
+///     and clamped to `[min, max]`. These are the echelon order-up-to TARGETS, so the
+///     existing per-dimension gate-invertible warm start reproduces them byte-exact.
+///   - dim `action_dim-1` (the LAST) : a RAW SIGNED residual (IDENTITY leaf transform,
+///     no min/softplus/sigmoid), summed over leaves. At the all-zero warm-start every
+///     leaf output is exactly 0, so the convex mixture is exactly 0 (split-independent)
+///     => the returned `signed_tail` is EXACTLY 0.0 (gate-invertible neutral element).
+///
+/// Returns `(targets, signed_tail)` where `targets.len() == action_dim - 1`. The caller
+/// (the OWMR holdback rollout) rounds `signed_tail` to the integer warehouse-holdback `h`
+/// and applies `release_capacity = max(warehouse_available - h, 0)` BEFORE allocation, so
+/// `signed_tail == 0` (=> `h == 0`) reproduces the existing echelon behavior exactly. The
+/// tail is intentionally NOT bound to `[min, max]` here (it is a signed delta, like
+/// `action_residual_signed_from_flat_params`); the caller clamps `h` against the available
+/// warehouse stock. `min_values`/`max_values` apply only to the leading TARGET dims.
+pub fn action_targets_with_signed_tail_from_flat_params(
+    state: &[f32],
+    flat_params: &[f32],
+    input_dim: usize,
+    depth: usize,
+    temperature: f32,
+    split_type: SoftTreeSplitType,
+    leaf_type: SoftTreeLeafType,
+    action_spec: &SoftTreeActionSpec,
+) -> PyResult<(Vec<usize>, f32)> {
+    if temperature <= 0.0 {
+        return Err(PyValueError::new_err("temperature must be positive"));
+    }
+    let action_dim = action_spec.action_dim;
+    if action_dim < 2 {
+        return Err(PyValueError::new_err(
+            "targets-with-signed-tail head requires at least one target dim plus the tail dim",
+        ));
+    }
+    if action_spec.min_values.len() != action_dim || action_spec.max_values.len() != action_dim {
+        return Err(PyValueError::new_err(
+            "min_values/max_values must match action_dim for the targets-with-signed-tail head",
+        ));
+    }
+    let (weights_end, bias_end, num_leaves) =
+        validate_soft_tree_flat_params(flat_params.len(), input_dim, depth, leaf_type, action_dim)?;
+    if state.len() != input_dim {
+        return Err(PyValueError::new_err(format!(
+            "state length {} does not match input_dim {}",
+            state.len(),
+            input_dim
+        )));
+    }
+
+    let split_weights = &flat_params[..weights_end];
+    let split_bias = &flat_params[weights_end..bias_end];
+    let leaf_probs = soft_tree_leaf_probabilities(
+        state,
+        split_weights,
+        split_bias,
+        depth,
+        temperature,
+        split_type,
+    );
+
+    let tail_idx = action_dim - 1;
+    let mut target_values = vec![0.0f32; tail_idx];
+    let mut tail_signed = 0.0f32;
+    for (leaf_idx, leaf_prob) in leaf_probs.iter().enumerate() {
+        let leaf_output = leaf_output_from_flat_params(
+            state,
+            flat_params,
+            input_dim,
+            bias_end,
+            num_leaves,
+            leaf_idx,
+            leaf_type,
+            action_dim,
+        );
+        for action_idx in 0..tail_idx {
+            let min_value = action_spec.min_values[action_idx] as f32;
+            let scaled = match leaf_type {
+                SoftTreeLeafType::Constant | SoftTreeLeafType::SigmoidLinear => {
+                    let max_value = action_spec.max_values[action_idx] as f32;
+                    let span = max_value - min_value;
+                    min_value + (1.0 / (1.0 + (-leaf_output[action_idx]).exp())) * span
+                }
+                SoftTreeLeafType::Linear => {
+                    let raw = leaf_output[action_idx];
+                    let softplus = raw.max(0.0) + (-(raw.abs())).exp().ln_1p();
+                    min_value + softplus
+                }
+            };
+            target_values[action_idx] += leaf_prob * scaled;
+        }
+        // Identity transform on the tail dim: neutral element is exactly 0 at zero params.
+        tail_signed += leaf_prob * leaf_output[tail_idx];
+    }
+
+    // Project the leading target dims with the SAME round+clamp as project_action_value's
+    // ScalarQuantity/VectorQuantity arm (the targets are bounded order-up-to positions).
+    let mut targets = Vec::with_capacity(tail_idx);
+    for (dim_idx, value) in target_values.iter().enumerate() {
+        let min_value = action_spec.min_values[dim_idx] as f32;
+        let max_value = action_spec.max_values[dim_idx] as f32;
+        let rounded = if *value >= 0.0 {
+            (*value + 0.5).floor()
+        } else {
+            (*value - 0.5).ceil()
+        };
+        let clipped = rounded.clamp(min_value, max_value);
+        targets.push(clipped as usize);
+    }
+    Ok((targets, tail_signed))
+}
+
 pub fn uncapped_scalar_action_from_flat_params(
     state: &[f32],
     flat_params: &[f32],

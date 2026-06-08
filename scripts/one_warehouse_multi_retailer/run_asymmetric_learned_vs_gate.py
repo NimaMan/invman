@@ -220,7 +220,7 @@ def _search_gate_parallel(reference, allocations, search_paths, workers):
 # --------------------------------------------------------------------------- #
 # Learned training (identical to the autoresearch / benchmark path)            #
 # --------------------------------------------------------------------------- #
-def _warm_start_flat_params(model, target_vector):
+def _warm_start_flat_params(model, target_vector, signed_tail_dims=None):
     """Seed the soft-tree leaves so generation 0 emits the gate target vector at every
     leaf (state-independently), inverting the per-dimension leaf transform applied in
     `src/core/policies/soft_tree.rs::action_vector_from_flat_params`:
@@ -237,9 +237,19 @@ def _warm_start_flat_params(model, target_vector):
     asymmetric geometries too. `direct_orders` cannot reproduce a base-stock target
     (its action is a raw order, not a target position) so warm-start is not used there.
 
+    `signed_tail_dims` (optional set of dim indices) names dims decoded by the IDENTITY
+    leaf transform (a SIGNED residual, NOT the bounded transform) -- e.g. the warehouse
+    holdback `h` of the echelon_targets_with_holdback head. For those dims the neutral
+    element is leaf-output 0 (=> h == 0), so we set their leaf param/bias to EXACTLY 0
+    instead of the bounded inversion. This keeps the warm start gate-invertible (h == 0
+    reproduces the plain echelon release byte-exact) while the rest of the vector
+    reproduces the gate targets. `target_vector` MUST still be length == control_dim; the
+    entry at a signed-tail dim is ignored (the neutral element is always 0).
+
     Returns (flat_params_list, warm_started_bool).
     """
     import math
+    tail_dims = set(int(d) for d in (signed_tail_dims or ()))
     flat = np.asarray(model.get_model_flat_params(), dtype=np.float32).copy()
     num_leaves = 2 ** int(model.depth)
     action_dim = int(model.control_dim)
@@ -255,6 +265,10 @@ def _warm_start_flat_params(model, target_vector):
             return flat.tolist(), False
         leaf_param = np.empty(action_dim, dtype=np.float32)
         for dim in range(action_dim):
+            if dim in tail_dims:
+                # Identity-leaf signed tail: neutral element is leaf-output 0 (=> h == 0).
+                leaf_param[dim] = 0.0
+                continue
             span = max_values[dim] - min_values[dim]
             if span <= 0.0:
                 leaf_param[dim] = 0.0
@@ -275,6 +289,10 @@ def _warm_start_flat_params(model, target_vector):
     flat[weights_start:weights_start + weights_block] = 0.0
     leaf_bias = np.empty(action_dim, dtype=np.float32)
     for dim in range(action_dim):
+        if dim in tail_dims:
+            # Identity-leaf signed tail: leaf weights already zeroed above, bias 0 => h == 0.
+            leaf_bias[dim] = 0.0
+            continue
         delta = max(targets[dim] - min_values[dim], 1e-6)
         leaf_bias[dim] = math.log(math.expm1(delta))
     bias = flat[bias_start:].reshape(num_leaves, action_dim)
