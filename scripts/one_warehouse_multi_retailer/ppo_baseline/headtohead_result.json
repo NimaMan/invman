@@ -1,0 +1,38 @@
+{
+  "instance": "kaynov2024_instance_14",
+  "scoring": "batched instrument env (validated vs Rust within 0.04% on both policies); holdout CRN seed 900000, 2048 paths, proportional rationing, averaged over 8 emergency-RNG seeds",
+  "softtree_per_seed": [
+    43981.83,
+    44155.3,
+    43669.14,
+    43753.36,
+    43445.24
+  ],
+  "ppo_per_seed": [
+    49892.55,
+    50120.73,
+    50862.0,
+    50747.57,
+    50752.13
+  ],
+  "softtree_A_mean": 43800.97,
+  "softtree_A_std": 246.76,
+  "softtree_A_sem": 110.35,
+  "ppo_X_mean": 50474.99,
+  "ppo_X_std": 391.31,
+  "ppo_X_sem": 175.0,
+  "X_minus_A": 6674.02,
+  "diff_sem": 206.89,
+  "ppo_vs_softtree_pct": 15.237,
+  "published_ppo_context": 42835.02,
+  "softtree_vs_published_pct": -2.255,
+  "ppo_vs_published_pct": -17.836,
+  "softtree_rust_deployed_mean": 43810.27,
+  "softtree_rust_deployed_std": 231.53,
+  "gate_cost_rust": 50445.2,
+  "gate_batched_scored_paired": 50484.3,
+  "ppo_train_best_checkpoint_mean": 49708.3,
+  "ppo_train_best_checkpoint_std": 136.5,
+  "note_ppo_train_vs_scored": "train-time best-checkpoint (49708, single emerg seed, 1024 paths) carried mild selection optimism; honest unbiased score over 8 emerg seeds x 2048 paths = 50475, statistically indistinguishable from the gate 50484",
+  "verdict": "Under our protocol, our compact CMA-ES soft-tree BEATS a faithfully-retrained, BC-warm-started PPO: 43801+/-247 vs 50475+/-391 (X-A=+6674, ~13.2%, beyond 2x combined SEM 207). Faithful in-protocol PPO converges back to the gate heuristic and cannot reach the soft-tree level."
+}
