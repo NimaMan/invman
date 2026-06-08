@@ -52,6 +52,7 @@ pub mod actor_critic;
 pub mod candle_backend_smoke_test;
 pub mod environment;
 pub mod gae;
+pub mod gaussian_head;
 pub mod multi_discrete_head;
 pub mod ppo_trainer;
 pub mod running_norm;

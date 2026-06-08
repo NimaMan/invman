@@ -38,7 +38,8 @@ import invman_rust
 
 # problem name -> the pyo3 binding that trains it with PPO.
 _PPO_BINDINGS = {
-    "one_warehouse_multi_retailer": "one_warehouse_multi_retailer_train_ppo",
+    "one_warehouse_multi_retailer": "one_warehouse_multi_retailer_train_ppo",  # multi-discrete
+    "lost_sales": "lost_sales_train_ppo",  # continuous scalar order (diagonal Gaussian)
 }
 
 

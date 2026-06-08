@@ -1370,5 +1370,8 @@ pub fn register_py(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(lost_sales_heuristics_all, m)?)?;
     m.add_function(wrap_pyfunction!(lost_sales_reference_instance_names, m)?)?;
     m.add_function(wrap_pyfunction!(lost_sales_reference_costs, m)?)?;
+    // Reusable Rust PPO trainer entry point (feature-gated behind `ppo`).
+    #[cfg(feature = "ppo")]
+    crate::problems::lost_sales::vanilla::ppo_bindings::register_py(m)?;
     Ok(())
 }
