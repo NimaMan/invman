@@ -278,6 +278,22 @@ policy on every row ($-3.14\%$, $-7.84\%$, $-17.77\%$ relative to PPO). The mech
 is the generalized per-retailer warm-start floor of Section~\ref{sec:owmr-policy}: it converts a rich
 but hard-to-optimize action geometry from a screening-stage loss into a robust held-out win.
 
+\paragraph{A faithful in-protocol PPO.}
+The published-PPO column is \emph{cross-protocol}: \citet{kaynov2024owmr} report it under their own
+(unverified) demand convention, and their PPO training hyperparameters are not published, so their exact
+run cannot be replicated. To place the learned policy against a PPO baseline under \emph{our} convention,
+we trained a faithful in-protocol PPO --- a shared-trunk actor--critic with Kaynov-style multi-discrete
+order heads, generalized advantage estimation, a clipped surrogate with value clipping, and a
+behavior-cloning warm start to the gate --- and scored it on the identical held-out CRN block under
+proportional rationing. On \texttt{instance\_14} it costs $50{,}475\pm391$ (five seeds): statistically
+indistinguishable from the strongest gate ($50{,}445$) and $\approx 13\%$ more costly than the learned
+soft tree ($44{,}105$). The learned policy's $+12.57\%$ gate beat is therefore also a $\approx 13\%$ beat
+over a faithful, fully-tuned in-protocol PPO, and the lower published figure ($42{,}835$) reflects the
+different demand convention rather than an in-protocol PPO advantage. We provide this PPO as a
+first-class, reusable trainer inside the same Rust simulator that scores the CMA-ES policies---so the
+comparison uses one common evaluator---and an in-crate run reproduces the figure to within seed noise; we
+report it as a corroborating baseline, not as a separate headline.
+
 \begin{table}[!htbp]
 \centering
 \small
