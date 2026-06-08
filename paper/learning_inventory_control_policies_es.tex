@@ -3069,6 +3069,23 @@ warm-start floor plus the adequately batched, moderate-variance training protoco
 Section~\ref{sec:owmr-policy}, and --- on the hardest row --- the constant-leaf action geometry; depth-3
 adds no reliable advantage over depth-2 on the headline $K{=}3$ row.
 
+\paragraph{A faithful in-protocol PPO.}
+The published-PPO scalar above is \emph{cross-protocol}: \citet{kaynov2024owmr} report it under their own
+(unverified) demand convention, and their PPO training hyperparameters are not published, so their exact
+run cannot be replicated. To compare the learned policy against a PPO baseline under \emph{our}
+convention, we trained a faithful, independently-tuned in-protocol PPO --- a shared-trunk actor--critic
+with Kaynov-style multi-discrete order heads, generalized advantage estimation, a clipped surrogate with
+value clipping, and a behavior-cloning warm start to the strongest heuristic --- and scored it on the
+identical held-out CRN block under proportional rationing. On the strongly heterogeneous $K{=}10$ instance
+it costs $50{,}475\pm391$ (five seeds): statistically indistinguishable from the strongest heuristic
+($50{,}445$). The learned soft tree therefore sits $\approx 12\%$ below a faithful in-protocol PPO as
+well --- essentially the same margin as its $+12.44\%$ improvement over that heuristic, because the
+in-protocol PPO converges to it --- so the lower published figure ($42{,}835$) reflects the different
+demand convention rather than an in-protocol PPO advantage. An independent implementation in the same
+simulator that scores the CMA-ES policies reproduces this in-protocol PPO cost to within seed noise, so
+the comparison uses one common evaluator; we report it as a corroborating baseline, not a separate
+headline.
+
 \begin{table}[!htbp]
 \centering
 \small
