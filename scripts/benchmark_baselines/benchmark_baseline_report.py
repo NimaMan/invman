@@ -99,6 +99,8 @@ def collect_rows(
             "instance": name,
             "subfamily": inst.subfamily,
             "source": inst.source,
+            "verification_tier": inst.verification_tier,
+            "literature_verified": inst.literature_verified,
             "reference_baseline": None if ref is None else ref.name,
             "reference_cost": None if ref is None else ref.mean_cost,
             "published": published,
@@ -139,9 +141,16 @@ def _fmt(value) -> str:
 def render_markdown(problem: str, rows: list[dict], *, simulate: bool) -> str:
     lines: list[str] = [f"# Baseline report — `{problem}`", ""]
     runner = runners.get_runner(problem)
+    tier = runner.verification_tier
+    verified = runner.literature_verified
+    badge = (
+        f"literature-verified (tier `{tier}`)" if verified
+        else f"**NOT literature-verified** (tier `{tier}` — repo-native, no published anchor)"
+    )
     lines.append(
         f"Generated from the executable baseline layer "
-        f"(`invman.benchmarks.runners`). {len(rows)} reference instance(s)."
+        f"(`invman.benchmarks.runners`). {len(rows)} reference instance(s). "
+        f"This family is {badge}."
     )
     lines.append("")
 

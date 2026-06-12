@@ -27,11 +27,53 @@ SMALL_ME = EvalProtocol(seeds=(123,), horizon=1500, warm_up_periods_ratio=0.0, r
 
 
 def test_every_catalog_family_has_a_runner() -> None:
-    # Coverage promise: all 14 catalog families are runnable.
-    assert set(runners.available_runners()) == set(catalog.list_problems())
+    # Coverage promise: all 14 catalog families are runnable (include_unverified).
+    assert set(runners.available_runners(include_unverified=True)) == set(catalog.list_problems())
 
 
 SEAM_FAMILIES = {"lost_sales", "dual_sourcing", "multi_echelon"}
+
+# The 5 repo-native '<author>_style' / paywalled families that the adversarial
+# audit (docs/benchmarks/LITERATURE_VERIFICATION_AUDIT_2026_06_12.md) found are
+# NOT literature-verified — hidden from the default runner/catalog surface.
+FAITHFUL_UNVERIFIED = {
+    "one_warehouse_multi_retailer",
+    "joint_pricing_inventory",
+    "procurement_removal_inventory",
+    "random_yield_inventory",
+    "vendor_managed_inventory",
+}
+
+
+def test_available_runners_default_to_the_9_literature_verified() -> None:
+    default = set(runners.available_runners())
+    allnames = set(runners.available_runners(include_unverified=True))
+    assert default == allnames - FAITHFUL_UNVERIFIED
+    assert len(default) == 9
+    assert default.isdisjoint(FAITHFUL_UNVERIFIED)
+
+
+def test_literature_verified_partition_matches_audit() -> None:
+    for problem in catalog.list_problems():
+        expected = problem not in FAITHFUL_UNVERIFIED
+        assert runners.is_literature_verified(problem) is expected, problem
+    assert set(catalog.list_problems(literature_verified=False)) == FAITHFUL_UNVERIFIED
+    assert set(catalog.list_problems(literature_verified=True)) == (
+        set(catalog.list_problems()) - FAITHFUL_UNVERIFIED
+    )
+
+
+def test_unverified_family_hidden_but_still_loadable() -> None:
+    # Hidden from the default listing, but explicit access still works.
+    assert "joint_pricing_inventory" not in runners.available_runners()
+    inst = runners.get_runner("joint_pricing_inventory").load_instance()
+    assert inst.literature_verified is False
+    assert inst.verification_tier == "faithful"
+
+
+def test_reference_instance_self_reports_tier() -> None:
+    v = catalog.get("perishable_inventory").load_instance()
+    assert v.literature_verified is True and v.verification_tier == "strict"
 
 
 def test_get_runner_unknown_problem_raises() -> None:

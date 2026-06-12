@@ -395,6 +395,7 @@ def _cards() -> dict[str, ProblemCard]:
 def list_problems(
     difficulty: Optional[str] = None,
     verified: Optional[str] = None,
+    literature_verified: Optional[bool] = None,
 ) -> list[str]:
     """Return problem short-names in manifest order, optionally filtered.
 
@@ -407,9 +408,20 @@ def list_problems(
                     re-runs a peer-reviewed printed number (NOT OWMR /
                     joint_replenishment / spare_parts, which are approx-only /
                     action-only / adjacent-module).
+        literature_verified: coarse keep/exclude on the literature anchor. True
+                    keeps the 9 families with a real anchor (tier != 'faithful');
+                    False keeps only the 5 repo-native 'faithful' families. This
+                    is the keep/exclude line the adversarial audit drew (see
+                    docs/benchmarks/LITERATURE_VERIFICATION_AUDIT_2026_06_12.md).
     """
     cards = _cards()
     names: Iterable[str] = cards.keys()
+
+    if literature_verified is not None:
+        names = [
+            n for n in names
+            if (cards[n].verification.tier != "faithful") == bool(literature_verified)
+        ]
 
     if difficulty is not None:
         wanted = difficulty.strip().lower()

@@ -197,6 +197,17 @@ class ReferenceInstance:
         ref = self.reference_baseline
         return None if ref is None else ref.mean_cost
 
+    # -- literature-verification self-report (from the manifest) ----------
+    @property
+    def verification_tier(self) -> str:
+        """The honest tier ('strict'|'reference'|'faithful'|'mixed') of this family."""
+        return self.runner.verification_tier
+
+    @property
+    def literature_verified(self) -> bool:
+        """True unless the family is `faithful` (repo-native, no public anchor)."""
+        return self.runner.literature_verified
+
     # -- env-running methods (require invman_rust) ------------------------
     def run_baselines(self, protocol: Optional[EvalProtocol] = None) -> dict[str, Baseline]:
         """Re-run the shipped baseline(s) on the live env and return the costs.
@@ -349,6 +360,30 @@ class ProblemRunner(ABC):
             f"invman.policy_build.build_policy + invman.rollout_fitness."
             f"get_model_fitness is the next increment."
         )
+
+    # -- literature-verification (single source of truth = the manifest) --
+    @property
+    def verification_tier(self) -> str:
+        """The family's honest tier, read from the manifest via the catalog.
+
+        'strict' (re-runs a peer-reviewed printed number) / 'reference'
+        (companion-code / closed-form / published-action) / 'mixed' (umbrella
+        with verified sub-families) / 'faithful' (repo-native, NO public anchor).
+        """
+        from invman.benchmarks import catalog
+
+        return catalog.get(self.problem).verification_tier
+
+    @property
+    def literature_verified(self) -> bool:
+        """True iff the family reproduces a real literature anchor.
+
+        Derived from the manifest tier (the single source of truth): everything
+        except `faithful` is literature-anchored. This matches, family-for-family,
+        the adversarial audit in
+        docs/benchmarks/LITERATURE_VERIFICATION_AUDIT_2026_06_12.md.
+        """
+        return self.verification_tier != "faithful"
 
     # -- concrete shared surface ------------------------------------------
     def load_instance(self, name: Optional[str] = None) -> ReferenceInstance:

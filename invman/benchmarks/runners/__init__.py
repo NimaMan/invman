@@ -62,9 +62,42 @@ _RUNNER_REGISTRY: dict[str, str] = {
 _runner_cache: dict[str, ProblemRunner] = {}
 
 
-def available_runners() -> list[str]:
-    """Catalog problem names that currently have an executable runner."""
-    return list(_RUNNER_REGISTRY.keys())
+def verification_tier(problem: str) -> str:
+    """The family's honest verification tier (from the manifest, via the catalog).
+
+    'strict' / 'reference' / 'mixed' / 'faithful'. The catalog is the single
+    source of truth; this is a thin convenience so the runner layer can filter by
+    it without each caller importing the catalog.
+    """
+    from invman.benchmarks import catalog
+
+    return catalog.get(problem).verification_tier
+
+
+def is_literature_verified(problem: str) -> bool:
+    """True iff the family reproduces a real literature anchor (tier != faithful).
+
+    The 5 `faithful` families (one_warehouse_multi_retailer, joint_pricing_inventory,
+    procurement_removal_inventory, random_yield_inventory, vendor_managed_inventory)
+    are repo-native '<author>_style' / paywalled instances solved by the repo's own
+    DP — NOT a reproduction of any published number. See
+    docs/benchmarks/LITERATURE_VERIFICATION_AUDIT_2026_06_12.md.
+    """
+    return verification_tier(problem) != "faithful"
+
+
+def available_runners(include_unverified: bool = False) -> list[str]:
+    """Problem names with an executable runner.
+
+    By default returns ONLY the literature-verified families (the honest benchmark
+    surface). Pass `include_unverified=True` to also get the 5 `faithful` families,
+    which remain fully usable via `get_runner` / `load_instance` but are hidden
+    from the default listing.
+    """
+    names = list(_RUNNER_REGISTRY.keys())
+    if include_unverified:
+        return names
+    return [n for n in names if is_literature_verified(n)]
 
 
 def has_runner(problem: str) -> bool:
@@ -108,4 +141,6 @@ __all__ = [
     "has_runner",
     "get_runner",
     "load_instance",
+    "is_literature_verified",
+    "verification_tier",
 ]
