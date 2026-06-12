@@ -100,7 +100,7 @@ def _max_order_quantities(reference: dict, *, action_box: str = "wide", cap_slac
     # derive the per-item soft-tree action box.
     #
     # ACTION-BOX DESIGN (the high-cost-setting recovery lever, see
-    # autoresearch/program_joint_replenishment.md). The `vector_quantity` action mode
+    # policy_search/programs/program_joint_replenishment.md). The `vector_quantity` action mode
     # decodes a tree output into an integer order in [0, max_value_i]. With the default
     # "wide" box (2*truck_capacity = 12 per item) the decode resolution is coarse exactly
     # in the region the optimal base-stock policy operates (orders rarely exceed the

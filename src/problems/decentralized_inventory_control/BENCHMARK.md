@@ -111,7 +111,7 @@ python -c "import invman_rust; print([n for n in dir(invman_rust) if 'decentrali
   `verification/classic_board_game.rs` (exact Rust port of the public Edali & Yasarcan 2014 R code —
   the closed-form board game, NOT `env.rs`), `verification/tests.rs`, `bindings.rs`, `demand.rs`.
 - scripts: `scripts/decentralized_inventory_control/measure_env_vs_closedform.py`.
-- autoresearch: no `autoresearch/program_decentralized_inventory_control.md` exists (no autoresearch
+- autoresearch: no `policy_search/programs/program_decentralized_inventory_control.md` exists (no autoresearch
   program for this system).
 - **Caveat — two-MDP split.** The literature-verified `204` lives ONLY in the disconnected
   closed-form port; the trainable `env.rs` is `faithful_unverified` and yields 378/278 under the

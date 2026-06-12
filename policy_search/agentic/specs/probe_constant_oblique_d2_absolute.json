@@ -1,0 +1,14 @@
+{
+  "problem": "one_warehouse_multi_retailer",
+  "instance": 14,
+  "backbone": "soft_tree",
+  "depth": 2,
+  "split_type": "oblique",
+  "leaf_type": "constant",
+  "temperature": 0.1,
+  "action_head": "echelon_targets",
+  "per_retailer_targets": true,
+  "features": ["on_hand", "backlog", "pipeline", "absolute"],
+  "warm_start": "gate_invertible",
+  "rationale": "PPO-push frontier probe: incumbent constant/oblique/d2 echelon_targets winner + absolute_augmented state (raw scale + total echelon position + raw retailer positions), the inventory-position feature axis the converged Codex search never tried; richer state may let oblique splits exploit per-retailer heterogeneity beyond the normalized basis."
+}

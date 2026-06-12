@@ -39,5 +39,5 @@ python scripts/production_assembly_distribution_network/reproduce_pirhooshyaran_
 ```
 
 ## Pointers & caveats
-- code: src/problems/multi_echelon/production_assembly_distribution_network/{env.rs, finite_horizon_dp.rs, serial_echelon_simulation.rs, demand.rs, rollout.rs, heuristics/, flownet/, literature/, verification.rs, bindings.rs} ; scripts: scripts/production_assembly_distribution_network/ ; autoresearch: autoresearch/program_production_assembly_distribution_network.md.
+- code: src/problems/multi_echelon/production_assembly_distribution_network/{env.rs, finite_horizon_dp.rs, serial_echelon_simulation.rs, demand.rs, rollout.rs, heuristics/, flownet/, literature/, verification.rs, bindings.rs} ; scripts: scripts/production_assembly_distribution_network/ ; autoresearch: policy_search/programs/program_production_assembly_distribution_network.md.
 - Only the single-node analytical rows are verified_rerun. The serial/mixed/pure-assembly rows are learned-vs-own-heuristic on a faithful-but-unverified env; mixed is gate-match (the prior −0.99% was best-of-3). van Oers 2024 Table 1 is an adjacent frozen-snapshot debt (D3).

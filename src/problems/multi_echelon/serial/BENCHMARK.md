@@ -36,6 +36,6 @@ python scripts/multi_echelon_serial/benchmark_serial_clark_scarf.py
 ```
 
 ## Pointers & caveats
-- code: src/problems/multi_echelon/serial/{env.rs, exact.rs, echelon_base_stock.rs, rollout.rs, verification.rs, bindings.rs} ; scripts: scripts/multi_echelon_serial/ ; autoresearch: autoresearch/program_multi_echelon_serial.md (also autoresearch/program_multi_echelon.md).
+- code: src/problems/multi_echelon/serial/{env.rs, exact.rs, echelon_base_stock.rs, rollout.rs, verification.rs, bindings.rs} ; scripts: scripts/multi_echelon_serial/ ; autoresearch: policy_search/programs/program_multi_echelon_serial.md (also policy_search/programs/program_multi_echelon.md).
 - The comparator is a *proven optimum*; the only honest verdict is reproduction, never "beats." Do not read the learned match (47.6554) as an improvement.
 - The Poisson and multi-stage rows are reference-implementation-verified against stockpyl, NOT against a printed paper table — keep that distinction.

@@ -173,7 +173,7 @@ Important note:
 
 The active architecture note is:
 
-- [README.md](/home/nima/code/ml/invman/autoresearch/replenishment_geometry_search/README.md)
+- [README.md](/home/nima/code/ml/invman/policy_search/studies/replenishment_geometry_search/README.md)
 
 That note is the current source of truth for:
 
@@ -265,7 +265,7 @@ The new manuscript workspace is:
 The TeX file is currently a working note aligned with the architecture study, not just the old
 fixed-cost-only paper snapshot. If you update the manuscript, also check:
 
-- [README.md](/home/nima/code/ml/invman/autoresearch/replenishment_geometry_search/README.md)
+- [README.md](/home/nima/code/ml/invman/policy_search/studies/replenishment_geometry_search/README.md)
 
 LaTeX is optional for experiments. A TeX toolchain is not required to run benchmarks.
 

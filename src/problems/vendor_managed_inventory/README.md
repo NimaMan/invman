@@ -139,7 +139,7 @@ helpers in `benchmark_reduced_single_retailer.py` (instance set, heuristic tunin
 adds structure-aware rollout wrappers so the CLI flags flow through to
 `vendor_managed_inventory_soft_tree_population_rollout` (no Rust rebuild).
 
-- program file: [autoresearch/program_vendor_managed_inventory.md](/home/nima/code/ml/invman/autoresearch/program_vendor_managed_inventory.md)
+- program file: [policy_search/programs/program_vendor_managed_inventory.md](/home/nima/code/ml/invman/policy_search/programs/program_vendor_managed_inventory.md)
 - runner: [scripts/vendor_managed_inventory/autoresearch_vendor_managed_inventory.py](/home/nima/code/ml/invman/scripts/vendor_managed_inventory/autoresearch_vendor_managed_inventory.py)
 
 Run (mind the hard CPU cap — the bindings otherwise grab ~27 cores):

@@ -57,7 +57,7 @@ python scripts/spare_parts_inventory/train_soft_tree_reference.py --seed 123 --d
 
 ## Pointers & caveats
 - code: `src/problems/spare_parts_inventory/env.rs` (trainable MDP), `finite_horizon_dp.rs` (exact DP verifier), `references.rs` (`PRIMARY_REFERENCE_INSTANCE`, `VERIFICATION_PROBLEM_INSTANCE`, `SPARE_PARTS_REVIEW_REFERENCE`, Kranenburg + van Oers rows), `literature/kranenburg_lateral_transshipment.rs` (verified analytical module), `demand.rs`, `rollout.rs`, `tests/`, `verification/`, `practical/`, `experiments/`; scripts: `scripts/spare_parts_inventory/` (`benchmark_spare_parts_inventory.py`, `train_soft_tree_reference.py`, `validate_against_exact_dp.py`, `validate_kranenburg_lateral_transshipment.py`).
-- autoresearch: no `autoresearch/program_spare_parts_inventory.md` exists for this family.
+- autoresearch: no `policy_search/programs/program_spare_parts_inventory.md` exists for this family.
 - **Caveat — verified module ≠ verified env:** the only peer-reviewed re-run (Kranenburg) is a continuous-review METRIC lateral-transshipment model, structurally DIFFERENT from the trainable periodic-review env; do NOT let it imply the env is verified.
 - **Caveat — learned-policy beat is best-of-N / single-seed:** the 1.34% (and 6.84%) beats over best-constant base-stock are NOT seed-robust (no ≥5-seed mean±std); treat as at-risk per the seed-robust reporting standard.
 - **Caveat — van Oers 2024 Table 1 is a frozen snapshot** (recorded constants, never re-run); standing verification debt D3.

@@ -32,7 +32,7 @@ here are RESEARCH comparisons against the env's OWN best heuristic, not literatu
 
   Budgets: `smoke` (validate only), `screening`, `full`. CPU cap is HARD — launch with
   `RAYON_NUM_THREADS=2 OMP_NUM_THREADS=2` (parallelism is rayon inside the binding; no Python
-  process pool). See `autoresearch/program_production_assembly_distribution_network.md` for the
+  process pool). See `policy_search/programs/program_production_assembly_distribution_network.md` for the
   search direction and the headline result vs the baseline.
 
   Usage (smoke):

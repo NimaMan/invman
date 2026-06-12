@@ -81,7 +81,7 @@ python /home/nima/code/ml/invman/scripts/lost_sales/benchmark_full_suite.py --se
 
 - **code:** `src/problems/lost_sales/` — `mod.rs`; vanilla: `vanilla/env.rs`, `vanilla/heuristics/`, `vanilla/reference_costs.rs`, `vanilla/literature/references.rs`, `vanilla/rollout.rs`, `vanilla/flownet/`; fixed-cost: `fixed_order_cost/exact_value_iteration.rs`, `fixed_order_cost/heuristics.rs`, `fixed_order_cost/literature/references.rs`, `fixed_order_cost/verification/tests.rs`; demand: `demand/iid.rs`, `demand/markov_modulated.rs`.
 - **scripts:** `scripts/lost_sales/` (`validate_reference_instance.py`, `benchmark_full_suite.py`, `generate_rust_reference_costs.py`, `autoresearch_lost_sales.py`).
-- **autoresearch:** `autoresearch/program_lost_sales.md` (benchmark fixed to the trusted vanilla L4/p4/Poisson(5)/h=1 instance; harness files are pinned, do not modify).
+- **autoresearch:** `policy_search/programs/program_lost_sales.md` (benchmark fixed to the trusted vanilla L4/p4/Poisson(5)/h=1 instance; harness files are pinned, do not modify).
 - **Honest caveats:**
   - Vanilla optimum 4.73 (and the other carried optima) is a **published Zipkin DP value, NOT an in-repo recomputation** — only the 3 heuristic rows are re-run; only `vanilla_l4_p4_poisson5` carries true Zipkin numbers, the rest of the grid is repo-computed.
   - Gijsbrechts 2022 DRL is **context only** (no published DRL comparator row in these tables; never a "beats" claim).

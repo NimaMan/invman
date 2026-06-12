@@ -1,0 +1,14 @@
+{
+  "problem": "one_warehouse_multi_retailer",
+  "instance": 14,
+  "backbone": "soft_tree",
+  "depth": 3,
+  "split_type": "oblique",
+  "leaf_type": "constant",
+  "temperature": 0.1,
+  "action_head": "echelon_targets",
+  "per_retailer_targets": true,
+  "features": ["on_hand", "backlog", "pipeline", "absolute"],
+  "warm_start": "gate_invertible",
+  "rationale": "PPO-push frontier probe: deeper (d3) constant/oblique echelon_targets + absolute_augmented state; deeper regime partitions on a richer inventory-position basis."
+}

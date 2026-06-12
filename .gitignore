@@ -37,3 +37,6 @@ tests/test_env
 
 # Legacy local backups
 .git.nested-backup/
+
+# Claude Code harness worktrees + local state (never commit)
+.claude/

@@ -1,0 +1,14 @@
+{
+  "problem": "one_warehouse_multi_retailer",
+  "instance": 14,
+  "backbone": "soft_tree",
+  "depth": 3,
+  "split_type": "oblique",
+  "leaf_type": "constant",
+  "temperature": 0.1,
+  "action_head": "echelon_targets_with_alloc_targets",
+  "per_retailer_targets": true,
+  "features": ["on_hand", "backlog", "pipeline"],
+  "warm_start": "gate_invertible",
+  "rationale": "PPO-push full-budget candidate B: structurally-distinct robust beat surfaced by the longer novelty search (depth-3 constant/oblique echelon_targets_with_alloc_targets, -0.719% / 5_5 robust at small budget); decoupled allocation targets + deeper regime tree."
+}

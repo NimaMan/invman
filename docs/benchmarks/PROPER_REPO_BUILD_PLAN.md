@@ -10,6 +10,18 @@ Effort key: **S** ≈ <½ day · **M** ≈ 1–2 days · **L** ≈ ≥3 days.
 
 ## (a) Standard benchmark API per problem
 
+> **Status (2026-06-12): the uniform EXECUTABLE surface now exists** as
+> `invman/benchmarks/runners/` — `catalog.get(problem).load_instance(name)`
+> returns a runnable `ReferenceInstance` (env params + published baselines +
+> `run_baselines()` to re-run them on the live env + `evaluate()` through the
+> CMA-ES seam + `compare()`). Wired for **lost_sales (+ fixed_order_cost),
+> dual_sourcing (Gijs Figure-9), multi_echelon (divergent Van Roy / Gijs)**;
+> the per-family Rust accessors below already exist for the rest, so adding each
+> remaining family is one `ProblemRunner` subclass (four hooks). Worked reports:
+> `scripts/benchmark_baselines/run_<family>_baselines.py`. The A1–A11 items below
+> are the per-family Rust-accessor refinements (provenance split, extra
+> bindings) that remain.
+
 Target every problem family to expose the *same* Python surface so a benchmark consumer never has to parse Rust or markdown:
 
 - `<problem>_list_reference_instances()` → names
@@ -119,7 +131,7 @@ Today many headline numbers live only in gitignored `outputs/` + markdown; train
 
 | Item | Scope | Effort | Needs |
 |---|---|---|---|
-| F1 | **Remove dead scratch scripts** importing the deleted `invman.policies.soft_tree`: `scripts/perishable_inventory/{run_paper_benchmark.py,common.py}`, `scripts/procurement_removal_inventory/{common.py,train_soft_tree_reference.py,validate_against_exact_dp.py}`, `scripts/random_yield_inventory/{common.py,train_soft_tree_reference.py}` (all confirmed present + bricked) | S | code |
+| F1 | ~~Remove dead scratch scripts importing the deleted `invman.policies.soft_tree`~~ **RESOLVED — claim was stale/false (audited 2026-06-11): these 7 scripts are LIVE, not bricked.** `scripts/perishable_inventory/{run_paper_benchmark.py,common.py}`, `scripts/procurement_removal_inventory/{common.py,train_soft_tree_reference.py,validate_against_exact_dp.py}`, `scripts/random_yield_inventory/{common.py,train_soft_tree_reference.py}` were MIGRATED off `invman.policies.soft_tree` (the only references to that path are now docstrings describing the migration). All 7 parse + `py_compile` clean; entry-points load via `--help`; each `common.py` imports live modules (`invman.policy.Policy`, `invman_rust`) and is depended on by live sibling runners (perishable: `run_practical_benchmark.py`, `validate_against_papers.py`, `train_soft_tree_reference.py`; procurement_removal + random_yield: their `train_soft_tree_reference.py`/`validate_against_exact_dp.py`/`seed_robust_*`/`summarize_*`). `invman/policies/` and `invman/problems/` confirmed absent, but no live script imports them. **Nothing removed.** (Matches `docs/benchmarks/CLEANUP_2026_06_06.md`, which already had these as LIVE.) | — | done |
 | F2 | **`src/case_studies/hormuz_strait/`**: stray case-study tree (data/timelines/scenarios/maritime_traffic/sources) unrelated to the 14 benchmark families. Decide: move to a separate repo or document as an explicit out-of-benchmark case study; do not let it pollute the benchmark surface | S | docs (decide) / M (extract) |
 | F3 | **Prune locked worktrees**: 8 `.claude/worktrees/*` exist (wf_* and agent-*); per MEMORY (invman-env-rewrite-worktrees) the procurement_removal faithful env is already cherry-picked (f9b6814) and the ameliorating rewrite worktree is incomplete. Audit each, cherry-pick anything live, then `git worktree remove` | M | code |
 | F4 | **Rename stale identifiers**: vmi Rust symbols still carry `GIANNOCCARO_2010_*` though re-attributed to Sui/Gosavi/Lin (needs Rust rebuild) | S | code |
@@ -133,4 +145,4 @@ Today many headline numbers live only in gitignored `outputs/` + markdown; train
 2. **V2 + V1** — upgrade ameliorating to verified_rerun; close the dual_sourcing l_r=3,4 re-run debt.
 3. **S-H1, S-H6, S-M2** (fast envs first: OWMR, ameliorating, random_yield) — convert the at_risk headline beats to ≥5-seed mean±std; reconcile paper tables.
 4. **R1+R2 (reproducibility spine)** — commit artifacts + one paper-table regenerator.
-5. **F1+F3 (cleanup)** — delete bricked scripts, prune worktrees.
+5. **F3 (cleanup)** — prune worktrees. (F1 is resolved: the "bricked scripts" were a stale/false claim — those 7 scripts are live; nothing to delete.)

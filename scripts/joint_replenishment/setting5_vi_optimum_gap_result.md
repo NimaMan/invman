@@ -1,7 +1,7 @@
 # Joint Replenishment — Setting 5 learned policy vs the Value-Iteration optimum
 
 Committed summary of the autoresearch result recorded in
-`autoresearch/program_joint_replenishment.md` (the full per-path JSON lives at the
+`policy_search/programs/program_joint_replenishment.md` (the full per-path JSON lives at the
 gitignored `outputs/autoresearch/joint_replenishment_autoresearch/setting5_vi_optimum_gap.json`).
 
 - **Instance:** Vanvuchelen, Gijsbrechts & Boute (2020) Table-2 **setting 5**

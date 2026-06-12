@@ -38,6 +38,6 @@ python scripts/general_backorder_fixed_cost/autoresearch_general_backorder_fixed
 ```
 
 ## Pointers & caveats
-- code: src/problems/multi_echelon/general_backorder_fixed_cost/{env.rs, heuristics.rs, references.rs, rollout.rs, literature/, tests/, bindings.rs} ; scripts: scripts/general_backorder_fixed_cost/ ; autoresearch: autoresearch/program_general_backorder_fixed_cost.md.
+- code: src/problems/multi_echelon/general_backorder_fixed_cost/{env.rs, heuristics.rs, references.rs, rollout.rs, literature/, tests/, bindings.rs} ; scripts: scripts/general_backorder_fixed_cost/ ; autoresearch: policy_search/programs/program_general_backorder_fixed_cost.md.
 - Family name is a misnomer: there is NO fixed ordering cost (holding + backorder only) — the section title reflects the model actually implemented and verified.
 - set1/KT are verified_rerun within the published band; set2/set3 are a NOT-reproduced (+223%) snapshot debt (D2). PPO/DRL comparators are cross-protocol context, never "beats." The learned set1/KT improvements are best-of-N (at_risk), not yet a multi-seed mean±std restatement.

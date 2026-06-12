@@ -138,7 +138,7 @@ RAYON_NUM_THREADS=2 python scripts/joint_replenishment/evaluate_setting5_vs_vi_o
 - scripts: `scripts/joint_replenishment/` (`benchmark_vanvuchelen_settings.py` = VI;
   `benchmark_learned_vs_heuristics.py`; `autoresearch_joint_replenishment.py`;
   `evaluate_setting5_vs_vi_optimum.py`; `setting5_vi_optimum_gap_result.md`).
-- autoresearch: `autoresearch/program_joint_replenishment.md`.
+- autoresearch: `policy_search/programs/program_joint_replenishment.md`.
 - Honest caveats: (a) the only published quantity is an ACTION q=(0,6), not a cost — this is
   verified_rerun of an action, NOT against a paper cost table. (b) The paper's PPO costs are
   cross-protocol DRL and are not carried/compared. (c) Figure-3 heuristic literal q=(2,4) is a paper

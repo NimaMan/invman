@@ -39,6 +39,6 @@ python scripts/multi_echelon/train_multi_echelon_policy.py --reference gijsbrech
 ```
 
 ## Pointers & caveats
-- code: src/problems/multi_echelon/divergent_special_delivery/{env.rs, finite_horizon_dp.rs, exact_rollout.rs, heuristics.rs, references.rs, rollout.rs, bindings.rs} ; scripts: scripts/multi_echelon/ (train_multi_echelon_policy.py, autoresearch_multi_echelon.py) ; autoresearch: autoresearch/program_multi_echelon.md.
+- code: src/problems/multi_echelon/divergent_special_delivery/{env.rs, finite_horizon_dp.rs, exact_rollout.rs, heuristics.rs, references.rs, rollout.rs, bindings.rs} ; scripts: scripts/multi_echelon/ (train_multi_echelon_policy.py, autoresearch_multi_echelon.py) ; autoresearch: policy_search/programs/program_multi_echelon.md.
 - Two cost conventions coexist: Gijs 2022 (pre-shipment merge, holding on end-of-period on-hand — used for all training/experiments) vs Van Roy 1997 (post-shipment installation position — used ONLY to reproduce the published constant base-stock). Do not mix them.
 - The A3C savings are cross-protocol DRL context and are NOT reproduced; the learned −14.4% rows are best-of-N and NOT yet seed-robust.

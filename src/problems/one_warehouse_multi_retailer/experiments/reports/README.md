@@ -66,7 +66,7 @@ Findings:
 ## Autoresearch policy search (2026-05-31, full-budget sweep)
 
 - runner: `scripts/one_warehouse_multi_retailer/autoresearch_one_warehouse_multi_retailer.py`
-- program: `autoresearch/program_one_warehouse_multi_retailer.md`
+- program: `policy_search/programs/program_one_warehouse_multi_retailer.md`
 - ledger: `outputs/autoresearch/one_warehouse_multi_retailer_autoresearch/results.tsv` (33 rows:
   2 smoke + 20 screening + 11 full, including a standalone full timing probe)
 - CPU cap: `RAYON_NUM_THREADS=2 OMP_NUM_THREADS=2`, `mp_num_processors=1` (two sibling agents)

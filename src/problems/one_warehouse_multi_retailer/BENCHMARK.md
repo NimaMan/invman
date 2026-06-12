@@ -96,7 +96,7 @@ python scripts/one_warehouse_multi_retailer/verify_ppo_beat_disjoint_blocks.py
 ## Pointers & caveats
 - code: `src/problems/one_warehouse_multi_retailer/env.rs` (transition + cost), `references.rs` (14 Kaynov rows + verifier), `finite_horizon_dp.rs` (exact-DP anchor), `allocation.rs` / `demand.rs` / `rollout.rs` / `bindings.rs`; literature notes: `literature/README.md`; existing folder doc: `README.md` (status "partial", consistent with this card).
 - scripts: `scripts/one_warehouse_multi_retailer/` — `run_heuristic_published_benchmark.py`, `run_asymmetric_learned_vs_gate.py`, `run_owmr_ppo_campaign.py`, `verify_ppo_beat_disjoint_blocks.py`; finalized seed-robust entry: `SEED_ROBUST_BENCHMARK_2026_06_06.md`.
-- autoresearch: `autoresearch/program_one_warehouse_multi_retailer.md`.
+- autoresearch: `policy_search/programs/program_one_warehouse_multi_retailer.md`.
 - **Caveat — PPO is cross-protocol:** the published PPO and base-stock rows are a DRL (PPO) protocol; comparisons against them are CONTEXT only, never a "beats." No robust PPO beat is claimed; K=3 seeds straddle the PPO line within seed noise and K=10 is ~7% below PPO.
 - **Caveat — exact-DP anchor is repo-native:** optimal 8.485 is a self-consistency correctness check (`literature_verified=false`), not a published value; there is no exact solver for the 100-period Kaynov instances.
 - **Caveat — verification debt:** only 2/14 published rows reproduce tightly by re-run; the other 12 are carried as table literals at ~1–6% (regime-dependent sign). Full Kaynov PDF not byte-verified.

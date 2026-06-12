@@ -38,4 +38,4 @@ sub-families have different verdicts).
 ## Pointers
 - code: src/problems/multi_echelon/{serial, assembly, divergent_special_delivery, production_assembly_distribution_network, general_backorder_fixed_cost}/ ; top-level mod.rs + bindings.rs.
 - scripts: scripts/multi_echelon/, scripts/multi_echelon_serial/, scripts/assembly/, scripts/production_assembly_distribution_network/, scripts/general_backorder_fixed_cost/.
-- autoresearch: autoresearch/program_multi_echelon.md, program_multi_echelon_serial.md, program_production_assembly_distribution_network.md, program_general_backorder_fixed_cost.md.
+- autoresearch: policy_search/programs/program_multi_echelon.md, program_multi_echelon_serial.md, program_production_assembly_distribution_network.md, program_general_backorder_fixed_cost.md.

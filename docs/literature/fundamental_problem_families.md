@@ -1,5 +1,10 @@
 # Fundamental Problem Families
 
+> **See also:** [`../benchmarks/FUNDAMENTAL_QUESTIONS.md`](../benchmarks/FUNDAMENTAL_QUESTIONS.md) —
+> the conceptual spine: the 7 FlowNet questions, the full *space of answers* each admits, and a
+> coverage map of which fundamentals the implemented families cover plus what could be added. This
+> note (below) fixes the *expansion order* and decision rule; that note fixes the *axis taxonomy*.
+
 This note fixes the expansion order for new `invman` problem families and the rule we use to decide
 what counts as a good next addition.
 
@@ -12,20 +17,32 @@ inventory-control families in an implementation order that is both:
 - incremental relative to the current repo
 - testable with a clear verification instance
 
-Current implemented families:
+Current implemented families (the authoritative 14 benchmark families, per
+`docs/benchmarks/BENCHMARK_MANIFEST.json`):
 
-- `lost_sales`
-- `lost_sales_fixed_order_cost`
-- `dual_sourcing`
-- `multi_echelon`
-- `perishable_inventory`
-- `nonstationary_lot_sizing`
-- `random_yield_inventory`
-- `joint_replenishment`
-- `one_warehouse_multi_retailer`
-- `decentralized_inventory_control`
-- `network_inventory`
-- `spare_parts_inventory`
+- `lost_sales` (sub-families: `vanilla` Zipkin 2008 + `fixed_order_cost` Bijvank 2015)
+- `dual_sourcing` (Gijsbrechts 2022)
+- `multi_echelon` (sub-families: `serial` Clark–Scarf · `assembly` Rosling ·
+  `divergent_special_delivery` Van Roy/Gijs · `production_assembly_distribution_network`
+  Pirhooshyaran–Snyder — *this is the real family that the old `network_inventory` entry pointed to* ·
+  `general_backorder_fixed_cost` Geevers/Kunnumkal–Topaloglu)
+- `one_warehouse_multi_retailer` (Kaynov 2024, 3 regimes)
+- `perishable_inventory` (De Moor 2022 + Farrington 2025)
+- `ameliorating_inventory` (Pahr & Grunow 2025)
+- `joint_replenishment` (Vanvuchelen 2020)
+- `joint_pricing_inventory` (price-setting newsvendor)
+- `nonstationary_lot_sizing` (Dehaybe 2024)
+- `procurement_removal_inventory` (Maggiar–Sadighian 2017)
+- `random_yield_inventory` (Yan 2026)
+- `spare_parts_inventory` (Kranenburg 2006)
+- `vendor_managed_inventory` (Sui–Gosavi–Lin 2010)
+- `decentralized_inventory_control` (Beer Game)
+
+Note: `network_inventory` was renamed/relocated — its general acyclic-network model now lives as
+`multi_echelon/production_assembly_distribution_network`. The four "to defer" families below
+(`ameliorating_inventory`, `procurement_removal_inventory`, `joint_pricing_inventory`,
+`vendor_managed_inventory`) are now **implemented** and listed above; the "Families To Defer"
+section is retained for historical decision context only.
 
 ## Decision Rule
 

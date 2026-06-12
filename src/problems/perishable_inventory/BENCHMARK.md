@@ -87,7 +87,7 @@ python3 /home/nima/code/ml/invman/scripts/perishable_inventory/run_exact_slice_b
 
 - **code:** `src/problems/perishable_inventory/env.rs` (`step_state`, `apply_demand_to_inventory` FIFO/LIFO, waste = oldest leftover bucket), `references.rs` (32 Scenario A instances + verification structs), `value_iteration_mdp.rs` (exact tabular VI, 2000-state cap), `heuristics/` (`base_stock`, `bsp_low_ew`), `rollout.rs`, `tests/verification.rs` (executable assertions), `literature/README.md`, `verification/README.md`.
 - **scripts:** `scripts/perishable_inventory/` — `autoresearch_perishable_inventory.py` (the working soft-tree CMA-ES runner), `run_exact_slice_benchmark.py` (working), `run_practical_benchmark.py`. NOTE: `run_paper_benchmark.py` and `common.py` are **dead** (import the removed `invman.policies.soft_tree`); use the autoresearch / exact-slice runners.
-- **autoresearch:** `autoresearch/program_perishable_inventory.md`; ledger `outputs/autoresearch/perishable_inventory_autoresearch/results.tsv`.
+- **autoresearch:** `policy_search/programs/program_perishable_inventory.md`; ledger `outputs/autoresearch/perishable_inventory_autoresearch/results.tsv`.
 - **caveats:**
   - All learned "beats gate" results are **single optimizer seed** — not seed-robust; do not cite as certified beats.
   - The VI optimum and Farrington Table 3 numbers are **analytic** (midpoint-binned Gamma); learned/gate rows are **Monte-Carlo** — only the gate comparison is apples-to-apples.

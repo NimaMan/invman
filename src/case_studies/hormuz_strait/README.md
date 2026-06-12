@@ -1,5 +1,13 @@
 # hormuz_strait
 
+> **⚠️ OUT-OF-BENCHMARK CASE STUDY — not part of the inventory-control benchmark suite.**
+> This is a geopolitical oil-flow case study that reuses the shared FlowNet language; it is **not**
+> one of the canonical inventory-control problem families and is **excluded** from the benchmark
+> catalog (`docs/benchmarks/BENCHMARK_MANIFEST.json`), the verification ledger, and the
+> easy/medium/hard classification. It lives under `src/case_studies/` (not `src/problems/`)
+> precisely to keep it off the benchmark surface. Treat it as a standalone application of the
+> FlowNet primitives, not a benchmark instance. (Cleanup ref: PROPER_REPO_BUILD_PLAN F2.)
+
 Source-backed Hormuz case study built in the shared FlowNet language.
 
 This is a geography-first oil-flow problem, not a company graph.

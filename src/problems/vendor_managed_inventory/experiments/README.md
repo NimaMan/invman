@@ -41,7 +41,7 @@ The headline numbers and the exact per-instance table are printed by the script;
 
 A dedicated autoresearch loop
 (`scripts/vendor_managed_inventory/autoresearch_vendor_managed_inventory.py`, program
-`autoresearch/program_vendor_managed_inventory.md`) searches soft-tree structure + a CMA-ES
+`policy_search/programs/program_vendor_managed_inventory.md`) searches soft-tree structure + a CMA-ES
 warm-start at the tuned base-stock control to try to flip the losing instances. A focused
 full-budget sweep (29 configs, ledger `outputs/autoresearch/vmi_autoresearch/results.tsv`, CPU capped
 at 2 rayon/OMP threads) found that the **linear leaf + base-stock warm-start** is the decisive lever:

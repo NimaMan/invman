@@ -13,7 +13,7 @@ policy CLASS, so the honest ceiling is MATCH, not beat. We warm-start the soft
 tree at the exact echelon base-stock levels and report how close the learned
 policy gets to 47.65 (match %), never claiming to beat the optimum.
 
-WHY THIS DESIGN (autoresearch/POLICY_DESIGN_GUIDELINES.md)
+WHY THIS DESIGN (policy_search/POLICY_DESIGN_GUIDELINES.md)
 ----------------------------------------------------------
 1. BASELINE = the Clark-Scarf optimum 47.65 (the env reproduces it to +0.06% with
    continuous Normal demand; the exact solver returns 47.6654). This is the

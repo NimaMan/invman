@@ -12,7 +12,7 @@ ACTIVE_SURFACES = (
     "docs",
     "bindings",
     "invman",
-    "autoresearch",
+    "policy_search",
     "scripts",
     "numerical_experiments",
     "src",

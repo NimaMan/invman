@@ -17,7 +17,7 @@ from pathlib import Path
 import numpy as np
 
 PKG = "/home/nima/code/ml/invman"
-APS = PKG + "/agentic_policy_search"
+APS = PKG + "/policy_search/agentic"
 OWMR = PKG + "/scripts/one_warehouse_multi_retailer"
 for p in (PKG, APS, OWMR):
     if p not in sys.path:

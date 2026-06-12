@@ -103,7 +103,7 @@ Autoresearch (single-policy policy-search loop, mirrors dual_sourcing / multi_ec
 - The learned soft-tree LOSES to MOQ on 10 of the 16 settings (the high-cost `h=5, b=95`
   family: settings 2,3,4,8,11,12,15,16, plus marginal 7,10). The autoresearch loop searches the
   soft-tree policy design for one that BEATS MOQ on those losers. The program file is
-  `autoresearch/program_joint_replenishment.md` (trusted benchmark = the 16 Table-2 settings;
+  `policy_search/programs/program_joint_replenishment.md` (trusted benchmark = the 16 Table-2 settings;
   strongest heuristic = MOQ, DYN-OUT dominated; published anchor = the Fig-3 optimal action
   `q=(0,6)` at state `(5,0)`; editable levers = tree depth/temperature/split/leaf, the action box /
   base-stock-anchored action adapter, CMA-ES warm-start at MOQ, and a deeper depth-3 budget targeting

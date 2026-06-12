@@ -12,7 +12,7 @@ the perfect-information LP UPPER BOUND on average profit
 (spirits_0001 = 1991.9344293376805; port_wine = 2444.8010643781136). The paper
 reports DRL within ~3.5% of this bound on the generic instance set.
 
-WHY THIS DESIGN (autoresearch/POLICY_DESIGN_GUIDELINES.md)
+WHY THIS DESIGN (policy_search/POLICY_DESIGN_GUIDELINES.md)
 ----------------------------------------------------------
 1. BASELINE = the perfect-information LP upper bound (max_reward), the literature
    anchor. It is a LOOSE upper bound (perfect information + full LP issuance), so a

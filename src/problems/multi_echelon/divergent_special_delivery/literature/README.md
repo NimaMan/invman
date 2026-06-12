@@ -173,7 +173,7 @@ related problem (record absolute rows in `references.rs` when adding one):
 ### How we use them (policy-design stance)
 
 We **design our policy for the problem**, not to reproduce any paper's policy, action grid, or tuning
-(full discussion in `autoresearch/program_multi_echelon.md`). The published numbers are **benchmarks**:
+(full discussion in `policy_search/programs/program_multi_echelon.md`). The published numbers are **benchmarks**:
 we report our learned policy's improvement over the in-env best constant base-stock against the
 published A3C / NDP savings, and **if we beat the published results we report that**. Only the env
 (MDP transition + cost) must be faithful; the action space and features are ours to choose for the

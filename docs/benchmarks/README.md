@@ -13,6 +13,73 @@ A **library of inventory-control systems** for learning and benchmarking orderin
 
 A frozen snapshot (carried `literal == published` constant, env *not* executed) is **never** verification — those are tracked as **debts** below.
 
+---
+
+## Baseline API — get the baselines for a problem with minimal effort
+
+`docs/benchmarks/BENCHMARK_MANIFEST.json` is the **single source of truth** (14 problem families). `invman.benchmarks.catalog` is a dependency-light (stdlib-only) API **over** that manifest — it never duplicates the data, it loads + structures it. Use it to pull a problem's reference instances, baselines, reference results, difficulty, verification tier, and exact reproduce commands in a few lines:
+
+```python
+from invman.benchmarks import catalog
+
+catalog.list_problems()                    # -> 14 problem names, in manifest order
+catalog.list_problems(difficulty='easy')   # filter by difficulty: easy|medium|hard
+catalog.list_problems(verified='strict')   # filter by verification tier: strict|reference|faithful
+
+card = catalog.get('lost_sales')           # -> ProblemCard (accepts short name or full manifest 'problem' string; raises KeyError on unknown)
+card.difficulty                            # 'easy'
+card.verification.tier                     # 'strict' | 'reference' | 'faithful'
+card.instances                             # [Instance(name, dimensions, literature_verified_flag), ...]
+card.baselines.heuristics                  # list[str]; also .exact_solver, .published_rows
+card.results                               # [Result(claim, seed_reporting, at_risk), ...]
+card.reproduce_commands                    # list[str] — exact commands to regenerate the baseline
+
+print(catalog.render_card('lost_sales'))   # -> the Markdown BENCHMARK_CARD as a string
+catalog.render_all_cards('docs/benchmarks/cards')   # writes one card per problem + index
+```
+
+The pre-rendered cards live in [`cards/`](./cards/) — one **BENCHMARK_CARD** per problem with instances, baselines, reference results, and a **"How to reproduce & compare"** block (command + expected value + tolerance) so a consumer can regenerate the baseline and compare their own approach. Regenerate them any time with `catalog.render_all_cards('docs/benchmarks/cards')`.
+
+### Executable layer — run a baseline, not just read it
+
+`catalog` reads metadata; `invman.benchmarks.runners` **runs** it. `catalog.get(problem).load_instance(name)` returns a runnable `ReferenceInstance` that carries the env params + published baselines, re-runs those baselines on the live env, and scores your own soft-tree policy on the same instance — through the *same* seam the CMA-ES optimizer uses (no second, drifting evaluator).
+
+```python
+from invman.benchmarks import catalog
+
+inst = catalog.get('lost_sales').load_instance('lit_poisson_p4_l4')
+inst.published_costs        # {'optimal': 4.73, 'myopic2': 4.82, ...}
+inst.run_baselines()        # re-run the shipped baselines on the live env
+my_cost = inst.evaluate(my_trained_params)   # score your policy (size it with inst.policy_param_count())
+inst.compare(my_cost)       # signed gap vs the reference + a 'beats' verdict
+```
+
+Runners exist today for `lost_sales` (+ fixed-order-cost), `dual_sourcing` (Gijs Figure-9), and `multi_echelon` (divergent Van Roy / Gijs) — see [`../../invman/benchmarks/runners/README.md`](../../invman/benchmarks/runners/README.md). Worked per-family reports that emit a published-vs-recomputed comparison table live in [`../../scripts/benchmark_baselines/`](../../scripts/benchmark_baselines/) (`run_<family>_baselines.py --simulate`).
+
+### Difficulty rubric (`easy` / `medium` / `hard`)
+
+Each manifest entry carries a `difficulty` plus a one-line `difficulty_rationale`. Difficulty **folds three axes**:
+
+1. **State/action dimensionality** — scalar single-item state + scalar order action is easiest; age-stratified / multi-echelon / multi-retailer / decentralized state + vector or joint (allocation, pricing, blend, ship) actions are hardest.
+2. **Exact-solver availability** — a problem with an **exact VI/DP true optimum** (or a tractable reduced verifier) is *easier to benchmark*, because the comparator is a clean denominator; only a bound or a self-consistent anchor is harder.
+3. **Comparator type** — `true_optimum_match_only` (easiest to score) < `heuristic_to_beat` ≈ `bound_gap` < `self_consistent` (hardest to score honestly).
+
+The split (and the rationale per problem) is in the manifest; the headline assignment:
+
+- **easy** — `lost_sales`, `joint_pricing_inventory`, `procurement_removal_inventory`, `random_yield_inventory`, `spare_parts_inventory` (low-dim single-item, exact DP/VI true optimum, clean heuristic/optimum comparator).
+- **medium** — `dual_sourcing`, `perishable_inventory`, `ameliorating_inventory`, `joint_replenishment`, `nonstationary_lot_sizing`, `vendor_managed_inventory` (coupled actions, forecast/age state, or a bound-only / proxy comparator).
+- **hard** — `multi_echelon`, `one_warehouse_multi_retailer`, `decentralized_inventory_control` (high-dim networks / allocation / decentralized info; no exact optimum for the full instance, mostly self-consistent or bound-gap comparators). `multi_echelon` is an umbrella entry — its per-subfamily difficulty (serial=medium, rest=hard) is recorded in `difficulty_by_subfamily` in the manifest.
+
+### Verification tiers (the honest label the API derives)
+
+`card.verification.tier` is **derived** from the manifest `verification.status` string by its strongest verified component, and is exactly the layered honesty model above:
+
+- **`strict`** — `verified_rerun` against a **peer-reviewed** published number (README Group 1).
+- **`reference`** — `verified_rerun` against a **reference-impl / companion-code / closed-form** number (not a peer-reviewed article table; README Group 2: `nonstationary_lot_sizing`, `decentralized_inventory_control`).
+- **`faithful`** — `faithful_unverified`: env faithful but only a repo-native self-consistency anchor re-ran, or no public per-instance number exists (README Group 3).
+
+Note the tier is the *strongest verified component* of a possibly-mixed status — e.g. `spare_parts_inventory` is `strict` via the Kranenburg analytical module even though its *trainable env* is `faithful_unverified` (caveat in its card), and `joint_replenishment` is reported `strict` because its published quantity is an action `q=(0,6)` re-derived by VI even though no published *cost* table exists. Always read the card's full `Status (manifest)` line for the nuance — the master table below is the editorial Group 1/2/3 partition.
+
 ## How it maps to the paper
 
 The companion paper is `paper/learning_inventory_control_policies_es.tex` (compiled `paper/learning_inventory_control_policies_es.pdf`). Most systems have a dedicated `\section`; several systems in this benchmark library are **benchmark-only** (no paper section) or appear only as **related-work / future-work context**. The "paper §" column below is the honest mapping — `—` means not written up in the paper.

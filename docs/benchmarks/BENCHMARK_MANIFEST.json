@@ -2,6 +2,9 @@
   {
     "problem": "lost_sales",
     "subfamily": "vanilla (Zipkin 2008) + fixed_order_cost (Bijvank 2015)",
+    "difficulty": "easy",
+    "difficulty_rationale": "Low-dim scalar state (inventory position + short pipeline), single scalar order action; fixed-cost subfamily has an in-repo exact average-cost VI optimum (true_optimum_match_only) and vanilla carries published Zipkin DP optima with myopic/base-stock heuristics to beat — a well-posed, solver-anchored benchmark.",
+    "verification_tier": "strict",
     "instances": [
       { "name": "vanilla_l4_p4_poisson5 (alias lit_poisson_p4_l4)", "dimensions": ["regime:lost_sales", "subproblem:vanilla", "demand:poisson", "mu:5", "leadtime:L4", "h:1", "p:4", "anchor:Zipkin2008_Table3a"], "literature_verified_flag": "true" },
       { "name": "lit_poisson_p19_l4", "dimensions": ["regime:lost_sales", "subproblem:vanilla", "demand:poisson", "leadtime:L4", "p:19_high_penalty"], "literature_verified_flag": "absent (reference_costs.rs has no per-row flag; source=literature, carries published optimal 8.89)" },
@@ -39,6 +42,9 @@
   {
     "problem": "dual_sourcing",
     "subfamily": "Gijsbrechts et al. 2022 Figure 9 small-scale family",
+    "difficulty": "medium",
+    "difficulty_rationale": "Two coupled sourcing actions (regular + expedite) over a pipeline raise action dimensionality; the bounded-DP optimum is only a truncated-box PROXY (unusable as a denominator at l_r=4, where capped-dual-index is the optimal proxy), so the comparator is heuristic_to_beat / bound_gap rather than a clean true optimum.",
+    "verification_tier": "strict",
     "instances": [
       { "name": "dual_l2_ce105", "dimensions": ["regime:dual_sourcing_backlog", "leadtime:Lr2", "ce:105", "demand:U0-4", "cr:100", "h:5", "b:495", "primary_unit_test_instance"], "literature_verified_flag": "true (experiments/mod.rs grid hardcodes for all 6; references.rs has NO per-instance flag field)" },
       { "name": "dual_l2_ce110", "dimensions": ["regime:dual_sourcing_backlog", "leadtime:Lr2", "ce:110", "demand:U0-4"], "literature_verified_flag": "true" },
@@ -69,12 +75,37 @@
       "python /home/nima/code/ml/invman/scripts/dual_sourcing/validate_reference_grid.py",
       "python /home/nima/code/ml/invman/scripts/dual_sourcing/validate_reference_grid.py --references dual_l2_ce105 dual_l2_ce110",
       "cargo test -p invman_rust dual_sourcing -- --ignored",
-      "python /home/nima/code/ml/invman/autoresearch/dual_sourcing_policy_search/run_factor_screen.py"
+      "python /home/nima/code/ml/invman/policy_search/studies/dual_sourcing_policy_search/run_factor_screen.py"
     ]
   },
   {
     "problem": "multi_echelon",
     "subfamily": "serial (Clark-Scarf), assembly (Rosling), divergent_special_delivery (Van Roy/Gijs), production_assembly_distribution_network (Pirhooshyaran-Snyder), general_backorder_fixed_cost (Geevers/Kunnumkal-Topaloglu)",
+    "difficulty": "hard",
+    "difficulty_rationale": "Umbrella entry; difficulty is per-subfamily — serial=medium (low-dim chain WITH an exact Clark-Scarf true optimum, but multi-stage coordination), everything else=hard (high-dim networks, allocation/topology, mostly self-consistent or bound_gap comparators, several rows not reproduced). Whole entry rated HARD to its hardest members.",
+    "difficulty_by_subfamily": {
+      "serial": "medium",
+      "assembly": "hard",
+      "divergent_special_delivery": "hard",
+      "production_assembly_distribution_network": "hard",
+      "general_backorder_fixed_cost": "hard"
+    },
+    "difficulty_by_subfamily_rationale": {
+      "serial": "Low-dim Clark-Scarf chain; EXACT recursive-newsvendor true optimum (true_optimum_match_only) mirrors stockpyl — easiest of the family, but multi-stage echelon coordination keeps it above the single-node easy problems.",
+      "assembly": "Multiple components must synchronize; only verified-by-equivalence via Rosling reduction (literature_verified=false), no direct published anchor.",
+      "divergent_special_delivery": "Warehouse-to-many-retailer allocation + special-delivery mode; comparator is best constant base-stock by grid (heuristic_to_beat) and published A3C savings are cross-protocol context (debt D1).",
+      "production_assembly_distribution_network": "Arbitrary production/assembly/distribution topology; only single-node analytical rows reproduced, general-network gate is the env's OWN base-stock (self-consistent), no published cost reproduced.",
+      "general_backorder_fixed_cost": "4-supplier/4-warehouse/5-retailer networks, high state/action dimensionality; set1/KT reproduced but set2/set3 are +223% NOT reproduced (debt D2); heuristic_to_beat with cross-protocol PPO context."
+    },
+    "verification_tier": "mixed",
+    "verification_tier_by_subfamily": {
+      "serial": "strict",
+      "assembly": "faithful",
+      "divergent_special_delivery": "strict",
+      "production_assembly_distribution_network": "faithful",
+      "general_backorder_fixed_cost": "strict"
+    },
+    "verification_tier_note": "Per-subfamily tiers (ledger-reconciled): serial=strict (Clark-Scarf Snyder-Shen Ex6.1 47.65 re-run); divergent_special_delivery=strict (Van Roy constant-base-stock 51.7/1302/1449 re-run within 2%; A3C savings rows = snapshot debt D1, not the tier basis); general_backorder_fixed_cost=strict for set1+KT (Geevers set1 10467, Kunnumkal-Topaloglu 4059 re-run) but set2/set3 (+223%) are an UNREPRODUCED debt (D2); assembly=faithful (verified-by-equivalence via Rosling reduction only, no direct anchor); production_assembly_distribution_network=faithful (only single-node analytical rows reproduce; general-network gate is the env's own base-stock).",
     "instances": [
       { "name": "serial:snyder_shen_example_6_1", "dimensions": ["subfamily:serial", "regime:backorder", "N:3", "demand:normal(5,1)", "leadtime:L[2,1,1]", "echelon_holding:[2,2,3]", "penalty:37.12", "published_optimum:47.65"], "literature_verified_flag": "true (the one genuinely published anchor)" },
       { "name": "serial:poisson_N1_N2_N3", "dimensions": ["subfamily:serial", "regime:backorder", "N:1/2/3", "demand:poisson(5)", "leadtime:L0=1", "reference_impl:stockpyl.ssm_serial", "optima:4.2208/16.7978/72.0435"], "literature_verified_flag": "reference-implementation-verified (matches stockpyl, NOT paper-printed)" },
@@ -128,6 +159,9 @@
   {
     "problem": "one_warehouse_multi_retailer",
     "subfamily": "OWMR (Kaynov et al. 2024), 3 regimes: lost_sales / backorder / partial_backorder",
+    "difficulty": "hard",
+    "difficulty_rationale": "High-dim state/action: 1 warehouse + up to K=10 retailers with a joint allocation decision (proportional / min_shortage / random_sequential) on top of ordering. No exact optimum for the full 100-period instances (only a reduced 2-retailer self-consistency DP anchor 8.485); only 2 of 14 published rows tightly re-run, comparator is a grid-searched gate + cross-protocol PPO context.",
+    "verification_tier": "faithful",
     "instances": [
       { "name": "kaynov2024_instance_1", "dimensions": ["regime:backorder", "K:3", "symmetric", "demand:Poisson(3)", "leadtime:Lw2_Lr1", "cv:low"], "literature_verified_flag": "true (ROW PROVENANCE only, NOT tight numerical reproduction)" },
       { "name": "kaynov2024_instance_2", "dimensions": ["regime:backorder", "K:3", "heterogeneous", "demand:Uniform(0,6)/Normal(3,1)/Poisson(3)", "leadtime:Lw2_Lr1"], "literature_verified_flag": "true (provenance)" },
@@ -176,6 +210,9 @@
   {
     "problem": "perishable_inventory",
     "subfamily": "De Moor 2022 Scenario A + Farrington 2025 Table 3",
+    "difficulty": "medium",
+    "difficulty_rationale": "State is the age-stratified inventory vector (m=2..4 age buckets x leadtime pipeline), so dimensionality grows fast (121 to ~1.3M states); the small m=2/L=1 slice HAS an exact tabular VI true optimum (true_optimum_match_only, De Moor + Farrington Table 3 re-derived), but 28 of 32 Scenario-A rows exceed the 2000-state exact cap and are table-only.",
+    "verification_tier": "strict",
     "instances": [
       { "name": "de_moor2022_m2_exp1_l1_cp7_lifo", "dimensions": ["regime:perishable", "issuing:lifo", "m:2", "leadtime:L1", "waste_cost:7", "states:121", "role:exact_verification", "cv:0.5"], "literature_verified_flag": "true (strict_literature_verified)" },
       { "name": "de_moor2022_m2_exp2_l1_cp7_fifo", "dimensions": ["regime:perishable", "issuing:fifo", "m:2", "leadtime:L1", "waste_cost:7", "states:121", "role:primary+exact_verification", "cv:0.5"], "literature_verified_flag": "true (primary; strict_literature_verified)" },
@@ -212,6 +249,10 @@
   {
     "problem": "ameliorating_inventory",
     "subfamily": "Pahr & Grunow 2025 'The Value of Blending' (average profit)",
+    "difficulty": "medium",
+    "difficulty_rationale": "Age-indexed inventory across A=10..25 age classes with a 3-part action (purchase / keep-discard / blend) in the full model; the only solver is a perfect-information steady-state LP UPPER BOUND (bound_gap, never an achievable optimum, no Python binding), so it is gap-to-bound rather than true-optimum benchmarking.",
+    "verification_tier": "reference",
+    "verification_tier_note": "Split: the perfect-info LP bound is verified_rerun vs the Pahr-Grunow 2025 companion code (~1e-8, reference-grade) -> headline tier = reference; the TRAINABLE env is faithful_unverified (no published achieved cost; the LP is an upper bound, not a reproduced optimum).",
     "instances": [
       { "name": "pahr_grunow2025_spirits_0001", "dimensions": ["A:10", "products:3", "regime:no_blending", "objective:average_profit", "maxInventory:50", "role:PRIMARY_verification_anchor", "LP_bound:1991.9344293376805"], "literature_verified_flag": "true" },
       { "name": "pahr_grunow2025_port_wine", "dimensions": ["A:25", "products:2", "regime:blending_enabled", "objective:average_profit", "maxInventory:50", "role:SECONDARY_verification_anchor", "LP_bound:2444.8010643781136"], "literature_verified_flag": "true" },
@@ -246,6 +287,10 @@
   {
     "problem": "joint_replenishment",
     "subfamily": "Vanvuchelen, Gijsbrechts & Boute 2020 FTL two-item",
+    "difficulty": "medium",
+    "difficulty_rationale": "Two coupled items sharing a truck (joint setup + capacity constraint) makes the action a 2-vector with a shared-fixed-cost interaction; a setting-5 VI reproduces the published optimal ACTION q=(0,6) but there is NO published absolute-cost table, so costs are repo-native (self-consistent) and the comparator is heuristic_to_beat (MOQ).",
+    "verification_tier": "reference",
+    "verification_tier_note": "Reference (not strict): VI reproduces the published optimal ACTION q=(0,6) at state (5,0), not a printed cost (no published absolute-cost table exists).",
     "instances": [
       { "name": "vanvuchelen2020_small_scale_setting_5 (PRIMARY + Figure-3 anchor)", "dimensions": ["regime:backorder", "items:2", "truck_capacity:V6", "K:75", "minor:asymmetric_k[40,10]", "holding:low_h[1,1]", "shortage:b[19,19]", "demand:U[0,5]xU[0,3]", "gamma:0.99", "has_vi_optimum"], "literature_verified_flag": "absent (no literature_verified field; carried verbatim from Table 2)" },
       { "name": "vanvuchelen2020_small_scale_setting_1..16 (16 Table-2 settings)", "dimensions": ["regime:backorder", "items:2", "truck_capacity:V6", "K:75", "h_in{1,5}", "b_in{19,95}", "minor_k_in{[10,10],[40,10]}", "gamma:0.99"], "literature_verified_flag": "absent (definitions match Table 2; no per-setting cost reproduced)" },
@@ -281,6 +326,9 @@
   {
     "problem": "joint_pricing_inventory",
     "subfamily": "finite-horizon joint pricing-and-ordering (price-setting newsvendor)",
+    "difficulty": "easy",
+    "difficulty_rationale": "Low-dim (period, inventory) state with a small joint (price-index, order-quantity) action over a short horizon; the T=5 verifier has an EXACT backward-induction DP true optimum (true_optimum_match_only, optimal -33.178 reproduced incl. an independent Python DP), well-posed despite having no published per-instance number.",
+    "verification_tier": "faithful",
     "instances": [
       { "name": "VERIFICATION_PROBLEM_INSTANCE (Qin-2022-labeled exact verifier)", "dimensions": ["regime:lost_sales", "horizon:T5", "price_ladder:3_levels[7,9,11]", "discount:0.99", "max_order_quantity:4", "exact_DP_feasible:true", "leadtime:L0", "salvage:1.0"], "literature_verified_flag": "false" },
       { "name": "PRIMARY_REFERENCE_INSTANCE / zhou2022_style_price_ladder", "dimensions": ["regime:lost_sales", "horizon:T18", "price_ladder:3_levels[8,10,12]", "demand:poisson_price_dependent[4.0,2.6,1.6]", "discount:0.99", "max_order_quantity:6", "no_exact_optimum:true", "leadtime:L0", "salvage:1.0"], "literature_verified_flag": "false" }
@@ -311,6 +359,9 @@
   {
     "problem": "nonstationary_lot_sizing",
     "subfamily": "Dehaybe, Catanzaro & Chevalier 2024 (HenriDeh/DRL_MMULS single-item)",
+    "difficulty": "medium",
+    "difficulty_rationale": "Single-item scalar order action, but the state must carry a non-stationary forecast window (seasonal / growth / decline over a 32-period horizon), so the policy is forecast-conditioned; there is NO exact global optimum (rolling-DP (s,S) is the strongest baseline, heuristic_to_beat) and verification is against author companion-code CSVs, not a peer-reviewed table.",
+    "verification_tier": "reference",
     "instances": [
       { "name": "dehaybe2024_lostsales_lt2_b5_k10_constant_5", "dimensions": ["regime:lost_sales", "forecast:constant_5", "L:2", "b:5", "K:10", "h:1", "cv:0.2", "H:32", "T:104"], "literature_verified_flag": "false" },
       { "name": "dehaybe2024_lostsales_lt2_b5_k10_constant_10 (PRIMARY + verification anchor)", "dimensions": ["regime:lost_sales", "forecast:constant_10", "L:2", "b:5", "K:10", "h:1", "cv:0.2", "H:32", "T:104"], "literature_verified_flag": "false" },
@@ -351,6 +402,9 @@
   {
     "problem": "procurement_removal_inventory",
     "subfamily": "control-only reduction of Maggiar & Sadighian 2017",
+    "difficulty": "easy",
+    "difficulty_rationale": "Low-dim single-item state (inventory + returnable buffer) with a small (order, remove) action; the reduced verifier has an EXACT backward-induction DP true optimum (31.78026 to 1e-10, true_optimum_match_only) and the structural-optimum interval-stock heuristic is the comparator — well-posed despite no published number.",
+    "verification_tier": "faithful",
     "instances": [
       { "name": "maggiar2017_style_fixed_returnability (PRIMARY)", "dimensions": ["regime:lost_sales", "demand:poisson", "mean:4.0", "periods:16", "init_inv:5", "returnable_cap:2", "removal_inactive", "discount:0.99"], "literature_verified_flag": "false (repo_native_instance_not_verified_against_literature)" },
       { "name": "removal_active_returnability", "dimensions": ["regime:lost_sales", "demand:poisson", "mean:3.0", "periods:16", "init_inv:12", "init_returnable:8", "holding:1.0", "removal_channel_binds", "discount:0.99"], "literature_verified_flag": "false (repo_native_removal_active_instance)" },
@@ -382,6 +436,9 @@
   {
     "problem": "random_yield_inventory",
     "subfamily": "all-or-nothing batch yield (structural match to Yan et al. 2026)",
+    "difficulty": "easy",
+    "difficulty_rationale": "Low-dim single-item state (inventory + short pipeline) with a scalar order action under all-or-nothing yield; the reduced L=2 slice has an EXACT discounted finite-horizon DP true optimum (40.0599, true_optimum_match_only) enumerating the demand x yield tree, with linear-inflation / weighted-newsvendor heuristics as comparators.",
+    "verification_tier": "faithful",
     "instances": [
       { "name": "VERIFICATION_PROBLEM_INSTANCE (exact-DP slice)", "dimensions": ["regime:backlog", "yield:all_or_nothing", "p:0.75", "leadtime:L2", "horizon:finite_T5", "demand:discrete_6pt", "gamma:0.99", "h:1", "b:9", "max_order_cap:8", "init_inv:4", "init_pipeline:[3,2]"], "literature_verified_flag": "false" },
       { "name": "PRIMARY_REFERENCE_INSTANCE = yan2026_style_lt2_p075_discounted", "dimensions": ["regime:backlog", "yield:all_or_nothing", "p:0.75", "leadtime:L2", "horizon:finite_T12", "demand:poisson_mean4", "gamma:0.99", "h:1", "b:9", "c:1", "init_inv:6", "init_pipeline:[4,3]"], "literature_verified_flag": "false" },
@@ -416,6 +473,10 @@
   {
     "problem": "spare_parts_inventory",
     "subfamily": "single-echelon periodic-review repairable (trainable env) + Kranenburg 2006 continuous-review lateral-transshipment (verification-only)",
+    "difficulty": "easy",
+    "difficulty_rationale": "Trainable env is a low-dim single-echelon repairable item (on-hand + repair/procurement pipelines) with a scalar order-up-to action; the reduced verifier has an EXACT bounded DP true optimum (28.39366, true_optimum_match_only) and a base-stock comparator. (The Kranenburg analytical module that IS literature-verified is a structurally different continuous-review model, not the benchmark env.)",
+    "verification_tier": "reference",
+    "verification_tier_note": "Split: the strict bit is the Kranenburg 2006 ANALYTICAL lateral-transshipment module (35/35 Table 5.2 rows re-run) — a DIFFERENT continuous-review model. The benchmarked TRAINABLE periodic-review repairable env is faithful_unverified (no published cost for that exact construction). Headline tier = reference because the only literature anchor is the adjacent analytical module, not the env.",
     "instances": [
       { "name": "single_echelon_repairable_operational_spares (PRIMARY)", "dimensions": ["regime:backorder", "review:periodic", "repairable:deterministic_repair_return", "horizon:17_periods", "installed_base:12", "L_proc:3", "L_repair:2", "p_fail:0.08", "downtime_cost:20", "trainable_env"], "literature_verified_flag": "false" },
       { "name": "VERIFICATION_PROBLEM_INSTANCE (reduced exact-DP)", "dimensions": ["regime:backorder", "review:periodic", "repairable", "horizon:4_periods", "discount:0.99", "installed_base:3", "L_proc:2", "L_repair:2", "p_fail:0.4", "max_order:4", "exact_dp_tractable"], "literature_verified_flag": "false" },
@@ -449,6 +510,9 @@
   {
     "problem": "vendor_managed_inventory",
     "subfamily": "Sui, Gosavi & Lin 2010 consignment VMI (reduced single-retailer slice + truck-dispatch family)",
+    "difficulty": "medium",
+    "difficulty_rationale": "Two-tier DC+retailer consignment state with a coupled (replenish-DC, ship-to-retailer) action and a capacity-limited shipment, raising it above single-node problems; an exact reduced DP exists in Rust but has NO Python binding (optimality ceiling unexposed), so reported gaps are learned-vs-heuristic and the only open published numbers are an instructor handout (not literature).",
+    "verification_tier": "faithful",
     "instances": [
       { "name": "PRIMARY_REFERENCE_INSTANCE / giannoccaro2010_style_single_retailer", "dimensions": ["regime:lost_sales", "single_retailer", "periods:24", "demand:poisson_mean2.5", "stockout:5.0", "dc_capacity:10", "max_shipment:5", "discount:0.99", "repo_chosen_no_published_anchor"], "literature_verified_flag": "false (SUI_GOSAVI_LIN_2010_REFERENCE.literature_verified=false)" },
       { "name": "low_penalty", "dimensions": ["regime:lost_sales", "stockout:2.0", "perturbation_of_primary"], "literature_verified_flag": "false" },
@@ -485,6 +549,10 @@
   {
     "problem": "decentralized_inventory_control",
     "subfamily": "four-stage Beer-Game serial under local information (closed-form board-game port + reusable env.rs MDP)",
+    "difficulty": "hard",
+    "difficulty_rationale": "Four independent agents acting under LOCAL information only (decentralized, each sees just its own stage + supply line), the canonical hard coordination/bullwhip setting; the classic 36-week instance has NO exact optimum carried (only a reduced 2-agent/3-period self-consistency DP), and the closed-form Sterman 204 is reproduced only by the board-game port while the trainable env.rs yields 378/278 under identical params.",
+    "verification_tier": "reference",
+    "verification_tier_note": "Split: the closed-form board-game port reproduces the Sterman/Edali-Yasarcan anchor-and-adjust [46,50,54,54]/204 (closed-form, reference-grade) -> headline tier = reference; the trainable env.rs is faithful_unverified (yields 378/278 under identical params, does NOT reproduce 204).",
     "instances": [
       { "name": "beer_game_classic_four_stage (PRIMARY)", "dimensions": ["regime:serial_backlog", "stages:4", "leadtime:ship[2,2,2,2]_order[0,1,1,1]", "demand:deterministic_step_4to8", "horizon:36week", "holding:0.5", "backlog:1.0", "anchor:sterman_S'[28,28,28,20]"], "literature_verified_flag": "absent (no field; carries published_sterman_benchmark Some(204) but env.rs does NOT reproduce it: anchor->378, best base-stock->278)" },
       { "name": "STERMAN_1989_CLASSIC_BENCHMARK (published row, closed-form only)", "dimensions": ["published_row:sterman_anchor_adjust", "per_agent[46,50,54,54]", "total:204", "scope:closed_form_board_game_only"], "literature_verified_flag": "absent (notes warn 204 is a property of closed-form bookkeeping only, env.rs yields 378)" },

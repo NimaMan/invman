@@ -86,7 +86,7 @@ python -c "import invman_rust as r; print(r.procurement_removal_inventory_step(4
 
 - **code:** `src/problems/procurement_removal_inventory/` — `env.rs` (MDP / step), `finite_horizon_dp.rs` (exact DP verifier), `literature/references.rs` (instance params + reference metadata), `literature/README.md`, `verification/tests.rs` + `verification/README.md`, `heuristics/`, `rollout.rs` (policy-side 7-feature map, normalization is policy-owned), `bindings.rs`.
 - **scripts:** `scripts/procurement_removal_inventory/` — `benchmark_procurement_removal.py`, `validate_against_exact_dp.py`, `train_soft_tree_reference.py`, `common.py`.
-- **autoresearch:** no `autoresearch/program_procurement_removal_inventory.md` exists for this system.
+- **autoresearch:** no `policy_search/programs/program_procurement_removal_inventory.md` exists for this system.
 - **Honest caveats:**
   - **No published cost row exists** — `literature_verified = false`, `no_published_number`. Verification re-ran is repo-native self-consistency (exact DP to machine precision + heuristic reproduction), not a literature anchor. This is the standing debt.
   - 2017 published numbers are **pricing-coupled NPV** (~84000) and 2025 reports the returns family **qualitatively only** — both are CONTEXT, never a "beats" comparator.

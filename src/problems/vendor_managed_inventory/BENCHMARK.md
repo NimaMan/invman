@@ -76,7 +76,7 @@ RAYON_NUM_THREADS=2 OMP_NUM_THREADS=2 python scripts/vendor_managed_inventory/au
 
 - code: `src/problems/vendor_managed_inventory/env.rs` (reduced-slice `step_state` + truck-dispatch `step_paper_state`), `literature/references.rs` (instances + honesty flags, all `literature_verified=false`), `verification/newsvendor_case.rs` + `verification/tests.rs` (handout reproduction + DP dominance/drift guard), `finite_horizon_dp.rs` (exact optimum, Rust-only), `bindings.rs` (`vendor_managed_inventory_*` Python bindings).
 - scripts: `scripts/vendor_managed_inventory/` (`benchmark_reduced_single_retailer.py`, `autoresearch_vendor_managed_inventory.py`).
-- autoresearch: `autoresearch/program_vendor_managed_inventory.md`.
+- autoresearch: `policy_search/programs/program_vendor_managed_inventory.md`.
 - **Honest caveats:**
   - **No published anchor.** The peer-reviewed paper table is paywalled; the only OPEN numbers are an instructor handout (NOT literature verification). Status is `faithful_unverified` with `no_published_number`.
   - **Not in the ES paper.** Unlike the paper's validated environments, `vendor_managed_inventory` has no `§` in `learning_inventory_control_policies_es.tex`.

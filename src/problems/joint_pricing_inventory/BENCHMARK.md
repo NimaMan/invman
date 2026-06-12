@@ -78,7 +78,7 @@ python scripts/joint_pricing_inventory/train_soft_tree_reference.py --depth 2 --
 
 - code: `src/problems/joint_pricing_inventory/env.rs`, `demand.rs`, `finite_horizon_dp.rs`, `rollout.rs`, `bindings.rs`, `heuristics/{static_price_base_stock,inventory_sensitive_base_stock}.rs`, `literature/references.rs`, `verification/tests.rs`
 - scripts: `scripts/joint_pricing_inventory/` (`benchmark_policies_against_exact_and_learned.py`, `validate_against_exact_dp.py`, `train_soft_tree_reference.py`, `common.py`)
-- autoresearch: no `autoresearch/program_joint_pricing_inventory.md` exists for this problem.
+- autoresearch: no `policy_search/programs/program_joint_pricing_inventory.md` exists for this problem.
 - **Cross-protocol caveat:** Zhou (2022) DDQN and Qin (2022) data-driven SAA are CONTEXT only — different MDP (reference-price state) / a theorem, not a per-instance number; never a "beats."
 - **Verification debt:** `no_published_number`; anchors are an analytical critical-fractile check + a repo-native exact DP self-consistency check.
 - **Seed caveat:** the +25.15% learned-policy claim is single training seed 123 (4096 *eval* seeds ≠ training-seed robustness); label it single-seed until re-run as mean ± std over ≥5 optimizer seeds vs the same-protocol heuristic gate.

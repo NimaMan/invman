@@ -178,7 +178,7 @@ For action parameterization, the repo currently supports:
 **We design the action space for the problem (the MDP), not to match Gijs's parameters.** Our
 training is separate from Gijs's training: Gijs's policy, their action grid, and their tuning are
 *their* design choices; we choose ours to suit this problem, and use the published numbers only as a
-benchmark to beat. See `autoresearch/program_multi_echelon.md` for the full discussion.
+benchmark to beat. See `policy_search/programs/program_multi_echelon.md` for the full discussion.
 
 The base-stock action grids in `references.rs` (`GIJS_SETTING_WAREHOUSE_LEVELS = {50..100}`,
 retailer `{0..40}`/`{0..50}`) are transcribed from Gijs's *reduced* learned-policy grid. **That grid

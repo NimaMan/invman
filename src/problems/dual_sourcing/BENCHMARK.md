@@ -81,14 +81,14 @@ python /home/nima/code/ml/invman/scripts/dual_sourcing/validate_reference_grid.p
 cargo test -p invman_rust dual_sourcing -- --ignored
 
 # learned-policy factor screen across all six rows
-python /home/nima/code/ml/invman/autoresearch/dual_sourcing_policy_search/run_factor_screen.py
+python /home/nima/code/ml/invman/policy_search/studies/dual_sourcing_policy_search/run_factor_screen.py
 ```
 
 ## Pointers & caveats
 
 - **Code:** `src/problems/dual_sourcing/env.rs` (MDP: `step_state`, `epoch_cost`), `heuristics.rs` (4 structured heuristics + grid search), `bounded_dp.rs` (truncated relative value-iteration reference), `policies.rs` / `rollout.rs` (capped-dual-index decoder + rollout), `bindings.rs` (`dual_sourcing_reference_benchmark_summary`), `literature/references.rs` (6 instances + Figure-9 gap labels), `verification/tests.rs` (executing `l_r=2` checks + frozen drift guards).
 - **Scripts:** `scripts/dual_sourcing/` (`validate_reference_grid.py`, `benchmark_full_suite.py`, `dual_sourcing_benchmark_lib.py`, `autoresearch_dual_sourcing*.py`, `sweep_policy_variants.py`).
-- **Autoresearch:** `autoresearch/program_dual_sourcing.md`; canonical search surface `autoresearch/dual_sourcing_policy_search/` (`run_factor_screen.py`, `factor_screen_results.md`, `summarize_factor_screen.py`, `README.md`).
+- **Autoresearch:** `policy_search/programs/program_dual_sourcing.md`; canonical search surface `policy_search/studies/dual_sourcing_policy_search/` (`run_factor_screen.py`, `factor_screen_results.md`, `summarize_factor_screen.py`, `README.md`).
 - **Caveat — A3C is cross-protocol context:** Gijsbrechts' A3C gaps (0.51-1.85%) are a deep-RL comparator. Matching CDI lands below them, but A3C is never a like-for-like "beats" claim here.
 - **Caveat — bounded DP is not a proof-level optimum:** it is a truncated finite-state reference; for `l_r=4` it sits ~0.2% below the heuristics and is unusable as a denominator. CDI is the optimal proxy throughout, justified by its `<=0.11%` published gap.
 - **Caveat — "beats CDI" / factor-screen negatives are single-seed:** the only seed-robust result is the *match* on all 6 rows. The two -0.009%/-0.041% "beats" and the factor-screen negatives are single-seed (`at_risk`), economically negligible, and inside CDI's own optimality band; do not promote them to wins.

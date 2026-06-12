@@ -35,6 +35,6 @@ python scripts/assembly/benchmark_assembly_policies.py
 ```
 
 ## Pointers & caveats
-- code: src/problems/multi_echelon/assembly/{env.rs, rosling.rs, echelon_base_stock.rs, references.rs, verification.rs} ; scripts: scripts/assembly/ ; autoresearch: none dedicated (covered under autoresearch/program_multi_echelon.md).
+- code: src/problems/multi_echelon/assembly/{env.rs, rosling.rs, echelon_base_stock.rs, references.rs, verification.rs} ; scripts: scripts/assembly/ ; autoresearch: none dedicated (covered under policy_search/programs/program_multi_echelon.md).
 - HONEST DEBT: no assembly env binding is exposed to Python, so the costs were NOT reproduced by re-run this audit (manual remap gave 26.55 ≠ 22.759). Treat the 22.759/52.536/27.530 figures as solver-derived self-consistency anchors, not published numbers.
 - The honesty guard test `no_assembly_instance_is_literature_verified` enforces that every instance stays `literature_verified=false`; do not promote any of these to a published-number row.
