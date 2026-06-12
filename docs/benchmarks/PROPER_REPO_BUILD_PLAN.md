@@ -11,16 +11,18 @@ Effort key: **S** ≈ <½ day · **M** ≈ 1–2 days · **L** ≈ ≥3 days.
 ## (a) Standard benchmark API per problem
 
 > **Status (2026-06-12): the uniform EXECUTABLE surface now exists** as
-> `invman/benchmarks/runners/` — `catalog.get(problem).load_instance(name)`
-> returns a runnable `ReferenceInstance` (env params + published baselines +
-> `run_baselines()` to re-run them on the live env + `evaluate()` through the
-> CMA-ES seam + `compare()`). Wired for **lost_sales (+ fixed_order_cost),
-> dual_sourcing (Gijs Figure-9), multi_echelon (divergent Van Roy / Gijs)**;
-> the per-family Rust accessors below already exist for the rest, so adding each
-> remaining family is one `ProblemRunner` subclass (four hooks). Worked reports:
-> `scripts/benchmark_baselines/run_<family>_baselines.py`. The A1–A11 items below
-> are the per-family Rust-accessor refinements (provenance split, extra
-> bindings) that remain.
+> `invman/benchmarks/runners/`, covering **all 14 catalog families** (157
+> reference instances) — `catalog.get(problem).load_instance(name)` returns a
+> runnable `ReferenceInstance` (env params + published baselines +
+> `run_baselines()` to re-run them on the live env + `compare()`). All 14 support
+> load/baselines/compare; **lost_sales (+fixed), dual_sourcing, multi_echelon**
+> additionally support `evaluate()` through the CMA-ES seam (the other 11 set
+> `supports_evaluate=False` — their soft-tree rollout isn't in the
+> `build_policy`/`get_model_fitness` seam yet, so `evaluate()` raises an
+> actionable error). Worked reports: `scripts/benchmark_baselines/`. REMAINING:
+> wire `evaluate` for the 11 metadata-only families (a `build_policy` +
+> `rollout_fitness` branch each); the A1–A11 items below are the per-family
+> Rust-accessor refinements (provenance split, extra bindings).
 
 Target every problem family to expose the *same* Python surface so a benchmark consumer never has to parse Rust or markdown:
 

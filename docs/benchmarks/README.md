@@ -54,7 +54,7 @@ my_cost = inst.evaluate(my_trained_params)   # score your policy (size it with i
 inst.compare(my_cost)       # signed gap vs the reference + a 'beats' verdict
 ```
 
-Runners exist today for `lost_sales` (+ fixed-order-cost), `dual_sourcing` (Gijs Figure-9), and `multi_echelon` (divergent Van Roy / Gijs) — see [`../../invman/benchmarks/runners/README.md`](../../invman/benchmarks/runners/README.md). Worked per-family reports that emit a published-vs-recomputed comparison table live in [`../../scripts/benchmark_baselines/`](../../scripts/benchmark_baselines/) (`run_<family>_baselines.py --simulate`).
+**All 14 catalog families have a runner** (157 reference instances) — every one supports `list_instances` / `load_instance` / `published_baselines` / `run_baselines` / `compare`; `lost_sales` (+fixed), `dual_sourcing`, and `multi_echelon` additionally support `evaluate` (their soft-tree rollout is in the CMA-ES seam). See [`../../invman/benchmarks/runners/README.md`](../../invman/benchmarks/runners/README.md) for the per-family table. Worked per-family reports that emit a published-vs-recomputed comparison table live in [`../../scripts/benchmark_baselines/`](../../scripts/benchmark_baselines/) (`run_<family>_baselines.py --simulate`).
 
 ### Difficulty rubric (`easy` / `medium` / `hard`)
 

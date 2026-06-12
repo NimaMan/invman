@@ -15,6 +15,7 @@ Figure-9 instances), and `multi_echelon` (the Van Roy / Gijs divergent settings)
 | File | What it does |
 |---|---|
 | `benchmark_baseline_report.py` | Shared harness: `collect_rows` (load instances + published baselines, optionally re-run on the live env), `render_markdown` / `write_outputs` (published vs recomputed table + JSON sidecar), `evaluate_zero_policy` (proves the evaluate seam runs), and the common `--simulate / --full / --instances / --evaluate-zeros / --out` CLI. Trains nothing. |
+| `run_family_baselines.py` | **Generic dispatcher — works for ALL 14 catalog families.** First arg is the problem name: `run_family_baselines.py <problem> [--simulate ...]`. |
 | `run_lost_sales_baselines.py` | `lost_sales` report — 33 vanilla Zipkin cells + the Bijvank fixed-order-cost instance. |
 | `run_dual_sourcing_gijs_baselines.py` | `dual_sourcing` report — the 6 Gijs Figure-9 instances (published gaps + recomputed absolute heuristic costs). |
 | `run_multi_echelon_baselines.py` | `multi_echelon` report — the 5 divergent Van Roy / Gijs instances (published + recomputed best constant base-stock). |

@@ -26,8 +26,12 @@ SMALL_ME = EvalProtocol(seeds=(123,), horizon=1500, warm_up_periods_ratio=0.0, r
 # --- registry ---------------------------------------------------------------
 
 
-def test_available_runners_are_the_three_built_families() -> None:
-    assert set(runners.available_runners()) == {"lost_sales", "dual_sourcing", "multi_echelon"}
+def test_every_catalog_family_has_a_runner() -> None:
+    # Coverage promise: all 14 catalog families are runnable.
+    assert set(runners.available_runners()) == set(catalog.list_problems())
+
+
+SEAM_FAMILIES = {"lost_sales", "dual_sourcing", "multi_echelon"}
 
 
 def test_get_runner_unknown_problem_raises() -> None:
@@ -37,6 +41,37 @@ def test_get_runner_unknown_problem_raises() -> None:
 
 def test_runner_instances_are_cached() -> None:
     assert runners.get_runner("lost_sales") is runners.get_runner("lost_sales")
+
+
+@pytest.mark.parametrize("problem", sorted(set().union(*[{p} for p in [
+    "lost_sales", "dual_sourcing", "multi_echelon", "one_warehouse_multi_retailer",
+    "perishable_inventory", "ameliorating_inventory", "joint_replenishment",
+    "joint_pricing_inventory", "nonstationary_lot_sizing", "procurement_removal_inventory",
+    "random_yield_inventory", "spare_parts_inventory", "vendor_managed_inventory",
+    "decentralized_inventory_control",
+]])))
+def test_every_family_loads_a_primary_instance(problem: str) -> None:
+    card = catalog.get(problem)
+    assert card.has_runner
+    inst = card.load_instance()  # primary
+    assert inst.problem == problem
+    assert inst.params  # non-empty env params
+    assert len(card.list_instances()) >= 1
+    # Either a published cost reference, published gap-baselines, or run_baselines
+    # is the comparator — at minimum the instance must carry baselines metadata.
+    assert isinstance(inst.published_baselines, list)
+
+
+def test_only_seam_families_support_evaluate() -> None:
+    for problem in catalog.list_problems():
+        supports = runners.get_runner(problem).supports_evaluate
+        assert supports is (problem in SEAM_FAMILIES), problem
+
+
+def test_metadata_only_family_evaluate_raises_actionable_error() -> None:
+    inst = catalog.get("perishable_inventory").load_instance()
+    with pytest.raises(NotImplementedError):
+        inst.evaluate([0.0])
 
 
 # --- catalog bridge ---------------------------------------------------------
@@ -49,11 +84,11 @@ def test_catalog_card_exposes_runner_for_built_families() -> None:
         assert card.runner().problem == problem
 
 
-def test_catalog_card_without_runner_reports_false() -> None:
-    card = catalog.get("perishable_inventory")
-    assert card.has_runner is False
+def test_has_runner_helper_rejects_non_catalog_problem() -> None:
+    # All 14 catalog families now have runners; a non-catalog name does not.
+    assert runners.has_runner("not_a_real_problem") is False
     with pytest.raises(KeyError):
-        card.runner()
+        runners.get_runner("not_a_real_problem")
 
 
 def test_list_instances_matches_rust() -> None:
@@ -173,3 +208,60 @@ def test_evaluate_wrong_param_count_raises() -> None:
     inst = catalog.get("lost_sales").load_instance("lit_poisson_p4_l4")
     with pytest.raises(ValueError):
         inst.evaluate([0.0, 0.0, 0.0], protocol=SMALL)  # wrong length
+
+
+# --- new families: fast, deterministic reproduction checks -------------------
+# These cover the exact-solver / closed-form runners (deterministic, quick). The
+# slower Monte-Carlo families (perishable, owmr, nonstationary, vmi) are smoke-
+# verified by their runners; here we keep the central suite fast.
+
+
+def test_joint_pricing_exact_dp_reproduces_published() -> None:
+    inst = catalog.get("joint_pricing_inventory").load_instance()
+    rb = inst.run_baselines()
+    assert rb["optimal"].is_optimal
+    assert rb["optimal"].mean_cost == pytest.approx(inst.published_costs["optimal"], abs=1e-6)
+
+
+def test_procurement_removal_exact_dp_reproduces_published() -> None:
+    inst = catalog.get("procurement_removal_inventory").load_instance()
+    rb = inst.run_baselines()
+    assert rb["optimal"].mean_cost == pytest.approx(inst.published_costs["optimal"], abs=1e-6)
+
+
+def test_joint_replenishment_exact_optimum_and_action_anchor() -> None:
+    inst = catalog.get("joint_replenishment").load_instance()
+    rb = inst.run_baselines()
+    assert rb["exact_dp_optimal"].is_optimal
+    assert rb["exact_dp_optimal"].mean_cost == pytest.approx(266.3863, abs=1e-2)
+    # the published heuristic ACTION q=(2,4) is reproduced exactly on the live env
+    assert rb["moq_anchor_action"].params["action"] == [2, 4]
+
+
+def test_spare_parts_kranenburg_optimum_reproduced() -> None:
+    inst = catalog.get("spare_parts_inventory").load_instance()
+    rb = inst.run_baselines()
+    assert rb["kranenburg_situation1_optimal"].mean_cost == pytest.approx(91.9, abs=0.05)
+
+
+def test_decentralized_reproduces_sterman_204_closed_form() -> None:
+    inst = catalog.get("decentralized_inventory_control").load_instance()
+    assert inst.reference_cost == pytest.approx(204.0, abs=1e-6)
+    rb = inst.run_baselines()
+    assert rb["sterman_anchor_adjust_closed_form"].mean_cost == pytest.approx(204.0, abs=1e-6)
+
+
+def test_ameliorating_is_profit_direction_and_reproduces_lp_bound() -> None:
+    runner = runners.get_runner("ameliorating_inventory")
+    assert runner.lower_is_better is False  # profit family
+    inst = runner.load_instance()
+    # reference is the perfect-information LP upper bound on profit
+    assert inst.reference_baseline.name == "perfect_information_lp_bound"
+    rb = inst.run_baselines()
+    assert rb["perfect_information_lp_bound"].mean_cost == pytest.approx(
+        inst.published_costs["perfect_information_lp_bound"], abs=1e-3
+    )
+    # compare() keeps "positive gap = worse" even for a maximize family: a HIGHER
+    # profit than the bound would be impossible, but a lower profit is worse.
+    worse = inst.compare(inst.reference_cost - 100.0)
+    assert worse["beats"] is False and worse["gap_abs"] > 0.0

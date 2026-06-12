@@ -40,9 +40,23 @@ from invman.benchmarks.runners.base import (
 # Problem name -> "module:ClassName" (resolved lazily so importing this package
 # does not import invman_rust until a runner is actually requested).
 _RUNNER_REGISTRY: dict[str, str] = {
+    # Full runners (params + published baselines + run_baselines + evaluate seam).
     "lost_sales": "invman.benchmarks.runners.lost_sales_runner:LostSalesRunner",
     "dual_sourcing": "invman.benchmarks.runners.dual_sourcing_runner:DualSourcingRunner",
     "multi_echelon": "invman.benchmarks.runners.multi_echelon_runner:MultiEchelonRunner",
+    # Metadata + run_baselines runners (supports_evaluate=False — policy scoring is
+    # not yet in the uniform CMA-ES seam for these; load/baselines/compare work).
+    "one_warehouse_multi_retailer": "invman.benchmarks.runners.one_warehouse_multi_retailer_runner:OneWarehouseMultiRetailerRunner",
+    "perishable_inventory": "invman.benchmarks.runners.perishable_inventory_runner:PerishableInventoryRunner",
+    "joint_replenishment": "invman.benchmarks.runners.joint_replenishment_runner:JointReplenishmentRunner",
+    "spare_parts_inventory": "invman.benchmarks.runners.spare_parts_inventory_runner:SparePartsInventoryRunner",
+    "joint_pricing_inventory": "invman.benchmarks.runners.joint_pricing_inventory_runner:JointPricingInventoryRunner",
+    "procurement_removal_inventory": "invman.benchmarks.runners.procurement_removal_inventory_runner:ProcurementRemovalInventoryRunner",
+    "random_yield_inventory": "invman.benchmarks.runners.random_yield_inventory_runner:RandomYieldInventoryRunner",
+    "nonstationary_lot_sizing": "invman.benchmarks.runners.nonstationary_lot_sizing_runner:NonstationaryLotSizingRunner",
+    "ameliorating_inventory": "invman.benchmarks.runners.ameliorating_inventory_runner:AmelioratingInventoryRunner",
+    "vendor_managed_inventory": "invman.benchmarks.runners.vendor_managed_inventory_runner:VendorManagedInventoryRunner",
+    "decentralized_inventory_control": "invman.benchmarks.runners.decentralized_inventory_control_runner:DecentralizedInventoryControlRunner",
 }
 
 _runner_cache: dict[str, ProblemRunner] = {}

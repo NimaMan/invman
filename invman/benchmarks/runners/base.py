@@ -163,24 +163,34 @@ class ReferenceInstance:
         return {b.name: b.mean_cost for b in self.published_baselines if b.available}
 
     @property
+    def _lower_is_better(self) -> bool:
+        """Score direction; profit families (ameliorating) maximize, so False."""
+        return getattr(self.runner, "lower_is_better", True)
+
+    def _best(self, baselines: list[Baseline]) -> Baseline:
+        key = (lambda b: b.mean_cost) if self._lower_is_better else (lambda b: -b.mean_cost)
+        return min(baselines, key=key)
+
+    @property
     def reference_baseline(self) -> Optional[Baseline]:
         """The single canonical number to beat.
 
         Preference order: a baseline the family explicitly declared the canonical
         comparator (`is_reference`, e.g. multi-echelon's constant base-stock) >
-        the exact optimum (`is_optimal`) > the cheapest available published
-        baseline (the strongest heuristic). None if nothing is available.
+        the exact optimum (`is_optimal`) > the best available published baseline
+        (the strongest heuristic). "Best" = cheapest for cost families, highest
+        for profit families (`runner.lower_is_better`). None if nothing available.
         """
         available = [b for b in self.published_baselines if b.available]
         if not available:
             return None
         declared = [b for b in available if b.is_reference]
         if declared:
-            return min(declared, key=lambda b: b.mean_cost)
+            return self._best(declared)
         optima = [b for b in available if b.is_optimal]
         if optima:
-            return min(optima, key=lambda b: b.mean_cost)
-        return min(available, key=lambda b: b.mean_cost)
+            return self._best(optima)
+        return self._best(available)
 
     @property
     def reference_cost(self) -> Optional[float]:
@@ -249,8 +259,11 @@ class ReferenceInstance:
             if ref is None:
                 raise ValueError(f"{self.name!r} has no published reference cost to compare against")
             ref_name, ref_cost = ref.name, ref.mean_cost
-        gap_abs = float(my_cost) - float(ref_cost)
-        gap_pct = 100.0 * gap_abs / float(ref_cost) if ref_cost else float("nan")
+        # Signed so a POSITIVE gap always means "worse than the reference",
+        # regardless of whether the family minimizes cost or maximizes profit.
+        raw_delta = float(my_cost) - float(ref_cost)
+        gap_abs = raw_delta if self._lower_is_better else -raw_delta
+        gap_pct = 100.0 * gap_abs / abs(float(ref_cost)) if ref_cost else float("nan")
         return {
             "instance": self.name,
             "reference": ref_name,
@@ -282,6 +295,16 @@ class ProblemRunner(ABC):
     published_protocol: EvalProtocol = EvalProtocol()
     #: Fast "does my harness run?" protocol.
     smoke_protocol: EvalProtocol = EvalProtocol(seeds=(1234,), horizon=1000)
+    #: True only when this family's soft-tree rollout is wired into the uniform
+    #: CMA-ES eval seam (build_policy + get_model_fitness) so `evaluate()` works.
+    #: Metadata-only runners (params + published baselines + run_baselines, but no
+    #: in-seam policy scoring yet) set this False; `evaluate()` then fails loudly
+    #: with a pointer rather than pretending to score.
+    supports_evaluate: bool = True
+    #: Score direction. Cost families minimize (True); profit families
+    #: (ameliorating_inventory) maximize — set False so `reference_baseline` picks
+    #: the highest and `compare` keeps "positive gap = worse".
+    lower_is_better: bool = True
 
     # -- abstract family hooks --------------------------------------------
     @abstractmethod
@@ -308,11 +331,24 @@ class ProblemRunner(ABC):
     def _run_baselines(self, inst: ReferenceInstance, protocol: EvalProtocol) -> dict[str, Baseline]:
         """Re-simulate the shipped baseline(s) on the live env."""
 
-    @abstractmethod
     def _eval_model_and_args(
         self, inst: ReferenceInstance, structure: dict, protocol: EvalProtocol
     ):
-        """Build `(model, args)` for the CMA-ES eval seam on this instance."""
+        """Build `(model, args)` for the CMA-ES eval seam on this instance.
+
+        Override in a runner whose soft-tree rollout is wired through
+        `build_policy` + `get_model_fitness` (and set `supports_evaluate=True`).
+        The default raises — a metadata-only runner does not score policies yet.
+        """
+        raise NotImplementedError(
+            f"policy evaluation is not yet wired into the uniform runner for "
+            f"{self.problem!r}. The env params + published baselines + "
+            f"run_baselines() above ARE runnable; the family's soft-tree rollout "
+            f"is `invman_rust.{self.problem}_soft_tree_rollout` (kwargs differ per "
+            f"family — see scripts/{self.problem}/). Wiring it through "
+            f"invman.policy_build.build_policy + invman.rollout_fitness."
+            f"get_model_fitness is the next increment."
+        )
 
     # -- concrete shared surface ------------------------------------------
     def load_instance(self, name: Optional[str] = None) -> ReferenceInstance:
@@ -347,6 +383,9 @@ class ProblemRunner(ABC):
 
         from invman.rollout_fitness import get_model_fitness
 
+        if not self.supports_evaluate:
+            # Triggers the actionable NotImplementedError below.
+            self._eval_model_and_args(inst, structure, protocol)
         model, args = self._eval_model_and_args(inst, structure, protocol)
         params = np.asarray(flat_params, dtype=np.float32)
         if params.size != model.num_params:
