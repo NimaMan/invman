@@ -1,0 +1,2589 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Small Structured Policies for Inventory Control</title>
+  <meta name="description" content="Conference presentation on CMA-ES, action geometry, and compact inventory-control policies for lost sales, dual sourcing, and multi-echelon systems.">
+  <style>
+:root {
+  --paper: #f8f1e4;
+  --paper-strong: #fbf6ec;
+  --paper-soft: #efe5d3;
+  --ink: #16202b;
+  --muted: #55606d;
+  --line: #dacdb8;
+  --navy: #0b4f6c;
+  --verdigris: #3e7e73;
+  --brass: #b5611f;
+  --plum: #705189;
+  --terra: #9a4f38;
+  --cream: #fffaf0;
+  --shadow: 0 20px 70px rgba(31, 36, 42, 0.16);
+  --radius: 8px;
+  --slide-pad-x: clamp(24px, 5vw, 76px);
+  --slide-pad-y: clamp(24px, 4vw, 56px);
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background:
+    linear-gradient(90deg, rgba(11, 79, 108, 0.05), transparent 30%, rgba(181, 97, 31, 0.04)),
+    var(--paper);
+  color: var(--ink);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+body {
+  overflow: hidden;
+}
+
+a {
+  color: var(--navy);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(11, 79, 108, 0.35);
+}
+
+a:hover {
+  border-bottom-color: currentColor;
+}
+
+code {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.92em;
+  color: var(--navy);
+}
+
+.deck {
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  position: relative;
+}
+
+.slide {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--slide-pad-y) var(--slide-pad-x);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(3.5vw) scale(0.992);
+  transition: opacity 260ms ease, transform 260ms ease, visibility 260ms ease;
+}
+
+.slide.is-active {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(0) scale(1);
+  z-index: 2;
+}
+
+.slide__inner {
+  width: min(1180px, 100%);
+  min-height: min(760px, calc(100vh - 2 * var(--slide-pad-y)));
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: clamp(18px, 2.2vw, 30px);
+}
+
+.title-grid,
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(360px, 1.05fr);
+  gap: clamp(28px, 5vw, 70px);
+  align-items: center;
+}
+
+.split--wide-figure {
+  grid-template-columns: minmax(310px, 0.78fr) minmax(420px, 1.22fr);
+}
+
+.eyebrow {
+  margin: 0 0 10px;
+  color: var(--brass);
+  font-size: 0.86rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+h1 {
+  max-width: 11ch;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 6.2rem;
+  line-height: 0.92;
+  letter-spacing: 0;
+}
+
+h2 {
+  max-width: 16ch;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 4.25rem;
+  line-height: 0.98;
+  letter-spacing: 0;
+}
+
+h3 {
+  font-size: 1.24rem;
+  line-height: 1.1;
+  letter-spacing: 0;
+}
+
+.lead,
+.dek {
+  max-width: 720px;
+  color: var(--muted);
+  font-size: 1.36rem;
+  line-height: 1.42;
+}
+
+.dek {
+  margin-top: 24px;
+}
+
+.compact {
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.45;
+}
+
+.title-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 34px;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.title-meta span {
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 250, 240, 0.58);
+}
+
+figure {
+  margin: 0;
+}
+
+svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+
+.hero-figure,
+.pipeline-figure,
+.flow-card,
+.dual-figure,
+.network-figure,
+.loop-figure,
+.policy-pipeline,
+.trap-chart {
+  filter: drop-shadow(0 16px 36px rgba(22, 32, 43, 0.12));
+}
+
+.fig-bg,
+.chart-bg {
+  fill: var(--paper-strong);
+  stroke: var(--line);
+  stroke-width: 1.6;
+}
+
+.hero-node rect,
+.hero-policy rect,
+.hero-chip rect,
+.policy-stage rect,
+.policy-box rect,
+.loop-card rect,
+.supply-node rect,
+.stock-node rect,
+.warehouse-node rect,
+.retailer-node rect,
+.pipe-bucket rect,
+.pipe-track rect,
+.decoder-card,
+.coordinate-panel,
+.verdict,
+.me-card,
+.synthesis-card,
+.caveat-grid > div,
+.source-grid a {
+  shape-rendering: geometricPrecision;
+}
+
+.hero-node rect {
+  fill: var(--cream);
+  stroke: var(--line);
+  stroke-width: 2;
+}
+
+.hero-node--supply rect,
+.supply-node--regular rect {
+  stroke: var(--navy);
+}
+
+.hero-node--dual rect,
+.supply-node--expedite rect {
+  stroke: var(--brass);
+}
+
+.hero-node--network rect {
+  stroke: var(--verdigris);
+}
+
+.hero-node text,
+.hero-policy text,
+.hero-chip text,
+.policy-stage text,
+.loop-card text,
+.supply-node text,
+.stock-node text,
+.warehouse-node text,
+.retailer-node text,
+.demand-node text,
+.customer-node text,
+.loss-node text,
+.pipe-bucket text,
+.pipe-track text {
+  fill: var(--ink);
+  text-anchor: middle;
+  font-weight: 750;
+  font-size: 22px;
+}
+
+.hero-node text + text,
+.loop-card text + text,
+.supply-node text + text,
+.stock-node text + text,
+.warehouse-node text + text {
+  fill: var(--muted);
+  font-size: 17px;
+  font-weight: 650;
+}
+
+.hero-policy rect {
+  fill: #e8f0ed;
+  stroke: var(--verdigris);
+  stroke-width: 3;
+}
+
+.hero-policy text:first-of-type {
+  fill: var(--verdigris);
+  font-size: 30px;
+  font-weight: 850;
+}
+
+.hero-policy text:nth-of-type(2),
+.hero-policy text:nth-of-type(3) {
+  font-size: 19px;
+}
+
+.hero-node--network text:first-of-type {
+  font-size: 20px;
+}
+
+.hero-link,
+.flow-line,
+.loop-arrow,
+.policy-arrow {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 4;
+  color: var(--navy);
+}
+
+.hero-link--b,
+.flow-line--expedite,
+.flow-line--lost {
+  color: var(--brass);
+}
+
+.hero-link--c,
+.flow-line--serve {
+  color: var(--verdigris);
+}
+
+.hero-chip rect {
+  fill: #f2eadc;
+  stroke: var(--line);
+}
+
+.hero-chip text {
+  font-size: 14px;
+  fill: var(--muted);
+}
+
+.clean-list {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--ink);
+  font-size: 1.12rem;
+  line-height: 1.4;
+}
+
+.clean-list li {
+  position: relative;
+  padding-left: 24px;
+}
+
+.clean-list li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.62em;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--verdigris);
+}
+
+.pipe-bucket rect,
+.pipe-track rect {
+  fill: #e8eff1;
+  stroke: var(--navy);
+  stroke-width: 1.8;
+}
+
+.stock-node rect,
+.warehouse-node rect {
+  fill: #e8f0ed;
+  stroke: var(--verdigris);
+  stroke-width: 2.2;
+}
+
+.demand-node circle,
+.customer-node circle {
+  fill: #f3e6d8;
+  stroke: var(--brass);
+  stroke-width: 2.2;
+}
+
+.loss-node path {
+  fill: #f1ded6;
+  stroke: var(--terra);
+  stroke-width: 2;
+}
+
+.flow-line--request {
+  color: var(--muted);
+  stroke-dasharray: 7 7;
+}
+
+.flow-line--regular {
+  color: var(--navy);
+  stroke-width: 4.5;
+}
+
+.fig-label {
+  fill: var(--muted);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.fig-label--lost {
+  fill: var(--terra);
+}
+
+.loop-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.42fr);
+  gap: clamp(20px, 4vw, 46px);
+  align-items: center;
+}
+
+.loop-card rect {
+  fill: var(--cream);
+  stroke: var(--line);
+  stroke-width: 2;
+}
+
+.loop-card--eval rect {
+  fill: #f4eadb;
+  stroke: var(--brass);
+}
+
+.loop-center text {
+  fill: var(--muted);
+  text-anchor: middle;
+  font-size: 22px;
+  font-weight: 750;
+}
+
+.quote-panel {
+  border-left: 5px solid var(--navy);
+  padding: 22px 0 22px 24px;
+  display: grid;
+  gap: 18px;
+  font-size: 1.36rem;
+  line-height: 1.35;
+}
+
+.policy-box rect {
+  fill: rgba(11, 79, 108, 0.045);
+  stroke: var(--navy);
+  stroke-width: 2;
+  stroke-dasharray: 8 8;
+}
+
+.policy-box text {
+  fill: var(--navy);
+  text-anchor: middle;
+  font-weight: 850;
+  font-size: 22px;
+}
+
+.policy-stage rect {
+  fill: var(--cream);
+  stroke: var(--line);
+  stroke-width: 2;
+}
+
+.policy-stage--state rect {
+  stroke: var(--navy);
+  fill: #e8eff1;
+}
+
+.policy-stage--decoder rect {
+  stroke: var(--plum);
+  fill: #eee7f0;
+}
+
+.policy-stage--action rect {
+  stroke: var(--verdigris);
+  fill: #e8f0ed;
+}
+
+.policy-stage text {
+  font-size: 21px;
+}
+
+.policy-stage text + text {
+  fill: var(--muted);
+  font-size: 15px;
+}
+
+.decoder-tags text {
+  fill: var(--muted);
+  font-size: 17px;
+  font-weight: 700;
+  text-anchor: middle;
+}
+
+.slide-caption,
+.source-line,
+.closing-line {
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.45;
+}
+
+.closing-line {
+  color: var(--ink);
+  font-size: 1.5rem;
+  font-weight: 750;
+}
+
+.verdict-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+
+.verdict {
+  min-height: 230px;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 250, 240, 0.72);
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  box-shadow: 0 10px 28px rgba(22, 32, 43, 0.08);
+}
+
+.verdict__icon {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--cream);
+  background: var(--navy);
+  font-weight: 900;
+  font-size: 1.5rem;
+}
+
+.verdict--match .verdict__icon {
+  background: var(--verdigris);
+}
+
+.verdict--beat .verdict__icon {
+  background: var(--navy);
+}
+
+.verdict--context .verdict__icon {
+  background: var(--brass);
+}
+
+.verdict p,
+.decoder-card p,
+.coordinate-panel p,
+.me-card p,
+.synthesis-card p,
+.caveat-grid p {
+  color: var(--muted);
+  line-height: 1.42;
+  font-size: 1rem;
+}
+
+.section-break .slide__inner {
+  min-height: min(680px, calc(100vh - 2 * var(--slide-pad-y)));
+  justify-content: center;
+}
+
+.section-break h2 {
+  max-width: 15ch;
+}
+
+.slide[data-title$="Policy Example"] .slide__inner {
+  gap: 16px;
+}
+
+.slide[data-title$="Policy Example"] h2 {
+  max-width: 20ch;
+  font-size: 3.45rem;
+}
+
+.section-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.section-kpis div {
+  border-top: 3px solid var(--verdigris);
+  padding-top: 12px;
+}
+
+.section-kpis strong {
+  display: block;
+  font-size: 0.9rem;
+  color: var(--brass);
+  text-transform: uppercase;
+  letter-spacing: 0;
+  margin-bottom: 6px;
+}
+
+.section-kpis span {
+  color: var(--ink);
+  font-size: 1.12rem;
+  line-height: 1.3;
+}
+
+.supply-node rect {
+  fill: #e8eff1;
+  stroke: var(--navy);
+  stroke-width: 2;
+}
+
+.supply-node--expedite rect {
+  fill: #f4eadb;
+  stroke: var(--brass);
+}
+
+.retailer-node rect {
+  fill: var(--cream);
+  stroke: var(--line);
+  stroke-width: 2;
+}
+
+.heatmap-layout,
+.dual-result-grid,
+.trap-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.38fr);
+  gap: clamp(22px, 4vw, 50px);
+  align-items: center;
+}
+
+.lost-heatmap {
+  display: grid;
+  gap: 8px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper-strong);
+  box-shadow: var(--shadow);
+}
+
+.heatmap-head,
+.heatmap-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 1.35fr) repeat(4, minmax(74px, 1fr));
+  gap: 8px;
+  align-items: center;
+}
+
+.heatmap-head span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.row-label {
+  color: var(--ink);
+  font-size: 0.88rem;
+  font-weight: 780;
+}
+
+.tile {
+  min-height: 54px;
+  display: grid;
+  place-items: center;
+  padding: 8px 6px;
+  border-radius: 7px;
+  color: var(--cream);
+  font-size: 0.82rem;
+  font-weight: 850;
+  text-align: center;
+}
+
+.tile.win {
+  background: var(--verdigris);
+}
+
+.tile.baseline {
+  background: var(--brass);
+}
+
+.result-callout {
+  padding: 26px;
+  border-left: 6px solid var(--verdigris);
+  background: rgba(255, 250, 240, 0.74);
+  display: grid;
+  gap: 14px;
+}
+
+.result-callout--match {
+  border-left-color: var(--navy);
+}
+
+.result-callout--trap {
+  border-left-color: var(--brass);
+}
+
+.big-number {
+  font-family: Georgia, "Times New Roman", serif;
+  color: var(--verdigris);
+  font-size: 4rem;
+  line-height: 0.95;
+  font-weight: 800;
+}
+
+.result-callout--match .big-number {
+  color: var(--navy);
+}
+
+.result-callout--trap .big-number {
+  color: var(--brass);
+}
+
+.decoder-grid,
+.coordinate-compare,
+.me-results,
+.synthesis-grid,
+.caveat-grid,
+.source-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.decoder-grid,
+.synthesis-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.caveat-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.decoder-card,
+.coordinate-panel,
+.me-card,
+.synthesis-card,
+.caveat-grid > div {
+  min-height: 190px;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 250, 240, 0.72);
+  box-shadow: 0 12px 34px rgba(22, 32, 43, 0.08);
+  display: grid;
+  align-content: start;
+  gap: 14px;
+}
+
+.decoder-card--accent {
+  border-color: rgba(62, 126, 115, 0.5);
+  background: #e9f0ec;
+}
+
+.mini-scale {
+  height: 14px;
+  border-radius: 999px;
+  background: #d9cdbb;
+  overflow: hidden;
+}
+
+.mini-scale span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--navy);
+}
+
+.ordinal-dots {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ordinal-dots i {
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: var(--verdigris);
+}
+
+.ordinal-dots i.off {
+  background: transparent;
+  border: 2px solid var(--line);
+}
+
+.gate-visual {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.gate-visual span {
+  width: 48px;
+  height: 26px;
+  border-radius: 999px;
+  background: var(--verdigris);
+  position: relative;
+}
+
+.gate-visual span::after {
+  content: "";
+  position: absolute;
+  top: 5px;
+  right: 6px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--cream);
+}
+
+.gate-visual b {
+  width: 72px;
+  height: 18px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--brass) 66%, #d9cdbb 66%);
+}
+
+.tree-icon {
+  position: relative;
+  height: 58px;
+}
+
+.tree-icon::before,
+.tree-icon::after {
+  content: "";
+  position: absolute;
+  top: 22px;
+  width: 76px;
+  height: 2px;
+  background: var(--muted);
+}
+
+.tree-icon::before {
+  left: 24px;
+  transform: rotate(24deg);
+}
+
+.tree-icon::after {
+  left: 56px;
+  transform: rotate(-24deg);
+}
+
+.tree-icon span {
+  position: absolute;
+  border-radius: 50%;
+  background: var(--navy);
+}
+
+.tree-icon span:nth-child(1) {
+  width: 22px;
+  height: 22px;
+  left: 60px;
+  top: 0;
+}
+
+.tree-icon span:nth-child(2),
+.tree-icon span:nth-child(3) {
+  width: 18px;
+  height: 18px;
+  top: 40px;
+  background: var(--verdigris);
+}
+
+.tree-icon span:nth-child(2) {
+  left: 20px;
+}
+
+.tree-icon span:nth-child(3) {
+  left: 104px;
+}
+
+.policy-example {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 22px;
+  align-items: stretch;
+}
+
+.policy-example--dual,
+.policy-example--multi {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.policy-example__panel {
+  min-height: 218px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 250, 240, 0.78);
+  box-shadow: 0 14px 38px rgba(22, 32, 43, 0.09);
+  display: grid;
+  align-content: start;
+  gap: 16px;
+}
+
+.policy-example__panel--output {
+  border-left: 6px solid var(--verdigris);
+  background: #edf3ef;
+}
+
+.policy-example__panel--shape {
+  border-top: 5px solid var(--plum);
+}
+
+.policy-example__arrow {
+  display: grid;
+  place-items: center;
+  color: var(--navy);
+}
+
+.policy-example__arrow path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.state-vector,
+.order-pair,
+.network-state,
+.policy-shape {
+  display: grid;
+  gap: 10px;
+}
+
+.policy-shape {
+  position: relative;
+}
+
+.policy-shape span {
+  min-height: 42px;
+  display: grid;
+  place-items: center;
+  padding: 9px 12px;
+  border-radius: 7px;
+  background: rgba(112, 81, 137, 0.12);
+  color: var(--plum);
+  font-weight: 850;
+  text-align: center;
+}
+
+.policy-shape span + span {
+  position: relative;
+}
+
+.policy-shape span + span::before {
+  content: "";
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  width: 2px;
+  height: 8px;
+  background: rgba(112, 81, 137, 0.55);
+}
+
+.state-vector {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.state-vector--dual {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.state-vector--controls {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.state-vector span,
+.order-pair span,
+.network-state div {
+  min-height: 56px;
+  display: grid;
+  place-items: center;
+  padding: 12px;
+  border-radius: 7px;
+  background: rgba(11, 79, 108, 0.08);
+  color: var(--ink);
+  font-weight: 850;
+  text-align: center;
+}
+
+.state-vector span,
+.order-pair span {
+  white-space: nowrap;
+}
+
+.state-vector code,
+.order-pair code {
+  display: inline-block;
+  white-space: nowrap;
+  border-bottom: 0;
+}
+
+.order-pair code {
+  color: var(--cream);
+  font-size: 1.35rem;
+}
+
+.state-vector--controls span {
+  background: rgba(112, 81, 137, 0.12);
+  color: var(--plum);
+}
+
+.output-number {
+  font-family: Georgia, "Times New Roman", serif;
+  color: var(--verdigris);
+  font-size: 4.4rem;
+  font-weight: 850;
+  line-height: 1;
+}
+
+.order-pair {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.order-pair span {
+  min-height: 72px;
+  background: var(--verdigris);
+  color: var(--cream);
+  font-size: 1.4rem;
+}
+
+.network-state div {
+  place-items: start;
+  gap: 5px;
+  text-align: left;
+}
+
+.network-state strong {
+  color: var(--brass);
+  font-size: 0.82rem;
+  text-transform: uppercase;
+}
+
+.network-state span {
+  color: var(--ink);
+}
+
+.example-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.example-strip span {
+  padding: 10px 13px;
+  border-radius: 999px;
+  background: rgba(62, 126, 115, 0.13);
+  color: var(--verdigris);
+  font-weight: 850;
+  font-size: 0.92rem;
+}
+
+.coordinate-panel svg {
+  height: 145px;
+}
+
+.coordinate-panel path {
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 3;
+}
+
+.coordinate-panel circle,
+.coordinate-panel rect {
+  fill: var(--paper-soft);
+  stroke: var(--navy);
+  stroke-width: 2;
+}
+
+.coordinate-panel--good rect {
+  fill: #e8f0ed;
+  stroke: var(--verdigris);
+}
+
+.coordinate-panel text {
+  fill: var(--muted);
+  font-size: 18px;
+  font-weight: 750;
+  text-anchor: middle;
+}
+
+.dual-table {
+  display: grid;
+  gap: 8px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper-strong);
+  box-shadow: var(--shadow);
+}
+
+.dual-table > div {
+  display: grid;
+  grid-template-columns: 90px repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.dual-table span {
+  min-height: 66px;
+  display: grid;
+  place-items: center;
+  padding: 8px;
+  border-radius: 7px;
+  background: rgba(11, 79, 108, 0.07);
+  color: var(--ink);
+  font-weight: 850;
+  text-align: center;
+}
+
+.dual-table__head span {
+  min-height: 38px;
+  color: var(--muted);
+  background: transparent;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+}
+
+.dual-table b {
+  display: block;
+  color: var(--verdigris);
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+.context-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.context-strip span {
+  padding: 10px 13px;
+  border-radius: 999px;
+  background: rgba(181, 97, 31, 0.12);
+  color: var(--brass);
+  font-weight: 800;
+  font-size: 0.92rem;
+}
+
+.axis,
+.benchmark-line {
+  stroke: var(--muted);
+  stroke-width: 2;
+}
+
+.benchmark-line {
+  stroke-dasharray: 7 7;
+  opacity: 0.72;
+}
+
+.bar {
+  stroke: rgba(255, 250, 240, 0.9);
+  stroke-width: 2;
+}
+
+.bar--base {
+  fill: var(--muted);
+}
+
+.bar--grid {
+  fill: var(--terra);
+}
+
+.bar-value,
+.bar-label,
+.bar-delta,
+.chart-note {
+  text-anchor: middle;
+  fill: var(--ink);
+  font-weight: 850;
+}
+
+.bar-value {
+  font-size: 24px;
+}
+
+.bar-value--direct {
+  fill: var(--cream);
+  font-size: 22px;
+}
+
+.bar-value--grid,
+.bar-delta--bad,
+.chart-note--bad {
+  fill: var(--terra);
+}
+
+.bar-label {
+  fill: var(--muted);
+  font-size: 17px;
+}
+
+.bar-delta {
+  fill: var(--cream);
+  font-size: 22px;
+}
+
+.chart-note {
+  fill: var(--muted);
+  font-size: 16px;
+}
+
+.trap-arc {
+  fill: none;
+  stroke: var(--terra);
+  stroke-width: 3;
+  stroke-dasharray: 5 6;
+}
+
+.me-card {
+  border-top: 5px solid var(--verdigris);
+}
+
+.me-card__metric {
+  font-family: Georgia, "Times New Roman", serif;
+  color: var(--verdigris);
+  font-size: 4.8rem;
+  line-height: 0.92;
+  font-weight: 850;
+}
+
+.me-card__metric span {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 1.18rem;
+  font-weight: 800;
+}
+
+.synthesis-card span {
+  color: var(--brass);
+  font-weight: 900;
+  font-size: 0.9rem;
+}
+
+.takeaway-list {
+  display: grid;
+  gap: 20px;
+  max-width: 880px;
+  font-size: 1.48rem;
+  line-height: 1.34;
+}
+
+.takeaway-list strong {
+  color: var(--verdigris);
+}
+
+.source-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.source-grid a {
+  min-height: 88px;
+  display: flex;
+  align-items: center;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 250, 240, 0.72);
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.deck-nav {
+  position: fixed;
+  right: clamp(16px, 3vw, 34px);
+  bottom: clamp(16px, 3vw, 30px);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border: 1px solid rgba(218, 205, 184, 0.86);
+  border-radius: 999px;
+  background: rgba(255, 250, 240, 0.82);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 12px 34px rgba(22, 32, 43, 0.13);
+}
+
+.nav-btn {
+  width: 42px;
+  height: 42px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--cream);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.nav-btn:disabled {
+  cursor: default;
+  opacity: 0.36;
+}
+
+.nav-btn svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.slide-status {
+  min-width: 52px;
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  color: var(--muted);
+  font-weight: 850;
+  font-size: 0.95rem;
+}
+
+.progress {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 5px;
+  z-index: 11;
+  background: rgba(22, 32, 43, 0.08);
+}
+
+.progress span {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, var(--navy), var(--verdigris), var(--brass));
+  transition: width 220ms ease;
+}
+
+.notes {
+  display: none;
+}
+
+@media (max-width: 940px) {
+  body {
+    overflow: auto;
+  }
+
+  .deck {
+    height: auto;
+    overflow: visible;
+  }
+
+  .slide {
+    position: relative;
+    min-height: 100vh;
+    visibility: visible;
+    opacity: 1;
+    transform: none;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .slide:not(.is-active) {
+    display: none;
+  }
+
+  .slide__inner,
+  .title-grid,
+  .split,
+  .split--wide-figure,
+  .loop-layout,
+  .heatmap-layout,
+  .dual-result-grid,
+  .trap-layout {
+    min-height: auto;
+    grid-template-columns: 1fr;
+  }
+
+  h1 {
+    max-width: 12ch;
+    font-size: 4.4rem;
+  }
+
+  h2 {
+    max-width: 14ch;
+    font-size: 3.05rem;
+  }
+
+  h3 {
+    font-size: 1.16rem;
+  }
+
+  .lead,
+  .dek,
+  .quote-panel {
+    font-size: 1.16rem;
+  }
+
+  .clean-list {
+    font-size: 1rem;
+  }
+
+  .big-number {
+    font-size: 3.2rem;
+  }
+
+  .output-number {
+    font-size: 3.4rem;
+  }
+
+  .me-card__metric {
+    font-size: 3.5rem;
+  }
+
+  .takeaway-list {
+    font-size: 1.22rem;
+  }
+
+  .hero-figure,
+  .pipeline-figure,
+  .flow-card,
+  .dual-figure,
+  .network-figure {
+    max-width: 680px;
+  }
+
+  .verdict-grid,
+  .decoder-grid,
+  .policy-example,
+  .policy-example--dual,
+  .policy-example--multi,
+  .coordinate-compare,
+  .me-results,
+  .synthesis-grid,
+  .caveat-grid,
+  .source-grid,
+  .section-kpis {
+    grid-template-columns: 1fr;
+  }
+
+  .policy-example__arrow {
+    display: none;
+  }
+
+  .policy-example__panel {
+    min-height: auto;
+  }
+
+  .heatmap-head,
+  .heatmap-row {
+    grid-template-columns: minmax(118px, 1.25fr) repeat(4, minmax(52px, 1fr));
+    gap: 6px;
+  }
+
+  .tile {
+    min-height: 46px;
+    font-size: 0.68rem;
+  }
+
+  .row-label {
+    font-size: 0.72rem;
+  }
+}
+
+@media (max-width: 560px) {
+  :root {
+    --slide-pad-x: 18px;
+    --slide-pad-y: 24px;
+  }
+
+  .slide {
+    padding-bottom: 112px;
+  }
+
+  .deck-nav {
+    right: 50%;
+    transform: translateX(50%);
+  }
+
+  .title-meta,
+  .context-strip {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  h1 {
+    font-size: 3.2rem;
+  }
+
+  h2 {
+    font-size: 2.35rem;
+  }
+
+  .lead,
+  .dek,
+  .quote-panel {
+    font-size: 1.05rem;
+  }
+
+  .eyebrow {
+    font-size: 0.78rem;
+  }
+
+  .lost-heatmap,
+  .dual-table {
+    padding: 12px;
+  }
+
+  .heatmap-head,
+  .heatmap-row {
+    grid-template-columns: 1fr;
+  }
+
+  .heatmap-head {
+    display: none;
+  }
+
+  .tile {
+    min-height: 38px;
+  }
+
+  .dual-table > div {
+    grid-template-columns: 1fr;
+  }
+
+  .state-vector,
+  .state-vector--dual,
+  .state-vector--controls,
+  .order-pair {
+    grid-template-columns: 1fr;
+  }
+
+  .example-strip {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slide,
+  .progress span {
+    transition: none;
+  }
+}
+
+@media print {
+  body {
+    overflow: visible;
+    background: var(--paper);
+  }
+
+  .deck {
+    height: auto;
+    overflow: visible;
+  }
+
+  .slide {
+    position: relative;
+    page-break-after: always;
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: none !important;
+    min-height: 100vh;
+  }
+
+  .deck-nav,
+  .progress {
+    display: none;
+  }
+}
+  </style>
+</head>
+<body>
+  <main class="deck" id="deck" aria-label="Presentation deck">
+    <section class="slide title-slide" data-title="Title">
+      <div class="slide__inner title-grid">
+        <div class="title-copy">
+          <p class="eyebrow">Inventory control with compact learned policies</p>
+          <h1>Small Structured Policies for Inventory Control</h1>
+          <p class="dek">CMA-ES learns interpretable inventory policies when the action decoder lives in the right control coordinates.</p>
+          <div class="title-meta">
+            <span>Nima Manaf</span>
+            <span>Conference deck</span>
+            <span>Lost sales &middot; dual sourcing &middot; multi-echelon</span>
+          </div>
+        </div>
+        <figure class="hero-figure" aria-label="Three inventory systems connected by one policy recipe">
+          <svg viewBox="0 0 740 500" role="img">
+            <defs>
+              <marker id="arrowHero" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+                <path d="M0,0 L8,3 L0,6 Z" fill="currentColor"></path>
+              </marker>
+            </defs>
+            <g class="hero-node hero-node--supply">
+              <rect x="48" y="82" width="150" height="96" rx="14"></rect>
+              <text x="123" y="121">lost sales</text>
+              <text x="123" y="146">one stock buffer</text>
+            </g>
+            <g class="hero-node hero-node--dual">
+              <rect x="48" y="312" width="150" height="96" rx="14"></rect>
+              <text x="123" y="351">dual sourcing</text>
+              <text x="123" y="376">two supply arcs</text>
+            </g>
+            <g class="hero-node hero-node--network">
+              <rect x="526" y="198" width="178" height="104" rx="14"></rect>
+              <text x="615" y="238">multi-echelon</text>
+              <text x="615" y="263">warehouse + retailers</text>
+            </g>
+            <g class="hero-policy">
+              <rect x="278" y="176" width="184" height="142" rx="18"></rect>
+              <text x="370" y="222">CMA-ES</text>
+              <text x="370" y="252">compact policy</text>
+              <text x="370" y="282">shaped decoder</text>
+            </g>
+            <path class="hero-link hero-link--a" d="M198 130 C250 130 252 210 278 216" marker-end="url(#arrowHero)"></path>
+            <path class="hero-link hero-link--b" d="M198 360 C250 360 252 290 278 280" marker-end="url(#arrowHero)"></path>
+            <path class="hero-link hero-link--c" d="M462 247 C496 247 500 247 526 247" marker-end="url(#arrowHero)"></path>
+            <g class="hero-chip" transform="translate(286 340)">
+              <rect width="168" height="42" rx="21"></rect>
+              <text x="84" y="27">same loop, different geometry</text>
+            </g>
+          </svg>
+        </figure>
+      </div>
+      <aside class="notes">Open by positioning the work as a representation result, not a generic RL-vs-ES contest.</aside>
+    </section>
+
+    <section class="slide" data-title="Problem">
+      <div class="slide__inner split">
+        <div>
+          <p class="eyebrow">The control problem</p>
+          <h2>Inventory decisions look simple until lead times create memory.</h2>
+          <p class="lead">Every period asks for one operational action: order, split, route, or set a target. The state remembers what is already in transit.</p>
+          <ul class="clean-list">
+            <li>Lead-time pipelines make the state grow with history.</li>
+            <li>Shortages can be lost, backordered, or expedited.</li>
+            <li>Network structure makes raw action spaces misleading.</li>
+          </ul>
+        </div>
+        <figure class="pipeline-figure" aria-label="Inventory pipeline with demand and lost sales">
+          <svg viewBox="0 0 720 420" role="img">
+            <defs>
+              <marker id="arrowPipe" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+                <path d="M0,0 L8,3 L0,6 Z" fill="currentColor"></path>
+              </marker>
+            </defs>
+            <rect class="fig-bg" x="20" y="20" width="680" height="380" rx="20"></rect>
+            <g class="pipe-bucket" transform="translate(72 116)">
+              <rect width="78" height="94" rx="12"></rect>
+              <text x="39" y="53">L</text>
+            </g>
+            <g class="pipe-bucket" transform="translate(170 116)">
+              <rect width="78" height="94" rx="12"></rect>
+              <text x="39" y="53">L-1</text>
+            </g>
+            <g class="pipe-bucket" transform="translate(268 116)">
+              <rect width="78" height="94" rx="12"></rect>
+              <text x="39" y="53">...</text>
+            </g>
+            <g class="stock-node" transform="translate(412 96)">
+              <rect width="144" height="132" rx="18"></rect>
+              <text x="72" y="58">on-hand</text>
+              <text x="72" y="86">stock</text>
+            </g>
+            <g class="demand-node" transform="translate(592 96)">
+              <circle cx="58" cy="66" r="58"></circle>
+              <text x="58" y="62">demand</text>
+              <text x="58" y="84">D<tspan baseline-shift="sub">t</tspan></text>
+            </g>
+            <path class="flow-line" d="M150 163 L170 163" marker-end="url(#arrowPipe)"></path>
+            <path class="flow-line" d="M248 163 L268 163" marker-end="url(#arrowPipe)"></path>
+            <path class="flow-line" d="M346 163 L412 163" marker-end="url(#arrowPipe)"></path>
+            <path class="flow-line flow-line--request" d="M456 285 C310 350 166 332 92 235" marker-end="url(#arrowPipe)"></path>
+            <path class="flow-line flow-line--serve" d="M556 162 L594 162" marker-end="url(#arrowPipe)"></path>
+            <path class="flow-line flow-line--lost" d="M650 216 C650 260 620 286 582 302" marker-end="url(#arrowPipe)"></path>
+            <text class="fig-label" x="186" y="344">order request q<tspan baseline-shift="sub">t</tspan></text>
+            <text class="fig-label" x="568" y="142">served</text>
+            <text class="fig-label fig-label--lost" x="548" y="330">unmet demand exits</text>
+          </svg>
+        </figure>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Recipe">
+      <div class="slide__inner">
+        <p class="eyebrow">One recipe</p>
+        <h2>CMA-ES optimizes the realized operating cost directly.</h2>
+        <div class="loop-layout">
+          <figure class="loop-figure" aria-label="CMA-ES training loop">
+            <svg viewBox="0 0 900 410" role="img">
+              <defs>
+                <marker id="arrowLoop" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+                  <path d="M0,0 L8,3 L0,6 Z" fill="currentColor"></path>
+                </marker>
+              </defs>
+              <g class="loop-card" transform="translate(52 120)">
+                <rect width="170" height="98" rx="14"></rect>
+                <text x="85" y="44">sample</text>
+                <text x="85" y="70">policy parameters</text>
+              </g>
+              <g class="loop-card loop-card--eval" transform="translate(286 62)">
+                <rect width="210" height="112" rx="14"></rect>
+                <text x="105" y="48">roll out each policy</text>
+                <text x="105" y="76">in simulation</text>
+              </g>
+              <g class="loop-card" transform="translate(568 120)">
+                <rect width="170" height="98" rx="14"></rect>
+                <text x="85" y="44">rank</text>
+                <text x="85" y="70">by average cost</text>
+              </g>
+              <g class="loop-card" transform="translate(308 270)">
+                <rect width="190" height="96" rx="14"></rect>
+                <text x="95" y="42">update</text>
+                <text x="95" y="68">search covariance</text>
+              </g>
+              <path class="loop-arrow" d="M222 164 C246 122 254 116 286 116" marker-end="url(#arrowLoop)"></path>
+              <path class="loop-arrow" d="M496 116 C530 118 542 132 568 164" marker-end="url(#arrowLoop)"></path>
+              <path class="loop-arrow" d="M650 218 C608 302 560 318 498 318" marker-end="url(#arrowLoop)"></path>
+              <path class="loop-arrow" d="M308 318 C164 318 108 274 118 218" marker-end="url(#arrowLoop)"></path>
+              <g class="loop-center">
+                <text x="404" y="214">no gradients</text>
+                <text x="404" y="240">no value function</text>
+                <text x="404" y="266">parallel evaluations</text>
+              </g>
+            </svg>
+          </figure>
+          <div class="quote-panel">
+            <p>The policy is intentionally small. The search distribution explores policy parameters; the simulator supplies the objective.</p>
+            <p class="compact">The same loop handles a scalar order, a regular-expedite pair, or echelon order-up-to levels.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Action Geometry">
+      <div class="slide__inner">
+        <p class="eyebrow">The key design choice</p>
+        <h2>The action parameterization is part of the policy.</h2>
+        <figure class="policy-pipeline" aria-label="Policy pipeline from state to valid action">
+          <svg viewBox="0 0 1120 360" role="img">
+            <defs>
+              <marker id="arrowPolicy" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+                <path d="M0,0 L8,3 L0,6 Z" fill="currentColor"></path>
+              </marker>
+            </defs>
+            <g class="policy-stage policy-stage--state" transform="translate(40 112)">
+              <rect width="150" height="104" rx="14"></rect>
+              <text x="75" y="48">state</text>
+              <text x="75" y="74">S<tspan baseline-shift="sub">t</tspan></text>
+            </g>
+            <g class="policy-box" transform="translate(246 78)">
+              <rect width="612" height="172" rx="18"></rect>
+              <text x="306" y="30">policy pi<tspan baseline-shift="sub">theta</tspan></text>
+            </g>
+            <g class="policy-stage" transform="translate(282 116)">
+              <rect width="150" height="96" rx="14"></rect>
+              <text x="75" y="43">normalize</text>
+              <text x="75" y="68">divide by scale</text>
+            </g>
+            <g class="policy-stage" transform="translate(480 116)">
+              <rect width="150" height="96" rx="14"></rect>
+              <text x="75" y="43">backbone</text>
+              <text x="75" y="68">linear &middot; NN &middot; tree</text>
+            </g>
+            <g class="policy-stage policy-stage--decoder" transform="translate(678 102)">
+              <rect width="156" height="124" rx="14"></rect>
+              <text x="78" y="44">decoder</text>
+              <text x="78" y="70">control</text>
+              <text x="78" y="94">coordinates</text>
+            </g>
+            <g class="policy-stage policy-stage--action" transform="translate(928 112)">
+              <rect width="150" height="104" rx="14"></rect>
+              <text x="75" y="48">valid</text>
+              <text x="75" y="74">action a<tspan baseline-shift="sub">t</tspan></text>
+            </g>
+            <path class="policy-arrow" d="M190 164 L282 164" marker-end="url(#arrowPolicy)"></path>
+            <path class="policy-arrow" d="M432 164 L480 164" marker-end="url(#arrowPolicy)"></path>
+            <path class="policy-arrow" d="M630 164 L678 164" marker-end="url(#arrowPolicy)"></path>
+            <path class="policy-arrow" d="M834 164 L928 164" marker-end="url(#arrowPolicy)"></path>
+            <g class="decoder-tags">
+              <text x="235" y="314">lost sales: ordinal one-more-unit quantity</text>
+              <text x="540" y="314">dual sourcing: capped-dual-index coordinates</text>
+              <text x="850" y="314">multi-echelon: direct order-up-to levels</text>
+            </g>
+          </svg>
+        </figure>
+        <p class="slide-caption">A raw action head asks the learner to rediscover the control law and the coordinate transform. A structured decoder searches where good controls already live.</p>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Honesty">
+      <div class="slide__inner">
+        <p class="eyebrow">How claims are read</p>
+        <h2>The deck uses comparator-specific verdicts, not one leaderboard.</h2>
+        <div class="verdict-grid">
+          <div class="verdict verdict--match">
+            <span class="verdict__icon">=</span>
+            <h3>Match</h3>
+            <p>Use this when the comparator is an optimum or near-optimal proxy.</p>
+          </div>
+          <div class="verdict verdict--beat">
+            <span class="verdict__icon">v</span>
+            <h3>Beat</h3>
+            <p>Use this only against a same-protocol heuristic gate.</p>
+          </div>
+          <div class="verdict verdict--context">
+            <span class="verdict__icon">&lt;&gt;</span>
+            <h3>Context</h3>
+            <p>Published A3C/PPO rows inform the field but are not head-to-head unless reproduced.</p>
+          </div>
+        </div>
+        <p class="source-line">Source framing: <a href="../paper/learning_inventory_control_policies_es.tex">paper/learning_inventory_control_policies_es.tex</a> and the public post.</p>
+      </div>
+    </section>
+
+    <section class="slide section-break" data-title="Lost Sales">
+      <div class="slide__inner">
+        <p class="eyebrow">Problem 1</p>
+        <h2>Lost sales: a request stream hits one stock buffer.</h2>
+        <p class="lead">The controller chooses one integer order. Demand that cannot be served disappears and incurs a shortage penalty.</p>
+        <div class="section-kpis">
+          <div><strong>Action</strong><span>scalar order q<sub>t</sub></span></div>
+          <div><strong>State</strong><span>on-hand + lead-time pipeline</span></div>
+          <div><strong>Comparator</strong><span>Myopic-1, Myopic-2, SVBS</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Lost Sales Flow">
+      <div class="slide__inner split split--wide-figure">
+        <div>
+          <p class="eyebrow">Lost-sales mechanics</p>
+          <h2>One action, two exits.</h2>
+          <p class="lead">The policy orders into a delayed supply pipeline. After demand arrives, stock either serves the customer or demand leaks into a lost-sales sink.</p>
+          <ul class="clean-list">
+            <li>Order quantity must be a non-negative integer.</li>
+            <li>The hard part is timing replenishment under lead-time uncertainty.</li>
+            <li>The cost balances leftover stock against lost demand.</li>
+          </ul>
+        </div>
+        <figure class="flow-card" aria-label="Lost-sales environment diagram">
+          <svg viewBox="0 0 760 460" role="img">
+            <defs>
+              <marker id="arrowLost" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+                <path d="M0,0 L8,3 L0,6 Z" fill="currentColor"></path>
+              </marker>
+            </defs>
+            <rect class="fig-bg" x="24" y="24" width="712" height="412" rx="20"></rect>
+            <g class="supply-node" transform="translate(62 178)">
+              <rect width="138" height="88" rx="14"></rect>
+              <text x="69" y="51">supplier</text>
+            </g>
+            <g class="pipe-track" transform="translate(248 90)">
+              <text x="128" y="0">lead-time pipeline</text>
+              <rect x="0" y="38" width="74" height="80" rx="10"></rect>
+              <rect x="90" y="38" width="74" height="80" rx="10"></rect>
+              <rect x="180" y="38" width="74" height="80" rx="10"></rect>
+              <text x="37" y="86">L</text>
+              <text x="127" y="86">...</text>
+              <text x="217" y="86">1</text>
+            </g>
+            <g class="stock-node" transform="translate(548 142)">
+              <rect width="138" height="112" rx="16"></rect>
+              <text x="69" y="50">on-hand</text>
+              <text x="69" y="76">inventory</text>
+            </g>
+            <g class="customer-node" transform="translate(548 318)">
+              <circle cx="68" cy="44" r="44"></circle>
+              <text x="68" y="49">customer</text>
+            </g>
+            <g class="loss-node" transform="translate(354 320)">
+              <path d="M0 42 C0 14 28 0 62 0 C100 0 124 15 124 42 C124 70 96 84 62 84 C24 84 0 70 0 42 Z"></path>
+              <text x="62" y="47">lost</text>
+            </g>
+            <path class="flow-line flow-line--request" d="M590 284 C438 410 174 372 130 266" marker-end="url(#arrowLost)"></path>
+            <path class="flow-line" d="M200 220 C244 178 254 168 282 168" marker-end="url(#arrowLost)"></path>
+            <path class="flow-line" d="M502 168 L548 190" marker-end="url(#arrowLost)"></path>
+            <path class="flow-line flow-line--serve" d="M616 254 L616 318" marker-end="url(#arrowLost)"></path>
+            <path class="flow-line flow-line--lost" d="M548 346 C500 346 488 356 478 362" marker-end="url(#arrowLost)"></path>
+            <text class="fig-label" x="282" y="382">q<tspan baseline-shift="sub">t</tspan> enters pipeline</text>
+            <text class="fig-label" x="624" y="296">served</text>
+            <text class="fig-label fig-label--lost" x="408" y="418">penalty for unmet demand</text>
+          </svg>
+        </figure>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Lost Sales Results">
+      <div class="slide__inner">
+        <p class="eyebrow">Lost-sales result</p>
+        <h2>A compact policy is instance-best on 22 of 24 reported vanilla cases.</h2>
+        <div class="heatmap-layout">
+          <figure class="lost-heatmap" aria-label="Lost-sales 24-instance result heatmap">
+            <div class="heatmap-head">
+              <span></span>
+              <span>L=4</span>
+              <span>L=6</span>
+              <span>L=8</span>
+              <span>L=10</span>
+            </div>
+            <div class="heatmap-row">
+              <span class="row-label">p=4 &middot; Poisson</span>
+              <span class="tile win">learned</span>
+              <span class="tile win">learned</span>
+              <span class="tile win">learned</span>
+              <span class="tile win">learned</span>
+            </div>
+            <div class="heatmap-row">
+              <span class="row-label">p=4 &middot; Geometric</span>
+              <span class="tile win">learned</span>
+              <span class="tile win">learned</span>
+              <span class="tile win">learned</span>
+              <span class="tile win">learned</span>
+            </div>
+            <div class="heatmap-row">
+              <span class="row-label">p=4 &middot; MMPP2+</span>
+              <span class="tile win">learned</span>
+              <span class="tile win">learned</span>
+              <span class="tile win">learned</span>
+              <span class="tile win">learned</span>
+            </div>
+            <div class="heatmap-row">
+              <span class="row-label">p=19 &middot; Poisson</span>
+              <span class="tile win">learned</span>
+              <span class="tile win">learned</span>
+              <span class="tile win">learned</span>
+              <span class="tile win">learned</span>
+            </div>
+            <div class="heatmap-row">
+              <span class="row-label">p=19 &middot; Geometric</span>
+              <span class="tile win">learned</span>
+              <span class="tile win">learned</span>
+              <span class="tile win">learned</span>
+              <span class="tile win">learned</span>
+            </div>
+            <div class="heatmap-row">
+              <span class="row-label">p=19 &middot; MMPP2+</span>
+              <span class="tile win">learned</span>
+              <span class="tile win">learned</span>
+              <span class="tile baseline">SVBS</span>
+              <span class="tile baseline">M2</span>
+            </div>
+          </figure>
+          <div class="result-callout">
+            <div class="big-number">22 / 24</div>
+            <p>Instance-best across the reported vanilla surface.</p>
+            <p class="compact">This surface is reported as a benchmark sweep, not as the same five-optimizer-seed claim used for multi-echelon.</p>
+            <p class="compact">The remaining failures are the most hostile cells: high penalty, autocorrelated demand, and the deepest pipelines.</p>
+          </div>
+        </div>
+        <p class="source-line">Data source: <a href="../paper/generated/results_vanilla_lost_sales.tex">paper/generated/results_vanilla_lost_sales.tex</a></p>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Lost Sales Decoder">
+      <div class="slide__inner">
+        <p class="eyebrow">Why the scalar case still matters</p>
+        <h2>The decoder controls what the learner can say.</h2>
+        <div class="decoder-grid">
+          <div class="decoder-card">
+            <h3>Direct quantity</h3>
+            <p>Emit an order size, then round and clip.</p>
+            <div class="mini-scale"><span style="width:58%"></span></div>
+          </div>
+          <div class="decoder-card decoder-card--accent">
+            <h3>Ordinal quantity</h3>
+            <p>Ask many soft "one more unit?" questions and sum them.</p>
+            <div class="ordinal-dots">
+              <i></i><i></i><i></i><i></i><i></i><i></i><i class="off"></i><i class="off"></i>
+            </div>
+          </div>
+          <div class="decoder-card">
+            <h3>Gate + quantity</h3>
+            <p>Separate "should I order?" from "how much?".</p>
+            <div class="gate-visual"><span></span><b></b></div>
+          </div>
+          <div class="decoder-card">
+            <h3>Soft tree</h3>
+            <p>Route state softly through interpretable decision leaves.</p>
+            <div class="tree-icon"><span></span><span></span><span></span></div>
+          </div>
+        </div>
+        <p class="slide-caption">Lost sales is the cleanest teaching example because the action is simple enough to see the decoder effect directly.</p>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Lost Policy Example">
+      <div class="slide__inner">
+        <p class="eyebrow">Lost-sales policy page</p>
+        <h2>A policy maps the pipeline state to one replenishment order.</h2>
+        <div class="policy-example">
+          <div class="policy-example__panel">
+            <h3>Input state</h3>
+            <p class="compact">Canonical Poisson instance, <code>L=4</code>, <code>h=1</code>, <code>p=4</code>, mean demand <code>5</code>.</p>
+            <div class="state-vector" aria-label="Lost-sales input state">
+              <span><code>I_eff=2</code></span>
+              <span><code>q_t-3=0</code></span>
+              <span><code>q_t-2=0</code></span>
+              <span><code>q_t-1=0</code></span>
+            </div>
+            <p class="compact">The policy sees <code>[2,0,0,0]</code>, then normalizes by <code>20</code>.</p>
+          </div>
+          <div class="policy-example__panel policy-example__panel--shape">
+            <h3>Policy shape</h3>
+            <div class="policy-shape" aria-label="Lost-sales policy transformation">
+              <span>divide by 20</span>
+              <span>depth-2 soft tree</span>
+              <span>linear leaf quantity</span>
+              <span>round to integer</span>
+            </div>
+            <p class="compact">For this state, routing puts essentially all mass on one leaf; that leaf emits the replenishment quantity.</p>
+          </div>
+          <div class="policy-example__panel policy-example__panel--output">
+            <h3>Policy output</h3>
+            <div class="output-number">q<sub>t</sub> = 14</div>
+            <p class="compact">Depth-2 soft tree with linear leaves. The dominant leaf quantity is <code>14.048</code>, rounded to a non-negative integer order.</p>
+          </div>
+        </div>
+        <div class="example-strip">
+          <span>Well-stocked comparison: <code>[8,5,5,5]</code> -> q<sub>t</sub> = 3</span>
+          <span>Validated against independent policy forward / rollout checks</span>
+        </div>
+        <p class="source-line">Example source: <a href="../paper/learning_inventory_control_policies_es.tex">paper/learning_inventory_control_policies_es.tex</a>, Table <code>tab:worked</code></p>
+      </div>
+    </section>
+
+    <section class="slide section-break" data-title="Dual Sourcing">
+      <div class="slide__inner">
+        <p class="eyebrow">Problem 2</p>
+        <h2>Dual sourcing: the action is a pair, but the useful coordinates are not raw orders.</h2>
+        <p class="lead">The controller balances a cheap slow regular source against an expensive fast expedited source.</p>
+        <div class="section-kpis">
+          <div><strong>Regular</strong><span>cheap, slow pipeline</span></div>
+          <div><strong>Expedite</strong><span>costly, fast correction</span></div>
+          <div><strong>Comparator</strong><span>capped dual-index</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Dual Flow">
+      <div class="slide__inner split split--wide-figure">
+        <div>
+          <p class="eyebrow">Dual-sourcing mechanics</p>
+          <h2>Two supply arcs serve one inventory position.</h2>
+          <p class="lead">A direct <code>(regular, expedited)</code> action is valid, but it makes the learner rediscover the inventory-position logic that CDI already encodes.</p>
+          <ul class="clean-list">
+            <li>Regular orders rebuild inventory cheaply after a delay.</li>
+            <li>Expedite orders respond quickly to shortfall.</li>
+            <li>The strong classical comparator acts on positions and caps.</li>
+          </ul>
+        </div>
+        <figure class="dual-figure" aria-label="Dual sourcing flow diagram">
+          <svg viewBox="0 0 780 460" role="img">
+            <defs>
+              <marker id="arrowDual" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+                <path d="M0,0 L8,3 L0,6 Z" fill="currentColor"></path>
+              </marker>
+            </defs>
+            <rect class="fig-bg" x="24" y="24" width="732" height="412" rx="20"></rect>
+            <g class="supply-node supply-node--regular" transform="translate(70 88)">
+              <rect width="150" height="88" rx="14"></rect>
+              <text x="75" y="42">regular</text>
+              <text x="75" y="66">cheap &middot; slow</text>
+            </g>
+            <g class="supply-node supply-node--expedite" transform="translate(70 284)">
+              <rect width="150" height="88" rx="14"></rect>
+              <text x="75" y="42">expedite</text>
+              <text x="75" y="66">costly &middot; fast</text>
+            </g>
+            <g class="stock-node" transform="translate(496 170)">
+              <rect width="160" height="118" rx="18"></rect>
+              <text x="80" y="50">inventory</text>
+              <text x="80" y="76">position</text>
+            </g>
+            <g class="demand-node" transform="translate(626 330)">
+              <circle cx="46" cy="46" r="46"></circle>
+              <text x="46" y="52">demand</text>
+            </g>
+            <path class="flow-line flow-line--regular" d="M220 132 C315 96 388 104 496 190" marker-end="url(#arrowDual)"></path>
+            <path class="flow-line flow-line--expedite" d="M220 328 C334 346 414 306 496 248" marker-end="url(#arrowDual)"></path>
+            <path class="flow-line flow-line--serve" d="M610 288 L652 334" marker-end="url(#arrowDual)"></path>
+            <path class="flow-line flow-line--request" d="M492 190 C390 44 176 40 146 88" marker-end="url(#arrowDual)"></path>
+            <path class="flow-line flow-line--request" d="M494 248 C382 420 174 414 146 372" marker-end="url(#arrowDual)"></path>
+            <text class="fig-label" x="312" y="88">q<tspan baseline-shift="sub">r</tspan></text>
+            <text class="fig-label" x="314" y="366">q<tspan baseline-shift="sub">e</tspan></text>
+          </svg>
+        </figure>
+      </div>
+    </section>
+
+    <section class="slide" data-title="CDI Geometry">
+      <div class="slide__inner">
+        <p class="eyebrow">Dual-sourcing geometry</p>
+        <h2>The learned tree is placed in capped-dual-index coordinates.</h2>
+        <div class="coordinate-compare">
+          <div class="coordinate-panel coordinate-panel--bad">
+            <h3>Raw order head</h3>
+            <p>The tree emits <code>(q_r, q_e)</code> directly.</p>
+            <svg viewBox="0 0 360 160" aria-hidden="true">
+              <path d="M40 120 L320 120 M40 120 L40 28"></path>
+              <circle cx="104" cy="84" r="9"></circle>
+              <circle cx="168" cy="62" r="9"></circle>
+              <circle cx="252" cy="98" r="9"></circle>
+              <text x="180" y="150">q_regular</text>
+              <text x="12" y="78">q_exp</text>
+            </svg>
+            <p class="compact">Valid but poorly aligned with the known policy structure.</p>
+          </div>
+          <div class="coordinate-panel coordinate-panel--good">
+            <h3>CDI-shaped head</h3>
+            <p>The tree modulates <code>(s_e, delta_r, cap_r)</code> around the CDI solution.</p>
+            <svg viewBox="0 0 360 160" aria-hidden="true">
+              <path d="M54 120 L306 120"></path>
+              <rect x="84" y="58" width="64" height="62" rx="10"></rect>
+              <rect x="162" y="38" width="64" height="82" rx="10"></rect>
+              <rect x="240" y="78" width="42" height="42" rx="10"></rect>
+              <text x="116" y="146">s_e</text>
+              <text x="194" y="146">delta_r</text>
+              <text x="261" y="146">cap</text>
+            </svg>
+            <p class="compact">Generation zero can reproduce CDI; search learns only small deviations.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Dual Policy Example">
+      <div class="slide__inner">
+        <p class="eyebrow">Dual-sourcing policy page</p>
+        <h2>CDI controls become regular and expedited orders.</h2>
+        <div class="policy-example policy-example--dual">
+          <div class="policy-example__panel">
+            <h3>Input state</h3>
+            <p class="compact">Instance <code>l_r=2</code>, <code>c_e=105</code>. Reduced post-decision state is net inventory plus regular pipeline.</p>
+            <div class="state-vector state-vector--dual" aria-label="Dual-sourcing input state">
+              <span><code>I_t=6</code></span>
+              <span><code>q_r,t-1=0</code></span>
+            </div>
+            <p class="compact">The tree reads <code>[6,0]</code>.</p>
+          </div>
+          <div class="policy-example__panel policy-example__panel--shape">
+            <h3>Policy shape</h3>
+            <div class="policy-shape" aria-label="Dual-sourcing policy transformation">
+              <span>reduced state</span>
+              <span>axis-aligned soft tree</span>
+              <span>CDI controls</span>
+              <span>small-cap adapter</span>
+            </div>
+            <div class="state-vector state-vector--controls" aria-label="Dual-sourcing policy controls">
+              <span><code>s_e=4</code></span>
+              <span><code>Delta_r=3</code></span>
+              <span><code>cap_r=2</code></span>
+            </div>
+            <p class="compact">Dominant leaf probability is about <code>0.87</code>; <code>s_r = s_e + Delta_r</code>.</p>
+          </div>
+          <div class="policy-example__panel policy-example__panel--output">
+            <h3>Order output</h3>
+            <div class="order-pair">
+              <span><code>q_e=0</code></span>
+              <span><code>q_r=1</code></span>
+            </div>
+            <p class="compact">Expedite stays closed; the capped regular order rebuilds the position.</p>
+          </div>
+        </div>
+        <div class="example-strip">
+          <span>Leaner comparison: <code>[2,0]</code> -> q<sub>e</sub> = 2, q<sub>r</sub> = 2</span>
+          <span>Validated by a 100,000-period rollout cost match</span>
+        </div>
+        <p class="source-line">Example source: <a href="../paper/learning_inventory_control_policies_es.tex">paper/learning_inventory_control_policies_es.tex</a>, dual-sourcing decision path</p>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Dual Results">
+      <div class="slide__inner">
+        <p class="eyebrow">Dual-sourcing result</p>
+        <h2>Five-seed learned policies match CDI on all six benchmark rows.</h2>
+        <div class="dual-result-grid">
+          <div class="dual-table" role="img" aria-label="Dual sourcing results table">
+            <div class="dual-table__head"><span></span><span>ce=105</span><span>ce=110</span></div>
+            <div><span>lr=2</span><span>+0.052%<b>match</b></span><span>0.000%<b>match</b></span></div>
+            <div><span>lr=3</span><span>+0.009%<b>match</b></span><span>0.000%<b>match</b></span></div>
+            <div><span>lr=4</span><span>+0.007%<b>match</b></span><span>+0.001%<b>match</b></span></div>
+          </div>
+          <div class="result-callout result-callout--match">
+            <div class="big-number">6 / 6</div>
+            <p>Matches to CDI, not claimed as a beat.</p>
+            <p class="compact">CDI is already inside a published &le;0.11% optimality band. The honest outcome is recovery of the near-optimal structured control.</p>
+          </div>
+        </div>
+        <div class="context-strip">
+          <span>Published A3C gaps: 0.51% to 1.85%</span>
+          <span>Deck framing: context, not head-to-head</span>
+        </div>
+        <p class="source-line">Data source: <a href="../paper/generated/results_dual_sourcing.tex">paper/generated/results_dual_sourcing.tex</a></p>
+      </div>
+    </section>
+
+    <section class="slide section-break" data-title="Multi-Echelon">
+      <div class="slide__inner">
+        <p class="eyebrow">Problem 3</p>
+        <h2>Divergent multi-echelon: now the action geometry can make or break the result.</h2>
+        <p class="lead">One warehouse serves many retailers, with special delivery as a pressure-release option.</p>
+        <div class="section-kpis">
+          <div><strong>Network</strong><span>warehouse + 10 retailers</span></div>
+          <div><strong>Action</strong><span>warehouse and retailer targets</span></div>
+          <div><strong>Trap</strong><span>wrong grid cannot reach the operating region</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Multi Flow">
+      <div class="slide__inner split split--wide-figure">
+        <div>
+          <p class="eyebrow">Multi-echelon mechanics</p>
+          <h2>Inventory is coordinated across levels.</h2>
+          <p class="lead">The policy chooses order-up-to levels. The warehouse replenishes upstream, retailers receive allocations, and urgent unmet demand can use special delivery.</p>
+          <ul class="clean-list">
+            <li>The state combines warehouse inventory, retailer inventories, and pipelines.</li>
+            <li>Retailer allocation couples local shortages through the shared warehouse.</li>
+            <li>The useful action is a level, not a small fixed grid label.</li>
+          </ul>
+        </div>
+        <figure class="network-figure" aria-label="Divergent multi-echelon network diagram">
+          <svg viewBox="0 0 780 460" role="img">
+            <defs>
+              <marker id="arrowNetwork" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+                <path d="M0,0 L8,3 L0,6 Z" fill="currentColor"></path>
+              </marker>
+            </defs>
+            <rect class="fig-bg" x="24" y="24" width="732" height="412" rx="20"></rect>
+            <g class="supply-node" transform="translate(58 186)">
+              <rect width="132" height="88" rx="14"></rect>
+              <text x="66" y="51">supplier</text>
+            </g>
+            <g class="warehouse-node" transform="translate(286 160)">
+              <rect width="156" height="140" rx="18"></rect>
+              <text x="78" y="60">warehouse</text>
+              <text x="78" y="88">target y_w</text>
+            </g>
+            <g class="retailer-node" transform="translate(574 72)">
+              <rect width="118" height="74" rx="14"></rect>
+              <text x="59" y="44">retailer 1</text>
+            </g>
+            <g class="retailer-node" transform="translate(574 194)">
+              <rect width="118" height="74" rx="14"></rect>
+              <text x="59" y="44">retailer 2</text>
+            </g>
+            <g class="retailer-node" transform="translate(574 316)">
+              <rect width="118" height="74" rx="14"></rect>
+              <text x="59" y="44">retailer R</text>
+            </g>
+            <path class="flow-line" d="M190 230 L286 230" marker-end="url(#arrowNetwork)"></path>
+            <path class="flow-line" d="M442 204 C494 120 522 110 574 110" marker-end="url(#arrowNetwork)"></path>
+            <path class="flow-line" d="M442 230 L574 230" marker-end="url(#arrowNetwork)"></path>
+            <path class="flow-line" d="M442 256 C494 340 522 352 574 352" marker-end="url(#arrowNetwork)"></path>
+            <path class="flow-line flow-line--expedite" d="M190 196 C356 52 516 48 574 90" marker-end="url(#arrowNetwork)"></path>
+            <path class="flow-line flow-line--request" d="M640 148 C610 172 596 180 574 194" marker-end="url(#arrowNetwork)"></path>
+            <path class="flow-line flow-line--request" d="M640 268 C610 288 598 300 574 316" marker-end="url(#arrowNetwork)"></path>
+            <text class="fig-label" x="456" y="128">allocation</text>
+            <text class="fig-label fig-label--lost" x="272" y="70">special delivery</text>
+          </svg>
+        </figure>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Multi Policy Example">
+      <div class="slide__inner">
+        <p class="eyebrow">Multi-echelon policy page</p>
+        <h2>The policy outputs order-up-to levels directly.</h2>
+        <div class="policy-example policy-example--multi">
+          <div class="policy-example__panel">
+            <h3>Input state</h3>
+            <p class="compact">Setting 1 raw decision state has <code>22</code> dimensions and is normalized by <code>100</code>.</p>
+            <div class="network-state">
+              <div><strong>warehouse</strong><span>on-hand <code>300</code>, pipeline <code>0</code></span></div>
+              <div><strong>10 retailers</strong><span>each on-hand <code>20</code>, pipeline <code>5</code></span></div>
+            </div>
+          </div>
+          <div class="policy-example__panel policy-example__panel--shape">
+            <h3>Policy shape</h3>
+            <div class="policy-shape" aria-label="Multi-echelon policy transformation">
+              <span>divide by 100</span>
+              <span>depth-2 oblique tree</span>
+              <span>linear leaf levels</span>
+              <span>round and clamp</span>
+            </div>
+            <div class="state-vector state-vector--controls" aria-label="Multi-echelon continuous leaf output">
+              <span>298.572</span>
+              <span>54.445</span>
+            </div>
+            <p class="compact">The dominant leaf has probability <code>1.0</code> and emits continuous warehouse / retailer targets.</p>
+          </div>
+          <div class="policy-example__panel policy-example__panel--output">
+            <h3>Action output</h3>
+            <div class="order-pair">
+              <span><code>y_w=299</code></span>
+              <span><code>y_r=54</code></span>
+            </div>
+            <p class="compact">Rounded and clamped to valid direct order-up-to levels.</p>
+          </div>
+        </div>
+        <div class="example-strip">
+          <span>Same tree family as the action-space-trap slide</span>
+          <span>Warehouse forward matched independent scalar forward over 5,000 random states</span>
+        </div>
+        <p class="source-line">Example source: <a href="../paper/learning_inventory_control_policies_es.tex">paper/learning_inventory_control_policies_es.tex</a>, multi-echelon decision path</p>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Action Trap">
+      <div class="slide__inner">
+        <p class="eyebrow">The action-space trap</p>
+        <h2>Same learner, different reachable action set.</h2>
+        <div class="trap-layout">
+          <figure class="trap-chart" aria-label="Multi-echelon action-space trap chart">
+            <svg viewBox="0 0 860 500" role="img">
+              <defs>
+                <linearGradient id="barDirect" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0" stop-color="#4d9387"></stop>
+                  <stop offset="1" stop-color="#2d6f66"></stop>
+                </linearGradient>
+              </defs>
+              <rect class="chart-bg" x="30" y="34" width="800" height="408" rx="20"></rect>
+              <line class="axis" x1="116" y1="390" x2="770" y2="390"></line>
+              <line class="axis" x1="116" y1="86" x2="116" y2="390"></line>
+              <line class="benchmark-line" x1="116" y1="300" x2="770" y2="300"></line>
+              <text class="chart-note" x="382" y="286">constant base-stock benchmark</text>
+              <rect class="bar bar--base" x="184" y="300" width="104" height="90" rx="8"></rect>
+              <rect class="bar bar--direct" x="378" y="314" width="104" height="76" rx="8" fill="url(#barDirect)"></rect>
+              <rect class="bar bar--grid" x="572" y="84" width="104" height="306" rx="8"></rect>
+              <text class="bar-value" x="236" y="284">910.3</text>
+              <text class="bar-value bar-value--direct" x="430" y="346">776.2</text>
+              <text class="bar-value bar-value--grid" x="624" y="68">3085.7</text>
+              <text class="bar-label" x="236" y="430">best base-stock</text>
+              <text class="bar-label" x="430" y="430">direct levels</text>
+              <text class="bar-label" x="624" y="430">reduced grid</text>
+              <text class="bar-delta" x="430" y="370">-14.7%</text>
+              <text class="bar-delta bar-delta--bad" x="624" y="112">+239%</text>
+              <path class="trap-arc" d="M468 184 C528 76 588 56 632 84"></path>
+              <text class="chart-note chart-note--bad" x="508" y="168">grid caps y_w at 100</text>
+              <text class="chart-note chart-note--bad" x="508" y="190">good region needs about 300-525</text>
+            </svg>
+          </figure>
+          <div class="result-callout result-callout--trap">
+            <div class="big-number">geometry</div>
+            <p>The swing is not from a new optimizer or a larger tree.</p>
+            <p class="compact">It is the reachable action set: direct order-up-to levels can express the operating region; the reduced grid cannot.</p>
+          </div>
+        </div>
+        <p class="source-line">Data source: <a href="../paper/learning_inventory_control_policies_es.tex">paper/learning_inventory_control_policies_es.tex</a>, Table <code>tab:me-results</code></p>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Multi Results">
+      <div class="slide__inner">
+        <p class="eyebrow">Multi-echelon result</p>
+        <h2>Direct-level trees robustly beat the best same-protocol base-stock gate.</h2>
+        <div class="me-results">
+          <div class="me-card">
+            <h3>Setting 1</h3>
+            <div class="me-card__metric">14.7% <span>&plusmn; 1.6%</span></div>
+            <p>Best base-stock: <code>(300,25) -> 910.3</code></p>
+            <p>Direct tree: <code>776.2 &plusmn; 14.3</code></p>
+          </div>
+          <div class="me-card">
+            <h3>Setting 2</h3>
+            <div class="me-card__metric">12.0% <span>&plusmn; 2.3%</span></div>
+            <p>Best base-stock: <code>(525,25) -> 1138.0</code></p>
+            <p>Direct tree: <code>1001.1 &plusmn; 25.6</code></p>
+          </div>
+        </div>
+        <div class="context-strip">
+          <span>5 independent CMA-ES optimizer seeds</span>
+          <span>5/5 seeds below the gate on both settings</span>
+          <span>A3C remains cross-protocol context</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Synthesis">
+      <div class="slide__inner">
+        <p class="eyebrow">What ties the three cases together</p>
+        <h2>The recipe stays fixed; the decoder changes shape.</h2>
+        <div class="synthesis-grid">
+          <div class="synthesis-card">
+            <span>01</span>
+            <h3>Lost sales</h3>
+            <p>Scalar order decoded as a direct, ordinal, gated, or tree quantity.</p>
+          </div>
+          <div class="synthesis-card">
+            <span>02</span>
+            <h3>Dual sourcing</h3>
+            <p>Regular and expedite orders decoded through CDI coordinates.</p>
+          </div>
+          <div class="synthesis-card">
+            <span>03</span>
+            <h3>Multi-echelon</h3>
+            <p>Warehouse and retailer decisions decoded as direct order-up-to levels.</p>
+          </div>
+        </div>
+        <p class="closing-line">The small policy works because it searches in a control language that the inventory system understands.</p>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Takeaways">
+      <div class="slide__inner">
+        <p class="eyebrow">Takeaways</p>
+        <h2>Structure in the policy beats capacity in the network.</h2>
+        <div class="takeaway-list">
+          <p><strong>1.</strong> A single gradient-free training loop can cover structurally different inventory systems.</p>
+          <p><strong>2.</strong> The decisive design choice is often the action geometry, not backbone width.</p>
+          <p><strong>3.</strong> Honest reporting matters: match optima, beat heuristics, and keep cross-protocol DRL as context.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Caveats">
+      <div class="slide__inner">
+        <p class="eyebrow">Limits and next steps</p>
+        <h2>The failures point to the next useful experiments.</h2>
+        <div class="caveat-grid">
+          <div>
+            <h3>Lost-sales misses</h3>
+            <p>The high-penalty, autocorrelated, long-lead MMPP cells remain classical-policy wins.</p>
+          </div>
+          <div>
+            <h3>Dual sourcing ceiling</h3>
+            <p>CDI is already near-optimal in this benchmark, so the right claim is recovery, not improvement.</p>
+          </div>
+          <div>
+            <h3>Multi-echelon comparability</h3>
+            <p>A3C numbers use different baselines and cost conventions, so they stay context-only.</p>
+          </div>
+        </div>
+        <p class="closing-line">Next step: search the decoder class itself, then pair structured action heads with more sample-efficient learners.</p>
+      </div>
+    </section>
+
+    <section class="slide" data-title="Source Anchors">
+      <div class="slide__inner">
+        <p class="eyebrow">Source anchors</p>
+        <h2>Every headline number in this deck has an explicit anchor.</h2>
+        <div class="source-grid">
+          <a href="https://nimamanaf.com/posts/learning-to-control-inventory-management-systems/">Public post</a>
+          <a href="../paper/generated/results_vanilla_lost_sales.tex">Lost-sales table</a>
+          <a href="../paper/generated/results_dual_sourcing.tex">Dual-sourcing table</a>
+          <a href="../paper/learning_inventory_control_policies_es.tex">Manuscript source</a>
+          <a href="../outputs/multi_echelon/gijsbrechts2022_setting1_seed_robust/seed_robust_full.json">Multi-echelon setting 1 artifact</a>
+          <a href="../outputs/multi_echelon/gijsbrechts2022_setting2_seed_robust/seed_robust_full.json">Multi-echelon setting 2 artifact</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="deck-nav" aria-label="Slide navigation">
+    <button class="nav-btn" type="button" id="prevSlide" aria-label="Previous slide" title="Previous slide">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5 8 12l7 7"></path></svg>
+    </button>
+    <div class="slide-status" aria-live="polite"><span id="slideNumber">1</span><span>/</span><span id="slideTotal">1</span></div>
+    <button class="nav-btn" type="button" id="nextSlide" aria-label="Next slide" title="Next slide">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"></path></svg>
+    </button>
+  </nav>
+  <div class="progress" aria-hidden="true"><span id="progressBar"></span></div>
+  <script>
+(function () {
+  const slides = Array.from(document.querySelectorAll(".slide"));
+  const prevButton = document.getElementById("prevSlide");
+  const nextButton = document.getElementById("nextSlide");
+  const slideNumber = document.getElementById("slideNumber");
+  const slideTotal = document.getElementById("slideTotal");
+  const progressBar = document.getElementById("progressBar");
+
+  let current = indexFromHash();
+
+  function indexFromHash() {
+    const raw = window.location.hash.replace("#", "");
+    const parsed = Number.parseInt(raw, 10);
+    if (Number.isFinite(parsed) && parsed >= 1 && parsed <= slides.length) {
+      return parsed - 1;
+    }
+    return 0;
+  }
+
+  function render() {
+    slides.forEach((slide, index) => {
+      const active = index === current;
+      slide.classList.toggle("is-active", active);
+      slide.setAttribute("aria-hidden", active ? "false" : "true");
+    });
+
+    prevButton.disabled = current === 0;
+    nextButton.disabled = current === slides.length - 1;
+    slideNumber.textContent = String(current + 1);
+    slideTotal.textContent = String(slides.length);
+    progressBar.style.width = `${((current + 1) / slides.length) * 100}%`;
+
+    const title = slides[current].dataset.title || `Slide ${current + 1}`;
+    document.title = `${title} - Small Structured Policies for Inventory Control`;
+  }
+
+  function goTo(index, updateHash = true) {
+    const next = Math.max(0, Math.min(slides.length - 1, index));
+    if (next === current) {
+      render();
+      return;
+    }
+    current = next;
+    if (updateHash) {
+      history.replaceState(null, "", `#${current + 1}`);
+    }
+    render();
+  }
+
+  function next() {
+    goTo(current + 1);
+  }
+
+  function previous() {
+    goTo(current - 1);
+  }
+
+  prevButton.addEventListener("click", previous);
+  nextButton.addEventListener("click", next);
+
+  document.addEventListener("keydown", (event) => {
+    const tag = event.target && event.target.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") {
+      return;
+    }
+    if (event.key === "ArrowRight" || event.key === "PageDown" || event.key === " ") {
+      event.preventDefault();
+      next();
+    }
+    if (event.key === "ArrowLeft" || event.key === "PageUp") {
+      event.preventDefault();
+      previous();
+    }
+    if (event.key === "Home") {
+      event.preventDefault();
+      goTo(0);
+    }
+    if (event.key === "End") {
+      event.preventDefault();
+      goTo(slides.length - 1);
+    }
+  });
+
+  window.addEventListener("hashchange", () => {
+    current = indexFromHash();
+    render();
+  });
+
+  let touchStartX = null;
+  let touchStartY = null;
+  document.addEventListener("touchstart", (event) => {
+    const touch = event.changedTouches[0];
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
+  }, { passive: true });
+
+  document.addEventListener("touchend", (event) => {
+    if (touchStartX === null || touchStartY === null) {
+      return;
+    }
+    const touch = event.changedTouches[0];
+    const dx = touch.clientX - touchStartX;
+    const dy = touch.clientY - touchStartY;
+    touchStartX = null;
+    touchStartY = null;
+
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.2) {
+      return;
+    }
+    if (dx < 0) {
+      next();
+    } else {
+      previous();
+    }
+  }, { passive: true });
+
+  render();
+}());
+  </script>
+</body>
+</html>
