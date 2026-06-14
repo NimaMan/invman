@@ -96,7 +96,42 @@ code {
   gap: clamp(18px, 2.2vw, 30px);
 }
 
-.title-grid,
+.title-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-content: center;
+  justify-items: center;
+  gap: clamp(10px, 1.8vw, 22px);
+}
+
+.title-copy {
+  width: min(1120px, 100%);
+  text-align: center;
+}
+
+.title-copy h1 {
+  max-width: 20ch;
+  margin: 0 auto;
+  font-size: 4.85rem;
+  line-height: 0.96;
+}
+
+.title-copy .dek {
+  max-width: 760px;
+  margin: 12px auto 0;
+  color: var(--ink);
+  font-size: 1.32rem;
+}
+
+.title-grid > .title-meta {
+  justify-content: center;
+  margin-top: 0;
+}
+
+.title-slide .hero-figure {
+  width: min(980px, 100%);
+}
+
 .split {
   display: grid;
   grid-template-columns: minmax(0, 0.95fr) minmax(360px, 1.05fr);
@@ -209,6 +244,86 @@ svg {
   stroke-width: 1.6;
 }
 
+.hero-backdrop {
+  fill: url(#heroPanel);
+  stroke: rgba(218, 205, 184, 0.95);
+  stroke-width: 1.6;
+}
+
+.hero-lane {
+  fill: rgba(255, 250, 240, 0.56);
+  stroke: rgba(218, 205, 184, 0.82);
+  stroke-width: 1.2;
+}
+
+.hero-lane--lost {
+  fill: rgba(11, 79, 108, 0.08);
+}
+
+.hero-lane--dual {
+  fill: rgba(181, 97, 31, 0.09);
+}
+
+.hero-lane--network {
+  fill: rgba(62, 126, 115, 0.09);
+}
+
+.hero-connector {
+  fill: none;
+  stroke: rgba(22, 32, 43, 0.16);
+  stroke-width: 2;
+  stroke-dasharray: 5 8;
+}
+
+.hero-card-shadow {
+  filter: drop-shadow(0 12px 18px rgba(22, 32, 43, 0.11));
+}
+
+.hero-mini {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.hero-mini--thin {
+  stroke-width: 3;
+  opacity: 0.72;
+}
+
+.hero-spark {
+  fill: currentColor;
+  opacity: 0.88;
+}
+
+.hero-policy .policy-halo {
+  fill: none;
+  stroke: rgba(62, 126, 115, 0.18);
+  stroke-width: 26;
+}
+
+.hero-policy .policy-divider {
+  stroke: rgba(62, 126, 115, 0.24);
+  stroke-width: 2;
+}
+
+.hero-output .node-number {
+  font-size: 13px;
+}
+
+.figure-grid {
+  fill: none;
+  stroke: rgba(22, 32, 43, 0.07);
+  stroke-width: 1;
+}
+
+.figure-band {
+  fill: rgba(11, 79, 108, 0.045);
+  stroke: rgba(11, 79, 108, 0.12);
+  stroke-width: 1.2;
+}
+
 .hero-node rect,
 .hero-policy rect,
 .hero-chip rect,
@@ -227,7 +342,7 @@ svg {
 .me-card,
 .synthesis-card,
 .caveat-grid > div,
-.source-grid a {
+.flow-badge {
   shape-rendering: geometricPrecision;
 }
 
@@ -239,19 +354,29 @@ svg {
 
 .hero-node--supply rect,
 .supply-node--regular rect {
+  fill: #e8eff1;
   stroke: var(--navy);
 }
 
 .hero-node--dual rect,
 .supply-node--expedite rect {
+  fill: #f4eadb;
   stroke: var(--brass);
 }
 
 .hero-node--network rect {
+  fill: #e8f0ed;
   stroke: var(--verdigris);
 }
 
+.hero-output rect {
+  fill: rgba(255, 250, 240, 0.86);
+  stroke: var(--line);
+  stroke-width: 1.8;
+}
+
 .hero-node text,
+.hero-output text,
 .hero-policy text,
 .hero-chip text,
 .policy-stage text,
@@ -271,6 +396,47 @@ svg {
   font-size: 22px;
 }
 
+.hero-node .node-title,
+.hero-output .node-title,
+.hero-policy .node-title {
+  text-anchor: start;
+  fill: var(--ink);
+  font-size: 21px;
+  font-weight: 850;
+}
+
+.hero-node .node-detail,
+.hero-output .node-detail,
+.hero-policy .node-detail {
+  text-anchor: start;
+  fill: var(--muted);
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.hero-node .node-number,
+.hero-output .node-number {
+  fill: var(--cream);
+  font-size: 14px;
+  font-weight: 900;
+  text-anchor: middle;
+}
+
+.hero-node .node-icon,
+.hero-output .node-icon {
+  fill: var(--navy);
+}
+
+.hero-node--dual .node-icon,
+.hero-output--dual .node-icon {
+  fill: var(--brass);
+}
+
+.hero-node--network .node-icon,
+.hero-output--network .node-icon {
+  fill: var(--verdigris);
+}
+
 .hero-node text + text,
 .loop-card text + text,
 .supply-node text + text,
@@ -287,15 +453,21 @@ svg {
   stroke-width: 3;
 }
 
-.hero-policy text:first-of-type {
-  fill: var(--verdigris);
-  font-size: 30px;
-  font-weight: 850;
+.hero-policy .policy-ring {
+  fill: none;
+  stroke: rgba(62, 126, 115, 0.35);
+  stroke-width: 9;
 }
 
-.hero-policy text:nth-of-type(2),
-.hero-policy text:nth-of-type(3) {
-  font-size: 19px;
+.hero-policy .policy-core {
+  fill: var(--verdigris);
+}
+
+.hero-policy .policy-initials {
+  fill: var(--cream);
+  font-size: 21px;
+  font-weight: 900;
+  text-anchor: middle;
 }
 
 .hero-node--network text:first-of-type {
@@ -312,6 +484,12 @@ svg {
   color: var(--navy);
 }
 
+.hero-link,
+.flow-line {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 .hero-link--b,
 .flow-line--expedite,
 .flow-line--lost {
@@ -319,6 +497,7 @@ svg {
 }
 
 .hero-link--c,
+.hero-link--out,
 .flow-line--serve {
   color: var(--verdigris);
 }
@@ -331,6 +510,191 @@ svg {
 .hero-chip text {
   font-size: 14px;
   fill: var(--muted);
+}
+
+.hero-section-label,
+.figure-caption {
+  fill: var(--muted);
+  font-size: 13px;
+  font-weight: 850;
+  text-anchor: middle;
+  text-transform: uppercase;
+}
+
+.flow-step rect {
+  fill: rgba(255, 250, 240, 0.78);
+  stroke: rgba(218, 205, 184, 0.9);
+  stroke-width: 1.6;
+}
+
+.flow-step text {
+  fill: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+  text-anchor: middle;
+}
+
+.flow-label {
+  fill: var(--muted);
+  font-size: 15px;
+  font-weight: 850;
+  text-anchor: middle;
+}
+
+.flow-label--serve {
+  fill: var(--verdigris);
+}
+
+.flow-label--lost,
+.flow-label--expedite {
+  fill: var(--brass);
+}
+
+.flow-label--request {
+  fill: var(--muted);
+}
+
+.mini-text {
+  fill: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  text-anchor: middle;
+}
+
+.figure-title {
+  fill: var(--ink);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 24px;
+  font-weight: 850;
+}
+
+.figure-kicker {
+  fill: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.flow-badge rect {
+  fill: rgba(255, 250, 240, 0.86);
+  stroke: rgba(218, 205, 184, 0.9);
+  stroke-width: 1.5;
+}
+
+.flow-badge text {
+  fill: var(--muted);
+  font-size: 14px;
+  font-weight: 850;
+  text-anchor: middle;
+}
+
+.flow-zone {
+  fill: rgba(255, 250, 240, 0.46);
+  stroke: rgba(218, 205, 184, 0.78);
+  stroke-width: 1.2;
+}
+
+.flow-zone--supply {
+  fill: rgba(11, 79, 108, 0.055);
+}
+
+.flow-zone--demand {
+  fill: rgba(181, 97, 31, 0.07);
+}
+
+.flow-zone--network {
+  fill: rgba(62, 126, 115, 0.065);
+}
+
+.node-metric {
+  fill: var(--muted);
+  font-size: 13px;
+  font-weight: 850;
+  text-anchor: middle;
+}
+
+.inventory-fill {
+  fill: var(--verdigris);
+  opacity: 0.86;
+}
+
+.inventory-shell {
+  fill: rgba(62, 126, 115, 0.15);
+  stroke: rgba(62, 126, 115, 0.45);
+  stroke-width: 1.4;
+}
+
+.pipeline-cell {
+  fill: rgba(11, 79, 108, 0.08);
+  stroke: rgba(11, 79, 108, 0.34);
+  stroke-width: 1.5;
+}
+
+.pipeline-cell--filled {
+  fill: rgba(11, 79, 108, 0.24);
+}
+
+.retailer-dot {
+  fill: var(--cream);
+  stroke: var(--verdigris);
+  stroke-width: 2;
+}
+
+.node-kicker {
+  fill: var(--muted);
+  font-size: 12px;
+  font-weight: 850;
+  text-anchor: middle;
+  text-transform: uppercase;
+}
+
+.stock-bar {
+  fill: rgba(62, 126, 115, 0.18);
+  stroke: rgba(62, 126, 115, 0.45);
+  stroke-width: 1.2;
+}
+
+.stock-bar--fill {
+  fill: var(--verdigris);
+  stroke: none;
+}
+
+.stock-node .stock-bar,
+.warehouse-node .stock-bar,
+.retailer-node .stock-bar {
+  fill: rgba(62, 126, 115, 0.18);
+  stroke: rgba(62, 126, 115, 0.45);
+  stroke-width: 1.2;
+}
+
+.stock-node .stock-bar--fill,
+.warehouse-node .stock-bar--fill,
+.retailer-node .stock-bar--fill {
+  fill: var(--verdigris);
+  stroke: none;
+}
+
+.pipe-dot {
+  fill: var(--navy);
+  opacity: 0.78;
+}
+
+.pipe-dot--muted {
+  fill: rgba(11, 79, 108, 0.18);
+  opacity: 1;
+}
+
+.lost-fill {
+  fill: #f1ded6;
+  stroke: var(--terra);
+  stroke-width: 2;
+}
+
+.rush-fill {
+  fill: #f4eadb;
+  stroke: var(--brass);
+  stroke-width: 2;
 }
 
 .clean-list {
@@ -493,7 +857,6 @@ svg {
 }
 
 .slide-caption,
-.source-line,
 .closing-line {
   color: var(--muted);
   font-size: 1rem;
@@ -718,8 +1081,7 @@ svg {
 .coordinate-compare,
 .me-results,
 .synthesis-grid,
-.caveat-grid,
-.source-grid {
+.caveat-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
@@ -1253,22 +1615,6 @@ svg {
   color: var(--verdigris);
 }
 
-.source-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.source-grid a {
-  min-height: 88px;
-  display: flex;
-  align-items: center;
-  padding: 18px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: rgba(255, 250, 240, 0.72);
-  color: var(--ink);
-  font-weight: 800;
-}
-
 .deck-nav {
   position: fixed;
   right: clamp(16px, 3vw, 34px);
@@ -1384,6 +1730,15 @@ svg {
     font-size: 4.4rem;
   }
 
+  .title-copy h1 {
+    max-width: 14ch;
+    font-size: 3.65rem;
+  }
+
+  .title-copy .dek {
+    font-size: 1.16rem;
+  }
+
   h2 {
     max-width: 14ch;
     font-size: 3.05rem;
@@ -1436,7 +1791,6 @@ svg {
   .me-results,
   .synthesis-grid,
   .caveat-grid,
-  .source-grid,
   .section-kpis {
     grid-template-columns: 1fr;
   }
@@ -1462,6 +1816,131 @@ svg {
 
   .row-label {
     font-size: 0.72rem;
+  }
+}
+
+@media (max-height: 760px) and (min-width: 941px) {
+  :root {
+    --slide-pad-y: 24px;
+    --slide-pad-x: 56px;
+  }
+
+  .slide__inner {
+    min-height: calc(100vh - 2 * var(--slide-pad-y));
+    gap: 16px;
+  }
+
+  .title-grid {
+    gap: 10px;
+  }
+
+  h1,
+  .title-copy h1 {
+    font-size: 4.05rem;
+    line-height: 0.95;
+  }
+
+  h2 {
+    font-size: 3.25rem;
+    line-height: 0.98;
+  }
+
+  .slide[data-title$="Policy Example"] h2 {
+    font-size: 2.8rem;
+  }
+
+  .lead,
+  .dek,
+  .quote-panel {
+    font-size: 1.08rem;
+  }
+
+  .title-copy .dek {
+    font-size: 1.08rem;
+  }
+
+  .clean-list {
+    gap: 8px;
+    font-size: 0.98rem;
+  }
+
+  .title-slide .hero-figure {
+    width: min(780px, 100%);
+  }
+
+  .title-meta {
+    margin-top: 8px;
+  }
+
+  .title-meta span {
+    padding: 6px 10px;
+  }
+
+  .policy-pipeline {
+    width: min(860px, 100%);
+    margin-inline: auto;
+  }
+
+  .trap-chart {
+    width: min(760px, 100%);
+    margin-inline: auto;
+  }
+
+  .slide-caption,
+  .closing-line {
+    font-size: 0.9rem;
+  }
+
+  .heatmap-layout,
+  .dual-result-grid,
+  .trap-layout {
+    gap: 28px;
+  }
+
+  .lost-heatmap,
+  .dual-table {
+    padding: 14px;
+  }
+
+  .heatmap-head,
+  .heatmap-row {
+    gap: 6px;
+  }
+
+  .tile {
+    min-height: 42px;
+    font-size: 0.7rem;
+  }
+
+  .row-label {
+    font-size: 0.76rem;
+  }
+
+  .result-callout {
+    padding: 18px;
+    gap: 10px;
+  }
+
+  .big-number {
+    font-size: 3.25rem;
+  }
+
+  .me-card {
+    min-height: 160px;
+    padding: 18px;
+  }
+
+  .me-card__metric {
+    font-size: 3.2rem;
+  }
+
+  .context-strip {
+    gap: 8px;
+  }
+
+  .context-strip span {
+    padding: 8px 10px;
+    font-size: 0.8rem;
   }
 }
 
@@ -1580,50 +2059,127 @@ svg {
         <div class="title-copy">
           <p class="eyebrow">Inventory control with compact learned policies</p>
           <h1>Small Structured Policies for Inventory Control</h1>
-          <p class="dek">CMA-ES learns interpretable inventory policies when the action decoder lives in the right control coordinates.</p>
-          <div class="title-meta">
-            <span>Nima Manaf</span>
-            <span>Conference deck</span>
-            <span>Lost sales &middot; dual sourcing &middot; multi-echelon</span>
-          </div>
+          <p class="dek">Can one compact policy recipe work across lost sales, dual sourcing, and multi-echelon networks?</p>
         </div>
         <figure class="hero-figure" aria-label="Three inventory systems connected by one policy recipe">
-          <svg viewBox="0 0 740 500" role="img">
+          <svg viewBox="0 0 1020 450" role="img">
             <defs>
-              <marker id="arrowHero" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
-                <path d="M0,0 L8,3 L0,6 Z" fill="currentColor"></path>
+              <marker id="arrowHero" markerWidth="12" markerHeight="12" refX="10" refY="4" orient="auto">
+                <path d="M0,0 L10,4 L0,8 Z" fill="currentColor"></path>
               </marker>
+              <linearGradient id="heroPanel" x1="0" x2="1" y1="0" y2="1">
+                <stop offset="0" stop-color="#fffaf0"></stop>
+                <stop offset="0.55" stop-color="#f6eddc"></stop>
+                <stop offset="1" stop-color="#edf3ef"></stop>
+              </linearGradient>
+              <radialGradient id="heroGlow" cx="50%" cy="45%" r="58%">
+                <stop offset="0" stop-color="#ffffff" stop-opacity="0.78"></stop>
+                <stop offset="0.62" stop-color="#ffffff" stop-opacity="0.08"></stop>
+                <stop offset="1" stop-color="#ffffff" stop-opacity="0"></stop>
+              </radialGradient>
             </defs>
-            <g class="hero-node hero-node--supply">
-              <rect x="48" y="82" width="150" height="96" rx="14"></rect>
-              <text x="123" y="121">lost sales</text>
-              <text x="123" y="146">one stock buffer</text>
+            <rect class="hero-backdrop" x="20" y="18" width="980" height="410" rx="30"></rect>
+            <circle cx="510" cy="214" r="204" fill="url(#heroGlow)"></circle>
+            <path class="figure-grid" d="M82 78 H938 M82 372 H938 M350 58 V388 M670 58 V388"></path>
+            <text class="hero-section-label" x="190" y="62">inventory setting</text>
+            <text class="hero-section-label" x="510" y="62">small learned policy</text>
+            <text class="hero-section-label" x="830" y="62">control language</text>
+
+            <rect class="hero-lane hero-lane--lost" x="58" y="88" width="904" height="84" rx="22"></rect>
+            <rect class="hero-lane hero-lane--dual" x="58" y="188" width="904" height="84" rx="22"></rect>
+            <rect class="hero-lane hero-lane--network" x="58" y="288" width="904" height="84" rx="22"></rect>
+
+            <path class="hero-connector" d="M354 130 H414"></path>
+            <path class="hero-connector" d="M354 230 H414"></path>
+            <path class="hero-connector" d="M354 330 H414"></path>
+            <path class="hero-connector" d="M606 130 H686"></path>
+            <path class="hero-connector" d="M606 230 H686"></path>
+            <path class="hero-connector" d="M606 330 H686"></path>
+
+            <path class="hero-link hero-link--a" d="M340 130 C372 130 386 154 414 176" marker-end="url(#arrowHero)"></path>
+            <path class="hero-link hero-link--b" d="M340 230 C370 230 386 222 414 222" marker-end="url(#arrowHero)"></path>
+            <path class="hero-link hero-link--c" d="M340 330 C372 330 386 288 414 268" marker-end="url(#arrowHero)"></path>
+            <path class="hero-link hero-link--out" d="M606 176 C638 154 654 130 690 130" marker-end="url(#arrowHero)"></path>
+            <path class="hero-link hero-link--out" d="M606 222 C638 222 654 230 690 230" marker-end="url(#arrowHero)"></path>
+            <path class="hero-link hero-link--out" d="M606 268 C638 288 654 330 690 330" marker-end="url(#arrowHero)"></path>
+
+            <g class="hero-node hero-node--supply hero-card-shadow" transform="translate(76 101)">
+              <rect width="264" height="58" rx="15"></rect>
+              <g class="hero-mini" style="color: var(--navy)" transform="translate(22 16)">
+                <path d="M0 24 H44"></path>
+                <path class="hero-mini--thin" d="M4 9 H36 M14 18 H44"></path>
+                <circle class="hero-spark" cx="52" cy="24" r="6"></circle>
+              </g>
+              <text class="node-title" x="92" y="25">lost sales</text>
+              <text class="node-detail" x="92" y="46">pipeline + stock + leakage</text>
             </g>
-            <g class="hero-node hero-node--dual">
-              <rect x="48" y="312" width="150" height="96" rx="14"></rect>
-              <text x="123" y="351">dual sourcing</text>
-              <text x="123" y="376">two supply arcs</text>
+            <g class="hero-node hero-node--dual hero-card-shadow" transform="translate(76 201)">
+              <rect width="264" height="58" rx="15"></rect>
+              <g class="hero-mini" style="color: var(--brass)" transform="translate(22 13)">
+                <path d="M0 12 C20 0 36 0 56 12"></path>
+                <path d="M0 32 C20 44 36 44 56 32"></path>
+                <circle class="hero-spark" cx="0" cy="12" r="5"></circle>
+                <circle class="hero-spark" cx="0" cy="32" r="5"></circle>
+              </g>
+              <text class="node-title" x="92" y="25">dual sourcing</text>
+              <text class="node-detail" x="92" y="46">regular source + expedite</text>
             </g>
-            <g class="hero-node hero-node--network">
-              <rect x="526" y="198" width="178" height="104" rx="14"></rect>
-              <text x="615" y="238">multi-echelon</text>
-              <text x="615" y="263">warehouse + retailers</text>
+            <g class="hero-node hero-node--network hero-card-shadow" transform="translate(76 301)">
+              <rect width="264" height="58" rx="15"></rect>
+              <g class="hero-mini" style="color: var(--verdigris)" transform="translate(25 12)">
+                <path d="M30 4 V26 M30 26 L8 42 M30 26 L52 42"></path>
+                <circle class="hero-spark" cx="30" cy="4" r="7"></circle>
+                <circle class="hero-spark" cx="8" cy="42" r="5"></circle>
+                <circle class="hero-spark" cx="52" cy="42" r="5"></circle>
+              </g>
+              <text class="node-title" x="92" y="25">multi-echelon</text>
+              <text class="node-detail" x="92" y="46">warehouse to retailers</text>
             </g>
-            <g class="hero-policy">
-              <rect x="278" y="176" width="184" height="142" rx="18"></rect>
-              <text x="370" y="222">CMA-ES</text>
-              <text x="370" y="252">compact policy</text>
-              <text x="370" y="282">shaped decoder</text>
+
+            <g class="hero-policy hero-card-shadow" transform="translate(414 106)">
+              <rect width="192" height="232" rx="26"></rect>
+              <circle class="policy-halo" cx="96" cy="82" r="42"></circle>
+              <circle class="policy-ring" cx="96" cy="82" r="43"></circle>
+              <circle class="policy-core" cx="96" cy="82" r="27"></circle>
+              <text class="policy-initials" x="96" y="90">ES</text>
+              <line class="policy-divider" x1="34" y1="140" x2="158" y2="140"></line>
+              <text class="node-title" x="38" y="166">CMA-ES</text>
+              <text class="node-detail" x="38" y="190">tiny tree policy</text>
+              <text class="node-detail" x="38" y="212">system-shaped decoder</text>
             </g>
-            <path class="hero-link hero-link--a" d="M198 130 C250 130 252 210 278 216" marker-end="url(#arrowHero)"></path>
-            <path class="hero-link hero-link--b" d="M198 360 C250 360 252 290 278 280" marker-end="url(#arrowHero)"></path>
-            <path class="hero-link hero-link--c" d="M462 247 C496 247 500 247 526 247" marker-end="url(#arrowHero)"></path>
-            <g class="hero-chip" transform="translate(286 340)">
-              <rect width="168" height="42" rx="21"></rect>
-              <text x="84" y="27">same loop, different geometry</text>
+
+            <g class="hero-output hero-output--supply hero-card-shadow" transform="translate(690 101)">
+              <rect width="254" height="58" rx="15"></rect>
+              <circle class="node-icon" cx="32" cy="29" r="17"></circle>
+              <text class="node-number" x="32" y="34">q</text>
+              <text class="node-title" x="66" y="25">order quantity</text>
+              <text class="node-detail" x="66" y="46">ordinal one-more-unit</text>
+            </g>
+            <g class="hero-output hero-output--dual hero-card-shadow" transform="translate(690 201)">
+              <rect width="254" height="58" rx="15"></rect>
+              <circle class="node-icon" cx="32" cy="29" r="17"></circle>
+              <text class="node-number" x="32" y="34">2</text>
+              <text class="node-title" x="66" y="25">split order</text>
+              <text class="node-detail" x="66" y="46">capped dual-index controls</text>
+            </g>
+            <g class="hero-output hero-output--network hero-card-shadow" transform="translate(690 301)">
+              <rect width="254" height="58" rx="15"></rect>
+              <circle class="node-icon" cx="32" cy="29" r="17"></circle>
+              <text class="node-number" x="32" y="34">y</text>
+              <text class="node-title" x="66" y="25">target levels</text>
+              <text class="node-detail" x="66" y="46">direct order-up-to actions</text>
+            </g>
+
+            <g class="hero-chip" transform="translate(356 386)">
+              <rect width="308" height="34" rx="17"></rect>
+              <text x="154" y="22">same optimizer; the useful action language changes</text>
             </g>
           </svg>
         </figure>
+        <div class="title-meta">
+          <span>Nima Manaf</span>
+          <span>Lost sales &middot; dual sourcing &middot; multi-echelon</span>
+        </div>
       </div>
       <aside class="notes">Open by positioning the work as a representation result, not a generic RL-vs-ES contest.</aside>
     </section>
@@ -1791,28 +2347,27 @@ svg {
       </div>
     </section>
 
-    <section class="slide" data-title="Honesty">
+    <section class="slide" data-title="Comparison Frame">
       <div class="slide__inner">
-        <p class="eyebrow">How claims are read</p>
-        <h2>The deck uses comparator-specific verdicts, not one leaderboard.</h2>
+        <p class="eyebrow">How to read the evidence</p>
+        <h2>The story is not one leaderboard.</h2>
         <div class="verdict-grid">
           <div class="verdict verdict--match">
             <span class="verdict__icon">=</span>
             <h3>Match</h3>
-            <p>Use this when the comparator is an optimum or near-optimal proxy.</p>
+            <p>The right goal is recovery when the comparator is an optimum or near-optimal proxy.</p>
           </div>
           <div class="verdict verdict--beat">
             <span class="verdict__icon">v</span>
             <h3>Beat</h3>
-            <p>Use this only against a same-protocol heuristic gate.</p>
+            <p>The right goal is improvement when both methods run under the same simulation protocol.</p>
           </div>
           <div class="verdict verdict--context">
             <span class="verdict__icon">&lt;&gt;</span>
             <h3>Context</h3>
-            <p>Published A3C/PPO rows inform the field but are not head-to-head unless reproduced.</p>
+            <p>External reinforcement-learning numbers orient the field but are not head-to-head unless reproduced.</p>
           </div>
         </div>
-        <p class="source-line">Source framing: <a href="../paper/learning_inventory_control_policies_es.tex">paper/learning_inventory_control_policies_es.tex</a> and the public post.</p>
       </div>
     </section>
 
@@ -1842,47 +2397,75 @@ svg {
           </ul>
         </div>
         <figure class="flow-card" aria-label="Lost-sales environment diagram">
-          <svg viewBox="0 0 760 460" role="img">
+          <svg viewBox="0 0 780 470" role="img">
             <defs>
               <marker id="arrowLost" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
                 <path d="M0,0 L8,3 L0,6 Z" fill="currentColor"></path>
               </marker>
+              <linearGradient id="lostPanel" x1="0" x2="1" y1="0" y2="1">
+                <stop offset="0" stop-color="#fffaf0"></stop>
+                <stop offset="0.54" stop-color="#f2eadc"></stop>
+                <stop offset="1" stop-color="#e8f0ed"></stop>
+              </linearGradient>
             </defs>
-            <rect class="fig-bg" x="24" y="24" width="712" height="412" rx="20"></rect>
-            <g class="supply-node" transform="translate(62 178)">
-              <rect width="138" height="88" rx="14"></rect>
-              <text x="69" y="51">supplier</text>
+            <rect class="fig-bg" x="24" y="24" width="732" height="422" rx="24" fill="url(#lostPanel)"></rect>
+            <text class="figure-kicker" x="58" y="62">single-buffer lost sales</text>
+            <text class="figure-title" x="58" y="94">Replenishment is delayed; demand either converts or disappears.</text>
+
+            <rect class="flow-zone flow-zone--supply" x="52" y="124" width="430" height="144" rx="20"></rect>
+            <rect class="flow-zone flow-zone--demand" x="504" y="124" width="200" height="274" rx="20"></rect>
+
+            <g class="supply-node hero-card-shadow" transform="translate(76 298)">
+              <rect width="138" height="82" rx="14"></rect>
+              <text x="69" y="40">supplier</text>
+              <text x="69" y="63">places q<tspan baseline-shift="sub">t</tspan></text>
             </g>
-            <g class="pipe-track" transform="translate(248 90)">
-              <text x="128" y="0">lead-time pipeline</text>
-              <rect x="0" y="38" width="74" height="80" rx="10"></rect>
-              <rect x="90" y="38" width="74" height="80" rx="10"></rect>
-              <rect x="180" y="38" width="74" height="80" rx="10"></rect>
-              <text x="37" y="86">L</text>
-              <text x="127" y="86">...</text>
-              <text x="217" y="86">1</text>
+
+            <g transform="translate(110 154)">
+              <text class="node-kicker" x="170" y="-20">lead-time pipeline</text>
+              <rect class="pipeline-cell pipeline-cell--filled" x="0" y="0" width="72" height="82" rx="11"></rect>
+              <rect class="pipeline-cell pipeline-cell--filled" x="92" y="0" width="72" height="82" rx="11"></rect>
+              <rect class="pipeline-cell" x="184" y="0" width="72" height="82" rx="11"></rect>
+              <rect class="pipeline-cell" x="276" y="0" width="72" height="82" rx="11"></rect>
+              <text class="node-metric" x="36" y="47">L</text>
+              <text class="node-metric" x="128" y="47">L-1</text>
+              <text class="node-metric" x="220" y="47">...</text>
+              <text class="node-metric" x="312" y="47">1</text>
             </g>
-            <g class="stock-node" transform="translate(548 142)">
-              <rect width="138" height="112" rx="16"></rect>
-              <text x="69" y="50">on-hand</text>
-              <text x="69" y="76">inventory</text>
+
+            <g class="stock-node hero-card-shadow" transform="translate(528 156)">
+              <rect width="148" height="132" rx="18"></rect>
+              <text x="74" y="42">on-hand</text>
+              <text x="74" y="66">stock</text>
+              <rect class="inventory-shell" x="36" y="82" width="76" height="24" rx="6"></rect>
+              <rect class="inventory-fill" x="36" y="82" width="48" height="24" rx="6"></rect>
             </g>
-            <g class="customer-node" transform="translate(548 318)">
-              <circle cx="68" cy="44" r="44"></circle>
-              <text x="68" y="49">customer</text>
+
+            <g class="customer-node hero-card-shadow" transform="translate(558 326)">
+              <circle cx="58" cy="44" r="44"></circle>
+              <text x="58" y="40">customer</text>
+              <text x="58" y="62">D<tspan baseline-shift="sub">t</tspan></text>
             </g>
-            <g class="loss-node" transform="translate(354 320)">
-              <path d="M0 42 C0 14 28 0 62 0 C100 0 124 15 124 42 C124 70 96 84 62 84 C24 84 0 70 0 42 Z"></path>
-              <text x="62" y="47">lost</text>
+            <g class="loss-node hero-card-shadow" transform="translate(330 326)">
+              <path d="M0 42 C0 14 28 0 66 0 C106 0 132 15 132 42 C132 70 102 84 66 84 C26 84 0 70 0 42 Z"></path>
+              <text x="66" y="39">lost</text>
+              <text x="66" y="61">sale</text>
             </g>
-            <path class="flow-line flow-line--request" d="M590 284 C438 410 174 372 130 266" marker-end="url(#arrowLost)"></path>
-            <path class="flow-line" d="M200 220 C244 178 254 168 282 168" marker-end="url(#arrowLost)"></path>
-            <path class="flow-line" d="M502 168 L548 190" marker-end="url(#arrowLost)"></path>
-            <path class="flow-line flow-line--serve" d="M616 254 L616 318" marker-end="url(#arrowLost)"></path>
-            <path class="flow-line flow-line--lost" d="M548 346 C500 346 488 356 478 362" marker-end="url(#arrowLost)"></path>
-            <text class="fig-label" x="282" y="382">q<tspan baseline-shift="sub">t</tspan> enters pipeline</text>
-            <text class="fig-label" x="624" y="296">served</text>
-            <text class="fig-label fig-label--lost" x="408" y="418">penalty for unmet demand</text>
+
+            <g class="flow-badge" transform="translate(76 244)">
+              <rect width="138" height="34" rx="17"></rect>
+              <text x="69" y="22">choose q<tspan baseline-shift="sub">t</tspan></text>
+            </g>
+
+            <path class="flow-line" d="M214 339 C246 300 240 250 242 236" marker-end="url(#arrowLost)"></path>
+            <path class="flow-line" d="M458 195 C486 195 504 202 528 220" marker-end="url(#arrowLost)"></path>
+            <path class="flow-line flow-line--request" d="M616 326 C616 310 612 302 604 288" marker-end="url(#arrowLost)"></path>
+            <path class="flow-line flow-line--serve" d="M620 288 C642 310 646 320 640 334" marker-end="url(#arrowLost)"></path>
+            <path class="flow-line flow-line--lost" d="M528 264 C488 316 462 350 462 368" marker-end="url(#arrowLost)"></path>
+
+            <text class="fig-label" x="320" y="292">arrivals after lead time</text>
+            <text class="fig-label" x="648" y="318">served</text>
+            <text class="fig-label fig-label--lost" x="382" y="430">unfilled demand leaves the system</text>
           </svg>
         </figure>
       </div>
@@ -1951,7 +2534,6 @@ svg {
             <p class="compact">The remaining failures are the most hostile cells: high penalty, autocorrelated demand, and the deepest pipelines.</p>
           </div>
         </div>
-        <p class="source-line">Data source: <a href="../paper/generated/results_vanilla_lost_sales.tex">paper/generated/results_vanilla_lost_sales.tex</a></p>
       </div>
     </section>
 
@@ -2023,7 +2605,6 @@ svg {
           <span>Well-stocked comparison: <code>[8,5,5,5]</code> -> q<sub>t</sub> = 3</span>
           <span>Validated against independent policy forward / rollout checks</span>
         </div>
-        <p class="source-line">Example source: <a href="../paper/learning_inventory_control_policies_es.tex">paper/learning_inventory_control_policies_es.tex</a>, Table <code>tab:worked</code></p>
       </div>
     </section>
 
@@ -2053,39 +2634,73 @@ svg {
           </ul>
         </div>
         <figure class="dual-figure" aria-label="Dual sourcing flow diagram">
-          <svg viewBox="0 0 780 460" role="img">
+          <svg viewBox="0 0 780 470" role="img">
             <defs>
               <marker id="arrowDual" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
                 <path d="M0,0 L8,3 L0,6 Z" fill="currentColor"></path>
               </marker>
+              <linearGradient id="dualPanel" x1="0" x2="1" y1="0" y2="1">
+                <stop offset="0" stop-color="#fffaf0"></stop>
+                <stop offset="0.48" stop-color="#f4eadb"></stop>
+                <stop offset="1" stop-color="#e8eff1"></stop>
+              </linearGradient>
             </defs>
-            <rect class="fig-bg" x="24" y="24" width="732" height="412" rx="20"></rect>
-            <g class="supply-node supply-node--regular" transform="translate(70 88)">
-              <rect width="150" height="88" rx="14"></rect>
-              <text x="75" y="42">regular</text>
-              <text x="75" y="66">cheap &middot; slow</text>
+            <rect class="fig-bg" x="24" y="24" width="732" height="422" rx="24" fill="url(#dualPanel)"></rect>
+            <text class="figure-kicker" x="58" y="62">dual sourcing</text>
+            <text class="figure-title" x="58" y="94">Two supply clocks feed the same inventory position.</text>
+
+            <rect class="flow-zone flow-zone--supply" x="52" y="114" width="468" height="128" rx="20"></rect>
+            <rect class="flow-zone flow-zone--demand" x="52" y="274" width="468" height="118" rx="20"></rect>
+
+            <g class="supply-node supply-node--regular hero-card-shadow" transform="translate(74 140)">
+              <rect width="148" height="82" rx="14"></rect>
+              <text x="74" y="37">regular</text>
+              <text x="74" y="61">cheap &middot; slow</text>
             </g>
-            <g class="supply-node supply-node--expedite" transform="translate(70 284)">
-              <rect width="150" height="88" rx="14"></rect>
-              <text x="75" y="42">expedite</text>
-              <text x="75" y="66">costly &middot; fast</text>
+            <g class="supply-node supply-node--expedite hero-card-shadow" transform="translate(74 296)">
+              <rect width="148" height="82" rx="14"></rect>
+              <text x="74" y="37">expedite</text>
+              <text x="74" y="61">costly &middot; fast</text>
             </g>
-            <g class="stock-node" transform="translate(496 170)">
-              <rect width="160" height="118" rx="18"></rect>
-              <text x="80" y="50">inventory</text>
-              <text x="80" y="76">position</text>
+
+            <g transform="translate(260 144)">
+              <text class="node-kicker" x="116" y="-18">regular pipeline</text>
+              <rect class="pipeline-cell pipeline-cell--filled" x="0" y="0" width="56" height="64" rx="10"></rect>
+              <rect class="pipeline-cell pipeline-cell--filled" x="72" y="0" width="56" height="64" rx="10"></rect>
+              <rect class="pipeline-cell" x="144" y="0" width="56" height="64" rx="10"></rect>
+              <text class="node-metric" x="28" y="38">3</text>
+              <text class="node-metric" x="100" y="38">2</text>
+              <text class="node-metric" x="172" y="38">1</text>
             </g>
-            <g class="demand-node" transform="translate(626 330)">
+
+            <g class="stock-node hero-card-shadow" transform="translate(524 174)">
+              <rect width="162" height="132" rx="18"></rect>
+              <text x="81" y="42">inventory</text>
+              <text x="81" y="66">position</text>
+              <rect class="inventory-shell" x="38" y="82" width="86" height="24" rx="6"></rect>
+              <rect class="inventory-fill" x="38" y="82" width="58" height="24" rx="6"></rect>
+            </g>
+
+            <g class="demand-node hero-card-shadow" transform="translate(614 338)">
               <circle cx="46" cy="46" r="46"></circle>
-              <text x="46" y="52">demand</text>
+              <text x="46" y="43">demand</text>
+              <text x="46" y="65">D<tspan baseline-shift="sub">t</tspan></text>
             </g>
-            <path class="flow-line flow-line--regular" d="M220 132 C315 96 388 104 496 190" marker-end="url(#arrowDual)"></path>
-            <path class="flow-line flow-line--expedite" d="M220 328 C334 346 414 306 496 248" marker-end="url(#arrowDual)"></path>
-            <path class="flow-line flow-line--serve" d="M610 288 L652 334" marker-end="url(#arrowDual)"></path>
-            <path class="flow-line flow-line--request" d="M492 190 C390 44 176 40 146 88" marker-end="url(#arrowDual)"></path>
-            <path class="flow-line flow-line--request" d="M494 248 C382 420 174 414 146 372" marker-end="url(#arrowDual)"></path>
-            <text class="fig-label" x="312" y="88">q<tspan baseline-shift="sub">r</tspan></text>
-            <text class="fig-label" x="314" y="366">q<tspan baseline-shift="sub">e</tspan></text>
+
+            <g class="flow-badge" transform="translate(228 218)">
+              <rect width="122" height="34" rx="17"></rect>
+              <text x="61" y="22">q<tspan baseline-shift="sub">r</tspan> enters later</text>
+            </g>
+            <g class="flow-badge" transform="translate(246 330)">
+              <rect width="134" height="34" rx="17"></rect>
+              <text x="67" y="22">q<tspan baseline-shift="sub">e</tspan> corrects now</text>
+            </g>
+
+            <path class="flow-line flow-line--regular" d="M222 181 C242 174 248 174 260 176" marker-end="url(#arrowDual)"></path>
+            <path class="flow-line flow-line--regular" d="M460 176 C492 176 506 190 524 218" marker-end="url(#arrowDual)"></path>
+            <path class="flow-line flow-line--expedite" d="M222 337 C338 356 442 322 524 266" marker-end="url(#arrowDual)"></path>
+            <path class="flow-line flow-line--serve" d="M626 306 C644 322 654 336 660 352" marker-end="url(#arrowDual)"></path>
+            <text class="fig-label fig-label--lost" x="386" y="408">fast but expensive response</text>
           </svg>
         </figure>
       </div>
@@ -2169,7 +2784,6 @@ svg {
           <span>Leaner comparison: <code>[2,0]</code> -> q<sub>e</sub> = 2, q<sub>r</sub> = 2</span>
           <span>Validated by a 100,000-period rollout cost match</span>
         </div>
-        <p class="source-line">Example source: <a href="../paper/learning_inventory_control_policies_es.tex">paper/learning_inventory_control_policies_es.tex</a>, dual-sourcing decision path</p>
       </div>
     </section>
 
@@ -2194,7 +2808,6 @@ svg {
           <span>Published A3C gaps: 0.51% to 1.85%</span>
           <span>Deck framing: context, not head-to-head</span>
         </div>
-        <p class="source-line">Data source: <a href="../paper/generated/results_dual_sourcing.tex">paper/generated/results_dual_sourcing.tex</a></p>
       </div>
     </section>
 
@@ -2224,43 +2837,66 @@ svg {
           </ul>
         </div>
         <figure class="network-figure" aria-label="Divergent multi-echelon network diagram">
-          <svg viewBox="0 0 780 460" role="img">
+          <svg viewBox="0 0 780 470" role="img">
             <defs>
               <marker id="arrowNetwork" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
                 <path d="M0,0 L8,3 L0,6 Z" fill="currentColor"></path>
               </marker>
+              <linearGradient id="networkPanel" x1="0" x2="1" y1="0" y2="1">
+                <stop offset="0" stop-color="#fffaf0"></stop>
+                <stop offset="0.5" stop-color="#e8f0ed"></stop>
+                <stop offset="1" stop-color="#f4eadb"></stop>
+              </linearGradient>
             </defs>
-            <rect class="fig-bg" x="24" y="24" width="732" height="412" rx="20"></rect>
-            <g class="supply-node" transform="translate(58 186)">
+            <rect class="fig-bg" x="24" y="24" width="732" height="422" rx="24" fill="url(#networkPanel)"></rect>
+            <text class="figure-kicker" x="58" y="62">divergent multi-echelon</text>
+            <text class="figure-title" x="58" y="84">Order-up-to targets coordinate one warehouse and many retailers.</text>
+
+            <rect class="flow-zone flow-zone--supply" x="52" y="144" width="180" height="186" rx="20"></rect>
+            <rect class="flow-zone flow-zone--network" x="270" y="124" width="210" height="226" rx="20"></rect>
+            <rect class="flow-zone flow-zone--demand" x="540" y="84" width="188" height="328" rx="20"></rect>
+
+            <g class="supply-node hero-card-shadow" transform="translate(76 202)">
               <rect width="132" height="88" rx="14"></rect>
-              <text x="66" y="51">supplier</text>
+              <text x="66" y="42">supplier</text>
+              <text x="66" y="66">upstream</text>
             </g>
-            <g class="warehouse-node" transform="translate(286 160)">
-              <rect width="156" height="140" rx="18"></rect>
-              <text x="78" y="60">warehouse</text>
-              <text x="78" y="88">target y_w</text>
+            <g class="warehouse-node hero-card-shadow" transform="translate(294 164)">
+              <rect width="166" height="146" rx="18"></rect>
+              <text x="83" y="46">warehouse</text>
+              <text x="83" y="72">target y<tspan baseline-shift="sub">w</tspan></text>
+              <rect class="inventory-shell" x="40" y="92" width="86" height="24" rx="6"></rect>
+              <rect class="inventory-fill" x="40" y="92" width="66" height="24" rx="6"></rect>
             </g>
-            <g class="retailer-node" transform="translate(574 72)">
-              <rect width="118" height="74" rx="14"></rect>
-              <text x="59" y="44">retailer 1</text>
+            <g class="retailer-node hero-card-shadow" transform="translate(574 92)">
+              <rect width="126" height="68" rx="14"></rect>
+              <text x="63" y="31">retailer 1</text>
+              <text x="63" y="53">target y<tspan baseline-shift="sub">r</tspan></text>
             </g>
-            <g class="retailer-node" transform="translate(574 194)">
-              <rect width="118" height="74" rx="14"></rect>
-              <text x="59" y="44">retailer 2</text>
+            <g class="retailer-node hero-card-shadow" transform="translate(574 202)">
+              <rect width="126" height="68" rx="14"></rect>
+              <text x="63" y="31">retailer 2</text>
+              <text x="63" y="53">target y<tspan baseline-shift="sub">r</tspan></text>
             </g>
-            <g class="retailer-node" transform="translate(574 316)">
-              <rect width="118" height="74" rx="14"></rect>
-              <text x="59" y="44">retailer R</text>
+            <g class="retailer-node hero-card-shadow" transform="translate(574 312)">
+              <rect width="126" height="68" rx="14"></rect>
+              <text x="63" y="31">retailer 10</text>
+              <text x="63" y="53">target y<tspan baseline-shift="sub">r</tspan></text>
             </g>
-            <path class="flow-line" d="M190 230 L286 230" marker-end="url(#arrowNetwork)"></path>
-            <path class="flow-line" d="M442 204 C494 120 522 110 574 110" marker-end="url(#arrowNetwork)"></path>
-            <path class="flow-line" d="M442 230 L574 230" marker-end="url(#arrowNetwork)"></path>
-            <path class="flow-line" d="M442 256 C494 340 522 352 574 352" marker-end="url(#arrowNetwork)"></path>
-            <path class="flow-line flow-line--expedite" d="M190 196 C356 52 516 48 574 90" marker-end="url(#arrowNetwork)"></path>
-            <path class="flow-line flow-line--request" d="M640 148 C610 172 596 180 574 194" marker-end="url(#arrowNetwork)"></path>
-            <path class="flow-line flow-line--request" d="M640 268 C610 288 598 300 574 316" marker-end="url(#arrowNetwork)"></path>
-            <text class="fig-label" x="456" y="128">allocation</text>
-            <text class="fig-label fig-label--lost" x="272" y="70">special delivery</text>
+            <text class="node-metric" x="637" y="292">...</text>
+
+            <g class="flow-badge" transform="translate(302 126)">
+              <rect width="150" height="34" rx="17"></rect>
+              <text x="75" y="22">choose y<tspan baseline-shift="sub">w</tspan>, y<tspan baseline-shift="sub">r</tspan></text>
+            </g>
+
+            <path class="flow-line" d="M208 246 L294 236" marker-end="url(#arrowNetwork)"></path>
+            <path class="flow-line" d="M460 198 C502 128 532 124 574 126" marker-end="url(#arrowNetwork)"></path>
+            <path class="flow-line" d="M460 236 L574 236" marker-end="url(#arrowNetwork)"></path>
+            <path class="flow-line" d="M460 274 C502 344 532 348 574 346" marker-end="url(#arrowNetwork)"></path>
+            <path class="flow-line flow-line--request" d="M700 160 C728 184 728 206 700 228" marker-end="url(#arrowNetwork)"></path>
+            <path class="flow-line flow-line--request" d="M700 270 C728 294 728 316 700 338" marker-end="url(#arrowNetwork)"></path>
+            <text class="fig-label" x="504" y="154">allocate</text>
           </svg>
         </figure>
       </div>
@@ -2306,7 +2942,6 @@ svg {
           <span>Same tree family as the action-space-trap slide</span>
           <span>Warehouse forward matched independent scalar forward over 5,000 random states</span>
         </div>
-        <p class="source-line">Example source: <a href="../paper/learning_inventory_control_policies_es.tex">paper/learning_inventory_control_policies_es.tex</a>, multi-echelon decision path</p>
       </div>
     </section>
 
@@ -2350,7 +2985,6 @@ svg {
             <p class="compact">It is the reachable action set: direct order-up-to levels can express the operating region; the reduced grid cannot.</p>
           </div>
         </div>
-        <p class="source-line">Data source: <a href="../paper/learning_inventory_control_policies_es.tex">paper/learning_inventory_control_policies_es.tex</a>, Table <code>tab:me-results</code></p>
       </div>
     </section>
 
@@ -2439,20 +3073,6 @@ svg {
       </div>
     </section>
 
-    <section class="slide" data-title="Source Anchors">
-      <div class="slide__inner">
-        <p class="eyebrow">Source anchors</p>
-        <h2>Every headline number in this deck has an explicit anchor.</h2>
-        <div class="source-grid">
-          <a href="https://nimamanaf.com/posts/learning-to-control-inventory-management-systems/">Public post</a>
-          <a href="../paper/generated/results_vanilla_lost_sales.tex">Lost-sales table</a>
-          <a href="../paper/generated/results_dual_sourcing.tex">Dual-sourcing table</a>
-          <a href="../paper/learning_inventory_control_policies_es.tex">Manuscript source</a>
-          <a href="../outputs/multi_echelon/gijsbrechts2022_setting1_seed_robust/seed_robust_full.json">Multi-echelon setting 1 artifact</a>
-          <a href="../outputs/multi_echelon/gijsbrechts2022_setting2_seed_robust/seed_robust_full.json">Multi-echelon setting 2 artifact</a>
-        </div>
-      </div>
-    </section>
   </main>
 
   <nav class="deck-nav" aria-label="Slide navigation">
