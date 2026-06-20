@@ -1769,117 +1769,113 @@
     </p>
 
     <div class="figure">
-      <svg viewBox="0 0 1280 640" role="img"
+      <svg viewBox="0 0 1280 470" role="img"
            aria-label="Twenty-four-cell lost-sales result grid: four lead times by six demand-and-penalty rows. Twenty-two cells are instance-best for the learned policy; two cells at the high-penalty autocorrelated MMPP2+ row are classical-policy wins (SVBS at lead time eight, Myopic-2 at lead time ten). Reported as a single-run benchmark sweep.">
         <!-- ============================================================
-             LEFT: the 24-cell instance-best grid (the figure carries it)
+             WIDE-SHORT viewBox 1280x470: the 24-cell grid FILLS the left width
+             with large cells, and the 22/24 readout gets its own divided column.
              6 rows (penalty x demand) x 4 columns (lead time L)
-             cell origin grid: x0=300 step 132 ; y0=132 step 64
+             cells 150 wide @ x 350/528/706/884 (centers 425/603/781/959)
+             cells 50 tall  @ y 64/124/184/244/304/364 (text centers +33)
              ============================================================ -->
 
         <!-- column headers : lead time -->
-        <text class="f-axis-label" x="298" y="96">lead time L</text>
-        <text class="f-tick" x="366"  y="120" text-anchor="middle">L=4</text>
-        <text class="f-tick" x="498"  y="120" text-anchor="middle">L=6</text>
-        <text class="f-tick" x="630"  y="120" text-anchor="middle">L=8</text>
-        <text class="f-tick" x="762"  y="120" text-anchor="middle">L=10</text>
+        <text class="f-axis-label" x="340" y="44" text-anchor="end">lead time L</text>
+        <text class="f-tick" x="425" y="44" text-anchor="middle">L=4</text>
+        <text class="f-tick" x="603" y="44" text-anchor="middle">L=6</text>
+        <text class="f-tick" x="781" y="44" text-anchor="middle">L=8</text>
+        <text class="f-tick" x="959" y="44" text-anchor="middle">L=10</text>
 
         <!-- row labels : penalty . demand process -->
-        <text class="f-tag ink"  x="284" y="172" text-anchor="end">p=4 &middot; Poisson</text>
-        <text class="f-tag ink"  x="284" y="236" text-anchor="end">p=4 &middot; Geometric</text>
-        <text class="f-tag ink"  x="284" y="300" text-anchor="end">p=4 &middot; MMPP2+</text>
-        <text class="f-tag ink"  x="284" y="364" text-anchor="end">p=19 &middot; Poisson</text>
-        <text class="f-tag ink"  x="284" y="428" text-anchor="end">p=19 &middot; Geometric</text>
-        <text class="f-tag ink"  x="284" y="492" text-anchor="end">p=19 &middot; MMPP2+</text>
+        <text class="f-tag ink"  x="332" y="97"  text-anchor="end">p=4 &middot; Poisson</text>
+        <text class="f-tag ink"  x="332" y="157" text-anchor="end">p=4 &middot; Geometric</text>
+        <text class="f-tag ink"  x="332" y="217" text-anchor="end">p=4 &middot; MMPP2+</text>
+        <text class="f-tag ink"  x="332" y="277" text-anchor="end">p=19 &middot; Poisson</text>
+        <text class="f-tag ink"  x="332" y="337" text-anchor="end">p=19 &middot; Geometric</text>
+        <text class="f-tag ink"  x="332" y="397" text-anchor="end">p=19 &middot; MMPP2+</text>
 
         <!-- ROW 1 : p=4 . Poisson  — all instance-best -->
-        <rect x="306" y="140" width="120" height="48" rx="6" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
-        <rect x="438" y="140" width="120" height="48" rx="6" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
-        <rect x="570" y="140" width="120" height="48" rx="6" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
-        <rect x="702" y="140" width="120" height="48" rx="6" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
-        <text class="f-note" x="366" y="170" text-anchor="middle" fill="var(--accent)">best</text>
-        <text class="f-note" x="498" y="170" text-anchor="middle" fill="var(--accent)">best</text>
-        <text class="f-note" x="630" y="170" text-anchor="middle" fill="var(--accent)">best</text>
-        <text class="f-note" x="762" y="170" text-anchor="middle" fill="var(--accent)">best</text>
+        <rect x="350" y="64" width="150" height="50" rx="6" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
+        <rect x="528" y="64" width="150" height="50" rx="6" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
+        <rect x="706" y="64" width="150" height="50" rx="6" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
+        <rect x="884" y="64" width="150" height="50" rx="6" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
+        <text class="f-note" x="425" y="97" text-anchor="middle" fill="var(--accent)">best</text>
+        <text class="f-note" x="603" y="97" text-anchor="middle" fill="var(--accent)">best</text>
+        <text class="f-note" x="781" y="97" text-anchor="middle" fill="var(--accent)">best</text>
+        <text class="f-note" x="959" y="97" text-anchor="middle" fill="var(--accent)">best</text>
 
         <!-- ROW 2 : p=4 . Geometric — all instance-best -->
-        <rect x="306" y="204" width="120" height="48" rx="6" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
-        <rect x="438" y="204" width="120" height="48" rx="6" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
-        <rect x="570" y="204" width="120" height="48" rx="6" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
-        <rect x="702" y="204" width="120" height="48" rx="6" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
-        <text class="f-note" x="366" y="234" text-anchor="middle" fill="var(--accent)">best</text>
-        <text class="f-note" x="498" y="234" text-anchor="middle" fill="var(--accent)">best</text>
-        <text class="f-note" x="630" y="234" text-anchor="middle" fill="var(--accent)">best</text>
-        <text class="f-note" x="762" y="234" text-anchor="middle" fill="var(--accent)">best</text>
+        <rect x="350" y="124" width="150" height="50" rx="6" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
+        <rect x="528" y="124" width="150" height="50" rx="6" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
+        <rect x="706" y="124" width="150" height="50" rx="6" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
+        <rect x="884" y="124" width="150" height="50" rx="6" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
+        <text class="f-note" x="425" y="157" text-anchor="middle" fill="var(--accent)">best</text>
+        <text class="f-note" x="603" y="157" text-anchor="middle" fill="var(--accent)">best</text>
+        <text class="f-note" x="781" y="157" text-anchor="middle" fill="var(--accent)">best</text>
+        <text class="f-note" x="959" y="157" text-anchor="middle" fill="var(--accent)">best</text>
 
         <!-- ROW 3 : p=4 . MMPP2+ — all instance-best -->
-        <rect x="306" y="268" width="120" height="48" rx="6" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
-        <rect x="438" y="268" width="120" height="48" rx="6" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
-        <rect x="570" y="268" width="120" height="48" rx="6" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
-        <rect x="702" y="268" width="120" height="48" rx="6" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
-        <text class="f-note" x="366" y="298" text-anchor="middle" fill="var(--accent)">best</text>
-        <text class="f-note" x="498" y="298" text-anchor="middle" fill="var(--accent)">best</text>
-        <text class="f-note" x="630" y="298" text-anchor="middle" fill="var(--accent)">best</text>
-        <text class="f-note" x="762" y="298" text-anchor="middle" fill="var(--accent)">best</text>
+        <rect x="350" y="184" width="150" height="50" rx="6" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
+        <rect x="528" y="184" width="150" height="50" rx="6" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
+        <rect x="706" y="184" width="150" height="50" rx="6" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
+        <rect x="884" y="184" width="150" height="50" rx="6" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
+        <text class="f-note" x="425" y="217" text-anchor="middle" fill="var(--accent)">best</text>
+        <text class="f-note" x="603" y="217" text-anchor="middle" fill="var(--accent)">best</text>
+        <text class="f-note" x="781" y="217" text-anchor="middle" fill="var(--accent)">best</text>
+        <text class="f-note" x="959" y="217" text-anchor="middle" fill="var(--accent)">best</text>
 
         <!-- ROW 4 : p=19 . Poisson — all instance-best -->
-        <rect x="306" y="332" width="120" height="48" rx="6" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
-        <rect x="438" y="332" width="120" height="48" rx="6" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
-        <rect x="570" y="332" width="120" height="48" rx="6" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
-        <rect x="702" y="332" width="120" height="48" rx="6" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
-        <text class="f-note" x="366" y="362" text-anchor="middle" fill="var(--accent)">best</text>
-        <text class="f-note" x="498" y="362" text-anchor="middle" fill="var(--accent)">best</text>
-        <text class="f-note" x="630" y="362" text-anchor="middle" fill="var(--accent)">best</text>
-        <text class="f-note" x="762" y="362" text-anchor="middle" fill="var(--accent)">best</text>
+        <rect x="350" y="244" width="150" height="50" rx="6" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
+        <rect x="528" y="244" width="150" height="50" rx="6" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
+        <rect x="706" y="244" width="150" height="50" rx="6" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
+        <rect x="884" y="244" width="150" height="50" rx="6" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
+        <text class="f-note" x="425" y="277" text-anchor="middle" fill="var(--accent)">best</text>
+        <text class="f-note" x="603" y="277" text-anchor="middle" fill="var(--accent)">best</text>
+        <text class="f-note" x="781" y="277" text-anchor="middle" fill="var(--accent)">best</text>
+        <text class="f-note" x="959" y="277" text-anchor="middle" fill="var(--accent)">best</text>
 
         <!-- ROW 5 : p=19 . Geometric — all instance-best -->
-        <rect x="306" y="396" width="120" height="48" rx="6" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
-        <rect x="438" y="396" width="120" height="48" rx="6" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
-        <rect x="570" y="396" width="120" height="48" rx="6" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
-        <rect x="702" y="396" width="120" height="48" rx="6" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
-        <text class="f-note" x="366" y="426" text-anchor="middle" fill="var(--accent)">best</text>
-        <text class="f-note" x="498" y="426" text-anchor="middle" fill="var(--accent)">best</text>
-        <text class="f-note" x="630" y="426" text-anchor="middle" fill="var(--accent)">best</text>
-        <text class="f-note" x="762" y="426" text-anchor="middle" fill="var(--accent)">best</text>
+        <rect x="350" y="304" width="150" height="50" rx="6" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
+        <rect x="528" y="304" width="150" height="50" rx="6" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
+        <rect x="706" y="304" width="150" height="50" rx="6" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
+        <rect x="884" y="304" width="150" height="50" rx="6" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
+        <text class="f-note" x="425" y="337" text-anchor="middle" fill="var(--accent)">best</text>
+        <text class="f-note" x="603" y="337" text-anchor="middle" fill="var(--accent)">best</text>
+        <text class="f-note" x="781" y="337" text-anchor="middle" fill="var(--accent)">best</text>
+        <text class="f-note" x="959" y="337" text-anchor="middle" fill="var(--accent)">best</text>
 
         <!-- ROW 6 : p=19 . MMPP2+ — two classical-policy wins at L=8, L=10 -->
-        <rect x="306" y="460" width="120" height="48" rx="6" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
-        <rect x="438" y="460" width="120" height="48" rx="6" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
-        <text class="f-note" x="366" y="490" text-anchor="middle" fill="var(--accent)">best</text>
-        <text class="f-note" x="498" y="490" text-anchor="middle" fill="var(--accent)">best</text>
+        <rect x="350" y="364" width="150" height="50" rx="6" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
+        <rect x="528" y="364" width="150" height="50" rx="6" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
+        <text class="f-note" x="425" y="397" text-anchor="middle" fill="var(--accent)">best</text>
+        <text class="f-note" x="603" y="397" text-anchor="middle" fill="var(--accent)">best</text>
         <!-- the two misses: slate-outlined, classical baseline names -->
-        <rect x="570" y="460" width="120" height="48" rx="6" fill="var(--slate-tint)" stroke="var(--slate)" stroke-width="1.6"></rect>
-        <rect x="702" y="460" width="120" height="48" rx="6" fill="var(--slate-tint)" stroke="var(--slate)" stroke-width="1.6"></rect>
-        <text class="f-tag left" x="630" y="490" text-anchor="middle">SVBS</text>
-        <text class="f-tag left" x="762" y="490" text-anchor="middle">Myopic-2</text>
-
-        <!-- pointer to the two misses -->
-        <text class="f-note region" x="888" y="478" text-anchor="start">two classical-policy</text>
-        <text class="f-note region" x="888" y="500" text-anchor="start">wins at the longest leads</text>
-        <line class="lead-line" x1="826" y1="484" x2="882" y2="484"></line>
+        <rect x="706" y="364" width="150" height="50" rx="6" fill="var(--slate-tint)" stroke="var(--slate)" stroke-width="1.6"></rect>
+        <rect x="884" y="364" width="150" height="50" rx="6" fill="var(--slate-tint)" stroke="var(--slate)" stroke-width="1.6"></rect>
+        <text class="f-tag left" x="781" y="397" text-anchor="middle">SVBS</text>
+        <text class="f-tag left" x="959" y="397" text-anchor="middle">Myopic-2</text>
 
         <!-- divider before the result readout -->
-        <line class="panel-divider" x1="990" y1="140" x2="990" y2="508"></line>
+        <line class="panel-divider" x1="1060" y1="64" x2="1060" y2="414"></line>
 
         <!-- ============================================================
              RIGHT: the result readout + the single-run caveat (visible)
              ============================================================ -->
-        <text class="f-cost-unit" x="1044" y="232">instance-best</text>
-        <text class="f-cost huge" x="1040" y="312" fill="var(--accent)">22 / 24</text>
-        <text class="f-note" x="1044" y="348" fill="var(--ink-soft)">reported vanilla cells</text>
+        <text class="f-cost-unit" x="1090" y="130" text-anchor="start">instance-best</text>
+        <text class="f-cost huge" x="1085" y="206" text-anchor="start" fill="var(--accent)">22 / 24</text>
+        <text class="f-note" x="1090" y="242" text-anchor="start" fill="var(--ink-soft)">reported vanilla cells</text>
 
         <!-- the claim-hygiene caveat, drawn inside the figure so it travels with it -->
-        <line class="baseline-ref" x1="1044" y1="382" x2="1240" y2="382"></line>
-        <text class="f-note" x="1044" y="416" fill="var(--ink-soft)">single optimizer run</text>
-        <text class="f-note" x="1044" y="440" fill="var(--ink-soft)">per cell &mdash; a benchmark</text>
-        <text class="f-note" x="1044" y="464" fill="var(--ink-soft)">sweep, not a five-seed</text>
-        <text class="f-note" x="1044" y="488" fill="var(--ink-soft)">claim.</text>
+        <line class="baseline-ref" x1="1090" y1="276" x2="1240" y2="276"></line>
+        <text class="f-note" x="1090" y="308" text-anchor="start" fill="var(--ink-soft)">single optimizer run per cell</text>
+        <text class="f-note" x="1090" y="332" text-anchor="start" fill="var(--ink-soft)">&mdash; a benchmark sweep, not a</text>
+        <text class="f-note" x="1090" y="356" text-anchor="start" fill="var(--ink-soft)">five-seed claim.</text>
 
-        <!-- legend strip across the foot, mirroring the two cell states -->
-        <rect x="306" y="556" width="34" height="22" rx="4" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
-        <text class="f-note" x="350" y="573" fill="var(--ink-soft)">learned policy instance-best</text>
-        <rect x="660" y="556" width="34" height="22" rx="4" fill="var(--slate-tint)" stroke="var(--slate)" stroke-width="1.6"></rect>
-        <text class="f-note" x="704" y="573" fill="var(--ink-soft)">classical policy wins the cell</text>
+        <!-- legend strip across the foot, mirroring the two cell states + the miss note -->
+        <rect x="350" y="438" width="34" height="22" rx="4" fill="var(--accent-tint)" stroke="var(--accent)" stroke-width="1.6"></rect>
+        <text class="f-note" x="394" y="455" text-anchor="start" fill="var(--ink-soft)">learned policy instance-best</text>
+        <rect x="706" y="438" width="34" height="22" rx="4" fill="var(--slate-tint)" stroke="var(--slate)" stroke-width="1.6"></rect>
+        <text class="f-note" x="750" y="455" text-anchor="start" fill="var(--ink-soft)">classical policy wins the cell &mdash; two at the longest leads</text>
       </svg>
     </div>
 
@@ -2112,118 +2108,118 @@
     </p>
 
     <div class="figure">
-      <svg viewBox="0 0 1280 640" role="img"
-           aria-label="Dot plot of six dual-sourcing instances. Cost gap to the capped-dual-index proxy, in percent: lr=2 ce=105 is +0.052%, lr=2 ce=110 is 0.000%, lr=3 ce=105 is +0.009%, lr=3 ce=110 is 0.000%, lr=4 ce=105 is +0.007%, lr=4 ce=110 is +0.001%. All six sit inside the shaded match band of at most 0.11 percent. Published cross-protocol A3C optimality gaps span 0.51 to 1.85 percent, shown to the right as context.">
+      <svg viewBox="0 0 1280 430" role="img"
+           aria-label="Dot plot of six dual-sourcing instances. Cost gap to the capped-dual-index proxy, in percent: lr=2 ce=105 is +0.052%, lr=2 ce=110 is 0.000%, lr=3 ce=105 is +0.009%, lr=3 ce=110 is 0.000%, lr=4 ce=105 is +0.007%, lr=4 ce=110 is +0.001%. All six sit inside the shaded match band of at most 0.11 percent. Six of six instances are matched. Published cross-protocol A3C optimality gaps span 0.51 to 1.85 percent, shown below as context.">
 
         <!-- ===================================================================
+             WIDE-SHORT viewBox 1280x430 so the plot FILLS the band and labels
+             scale up. The dot plot uses the full left width; the 6/6 verdict gets
+             its own column on the right, divided by a hairline.
              AXIS GEOMETRY
-             gap-to-CDI axis, plotted 0.00% .. 0.12% across x = 250 .. 980.
-             scale: x(g) = 250 + (g / 0.12) * 730   (g in percent)
-               0.00% -> 250 ; 0.052% -> 566.3 ; 0.11% -> 919.2 ; 0.12% -> 980
-             match band (the operating region) = 0% .. 0.11% -> x 250 .. 919.2
+             gap-to-CDI axis, plotted 0.00% .. 0.12% across x = 300 .. 980.
+             scale: x(g) = 300 + (g / 0.12) * 680   (g in percent)
+               0.00% -> 300 ; 0.052% -> 594.7 ; 0.11% -> 923.3 ; 0.12% -> 980
+             match band (the operating region) = 0% .. 0.11% -> x 300 .. 923.3
              =================================================================== -->
 
         <!-- match band: CDI's <=0.11% optimality band, shaded as the operating region -->
-        <rect class="goodband" x="250" y="78" width="669.2" height="392"></rect>
-        <line class="goodband-edge" x1="250" y1="78" x2="250" y2="470"></line>
-        <line class="goodband-edge" x1="919.2" y1="78" x2="919.2" y2="470"></line>
-        <text class="f-region-label" x="584.6" y="64" text-anchor="middle">match band &middot; gap &le; 0.11%</text>
+        <rect class="goodband" x="300" y="50" width="623.3" height="276"></rect>
+        <line class="goodband-edge" x1="300" y1="50" x2="300" y2="326"></line>
+        <line class="goodband-edge" x1="923.3" y1="50" x2="923.3" y2="326"></line>
+        <text class="f-region-label" x="611.6" y="38" text-anchor="middle">match band &middot; gap &le; 0.11%</text>
 
         <!-- faint gridlines every 0.02% -->
-        <line class="gridline" x1="371.7" y1="78" x2="371.7" y2="470"></line>
-        <line class="gridline" x1="493.3" y1="78" x2="493.3" y2="470"></line>
-        <line class="gridline" x1="615.0" y1="78" x2="615.0" y2="470"></line>
-        <line class="gridline" x1="736.7" y1="78" x2="736.7" y2="470"></line>
-        <line class="gridline" x1="858.3" y1="78" x2="858.3" y2="470"></line>
+        <line class="gridline" x1="413.3" y1="50" x2="413.3" y2="326"></line>
+        <line class="gridline" x1="526.7" y1="50" x2="526.7" y2="326"></line>
+        <line class="gridline" x1="640.0" y1="50" x2="640.0" y2="326"></line>
+        <line class="gridline" x1="753.3" y1="50" x2="753.3" y2="326"></line>
+        <line class="gridline" x1="866.7" y1="50" x2="866.7" y2="326"></line>
 
         <!-- the gap axis -->
-        <line class="axis" x1="250" y1="470" x2="1000" y2="470"></line>
+        <line class="axis" x1="300" y1="326" x2="985" y2="326"></line>
         <!-- exact-recovery edge: emphasised, where gap = 0 -->
-        <line class="gridline major" x1="250" y1="78" x2="250" y2="470"></line>
+        <line class="gridline major" x1="300" y1="50" x2="300" y2="326"></line>
 
         <!-- ticks + labels -->
-        <line class="tickmark" x1="250" y1="470" x2="250" y2="480"></line>
-        <text class="f-tick" x="250" y="500" text-anchor="middle">0.00</text>
-        <line class="tickmark" x1="371.7" y1="470" x2="371.7" y2="480"></line>
-        <text class="f-tick" x="371.7" y="500" text-anchor="middle">0.02</text>
-        <line class="tickmark" x1="493.3" y1="470" x2="493.3" y2="480"></line>
-        <text class="f-tick" x="493.3" y="500" text-anchor="middle">0.04</text>
-        <line class="tickmark" x1="615.0" y1="470" x2="615.0" y2="480"></line>
-        <text class="f-tick" x="615.0" y="500" text-anchor="middle">0.06</text>
-        <line class="tickmark" x1="736.7" y1="470" x2="736.7" y2="480"></line>
-        <text class="f-tick" x="736.7" y="500" text-anchor="middle">0.08</text>
-        <line class="tickmark" x1="858.3" y1="470" x2="858.3" y2="480"></line>
-        <text class="f-tick" x="858.3" y="500" text-anchor="middle">0.10</text>
-        <line class="tickmark" x1="919.2" y1="470" x2="919.2" y2="480"></line>
-        <text class="f-tick" x="919.2" y="500" text-anchor="middle">0.11</text>
-        <text class="f-axis-label" x="1000" y="500" text-anchor="end">cost gap to CDI&nbsp;(%)</text>
+        <line class="tickmark" x1="300" y1="326" x2="300" y2="336"></line>
+        <text class="f-tick" x="300" y="356" text-anchor="middle">0.00</text>
+        <line class="tickmark" x1="413.3" y1="326" x2="413.3" y2="336"></line>
+        <text class="f-tick" x="413.3" y="356" text-anchor="middle">0.02</text>
+        <line class="tickmark" x1="526.7" y1="326" x2="526.7" y2="336"></line>
+        <text class="f-tick" x="526.7" y="356" text-anchor="middle">0.04</text>
+        <line class="tickmark" x1="640.0" y1="326" x2="640.0" y2="336"></line>
+        <text class="f-tick" x="640.0" y="356" text-anchor="middle">0.06</text>
+        <line class="tickmark" x1="753.3" y1="326" x2="753.3" y2="336"></line>
+        <text class="f-tick" x="753.3" y="356" text-anchor="middle">0.08</text>
+        <line class="tickmark" x1="866.7" y1="326" x2="866.7" y2="336"></line>
+        <text class="f-tick" x="866.7" y="356" text-anchor="middle">0.10</text>
+        <line class="tickmark" x1="923.3" y1="326" x2="923.3" y2="336"></line>
+        <text class="f-tick" x="923.3" y="356" text-anchor="middle">0.11</text>
+        <text class="f-axis-label" x="985" y="382" text-anchor="end">cost gap to CDI&nbsp;(%)</text>
 
         <!-- row label -->
-        <text class="f-cost-unit" x="60" y="74">instance</text>
+        <text class="f-cost-unit" x="40" y="46">instance</text>
 
         <!-- ===================================================================
              SIX INSTANCE ROWS  (match = slate / neutral parity)
-             rows at y = 122, 180, 238, 296, 354, 412
-             lead lines run from x=250 (the recovery edge) to each dot.
+             rows spread across y = 78, 124, 170, 216, 262, 308 (pitch 46).
+             lead lines run from x=300 (the recovery edge) to each dot.
              two instances reproduce CDI exactly (gap 0.000) -> dot sits on the edge.
              =================================================================== -->
 
-        <!-- lr=2, ce=105 : +0.052%  -> x=566.3 -->
-        <text class="f-tag left" x="234" y="128" text-anchor="end">l&#x1D63;=2 &middot; c&#x2091;=105</text>
-        <line class="reach-span left" x1="250" y1="122" x2="566.3" y2="122"></line>
-        <circle class="reach-dot left" cx="566.3" cy="122" r="9"></circle>
-        <text class="f-tick" x="586" y="127" text-anchor="start">+0.052%</text>
+        <!-- lr=2, ce=105 : +0.052%  -> x=594.7 -->
+        <text class="f-tag left" x="284" y="84" text-anchor="end">l&#x1D63;=2 &middot; c&#x2091;=105</text>
+        <line class="reach-span left" x1="300" y1="78" x2="594.7" y2="78"></line>
+        <circle class="reach-dot left" cx="594.7" cy="78" r="10"></circle>
+        <text class="f-tick" x="616" y="83" text-anchor="start">+0.052%</text>
+        <text class="f-note region" x="616" y="64" text-anchor="start">largest five-seed-mean gap</text>
 
-        <!-- lr=2, ce=110 : 0.000%  -> x=250 (exact recovery) -->
-        <text class="f-tag left" x="234" y="186" text-anchor="end">l&#x1D63;=2 &middot; c&#x2091;=110</text>
-        <circle class="reach-dot left" cx="250" cy="180" r="9"></circle>
-        <text class="f-tick" x="270" y="185" text-anchor="start">0.000% &middot; exact</text>
+        <!-- lr=2, ce=110 : 0.000%  -> x=300 (exact recovery) -->
+        <text class="f-tag left" x="284" y="130" text-anchor="end">l&#x1D63;=2 &middot; c&#x2091;=110</text>
+        <circle class="reach-dot left" cx="300" cy="124" r="10"></circle>
+        <text class="f-tick" x="322" y="129" text-anchor="start">0.000% &middot; exact</text>
 
-        <!-- lr=3, ce=105 : +0.009%  -> x=304.8 -->
-        <text class="f-tag left" x="234" y="244" text-anchor="end">l&#x1D63;=3 &middot; c&#x2091;=105</text>
-        <line class="reach-span left" x1="250" y1="238" x2="304.8" y2="238"></line>
-        <circle class="reach-dot left" cx="304.8" cy="238" r="9"></circle>
-        <text class="f-tick" x="324" y="243" text-anchor="start">+0.009%</text>
+        <!-- lr=3, ce=105 : +0.009%  -> x=351.0 -->
+        <text class="f-tag left" x="284" y="176" text-anchor="end">l&#x1D63;=3 &middot; c&#x2091;=105</text>
+        <line class="reach-span left" x1="300" y1="170" x2="351.0" y2="170"></line>
+        <circle class="reach-dot left" cx="351.0" cy="170" r="10"></circle>
+        <text class="f-tick" x="372" y="175" text-anchor="start">+0.009%</text>
 
-        <!-- lr=3, ce=110 : 0.000%  -> x=250 (exact recovery) -->
-        <text class="f-tag left" x="234" y="302" text-anchor="end">l&#x1D63;=3 &middot; c&#x2091;=110</text>
-        <circle class="reach-dot left" cx="250" cy="296" r="9"></circle>
-        <text class="f-tick" x="270" y="301" text-anchor="start">0.000% &middot; exact</text>
+        <!-- lr=3, ce=110 : 0.000%  -> x=300 (exact recovery) -->
+        <text class="f-tag left" x="284" y="222" text-anchor="end">l&#x1D63;=3 &middot; c&#x2091;=110</text>
+        <circle class="reach-dot left" cx="300" cy="216" r="10"></circle>
+        <text class="f-tick" x="322" y="221" text-anchor="start">0.000% &middot; exact</text>
 
-        <!-- lr=4, ce=105 : +0.007%  -> x=292.6 -->
-        <text class="f-tag left" x="234" y="360" text-anchor="end">l&#x1D63;=4 &middot; c&#x2091;=105</text>
-        <line class="reach-span left" x1="250" y1="354" x2="292.6" y2="354"></line>
-        <circle class="reach-dot left" cx="292.6" cy="354" r="9"></circle>
-        <text class="f-tick" x="312" y="359" text-anchor="start">+0.007%</text>
+        <!-- lr=4, ce=105 : +0.007%  -> x=339.7 -->
+        <text class="f-tag left" x="284" y="268" text-anchor="end">l&#x1D63;=4 &middot; c&#x2091;=105</text>
+        <line class="reach-span left" x1="300" y1="262" x2="339.7" y2="262"></line>
+        <circle class="reach-dot left" cx="339.7" cy="262" r="10"></circle>
+        <text class="f-tick" x="361" y="267" text-anchor="start">+0.007%</text>
 
-        <!-- lr=4, ce=110 : +0.001%  -> x=256.1 -->
-        <text class="f-tag left" x="234" y="418" text-anchor="end">l&#x1D63;=4 &middot; c&#x2091;=110</text>
-        <line class="reach-span left" x1="250" y1="412" x2="256.1" y2="412"></line>
-        <circle class="reach-dot left" cx="256.1" cy="412" r="9"></circle>
-        <text class="f-tick" x="276" y="417" text-anchor="start">+0.001%</text>
-
-        <!-- note: largest gap is the lr=2 ce=105 instance -->
-        <text class="f-note region" x="586" y="146" text-anchor="start">largest five-seed-mean gap</text>
+        <!-- lr=4, ce=110 : +0.001%  -> x=305.7 -->
+        <text class="f-tag left" x="284" y="314" text-anchor="end">l&#x1D63;=4 &middot; c&#x2091;=110</text>
+        <line class="reach-span left" x1="300" y1="308" x2="305.7" y2="308"></line>
+        <circle class="reach-dot left" cx="305.7" cy="308" r="10"></circle>
+        <text class="f-tick" x="327" y="313" text-anchor="start">+0.001%</text>
 
         <!-- ===================================================================
-             6 / 6 MATCH VERDICT  (right rail, neutral slate)
+             6 / 6 MATCH VERDICT  (own right column, hairline-divided, slate)
              =================================================================== -->
-        <text class="f-cost huge left" x="1268" y="200" text-anchor="end">6 / 6</text>
-        <text class="f-cost-unit" x="1268" y="234" text-anchor="end">instances matched</text>
-        <text class="f-note region" x="1268" y="270" text-anchor="end">inside CDI's &le;0.11%</text>
-        <text class="f-note region" x="1268" y="294" text-anchor="end">optimality band</text>
-        <text class="f-note region" x="1268" y="338" text-anchor="end">CDI is itself a &le;0.11%</text>
-        <text class="f-note region" x="1268" y="362" text-anchor="end">proxy for the bounded-DP</text>
-        <text class="f-note region" x="1268" y="386" text-anchor="end">optimum</text>
+        <line class="panel-divider" x1="1030" y1="50" x2="1030" y2="326"></line>
+        <text class="f-cost huge left" x="1075" y="150" text-anchor="start">6 / 6</text>
+        <text class="f-cost-unit" x="1075" y="184" text-anchor="start">instances matched</text>
+        <text class="f-note region" x="1075" y="216" text-anchor="start">inside CDI's &le;0.11%</text>
+        <text class="f-note region" x="1075" y="240" text-anchor="start">optimality band</text>
+        <text class="f-note region" x="1075" y="284" text-anchor="start">CDI is itself a &le;0.11%</text>
+        <text class="f-note region" x="1075" y="308" text-anchor="start">proxy for the bounded-DP optimum</text>
 
         <!-- ===================================================================
-             CROSS-PROTOCOL CONTEXT (faint grey, NOT head-to-head)
-             A3C optimality gaps span 0.51% .. 1.85% — far off the match scale,
-             shown as a labelled context strip below the axis.
+             CROSS-PROTOCOL CONTEXT (faint grey, NOT head-to-head) — own line
+             A3C optimality gaps span 0.51% .. 1.85% — far off the match scale.
              =================================================================== -->
-        <line class="panel-divider" x1="250" y1="552" x2="1000" y2="552"></line>
-        <text class="f-note region" x="250" y="588" text-anchor="start">Cross-protocol context, not a head-to-head comparison</text>
-        <text class="f-tick" x="1000" y="588" text-anchor="end">published A3C optimality gaps span 0.51% to 1.85%</text>
+        <line class="panel-divider" x1="40" y1="400" x2="1240" y2="400"></line>
+        <text class="f-note region" x="40" y="424" text-anchor="start">Cross-protocol context, not a head-to-head comparison</text>
+        <text class="f-tick" x="1240" y="424" text-anchor="end">published A3C optimality gaps span 0.51% to 1.85%</text>
       </svg>
     </div>
 
@@ -2373,7 +2369,7 @@
             <line class="tickmark" x1="153.3" y1="206" x2="153.3" y2="215"></line><text class="f-tick" x="153.3" y="234" text-anchor="middle">200</text>
             <line class="tickmark" x1="306.7" y1="206" x2="306.7" y2="215"></line><text class="f-tick" x="306.7" y="234" text-anchor="middle">400</text>
             <line class="tickmark" x1="460" y1="206" x2="460" y2="215"></line><text class="f-tick" x="460" y="234" text-anchor="middle">600</text>
-            <text class="f-axis-label" x="486" y="234" text-anchor="end">warehouse target y_w</text>
+            <text class="f-axis-label" x="486" y="256" text-anchor="end">warehouse target y_w</text>
 
             <!-- reachable set : the whole continuous axis -->
             <line class="reach-span left" x1="6" y1="64" x2="466" y2="64"></line>
@@ -2455,11 +2451,11 @@
             <line class="tickmark" x1="153.3" y1="206" x2="153.3" y2="215"></line><text class="f-tick" x="153.3" y="234" text-anchor="middle">200</text>
             <line class="tickmark" x1="306.7" y1="206" x2="306.7" y2="215"></line><text class="f-tick" x="306.7" y="234" text-anchor="middle">400</text>
             <line class="tickmark" x1="460" y1="206" x2="460" y2="215"></line><text class="f-tick" x="460" y="234" text-anchor="middle">600</text>
-            <text class="f-axis-label" x="486" y="234" text-anchor="end">warehouse target y_w</text>
+            <text class="f-axis-label" x="486" y="256" text-anchor="end">warehouse target y_w</text>
 
             <!-- the cap : y_w <= 100, everything beyond is unreachable -->
             <line class="cap-line" x1="76.7" y1="-6" x2="76.7" y2="212"></line>
-            <text class="f-note fail" x="82" y="-12" text-anchor="start">grid cap: y_w &#8804; 100</text>
+            <text class="f-note fail" x="71" y="-12" text-anchor="end">grid cap: y_w &#8804; 100</text>
 
             <!-- reachable set : only 0..100, drawn as discrete grid points -->
             <line class="reach-span right" x1="6" y1="64" x2="76.7" y2="64"></line>
@@ -2532,7 +2528,7 @@
     </p>
 
     <div class="figure">
-      <svg viewBox="0 0 1280 640" role="img"
+      <svg viewBox="0 0 1280 490" role="img"
            aria-label="Realized cost of the direct-level policy against the best same-protocol base-stock on two settings. Setting 1: base-stock 910.3, direct-level 776.2, 14.7 percent below. Setting 2: base-stock 1138.0, direct-level 1001.1, 12.0 percent below. The base-stock is drawn as a dashed baseline reference in each pair.">
         <defs>
           <marker id="s14ah" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto">
@@ -2540,81 +2536,93 @@
           </marker>
         </defs>
 
-        <!-- shared cost axis (vertical): 0..1200, plotted in a 0..430 band from y=520 up to y=90.
-             scale: y(cost) = 520 - cost/1200*430 -->
+        <!-- ===================================================================
+             WIDE-SHORT viewBox 1280x470: the two bar groups spread across the
+             full width and the cost numbers stack on clear, non-overlapping rows.
+             shared cost axis (vertical): 0..1200, plotted in a 0..300 band from
+             y=400 (cost 0) up to y=100 (cost 1200).  scale: y(cost) = 400 - cost/1200*300
+               ticks: 0->400 ; 300->325 ; 600->250 ; 900->175 ; 1200->100
+             two groups: Setting 1 bars at x=240/410 ; Setting 2 bars at x=740/910.
+             =================================================================== -->
 
         <!-- gridlines + ticks (cost = 0,300,600,900,1200) -->
         <g>
-          <line class="gridline major" x1="150" y1="520.0" x2="1180" y2="520.0"></line>
-          <line class="gridline" x1="150" y1="412.5" x2="1180" y2="412.5"></line>
-          <line class="gridline" x1="150" y1="305.0" x2="1180" y2="305.0"></line>
-          <line class="gridline" x1="150" y1="197.5" x2="1180" y2="197.5"></line>
-          <line class="gridline" x1="150" y1="90.0"  x2="1180" y2="90.0"></line>
+          <line class="gridline major" x1="150" y1="400" x2="1230" y2="400"></line>
+          <line class="gridline" x1="150" y1="325" x2="1230" y2="325"></line>
+          <line class="gridline" x1="150" y1="250" x2="1230" y2="250"></line>
+          <line class="gridline" x1="150" y1="175" x2="1230" y2="175"></line>
+          <line class="gridline" x1="150" y1="100" x2="1230" y2="100"></line>
         </g>
         <g>
-          <text class="f-tick" x="138" y="525" text-anchor="end">0</text>
-          <text class="f-tick" x="138" y="418" text-anchor="end">300</text>
-          <text class="f-tick" x="138" y="310" text-anchor="end">600</text>
-          <text class="f-tick" x="138" y="203" text-anchor="end">900</text>
-          <text class="f-tick" x="138" y="95"  text-anchor="end">1200</text>
+          <text class="f-tick" x="138" y="405" text-anchor="end">0</text>
+          <text class="f-tick" x="138" y="330" text-anchor="end">300</text>
+          <text class="f-tick" x="138" y="255" text-anchor="end">600</text>
+          <text class="f-tick" x="138" y="180" text-anchor="end">900</text>
+          <text class="f-tick" x="138" y="105" text-anchor="end">1200</text>
         </g>
 
         <!-- vertical axis -->
-        <line class="axis" x1="150" y1="528" x2="150" y2="82" marker-end="url(#s14ah)"></line>
-        <text class="f-axis-label" x="150" y="74" text-anchor="middle">realized cost</text>
+        <line class="axis" x1="150" y1="408" x2="150" y2="92" marker-end="url(#s14ah)"></line>
+        <text class="f-axis-label" x="64" y="250" text-anchor="middle" transform="rotate(-90 64 250)">realized cost</text>
 
         <!-- ===== SETTING 1 (left group) =====
-             base-stock 910.3 -> y = 520 - 910.3/1200*430 = 193.8
-             direct      776.2 -> y = 520 - 776.2/1200*430 = 241.9 -->
+             bars: base-stock x[200,330], direct x[360,490]
+             base-stock 910.3 -> y = 400 - 910.3/1200*300 = 172.4
+             direct      776.2 -> y = 400 - 776.2/1200*300 = 205.9
+             the margin sits in the open column to the right of the bars. -->
         <g>
-          <text class="f-sub" x="430" y="565" text-anchor="middle">Setting 1 &middot; warehouse (300, 25)</text>
+          <!-- dashed baseline reference across the pair, labeled at its left end -->
+          <line class="baseline-ref" x1="188" y1="172.4" x2="500" y2="172.4"></line>
+          <text class="f-tag ink" x="200" y="160" text-anchor="start">best same-protocol base-stock</text>
 
           <!-- best same-protocol base-stock : the named baseline, slate -->
-          <rect x="300" y="193.8" width="120" height="326.2" fill="var(--slate-tint)"></rect>
-          <rect x="300" y="193.8" width="120" height="4" fill="var(--slate)"></rect>
-          <!-- dashed baseline reference across the pair, labeled -->
-          <line class="baseline-ref" x1="288" y1="193.8" x2="552" y2="193.8"></line>
-          <text class="f-tag ink" x="300" y="183" text-anchor="start">best same-protocol base-stock</text>
-          <text class="f-cost big left" x="360" y="170" text-anchor="middle">910.3</text>
+          <rect x="200" y="172.4" width="130" height="227.6" fill="var(--slate-tint)"></rect>
+          <rect x="200" y="172.4" width="130" height="5" fill="var(--slate)"></rect>
+          <text class="f-cost big left" x="265" y="208" text-anchor="middle">910.3</text>
+          <text class="f-tag left" x="265" y="424" text-anchor="middle">base-stock</text>
 
           <!-- direct order-up-to levels : lands below the baseline, claret (beat) -->
-          <rect x="432" y="241.9" width="120" height="278.1" fill="var(--accent-tint)"></rect>
-          <rect x="432" y="241.9" width="120" height="4" fill="var(--accent)"></rect>
-          <text class="f-cost big right" x="492" y="232" text-anchor="middle">776.2</text>
-          <text class="f-tick" x="492" y="538" text-anchor="middle">&plusmn; 14.3</text>
-          <text class="f-tag right" x="492" y="556" text-anchor="middle">direct levels</text>
+          <rect x="360" y="205.9" width="130" height="194.1" fill="var(--accent-tint)"></rect>
+          <rect x="360" y="205.9" width="130" height="5" fill="var(--accent)"></rect>
+          <text class="f-cost big right" x="425" y="242" text-anchor="middle">776.2</text>
+          <text class="f-tick" x="425" y="424" text-anchor="middle">direct &plusmn; 14.3</text>
 
-          <!-- the one emphasis: the seed-robust improvement -->
-          <text class="f-cost huge right" x="430" y="118" text-anchor="middle">&minus;14.7%</text>
-          <text class="f-note" x="430" y="138" text-anchor="middle" fill="var(--grey)">&plusmn; 1.6% vs best base-stock</text>
+          <!-- the one emphasis: the seed-robust margin, clear of every bar/value -->
+          <text class="f-cost huge right" x="575" y="250" text-anchor="middle">&minus;14.7%</text>
+          <text class="f-note" x="575" y="276" text-anchor="middle" fill="var(--grey)">&plusmn; 1.6% vs base-stock</text>
+
+          <text class="f-sub" x="345" y="452" text-anchor="middle">Setting 1 &middot; warehouse (300, 25)</text>
         </g>
 
         <!-- group divider -->
-        <line class="panel-divider" x1="665" y1="100" x2="665" y2="520"></line>
+        <line class="panel-divider" x1="665" y1="92" x2="665" y2="430"></line>
 
         <!-- ===== SETTING 2 (right group) =====
-             base-stock 1138.0 -> y = 520 - 1138.0/1200*430 = 112.2
-             direct      1001.1 -> y = 520 - 1001.1/1200*430 = 161.1 -->
+             bars: base-stock x[700,830], direct x[860,990]
+             base-stock 1138.0 -> y = 400 - 1138.0/1200*300 = 115.5
+             direct      1001.1 -> y = 400 - 1001.1/1200*300 = 149.7 -->
         <g>
-          <text class="f-sub" x="930" y="565" text-anchor="middle">Setting 2 &middot; warehouse (525, 25)</text>
+          <line class="baseline-ref" x1="688" y1="115.5" x2="1000" y2="115.5"></line>
+          <text class="f-tag ink" x="700" y="103" text-anchor="start">best same-protocol base-stock</text>
 
-          <rect x="800" y="112.2" width="120" height="407.8" fill="var(--slate-tint)"></rect>
-          <rect x="800" y="112.2" width="120" height="4" fill="var(--slate)"></rect>
-          <line class="baseline-ref" x1="788" y1="112.2" x2="1052" y2="112.2"></line>
-          <text class="f-cost big left" x="860" y="100" text-anchor="middle">1138.0</text>
+          <rect x="700" y="115.5" width="130" height="284.5" fill="var(--slate-tint)"></rect>
+          <rect x="700" y="115.5" width="130" height="5" fill="var(--slate)"></rect>
+          <text class="f-cost big left" x="765" y="151" text-anchor="middle">1138.0</text>
+          <text class="f-tag left" x="765" y="424" text-anchor="middle">base-stock</text>
 
-          <rect x="932" y="161.1" width="120" height="358.9" fill="var(--accent-tint)"></rect>
-          <rect x="932" y="161.1" width="120" height="4" fill="var(--accent)"></rect>
-          <text class="f-cost big right" x="992" y="151" text-anchor="middle">1001.1</text>
-          <text class="f-tick" x="992" y="538" text-anchor="middle">&plusmn; 25.6</text>
-          <text class="f-tag right" x="992" y="556" text-anchor="middle">direct levels</text>
+          <rect x="860" y="149.7" width="130" height="250.3" fill="var(--accent-tint)"></rect>
+          <rect x="860" y="149.7" width="130" height="5" fill="var(--accent)"></rect>
+          <text class="f-cost big right" x="925" y="186" text-anchor="middle">1001.1</text>
+          <text class="f-tick" x="925" y="424" text-anchor="middle">direct &plusmn; 25.6</text>
 
-          <text class="f-cost huge right" x="930" y="118" text-anchor="middle">&minus;12.0%</text>
-          <text class="f-note" x="930" y="138" text-anchor="middle" fill="var(--grey)">&plusmn; 2.3% vs best base-stock</text>
+          <text class="f-cost huge right" x="1095" y="250" text-anchor="middle">&minus;12.0%</text>
+          <text class="f-note" x="1095" y="276" text-anchor="middle" fill="var(--grey)">&plusmn; 2.3% vs base-stock</text>
+
+          <text class="f-sub" x="845" y="452" text-anchor="middle">Setting 2 &middot; warehouse (525, 25)</text>
         </g>
 
-        <!-- footing note: seed robustness, stated neutrally -->
-        <text class="f-note" x="150" y="600" text-anchor="start" fill="var(--grey)">5 independent CMA-ES optimizer seeds &middot; all five below the base-stock gate on both settings</text>
+        <!-- footing note: seed robustness, stated neutrally, on its own line -->
+        <text class="f-note" x="690" y="482" text-anchor="middle" fill="var(--grey)">5 independent CMA-ES optimizer seeds &middot; all five below the base-stock gate on both settings</text>
       </svg>
     </div>
 
