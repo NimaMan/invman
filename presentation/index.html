@@ -10,7 +10,7 @@
   ============================================================================
   This file is the design-system FOUNDATION and ENGINE for a from-scratch
   academic conference deck. It carries NO slides. The build assembler injects
-  the 18 <section class="slide"> fragments, in order, at the literal marker
+  the 21 <section class="slide"> fragments, in order, at the literal marker
   line  <!-‑‑SLIDES-‑‑>  inside <main class="deck"> near the bottom.
 
   ----------------------------------------------------------------------------
@@ -1642,6 +1642,108 @@
     </div>
   </div>
 </section>
+<section class="slide" data-title="Lost Sales — event sequence" aria-label="Case study 1 — Lost sales: the within-period event sequence">
+  <header>
+    <span class="eyebrow">Case study 1 &mdash; Lost sales</span>
+    <h2 class="headline">Each period the arrival lands, the order is placed, demand is served, and unmet demand is lost<span class="accent">.</span></h2>
+  </header>
+
+  <div class="slide-body">
+    <p class="dek">
+      Within period <i>t</i> the order <b>q<sub>t&minus;L</sub></b> placed L periods earlier
+      arrives first and folds into on-hand stock; the controller then places
+      <b>q<sub>t</sub></b>; demand is realized; and any shortfall is lost, never backordered.
+    </p>
+
+    <!-- ===================================================================
+         THE FIGURE (dominates the slide): a left-to-right timeline of the six
+         within-period events as spine-style nodes joined by arrows, with the
+         cost charged under each event where it applies. Authored WIDE-SHORT
+         (viewBox 1280x340) so it fills the figure band and stays projector-
+         legible. The ONE --accent emphasis is the ORDER node — where the
+         learned policy decides. A faint "period t" bracket spans the row.
+         Order-before-demand timing, faithful to the paper's event panel.
+         =================================================================== -->
+    <div class="figure">
+      <svg viewBox="0 0 1280 340" role="img"
+           aria-label="A left-to-right within-period timeline for vanilla lost sales with positive lead time L. Six events in order: the order placed L periods earlier arrives and joins on-hand stock; the controller observes the post-arrival state; the controller places order q_t (the accented decision node, charged ordering cost c times q_t, plus a setup K in the fixed-cost variant); demand D_t is served from on-hand I_t; unmet demand is lost rather than backordered; and end-of-period costs are charged — holding h times the positive part of I_t minus D_t and lost-sales penalty p times the positive part of D_t minus I_t. The order node is emphasized because that is where the learned policy decides. A faint bracket spans the timeline labelled period t.">
+        <defs>
+          <marker id="ls-seq-arrow" markerWidth="10" markerHeight="10" refX="7.5" refY="3" orient="auto">
+            <path d="M0,0 L7.5,3 L0,6 Z" fill="var(--grey-soft)"></path>
+          </marker>
+        </defs>
+
+        <!-- ===== faint period bracket spanning the whole timeline ===== -->
+        <path d="M40,40 V28 H1240 V40" fill="none" stroke="var(--rule)" stroke-width="1.4"></path>
+        <text class="f-region-label" x="640" y="22" text-anchor="middle">period t</text>
+
+        <!-- ===== event row : six nodes, centers at x = 130,330,530,730,930,1130 =====
+             node box 150 wide, top y=66, height 86 (y 66..152). links between boxes. -->
+
+        <!-- node 1 : arrival joins on-hand -->
+        <rect x="55" y="66" width="150" height="86" rx="11" fill="var(--paper)" stroke="var(--rule)" stroke-width="1.6"></rect>
+        <text class="f-tag ink" x="130" y="98" text-anchor="middle">Arrival joins</text>
+        <text class="f-tag ink" x="130" y="118" text-anchor="middle">on-hand</text>
+        <text class="f-tick" x="130" y="140" text-anchor="middle">q_{t&minus;L} &rarr; I_t</text>
+        <line class="axis" x1="205" y1="109" x2="251" y2="109" marker-end="url(#ls-seq-arrow)"></line>
+
+        <!-- node 2 : observe post-arrival state -->
+        <rect x="255" y="66" width="150" height="86" rx="11" fill="var(--paper)" stroke="var(--rule)" stroke-width="1.6"></rect>
+        <text class="f-tag ink" x="330" y="98" text-anchor="middle">Observe state</text>
+        <text class="f-tag ink" x="330" y="118" text-anchor="middle">post-arrival</text>
+        <text class="f-tick" x="330" y="140" text-anchor="middle">S_t = (I_t, &hellip;)</text>
+        <line class="axis" x1="405" y1="109" x2="451" y2="109" marker-end="url(#ls-seq-arrow)"></line>
+
+        <!-- node 3 : ORDER — the accented decision node (where the policy acts) -->
+        <rect x="455" y="60" width="150" height="98" rx="12" fill="var(--accent-tint-2)" stroke="var(--accent)" stroke-width="2.6"></rect>
+        <text class="f-tag right" x="530" y="94" text-anchor="middle">Place order</text>
+        <text class="f-tag right" x="530" y="114" text-anchor="middle">q_t = &pi;_&theta;(S_t)</text>
+        <text class="f-tick" x="530" y="138" text-anchor="middle">policy decides</text>
+        <line class="axis" x1="605" y1="109" x2="651" y2="109" marker-end="url(#ls-seq-arrow)"></line>
+
+        <!-- node 4 : demand served from on-hand -->
+        <rect x="655" y="66" width="150" height="86" rx="11" fill="var(--paper)" stroke="var(--rule)" stroke-width="1.6"></rect>
+        <text class="f-tag ink" x="730" y="98" text-anchor="middle">Demand served</text>
+        <text class="f-tag ink" x="730" y="118" text-anchor="middle">from on-hand</text>
+        <text class="f-tick" x="730" y="140" text-anchor="middle">min(I_t, D_t)</text>
+        <line class="axis" x1="805" y1="109" x2="851" y2="109" marker-end="url(#ls-seq-arrow)"></line>
+
+        <!-- node 5 : unmet demand LOST -->
+        <rect x="855" y="66" width="150" height="86" rx="11" fill="var(--paper)" stroke="var(--rule)" stroke-width="1.6"></rect>
+        <text class="f-tag ink" x="930" y="98" text-anchor="middle">Unmet demand</text>
+        <text class="f-tag ink" x="930" y="118" text-anchor="middle">LOST</text>
+        <text class="f-tick" x="930" y="140" text-anchor="middle">(D_t&minus;I_t)^+</text>
+        <line class="axis" x1="1005" y1="109" x2="1051" y2="109" marker-end="url(#ls-seq-arrow)"></line>
+
+        <!-- node 6 : charge costs -->
+        <rect x="1055" y="66" width="150" height="86" rx="11" fill="var(--paper)" stroke="var(--rule)" stroke-width="1.6"></rect>
+        <text class="f-tag ink" x="1130" y="98" text-anchor="middle">Charge costs</text>
+        <text class="f-tag ink" x="1130" y="118" text-anchor="middle">end of period</text>
+        <text class="f-tick" x="1130" y="140" text-anchor="middle">I_{t+1} transition</text>
+
+        <!-- ===== cost annotations : placed under the events where each is charged ===== -->
+        <text class="f-cost-unit" x="640" y="206" text-anchor="middle">costs charged</text>
+
+        <!-- ordering cost under the ORDER node -->
+        <line class="lead-line" x1="530" y1="158" x2="530" y2="232"></line>
+        <text class="f-tag right" x="530" y="256" text-anchor="middle">ordering c&middot;q_t</text>
+        <text class="f-note region" x="530" y="280" text-anchor="middle">fixed-cost variant adds setup K&middot;1{q_t&gt;0}</text>
+
+        <!-- holding + lost-sales penalty under the charge-costs node -->
+        <line class="lead-line" x1="1130" y1="152" x2="1130" y2="232"></line>
+        <text class="f-tag ink" x="1130" y="256" text-anchor="middle">holding h&middot;(I_t&minus;D_t)^+</text>
+        <text class="f-tag ink" x="1130" y="280" text-anchor="middle">lost-sales penalty p&middot;(D_t&minus;I_t)^+</text>
+      </svg>
+    </div>
+
+    <div class="caption">
+      <p class="lede"><b>Order before demand.</b> The arrival is folded in, then the policy
+        orders, then demand is served from on-hand and any shortfall is lost; holding and
+        lost-sales costs are charged on the period&rsquo;s end outcome.</p>
+      <span class="src">Vanilla lost sales &middot; positive lead time L &middot; event panel</span>
+    </div>
+  </div>
+</section>
 <section class="slide" data-title="Lost Sales Decoder" aria-label="Lost-sales decoder">
       <header>
         <span class="eyebrow">Case study 1 &mdash; Lost sales</span>
@@ -1927,6 +2029,108 @@
     above the f-tick legibility floor.
   ============================================================================
 -->
+<section class="slide" data-title="Dual Sourcing — event sequence" aria-label="Case study 2 — Dual sourcing: the within-period event sequence">
+  <header>
+    <span class="eyebrow">Case study 2 &mdash; Dual sourcing</span>
+    <h2 class="headline">Each period a regular and an expedited order precede demand, and the expedited units arrive the same period<span class="accent">.</span></h2>
+  </header>
+
+  <div class="slide-body">
+    <p class="dek">
+      The regular order placed l<sub>r</sub> periods earlier arrives into net inventory first;
+      the controller then places the pair <b>(q<sup>r</sup><sub>t</sub>, q<sup>e</sup><sub>t</sub>)</b>;
+      the expedited order (lead time l<sub>e</sub>=0) arrives the same period; and unmet demand
+      is backordered, so net inventory may go negative.
+    </p>
+
+    <!-- ===================================================================
+         THE FIGURE (dominates the slide): the six within-period events on a
+         left-to-right timeline. WIDE-SHORT viewBox 1280x340. The ONE --accent
+         emphasis is the ORDER-PAIR node — where the policy decides. Cost
+         annotations sit under the events where each is charged: procurement
+         (c_r + the c_e expedite premium) under the order, holding/backorder
+         under the charge-costs node. A faint "period t" bracket spans the row.
+         Order-before-demand timing, backorders, l_e=0 same-period expedited.
+         =================================================================== -->
+    <div class="figure">
+      <svg viewBox="0 0 1280 340" role="img"
+           aria-label="A left-to-right within-period timeline for dual sourcing with a regular supplier of lead time l_r and an expedited supplier of lead time zero. Six events in order: the regular order placed l_r periods earlier arrives into net inventory I_t; the controller observes the reduced state; the controller places the order pair regular q^r_t and expedited q^e_t (the accented decision node, charged procurement c_r times q^r_t plus c_e times q^e_t with c_e greater than c_r as the expedite premium); the expedited order arrives the same period because its lead time is zero; demand D_t is served from I_t plus q^e_t and unmet demand is backordered so net inventory J_t may be negative; and costs are charged — holding h times the positive part of J_t and backorder penalty b times the negative part of J_t. The order-pair node is emphasized because that is where the learned policy decides. A faint bracket spans the timeline labelled period t.">
+        <defs>
+          <marker id="ds-seq-arrow" markerWidth="10" markerHeight="10" refX="7.5" refY="3" orient="auto">
+            <path d="M0,0 L7.5,3 L0,6 Z" fill="var(--grey-soft)"></path>
+          </marker>
+        </defs>
+
+        <!-- ===== faint period bracket spanning the whole timeline ===== -->
+        <path d="M40,40 V28 H1240 V40" fill="none" stroke="var(--rule)" stroke-width="1.4"></path>
+        <text class="f-region-label" x="640" y="22" text-anchor="middle">period t</text>
+
+        <!-- ===== event row : six nodes, centers at x = 130,330,530,730,930,1130 ===== -->
+
+        <!-- node 1 : regular arrival joins net inventory -->
+        <rect x="55" y="66" width="150" height="86" rx="11" fill="var(--paper)" stroke="var(--rule)" stroke-width="1.6"></rect>
+        <text class="f-tag ink" x="130" y="98" text-anchor="middle">Regular arrival</text>
+        <text class="f-tag ink" x="130" y="118" text-anchor="middle">joins net inv.</text>
+        <text class="f-tick" x="130" y="140" text-anchor="middle">q^r_{t&minus;l_r} &rarr; I_t</text>
+        <line class="axis" x1="205" y1="109" x2="251" y2="109" marker-end="url(#ds-seq-arrow)"></line>
+
+        <!-- node 2 : observe state -->
+        <rect x="255" y="66" width="150" height="86" rx="11" fill="var(--paper)" stroke="var(--rule)" stroke-width="1.6"></rect>
+        <text class="f-tag ink" x="330" y="98" text-anchor="middle">Observe state</text>
+        <text class="f-tag ink" x="330" y="118" text-anchor="middle">regular pipeline</text>
+        <text class="f-tick" x="330" y="140" text-anchor="middle">S_t = (I_t, &hellip;)</text>
+        <line class="axis" x1="405" y1="109" x2="451" y2="109" marker-end="url(#ds-seq-arrow)"></line>
+
+        <!-- node 3 : ORDER PAIR — the accented decision node -->
+        <rect x="455" y="60" width="150" height="98" rx="12" fill="var(--accent-tint-2)" stroke="var(--accent)" stroke-width="2.6"></rect>
+        <text class="f-tag right" x="530" y="92" text-anchor="middle">Order pair</text>
+        <text class="f-tag right" x="530" y="112" text-anchor="middle">(q^r_t, q^e_t)</text>
+        <text class="f-tick" x="530" y="138" text-anchor="middle">policy decides</text>
+        <line class="axis" x1="605" y1="109" x2="651" y2="109" marker-end="url(#ds-seq-arrow)"></line>
+
+        <!-- node 4 : expedited arrives this period (l_e=0) -->
+        <rect x="655" y="66" width="150" height="86" rx="11" fill="var(--paper)" stroke="var(--rule)" stroke-width="1.6"></rect>
+        <text class="f-tag ink" x="730" y="98" text-anchor="middle">Expedited</text>
+        <text class="f-tag ink" x="730" y="118" text-anchor="middle">arrives now</text>
+        <text class="f-tick" x="730" y="140" text-anchor="middle">l_e = 0</text>
+        <line class="axis" x1="805" y1="109" x2="851" y2="109" marker-end="url(#ds-seq-arrow)"></line>
+
+        <!-- node 5 : demand served; unmet BACKORDERED -->
+        <rect x="855" y="66" width="150" height="86" rx="11" fill="var(--paper)" stroke="var(--rule)" stroke-width="1.6"></rect>
+        <text class="f-tag ink" x="930" y="98" text-anchor="middle">Demand served</text>
+        <text class="f-tag ink" x="930" y="118" text-anchor="middle">rest backordered</text>
+        <text class="f-tick" x="930" y="140" text-anchor="middle">J_t = I+q^e&minus;D</text>
+        <line class="axis" x1="1005" y1="109" x2="1051" y2="109" marker-end="url(#ds-seq-arrow)"></line>
+
+        <!-- node 6 : charge costs -->
+        <rect x="1055" y="66" width="150" height="86" rx="11" fill="var(--paper)" stroke="var(--rule)" stroke-width="1.6"></rect>
+        <text class="f-tag ink" x="1130" y="98" text-anchor="middle">Charge costs</text>
+        <text class="f-tag ink" x="1130" y="118" text-anchor="middle">on net inv. J_t</text>
+        <text class="f-tick" x="1130" y="140" text-anchor="middle">I_{t+1} transition</text>
+
+        <!-- ===== cost annotations : under the events where each is charged ===== -->
+        <text class="f-cost-unit" x="640" y="206" text-anchor="middle">costs charged</text>
+
+        <!-- procurement under the ORDER node -->
+        <line class="lead-line" x1="530" y1="158" x2="530" y2="232"></line>
+        <text class="f-tag right" x="530" y="256" text-anchor="middle">procurement c_r&middot;q^r_t + c_e&middot;q^e_t</text>
+        <text class="f-note region" x="530" y="280" text-anchor="middle">c_e &gt; c_r &middot; the expedite premium</text>
+
+        <!-- holding + backorder under the charge-costs node -->
+        <line class="lead-line" x1="1130" y1="152" x2="1130" y2="232"></line>
+        <text class="f-tag ink" x="1130" y="256" text-anchor="middle">holding h&middot;(J_t)^+</text>
+        <text class="f-tag ink" x="1130" y="280" text-anchor="middle">backorder penalty b&middot;(J_t)^&minus;</text>
+      </svg>
+    </div>
+
+    <div class="caption">
+      <p class="lede"><b>A cheap-slow and a dear-fast channel.</b> The policy sets both orders
+        before demand; the expedited units arrive the same period, unmet demand is backordered,
+        and holding and backorder are charged on the end-of-period net inventory.</p>
+      <span class="src">Dual sourcing &middot; Gijsbrechts et al. 2022 &middot; event panel</span>
+    </div>
+  </div>
+</section>
 <section class="slide" data-title="Dual CDI" aria-label="Dual sourcing — capped-dual-index coordinates">
   <header>
     <span class="eyebrow">Case study 2 &mdash; Dual sourcing</span>
@@ -2267,6 +2471,103 @@
     colors or fonts; every color is var(--token).
   ============================================================================
 -->
+<section class="slide" data-title="Multi-Echelon — event sequence" aria-label="Case study 3 — Divergent multi-echelon: the within-period event sequence">
+  <header>
+    <span class="eyebrow">Case study 3 — Divergent multi-echelon (one warehouse, K retailers)</span>
+    <h2 class="headline">Each period arrivals merge first, then the warehouse and retailers order, and shipments arrive a lead time later<span class="accent">.</span></h2>
+  </header>
+
+  <div class="slide-body">
+    <p class="dek">
+      Arrivals merge into on-hand <i>before</i> ordering; the warehouse orders against its
+      <b>pre-shipment</b> position and retailers raise to a shared order-up-to target
+      <b>y<sup>r</sup><sub>t</sub></b>; the warehouse ships (max-min allocation when short);
+      retailers serve demand; and unmet demand is special-delivered with probability P<sub>w</sub>, else lost.
+    </p>
+
+    <!-- ===================================================================
+         THE FIGURE (dominates the slide): the six within-period events on a
+         left-to-right timeline. WIDE-SHORT viewBox 1280x340. The ONE --accent
+         emphasis is the warehouse-order / retailer-target node — where the
+         policy decides. Cost annotations sit under the charge-costs node
+         (warehouse + retailer holding, expedite premium, lost-sales penalty).
+         Faithful Gijsbrechts 2022 convention: arrivals merge BEFORE ordering;
+         warehouse orders against the PRE-shipment position; holding on the
+         end-of-period on-hand. A faint "period t" bracket spans the row.
+         =================================================================== -->
+    <div class="figure">
+      <svg viewBox="0 0 1280 340" role="img"
+           aria-label="A left-to-right within-period timeline for the divergent multi-echelon system with one warehouse and K retailers under the Gijsbrechts 2022 convention. Six events in order: arrivals merge into on-hand before ordering and the warehouse places its order against its pre-shipment position (the accented decision node, together with the retailers raising to the shared order-up-to target); the warehouse ships to retailers using max-min allocation when stock is short; each retailer serves its demand; total unmet demand is special-delivered from leftover warehouse stock with probability P_w, else lost; and costs are charged on the end-of-period on-hand — warehouse holding h^w, retailer holding h^r summed over retailers, the expedite or special-delivery premium c^w times E_t, and the lost-sales penalty p times the lost units. The order node is emphasized because that is where the learned policy decides. A faint bracket spans the timeline labelled period t.">
+        <defs>
+          <marker id="me-seq-arrow" markerWidth="10" markerHeight="10" refX="7.5" refY="3" orient="auto">
+            <path d="M0,0 L7.5,3 L0,6 Z" fill="var(--grey-soft)"></path>
+          </marker>
+        </defs>
+
+        <!-- ===== faint period bracket spanning the whole timeline ===== -->
+        <path d="M40,40 V28 H1240 V40" fill="none" stroke="var(--rule)" stroke-width="1.4"></path>
+        <text class="f-region-label" x="640" y="22" text-anchor="middle">period t</text>
+
+        <!-- ===== event row : six nodes, centers at x = 130,330,530,730,930,1130 ===== -->
+
+        <!-- node 1 : ARRIVALS MERGE + WAREHOUSE ORDERS — the accented decision node -->
+        <rect x="55" y="60" width="150" height="98" rx="12" fill="var(--accent-tint-2)" stroke="var(--accent)" stroke-width="2.6"></rect>
+        <text class="f-tag right" x="130" y="92" text-anchor="middle">Merge, then</text>
+        <text class="f-tag right" x="130" y="112" text-anchor="middle">WH orders q^w_t</text>
+        <text class="f-tick" x="130" y="138" text-anchor="middle">pre-shipment pos</text>
+        <line class="axis" x1="205" y1="109" x2="251" y2="109" marker-end="url(#me-seq-arrow)"></line>
+
+        <!-- node 2 : retailers raise to target -->
+        <rect x="255" y="66" width="150" height="86" rx="11" fill="var(--paper)" stroke="var(--rule)" stroke-width="1.6"></rect>
+        <text class="f-tag ink" x="330" y="98" text-anchor="middle">Retailers raise</text>
+        <text class="f-tag ink" x="330" y="118" text-anchor="middle">to target y^r_t</text>
+        <text class="f-tick" x="330" y="140" text-anchor="middle">request &rho;^i_t</text>
+        <line class="axis" x1="405" y1="109" x2="451" y2="109" marker-end="url(#me-seq-arrow)"></line>
+
+        <!-- node 3 : warehouse ships -->
+        <rect x="455" y="66" width="150" height="86" rx="11" fill="var(--paper)" stroke="var(--rule)" stroke-width="1.6"></rect>
+        <text class="f-tag ink" x="530" y="98" text-anchor="middle">Warehouse ships</text>
+        <text class="f-tag ink" x="530" y="118" text-anchor="middle">s^i_t (max-min)</text>
+        <text class="f-tick" x="530" y="140" text-anchor="middle">arrives after l_r</text>
+        <line class="axis" x1="605" y1="109" x2="651" y2="109" marker-end="url(#me-seq-arrow)"></line>
+
+        <!-- node 4 : retailers serve demand -->
+        <rect x="655" y="66" width="150" height="86" rx="11" fill="var(--paper)" stroke="var(--rule)" stroke-width="1.6"></rect>
+        <text class="f-tag ink" x="730" y="98" text-anchor="middle">Retailers serve</text>
+        <text class="f-tag ink" x="730" y="118" text-anchor="middle">demand d_{i,t}</text>
+        <text class="f-tick" x="730" y="140" text-anchor="middle">unmet u^i_t</text>
+        <line class="axis" x1="805" y1="109" x2="851" y2="109" marker-end="url(#me-seq-arrow)"></line>
+
+        <!-- node 5 : special delivery (w.p. P_w) else lost -->
+        <rect x="855" y="66" width="150" height="86" rx="11" fill="var(--paper)" stroke="var(--rule)" stroke-width="1.6"></rect>
+        <text class="f-tag ink" x="930" y="98" text-anchor="middle">Special delivery</text>
+        <text class="f-tag ink" x="930" y="118" text-anchor="middle">w.p. P_w, else lost</text>
+        <text class="f-tick" x="930" y="140" text-anchor="middle">E_t = min(A_t, W_t)</text>
+        <line class="axis" x1="1005" y1="109" x2="1051" y2="109" marker-end="url(#me-seq-arrow)"></line>
+
+        <!-- node 6 : charge costs -->
+        <rect x="1055" y="66" width="150" height="86" rx="11" fill="var(--paper)" stroke="var(--rule)" stroke-width="1.6"></rect>
+        <text class="f-tag ink" x="1130" y="98" text-anchor="middle">Charge costs</text>
+        <text class="f-tag ink" x="1130" y="118" text-anchor="middle">end-of-period on-hand</text>
+        <text class="f-tick" x="1130" y="140" text-anchor="middle">pipelines advance</text>
+
+        <!-- ===== cost annotations : under the charge-costs node ===== -->
+        <text class="f-cost-unit" x="1130" y="206" text-anchor="middle">costs charged</text>
+        <line class="lead-line" x1="1130" y1="152" x2="1130" y2="196"></line>
+        <text class="f-tag ink" x="1130" y="232" text-anchor="middle">warehouse holding h^w&middot;(I^w_t)^+</text>
+        <text class="f-tag ink" x="1130" y="256" text-anchor="middle">retailer holding h^r&middot;&sum;_i (I^i_t)^+</text>
+        <text class="f-tag ink" x="1130" y="280" text-anchor="middle">expedite c^w&middot;E_t &middot; lost-sales p&middot;&ell;_t</text>
+      </svg>
+    </div>
+
+    <div class="caption">
+      <p class="lede"><b>Arrivals merge before ordering.</b> The warehouse orders against its
+        pre-shipment position and retailers raise to a shared target; shipments lag by the lead
+        time; and holding, expedite, and lost-sales costs are charged on the end-of-period state.</p>
+      <span class="src">Divergent multi-echelon &middot; Gijsbrechts et al. 2022 &middot; event panel</span>
+    </div>
+  </div>
+</section>
 <section class="slide" data-title="Multi-Echelon" aria-label="Case study 3 — Divergent multi-echelon: the reachable action set determines the achievable cost">
   <header>
     <span class="eyebrow">Case study 3 — Divergent multi-echelon (one warehouse, K retailers)</span>
@@ -2784,7 +3085,7 @@
   </div>
 </section>
 <section class="slide section-slide" data-title="Takeaways" aria-label="Takeaways">
-  <div class="section-no">17 / 18</div>
+  <div class="section-no">20 / 21</div>
   <h2>In these benchmarks, the action space often matters more than model <span class="accent">capacity</span>.</h2>
   <ul class="takeaways">
     <li>One gradient-free CMA-ES loop, held fixed, learns compact policies across structurally different inventory systems.</li>
