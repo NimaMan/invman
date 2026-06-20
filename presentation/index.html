@@ -229,6 +229,21 @@
     gap:var(--gap-m); margin-top:var(--gap-m);
   }
 
+  /* SPLIT layout — compact text column left, figure-dominant column right.
+     For figure slides where a stacked headline+dek would otherwise leave the
+     right half empty and crush the figure into a short band. */
+  .slide.split{ display:grid; grid-template-columns:minmax(0,37%) minmax(0,1fr);
+    column-gap:clamp(30px,4vw,76px); align-items:stretch; }
+  .slide.split > .col-text{ display:flex; flex-direction:column; min-width:0; }
+  .slide.split > .col-text .headline{ max-width:none; }
+  .slide.split > .col-text .dek{ max-width:46ch; margin-top:clamp(12px,1.4vw,18px); }
+  .slide.split > .col-text .caption{ margin-top:auto; flex-direction:column;
+    align-items:flex-start; gap:.5ch; }
+  .slide.split > .col-text .caption .src{ white-space:normal; }
+  .slide.split > .col-fig{ min-width:0; min-height:0; display:flex;
+    align-items:center; justify-content:center; }
+  .slide.split > .col-fig .figure{ width:100%; height:100%; }
+
   /* the figure stage — claims the slide; min-height keeps it dominant */
   .figure{
     min-height:0; display:flex; align-items:center; justify-content:center;
@@ -673,15 +688,14 @@
 <section class="slide" data-title="The wall" aria-label="Motivation — the wall">
   <header>
     <span class="eyebrow">Motivation</span>
-    <h2 class="headline">Each realistic relaxation broke the clean theorem and forced a more computational method<span class="accent">.</span></h2>
+    <h2 class="headline">Each realistic relaxation broke the theorem and forced a more computational method<span class="accent">.</span></h2>
   </header>
 
   <div class="slide-body">
     <p class="dek">
-      <b>Then the assumptions broke.</b> Relaxing backorders, a single supplier, or a
-      serial chain each explodes the state and voids the structural result &mdash; so the
-      field moved from <b>computing</b> the optimum to <b>approximating</b> it, and on to
-      <b>learning</b> the policy directly from a simulator.
+      <b>Then the assumptions broke.</b> Each relaxation explodes the state, so the field
+      moved from <b>computing</b> the optimum to <b>approximating</b> it, and on to
+      <b>learning</b> the policy directly.
     </p>
 
     <div class="figure">
@@ -737,7 +751,7 @@
              neutral slate; the one accent emphasis is the final waypoint.
              ============================================================ -->
         <line x1="600" y1="20" x2="600" y2="340" stroke="var(--slate)" stroke-width="2" stroke-dasharray="6 5"></line>
-        <text class="f-note" x="583" y="180" text-anchor="middle" fill="var(--slate)" transform="rotate(-90 583 180)">each relaxation explodes the state &mdash; the clean theorem breaks</text>
+        <text class="f-note" x="583" y="180" text-anchor="middle" fill="var(--slate)" transform="rotate(-90 583 180)">each relaxation explodes the state</text>
 
         <!-- ============================================================
              THE TURN — the lineage tail as a left-to-right sequence.
@@ -776,10 +790,7 @@
     </div>
 
     <div class="caption">
-      <p class="lede"><b>From computing the optimum to learning the policy directly.</b> Each
-        relaxation explodes the state and voids the structural result; the lineage answers by
-        approximating, then learning the policy on a simulator &mdash; given an action space that
-        can represent the decision.</p>
+      <p class="lede"><b>From computing the optimum to learning the policy directly</b> &mdash; given an action space that can represent the decision.</p>
       <span class="src">Inventory theory · structure-informed learning, Maggiar et&nbsp;al., 2025</span>
     </div>
   </div>
@@ -792,10 +803,9 @@
 
   <div class="slide-body">
     <p class="dek">
-      <b>Look at the state up close.</b> Each period asks for one operational action, yet
-      the state must remember everything already in transit. Two structures enlarge it
-      together: a <b>lead-time pipeline</b> that carries one bucket per period of delay, and a
-      <b>one-warehouse to K-retailer network</b> that adds a coordinate per location.
+      <b>Look at the state up close.</b> Two structures enlarge it together: a <b>lead-time
+      pipeline</b> carrying one bucket per period of delay, and a <b>one-warehouse to
+      K-retailer network</b> adding a coordinate per location.
     </p>
 
     <div class="figure">
@@ -916,8 +926,7 @@
 
     <div class="caption">
       <p class="lede"><b>One action per period, over a state that scales with both delay and breadth.</b>
-        The lead-time pipeline grows the state with the lead time L; the network grows it with the
-        retailer count K, so raw state and action spaces enlarge along two axes at once.</p>
+        Lead time L grows it one way; retailer count K grows it the other.</p>
       <span class="src">Lead-time pipeline · one-warehouse multi-retailer structure</span>
     </div>
   </div>
@@ -930,8 +939,8 @@
 
   <div class="slide-body">
     <p class="dek">
-      One <b>CMA-ES loop</b>, held fixed, carries to ten problem families; only the
-      per-problem <b>decoder</b> changes. Results are reported as match, beat, context, or gap to bound.
+      One <b>CMA-ES loop</b>, held fixed, carries to ten problem families; only the per-problem
+      <b>decoder</b> changes. Verdicts: match, beat, context, or gap to bound.
     </p>
 
     <div class="figure">
@@ -1155,22 +1164,25 @@
     </div>
   </div>
 </section>
-<section class="slide" data-title="Recipe" aria-label="Recipe">
-  <header>
-    <span class="eyebrow">Method</span>
-    <h2 class="headline">CMA-ES minimizes realized operating cost directly on rollouts of a compact policy<span class="accent">.</span></h2>
-  </header>
-
-  <div class="slide-body">
+<section class="slide split" data-title="Recipe" aria-label="Recipe">
+  <div class="col-text">
+    <header>
+      <span class="eyebrow">Method</span>
+      <h2 class="headline">CMA-ES minimizes realized operating cost directly on rollouts of a compact policy<span class="accent">.</span></h2>
+    </header>
     <p class="dek">
-      One gradient-free loop, held fixed across all ten problems. The search distribution
-      proposes <b>compact policy</b> parameters; the simulator returns <b>realized cost</b>;
-      CMA-ES updates the search. It adapts the full covariance of that distribution and is
-      <b>rank-based</b>, needing no gradients, value function, or discount factor on a
-      non-smooth, noisy simulator &mdash; the appropriate optimizer for tens to a few hundred
-      parameters. The only per-problem design is the decoder shown next.
+      One gradient-free loop, held fixed across all ten problems: it proposes <b>compact
+      policy</b> parameters, reads back <b>realized cost</b> from the simulator, and is
+      <b>rank-based</b> &mdash; no gradients, value function, or discount factor. The only
+      per-problem design is the decoder shown next.
     </p>
-
+    <div class="caption">
+      <p class="lede"><b>The loop ranks proposals by realized cost and shifts the search toward the cheaper ones.</b>
+        Only the decoder is designed per problem.</p>
+      <span class="src">CMA-ES, Hansen &amp; Ostermeier, 2001 &middot; ES as a scalable RL alternative, Salimans et&nbsp;al., 2017 &middot; population 64</span>
+    </div>
+  </div>
+  <div class="col-fig">
     <div class="figure">
       <svg viewBox="0 0 1280 640" role="img"
            aria-label="The CMA-ES training loop as a clockwise cycle: a compact policy is rolled out in simulation, which returns its realized operating cost, which drives a CMA-ES update, which proposes the next compact policy.">
@@ -1239,12 +1251,6 @@
         </g>
       </svg>
     </div>
-
-    <div class="caption">
-      <p class="lede"><b>The loop ranks proposals by realized cost and shifts the search toward the cheaper ones.</b>
-        Only the decoder is designed per problem.</p>
-      <span class="src">CMA-ES, Hansen &amp; Ostermeier, 2001 · ES as a scalable RL alternative, Salimans et&nbsp;al., 2017 · population 64</span>
-    </div>
   </div>
 </section>
 <!--
@@ -1280,24 +1286,21 @@
     decoder (A); accent = the emphasis (the decoder block + decoder B).
   ============================================================================
 -->
-<section class="slide" data-title="Policy parameterization" aria-label="Policy parameterization: the decoder sets which actions a policy can reach">
-  <header>
-    <span class="eyebrow">Policy parameterization</span>
-    <h2 class="headline">The decoder sets which actions a policy can reach<span class="accent">.</span></h2>
-  </header>
-
-  <div class="slide-body">
+<section class="slide split" data-title="Policy parameterization" aria-label="Policy parameterization: the decoder sets which actions a policy can reach">
+  <div class="col-text">
+    <header>
+      <span class="eyebrow">Policy parameterization</span>
+      <h2 class="headline">The decoder sets which actions a policy can reach<span class="accent">.</span></h2>
+    </header>
     <p class="dek">
       One learner, one backbone, one policy class are held fixed; only the
-      bracketed <b>decoder</b> block changes the reachable action set. Structured action
-      classes are long-standing &mdash; base-stock and (s,&thinsp;S) (Scarf, 1960), echelon levels
-      (Clark &amp; Scarf, 1960), capped dual-index (Sun &amp; Van&nbsp;Mieghem, 2019), action-space
-      shaping (Kanervisto et&nbsp;al., 2020), action representations (Chandak et&nbsp;al., 2019),
-      residual policies (Johannink et&nbsp;al., 2019), and structure-informed DRL (Maggiar
-      et&nbsp;al., 2025) &mdash; here re-expressed as compact, policy-owned decoders tuned by one
-      gradient-free recipe.
+      bracketed <b>decoder</b> block changes the reachable action set.
     </p>
-
+    <div class="caption">
+      <span class="src">Structured-policy lineage &middot; Scarf 1960 &middot; Clark&ndash;Scarf 1960 &middot; Sun &amp; Van&nbsp;Mieghem 2019 &middot; Kanervisto 2020 &middot; Chandak 2019 &middot; Johannink 2019 &middot; Maggiar 2025</span>
+    </div>
+  </div>
+  <div class="col-fig">
     <!-- ===================================================================
          THE FIGURE (dominates the slide): one shared spine in the correct
          wiring order, then an abstract reachable-set contrast on a shared
@@ -1413,12 +1416,6 @@
         </g>
       </svg>
     </div>
-
-    <div class="caption">
-      <p class="lede"><b>Same learner, same backbone, same policy class.</b> The decoder
-        block alone fixes the reachable action set; the case studies instantiate it.</p>
-      <span class="src">Mechanism &middot; action parameterization is part of the policy</span>
-    </div>
   </div>
 </section>
 <section class="slide" data-title="Evaluation protocol" aria-label="Evaluation protocol">
@@ -1429,11 +1426,9 @@
 
   <div class="slide-body">
     <p class="dek">
-      One comparison frame recurs on every result slide. The comparator and its
-      relation set the verdict: <b>match</b> an optimum, <b>beat</b> a same-protocol
-      heuristic, keep cross-protocol deep RL as <b>context</b>, or report a
-      <b>gap to a bound, never beaten</b> against an unreachable reference such as a
-      perfect-information LP.
+      One comparison frame recurs on every result slide: <b>match</b> an optimum, <b>beat</b>
+      a same-protocol heuristic, keep cross-protocol deep RL as <b>context</b>, or report a
+      <b>gap to a bound, never beaten</b>.
     </p>
 
     <div class="figure">
@@ -1447,7 +1442,7 @@
 
         <!-- shared comparator reference line, drawn across all four columns -->
         <line class="baseline-ref" x1="40" y1="250" x2="1240" y2="250"></line>
-        <text class="f-cost-unit" x="40" y="238">comparator reference</text>
+        <text class="f-cost-unit" x="40" y="280">comparator reference</text>
 
         <!-- column dividers (four verdicts on one shared frame) -->
         <line class="panel-divider" x1="340" y1="70" x2="340" y2="560"></line>
@@ -1540,9 +1535,7 @@
     </div>
 
     <div class="caption">
-      <p class="lede"><b>The comparator decides the verdict.</b> Match against an optimum,
-        beat a heuristic under the same protocol, hold cross-protocol deep RL as context, and
-        report a measured gap to an unreachable bound.</p>
+      <p class="lede"><b>The comparator decides the verdict</b> &mdash; a named reference and the relation to it.</p>
       <span class="src">Frame recurs on every result slide</span>
     </div>
   </div>
@@ -1555,16 +1548,15 @@
 
   <div class="slide-body">
     <p class="dek">
-      The same gradient-free loop and compact policy are held fixed across all ten families; the
-      <b>per-problem design is the decoder</b>. Each family carries its own verdict and evidence
-      qualifier below.
+      One fixed loop across all ten families; the <b>per-problem design is the decoder</b>,
+      and each family carries its own verdict and qualifier.
     </p>
 
-    <div class="figure" style="flex-direction:column; gap:var(--gap-m); align-items:stretch;">
+    <div class="figure" style="flex-direction:column; justify-content:flex-start; gap:var(--gap-s); align-items:stretch;">
       <div class="verdict-legend" aria-hidden="true">
-        <span class="item"><span class="sw match"></span>match &mdash; recover a proven or near-optimal optimum</span>
-        <span class="item"><span class="sw beat"></span>beat &mdash; same-protocol margin over a named heuristic</span>
-        <span class="item"><span class="sw context"></span>context &mdash; cross-protocol DRL &middot; gap to bound &mdash; measured gap to an unreachable LP, never beaten</span>
+        <span class="item"><span class="sw match"></span>match &mdash; near-optimal optimum</span>
+        <span class="item"><span class="sw beat"></span>beat &mdash; same-protocol margin</span>
+        <span class="item"><span class="sw context"></span>context &mdash; cross-protocol DRL &middot; gap to bound &mdash; vs an unreachable LP</span>
       </div>
 
       <div class="verdict-grid" role="img" aria-label="Ten inventory problem families, each with a match, beat, context, or gap-to-bound verdict and an evidence qualifier">
@@ -1602,7 +1594,7 @@
         <div class="badge">
           <span class="fam">General-network backorder</span>
           <span class="verdict beat">beat</span>
-          <span class="note">&minus;24.3% (&minus;36.8% divergent) vs the benchmark&rsquo;s own constant node-base-stock, reproduced to gen-0 parity &middot; 5 seeds</span>
+          <span class="note">&minus;24.3% (&minus;36.8% divergent) vs constant node-base-stock &middot; gen-0 parity &middot; 5 seeds</span>
         </div>
 
         <div class="badge">
@@ -1626,18 +1618,14 @@
         <div class="badge">
           <span class="fam">Production / assembly network</span>
           <span class="verdict context">context</span>
-          <span class="note">mixed topology beats (&minus;2.2%); serial &amp; assembly seed-noisy parity &middot; faithful environment, not literature-verified, no published DRL baseline</span>
+          <span class="note">mixed topology beats (&minus;2.2%); serial &amp; assembly seed-noisy parity &middot; not literature-verified, no published DRL baseline</span>
         </div>
 
       </div>
     </div>
 
     <div class="caption">
-      <p class="lede">
-        <b>Two of the hardest geometries</b> &mdash; the strongly heterogeneous multi-retailer and the
-        mixed production / assembly head &mdash; were found by a search over decoder classes, scored by
-        the same seed-robust comparison.
-      </p>
+      <p class="lede"><b>Two of the hardest geometries</b> &mdash; the heterogeneous multi-retailer and the mixed assembly head &mdash; were found by a search over decoder classes.</p>
       <span class="src">Ten inventory families &middot; one fixed CMA-ES loop</span>
     </div>
   </div>
@@ -1645,14 +1633,14 @@
 <section class="slide" data-title="Lost Sales — event sequence" aria-label="Case study 1 — Lost sales: the within-period event sequence">
   <header>
     <span class="eyebrow">Case study 1 &mdash; Lost sales</span>
-    <h2 class="headline">Each period the arrival lands, the order is placed, demand is served, and unmet demand is lost<span class="accent">.</span></h2>
+    <h2 class="headline">The arrival lands, the order is placed, demand is served, and unmet demand is lost<span class="accent">.</span></h2>
   </header>
 
   <div class="slide-body">
     <p class="dek">
-      Within period <i>t</i> the order <b>q<sub>t&minus;L</sub></b> placed L periods earlier
-      arrives first and folds into on-hand stock; the controller then places
-      <b>q<sub>t</sub></b>; demand is realized; and any shortfall is lost, never backordered.
+      The order <b>q<sub>t&minus;L</sub></b> placed L periods earlier arrives first; the
+      controller then places <b>q<sub>t</sub></b>; demand is served, and any shortfall is lost,
+      never backordered.
     </p>
 
     <!-- ===================================================================
@@ -1737,9 +1725,7 @@
     </div>
 
     <div class="caption">
-      <p class="lede"><b>Order before demand.</b> The arrival is folded in, then the policy
-        orders, then demand is served from on-hand and any shortfall is lost; holding and
-        lost-sales costs are charged on the period&rsquo;s end outcome.</p>
+      <p class="lede"><b>Order before demand.</b> Holding and lost-sales costs are charged on the period&rsquo;s end outcome.</p>
       <span class="src">Vanilla lost sales &middot; positive lead time L &middot; event panel</span>
     </div>
   </div>
@@ -2032,15 +2018,14 @@
 <section class="slide" data-title="Dual Sourcing — event sequence" aria-label="Case study 2 — Dual sourcing: the within-period event sequence">
   <header>
     <span class="eyebrow">Case study 2 &mdash; Dual sourcing</span>
-    <h2 class="headline">Each period a regular and an expedited order precede demand, and the expedited units arrive the same period<span class="accent">.</span></h2>
+    <h2 class="headline">Both orders precede demand, and the expedited units arrive the same period<span class="accent">.</span></h2>
   </header>
 
   <div class="slide-body">
     <p class="dek">
-      The regular order placed l<sub>r</sub> periods earlier arrives into net inventory first;
-      the controller then places the pair <b>(q<sup>r</sup><sub>t</sub>, q<sup>e</sup><sub>t</sub>)</b>;
-      the expedited order (lead time l<sub>e</sub>=0) arrives the same period; and unmet demand
-      is backordered, so net inventory may go negative.
+      The controller places the pair <b>(q<sup>r</sup><sub>t</sub>, q<sup>e</sup><sub>t</sub>)</b>;
+      the expedited order (lead time l<sub>e</sub>=0) arrives the same period, and unmet demand
+      is backordered.
     </p>
 
     <!-- ===================================================================
@@ -2124,9 +2109,7 @@
     </div>
 
     <div class="caption">
-      <p class="lede"><b>A cheap-slow and a dear-fast channel.</b> The policy sets both orders
-        before demand; the expedited units arrive the same period, unmet demand is backordered,
-        and holding and backorder are charged on the end-of-period net inventory.</p>
+      <p class="lede"><b>A cheap-slow and a dear-fast channel.</b> Holding and backorder are charged on the end-of-period net inventory.</p>
       <span class="src">Dual sourcing &middot; Gijsbrechts et al. 2022 &middot; event panel</span>
     </div>
   </div>
@@ -2474,15 +2457,14 @@
 <section class="slide" data-title="Multi-Echelon — event sequence" aria-label="Case study 3 — Divergent multi-echelon: the within-period event sequence">
   <header>
     <span class="eyebrow">Case study 3 — Divergent multi-echelon (one warehouse, K retailers)</span>
-    <h2 class="headline">Each period arrivals merge first, then the warehouse and retailers order, and shipments arrive a lead time later<span class="accent">.</span></h2>
+    <h2 class="headline">Arrivals merge before ordering, and shipments arrive a lead time later<span class="accent">.</span></h2>
   </header>
 
   <div class="slide-body">
     <p class="dek">
-      Arrivals merge into on-hand <i>before</i> ordering; the warehouse orders against its
-      <b>pre-shipment</b> position and retailers raise to a shared order-up-to target
-      <b>y<sup>r</sup><sub>t</sub></b>; the warehouse ships (max-min allocation when short);
-      retailers serve demand; and unmet demand is special-delivered with probability P<sub>w</sub>, else lost.
+      The warehouse orders against its <b>pre-shipment</b> position and retailers raise to a
+      shared target <b>y<sup>r</sup><sub>t</sub></b>; unmet demand is special-delivered with
+      probability P<sub>w</sub>, else lost.
     </p>
 
     <!-- ===================================================================
@@ -2561,9 +2543,7 @@
     </div>
 
     <div class="caption">
-      <p class="lede"><b>Arrivals merge before ordering.</b> The warehouse orders against its
-        pre-shipment position and retailers raise to a shared target; shipments lag by the lead
-        time; and holding, expedite, and lost-sales costs are charged on the end-of-period state.</p>
+      <p class="lede"><b>Arrivals merge before ordering.</b> Holding, expedite, and lost-sales costs are charged on the end-of-period state.</p>
       <span class="src">Divergent multi-echelon &middot; Gijsbrechts et al. 2022 &middot; event panel</span>
     </div>
   </div>
