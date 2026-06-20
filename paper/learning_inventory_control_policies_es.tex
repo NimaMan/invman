@@ -127,19 +127,21 @@ direct-level soft tree improves on the best in-environment constant base-stock b
 $12.0\%\pm2.3\%$ over five optimizer seeds (the published A3C figures, $8.95\%/12.09\%$, are
 cross-protocol context). On
 three further problems, a compact soft tree beats the best tuned base-stock for perishable inventory
-($+1.171\%\pm0.002\%$ and $+0.840\%\pm0.034\%$ under FIFO and LIFO issuing, five-seed means), beats the published constant-base-stock
+($+1.166\%\pm0.030\%$ and $+0.824\%\pm0.065\%$ under FIFO and LIFO issuing, five-seed means), beats the published constant-base-stock
 benchmark of a general-network backorder system by over $20\%$, and matches the proven serial
 (Clark--Scarf) optimum.
 On the remaining networked rows we report comparator-specific verdicts rather than a single
 leaderboard claim: the one-warehouse multi-retailer policy robustly beats the best same-protocol tuned
 heuristic on the asymmetric three-retailer ($+4.61\%$), high-CV ten-retailer ($+7.07\%$), and the
-previously-unsolved strongly heterogeneous ten-retailer ($+12.44\%$, five-seed mean, all seeds below
+previously-only-tied strongly heterogeneous ten-retailer ($+12.44\%$, five-seed mean, all seeds below
 the best heuristic) instances but does not robustly beat the published PPO scalar (it sits $\approx3\%$ above
 PPO on the hardest row); the ameliorating-inventory result beats a purchase-only order-up-to heuristic while remaining
 a large gap-to-bound; and the production/assembly/distribution network is reported as
-learned-versus-own-heuristic research, robustly beating the environment's own pairwise base-stock
-on the serial, pure-assembly, and --- via a new residual base-stock-backbone action head --- mixed topologies
-($-2.20\%$, five-seed mean, all seeds below the best heuristic). The hardest-instance multi-retailer geometry (a
+learned-versus-own-heuristic research: a new residual base-stock-backbone action head robustly beats
+the environment's own pairwise base-stock on the mixed topology ($-2.20\%$, five-seed mean, all seeds
+below the best heuristic), while on the serial and pure-assembly topologies a five-seed audit finds
+seed-noisy parity (mean $-2.2\%\pm3.0\%$ and $+2.1\%\pm5.0\%$): the earlier single-run beats there do
+not replicate across optimizer seeds. The hardest-instance multi-retailer geometry (a
 constant leaf) was found by a search over the decoder classes, scored by the same seed-robust heuristic comparison.
 
 The policies carry tens to a few hundred parameters, are trained without per-problem hyperparameter
@@ -157,7 +159,7 @@ cost of shortages. Many such problems are naturally formulated as Markov decisio
 but exact dynamic programming is tractable only for small instances because the state space grows
 with the lead time and the number of stocking locations. The literature has therefore relied either
 on problem-specific \emph{heuristics} that exploit structural properties --- base-stock, $(s,S)$,
-$(s,nQ)$, dual-index, and capped dual-index policies --- or, more recently, on \emph{deep
+$(s,nQ)$, dual-index, and capped dual-index policies \citep{arrow1951optimal,scarf1960ss} --- or, more recently, on \emph{deep
 reinforcement learning} (DRL), which represents the policy as a neural network and tunes it from
 simulated experience \citep{gijsbrechts2022drl,boute2022deep}. Heuristics require specialized
 analysis and simplifying assumptions that limit their reach; DRL is generic but demands substantial
@@ -209,13 +211,14 @@ Our contributions are as follows.
     backorder system by over $20\%$, and matches the proven serial Clark--Scarf optimum. On the final
     three problems the same recipe now has deliberately narrower verdicts: on one-warehouse
     multi-retailer it gives seed-robust same-protocol beats of the best tuned heuristic on the asymmetric three-retailer,
-    high-CV ten-retailer, and previously-unsolved strongly heterogeneous ten-retailer instances
+    high-CV ten-retailer, and previously-only-tied strongly heterogeneous ten-retailer instances
     ($+12.44\%$, five-seed mean) while not claiming a robust PPO beat; on ameliorating inventory it raises long-run
     average profit far above the best order-up-to purchase policy while reporting the gap to the
-    perfect-information LP as a bound; and on the production/assembly/distribution network it beats
-    the environment's own pairwise base-stock on the serial, pure-assembly, \emph{and} mixed
-    topologies, the last via a new residual base-stock-backbone action head that upgrades the former
-    heuristic-match to a seed-robust $-2.20\%$ beat. The two hardest-instance geometries were found by a
+    perfect-information LP as a bound; and on the production/assembly/distribution network a new residual
+    base-stock-backbone action head upgrades the former heuristic-match on the mixed topology to a
+    seed-robust $-2.20\%$ beat, while the serial and pure-assembly topologies are honest seed-noisy
+    parity under a five-seed audit ($-2.2\%\pm3.0\%$ and $+2.1\%\pm5.0\%$; the earlier single-run
+    beats there do not replicate). The two hardest-instance geometries were found by a
     search over the decoder classes, scored by the same seed-robust heuristic comparison.
     \item \textbf{Action parameterization as policy design.} We formalize and evaluate a family of
     policy-owned decoders (soft-gated direct quantity, soft-gated ordinal quantity, soft trees with
@@ -248,7 +251,9 @@ Section~\ref{sec:conclusion} concludes with limitations and future work.
 \label{sec:related}
 
 Classical inventory problems are easily cast as MDPs but are typically intractable by exact dynamic
-programming because of the curse of dimensionality, motivating both analytical heuristics and,
+programming because of the curse of dimensionality \citep{powell2011adp}, motivating both analytical
+heuristics --- from the optimal $(s,S)$ structure of \citet{scarf1960ss} and the multi-echelon
+echelon-base-stock policy of \citet{clarkscarf1960} onward --- and,
 recently, learned policies \citep{Zipkin2008OldSystems,Bijvank2011LostSalesReview,boute2022deep}. A
 central idea in the DRL line is to represent the policy and/or value function with a neural network
 that maps states to a distribution over order quantities \citep{boute2022deep}. Deep Q-Networks were
@@ -264,22 +269,44 @@ Evolution strategies take a different route. CMA-ES is a gradient-free, populati
 that adapts a full covariance matrix to search complex, high-dimensional, ill-conditioned landscapes
 \citep{Hansen2001CompletelyStrategies}; although not originally a policy-learning method, it was
 shown to train neural-network control policies at scale as a competitive alternative to gradient-based
-DRL \citep{Salimans2017EvolutionLearning}. Within inventory control, evolutionary methods have
+DRL \citep{Salimans2017EvolutionLearning}, and even linear policies found by simple random search can
+be competitive on hard control benchmarks \citep{mania2018ars}. Within inventory control, evolutionary methods have
 chiefly been used to tune the parameters of fixed-form heuristics rather than to learn generic
 policies; learning generic ordering policies with evolution strategies, and doing so across several
 structurally distinct problems, is the gap this paper addresses.
+
+A second thread our methodology draws on treats the \emph{action parameterization} --- not only the
+network weights --- as a design variable. In reinforcement learning more broadly, learned action
+representations \citep{chandak2019actionrep}, methods for large or structured discrete action spaces
+\citep{dulacarnold2015largeaction}, deliberate action-space shaping \citep{kanervisto2020actionshaping},
+and residual policies that learn a correction around a known controller \citep{johannink2019residualrl}
+all show that how a controller is allowed to act can matter as much as how it is trained; our
+policy-owned decoders and the residual base-stock-backbone head are instances of this idea specialized
+to inventory control. Inside inventory management the same instinct appears as embedding the structure
+of optimal policies into the learner: \citet{maggiar2025structure} build structure-informed networks
+that bake monotonicity and other analytic properties into a \emph{gradient-based} deep RL policy over an
+overlapping problem set, and \citet{madeka2022deepinv} apply a generic deep RL controller to a
+large-scale periodic-review lost-sales system with stochastic vendor lead times and correlated demand.
+We share the premise that inventory structure belongs in the
+policy rather than being rediscovered by a large network, but instantiate it differently: we tune
+\emph{compact}, policy-owned decoders --- often in the coordinate system of the best known heuristic ---
+with a single \emph{gradient-free} recipe (CMA-ES) across ten families, reporting an explicit
+match/beat/context verdict (with gap-to-bound where no optimum is known) for each. The decoder idea is
+thus shared with this lineage; our specific contribution is the gradient-free, compact, breadth-and-protocol
+instantiation rather than a claim to have originated it.
 
 The problems we study anchor our comparisons to well-developed literatures. For \emph{lost sales},
 myopic and base-stock heuristics and the capped base-stock policy are strong benchmarks
 \citep{Zipkin2008OldSystems,Xin2021CappedBaseStock}, and the fixed-ordering-cost variant adds
 $(s,S)$, $(s,nQ)$, and modified $(s,S,q)$ comparators \citep{Bijvank2015ParametricPolicies}. For
 \emph{dual sourcing}, the structured policies are the single-index, dual-index
-\citep{veeraraghavan2008dualindex}, capped dual-index, and tailored base-surge heuristics
+\citep{veeraraghavan2008dualindex}, capped dual-index \citep{sun2019cappeddualindex}, and tailored base-surge heuristics
 \citep{sheopuri2010dualsourcing}; \citet{gijsbrechts2022drl} benchmark A3C against these and against a
 bounded-DP optimum on small instances. For divergent \emph{multi-echelon} control with partial lost
 sales, the relevant family includes the neuro-dynamic-programming study of \citet{vanroy1997ndp}, the
 partial-lost-sales two-echelon model of \citet{nahmias1994partial}, multilocation approximations
-\citep{federgruen1984multilocation}, the broad typology of \citet{dekok2018typology}, and recent DRL
+\citep{federgruen1984multilocation}, the broad typology of \citet{dekok2018typology}, the classical one-warehouse $N$-retailer
+distribution problem of \citet{schwarz1973owmr}, and recent DRL
 for one-warehouse multi-retailer systems \citep{kaynov2024owmr}. We use these as external benchmarks
 and otherwise train directly for each problem.
 
@@ -344,7 +371,9 @@ the input state and the output action is the learned policy $\pi_{\btheta}$.
   one-hidden-layer network NN$_H$, or soft tree) producing latent outputs, a decoder / action
   geometry, and a projection onto the valid action set. The normalization scale $\kappa$, the
   backbone weights, the decoder, and the action geometry are all parameters of the policy
-  $\pi_{\btheta}$ (dashed box), learned by CMA-ES, rather than fixed properties of the environment.}
+  $\pi_{\btheta}$ (dashed box), learned by CMA-ES, rather than fixed properties of the environment.
+  The \emph{categorical} decoder is shown only as the prior-version baseline representation this paper
+  moves away from; no categorical results are reported here (see Figure~\ref{fig:decoder-heads}).}
   \label{fig:policy-pipeline}
 \end{figure}
 
@@ -498,10 +527,19 @@ Training uses CMA-ES with a single fixed configuration --- population $64$ and a
 horizon of $2000$ periods --- with no per-instance tuning. Evaluation reports the long-run average
 cost over a long simulated horizon with a warm-up discard, averaged over multiple independent
 evaluation seeds; each problem's experiment setup states its own horizon and evaluation protocol.
-Unless stated otherwise, every learned-policy result is reported as the mean $\pm$ standard deviation
-across \emph{five} independent CMA-ES optimizer seeds --- the cross-seed standard deviation
-(written with the subscript ``seed''), which is distinct from the within-policy evaluation standard
-error and which we use in place of any single-seed or best-of-$N$ figure.
+We hold every headline learned-policy result to one target --- robustness to CMA-ES optimization
+randomness --- established by whichever of two mechanisms a problem affords. For problems benchmarked
+over a large grid of heterogeneous instances --- the vanilla and fixed-cost lost-sales surfaces of
+Section~\ref{sec:lostsales}, with $24$ and $48$ instances --- robustness comes from \emph{breadth}:
+each cell is a single optimizer run, reported across the whole grid, so that a result sustained
+across dozens of independent instances cannot reflect one lucky seed, the optimizer randomness being
+independent from one instance to the next. For every other problem, which carries only a handful of
+instances and so offers no such breadth, robustness comes from \emph{depth}: we report the mean $\pm$
+standard deviation across \emph{five} independent CMA-ES optimizer seeds --- the cross-seed standard
+deviation (written with the subscript ``seed''), distinct from the within-policy evaluation standard
+error --- and state that all five seeds clear the comparator. Neither mechanism reports a
+best-of-$N$ figure: the lost-sales cells are single runs rather than the best of several seeds, and
+the few-instance results are seed means rather than the best seed.
 Where the cost gaps between policies fall within the per-seed noise --- as in dual sourcing, whose
 margins are sub-percent --- we additionally adopt a common-random-number (CRN) protocol, evaluating
 every policy on the same demand-path seeds so that the dominant per-seed variance cancels and the
@@ -879,7 +917,7 @@ well-stocked, full-pipeline system $[8,5,5,5]$.
 Poisson-demand instance with $L=4$, $h=1$, $p=4$, and Poisson mean $5$. State coordinate $0$
 is effective inventory; coordinates $1$--$3$ are the outstanding pipeline. Values are reproduced by
 our released script (see the reproducibility note) and, for the soft trees, equal the independent
-independent policy forward by construction.}
+policy forward by construction.}
 \label{tab:worked}
 \begin{tabular}{lcc}
 \toprule
@@ -973,6 +1011,11 @@ seeds. The benchmark heuristics are the myopic-1, myopic-2, and standard vector 
 policies for vanilla lost sales, and the $(s,S)$, $(s,nQ)$, and modified $(s,S,q)$ policies for the
 fixed-cost variant, using literature-reported parameters where available
 \citep{Zipkin2008OldSystems,Bijvank2015ParametricPolicies}.
+Each cell of the surface is a single CMA-ES \emph{optimizer} run --- the $10$ evaluation seeds above
+average only the demand-path noise of a fixed policy, not the optimization. Following the breadth
+protocol of Section~\ref{sec:methods-eval}, robustness on this problem is read from the consistency of
+the learned-versus-heuristic verdict across the $24$- and $48$-instance grids, the per-cell
+optimizer-seed averaging being reserved for the few-instance problems that lack such breadth.
 
 \subsection{Results}
 
@@ -1338,11 +1381,13 @@ heuristics together with the A3C learner of \citet{gijsbrechts2022drl}: the capp
 is $\le0.11\%$ on every row, making it both the best heuristic and an effective optimal proxy,
 whereas A3C ranges from $0.51\%$ to $1.85\%$. We therefore benchmark the learned policy against the
 \emph{capped dual-index} cost as the optimal proxy rather than our own bounded DP
-(see Appendix~\ref{app:ds-validation}). Policies are trained with warm-started CMA-ES and evaluated
-under the common-random-number protocol of Section~\ref{sec:methods-eval} ($70$ shared demand-path
-seeds, horizon $6\times10^4$); the paired comparison has standard error $\sim0.002$--$0.006$ against a
-per-seed standard deviation $\sim0.5$, so the sub-percent margins reported below are statistically
-meaningful.
+(see Appendix~\ref{app:ds-validation}). Policies are trained with warm-started CMA-ES --- five independent optimizer seeds per
+instance, per the depth standard of Section~\ref{sec:methods-eval} --- and evaluated
+under the common-random-number protocol ($80$ shared demand-path
+seeds, horizon $10^5$); the paired comparison has standard error well below the per-demand-seed
+standard deviation, so the sub-percent margins reported below are statistically
+meaningful at the per-seed level, and the table reports their mean $\pm$ standard deviation across
+the five optimizer seeds.
 
 \begin{table}[!htbp]
 \centering
@@ -1363,14 +1408,16 @@ Expedited unit cost $c_e$ & $105,\ 110$ \\
 
 \subsection{Results}
 
-Table~\ref{tab:ds-results} compares the best learned policy against the capped dual-index (CDI)
-optimal proxy under the common-random-number protocol. The headline reading is that the learned soft
-tree \emph{matches} CDI: it lands within the discrete-grid rounding floor of CDI on four instances
-($\le+0.003\%$) and is, by the paired CRN comparison, statistically but negligibly below it on two
-($l_r=2,c_e=110$ and $l_r=4,c_e=110$, by $0.009\%$ and $0.041\%$). These tiny negative margins sit
-well inside CDI's own published optimality band ($\le0.11\%$ gap to the bounded-DP optimum), so we do
-not read them as the learned policy genuinely outperforming the heuristic; the CDI reference numbers
-are easy to reproduce, and several controls in the same coordinate system attain similar costs.
+Table~\ref{tab:ds-results} compares the learned policy against the capped dual-index (CDI)
+optimal proxy under the common-random-number protocol, reported per the depth standard of
+Section~\ref{sec:methods-eval} as the mean $\pm$ sample standard deviation across five independent
+CMA-ES optimizer seeds per instance. The headline reading is that the learned soft
+tree \emph{matches} CDI on every instance: on two instances every optimizer seed reproduces the CDI
+cost exactly (paired gap $0.000\pm0.000$), and on the remaining four the seed-mean paired gap is at
+most $+0.052\%$ --- in all cases inside CDI's own published optimality band ($\le0.11\%$ gap to the
+bounded-DP optimum). No instance shows a seed-robust beat or loss. (The earlier candidate search
+produced individual policies negligibly below CDI, by $-0.009\%$ and $-0.041\%$; those were
+best-of-candidates selections and are superseded by the seed-mean figures here.)
 \paragraph{Interpretation.}
 The salient result is therefore reliability of reproduction rather than a new champion: by living in
 the capped-dual-index coordinate system and warm-starting at the CDI solution, CMA-ES recovers the
@@ -1397,7 +1444,11 @@ correctly across the difficulty range the suite spans.
 \begin{table}[!htbp]
 \centering
 \small
-\caption{Dual-sourcing: best learned soft-tree policy vs.\ the capped dual-index (CDI) optimal proxy, common-random-number evaluation ($70$ seeds, horizon $6\times10^4$). $\Delta\%$ is the learned policy's cost relative to CDI (negative is better); the A3C row reports the published optimality gap from \citet{gijsbrechts2022drl}.}
+\caption{Dual-sourcing: learned soft-tree policy vs.\ the capped dual-index (CDI) optimal proxy.
+Learned cells are the mean $\pm$ sample standard deviation across $N=5$ independent CMA-ES optimizer
+seeds; every policy is scored under paired common-random-number evaluation ($80$ demand-path seeds,
+horizon $10^5$). $\Delta\%$ is the per-seed paired gap to CDI (negative is better); the A3C row
+reports the published optimality gap from \citet{gijsbrechts2022drl}.}
 \label{tab:ds-results}
 \resizebox{\textwidth}{!}{%
 \begin{tabular}{lcccccc}
@@ -1406,13 +1457,16 @@ correctly across the difficulty range the suite spans.
 \cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
 Policy / metric & $c_e=105$ & $c_e=110$ & $c_e=105$ & $c_e=110$ & $c_e=105$ & $c_e=110$ \\
 \midrule
-CDI proxy & 216.806 & 219.821 & 216.900 & 220.483 & 216.914 & 220.879 \\
-Learned soft tree & 216.806 & 219.800 & 216.906 & 220.483 & 216.918 & 220.789 \\
-Learned vs.\ CDI (\%) & $+0.000$ (match) & $-0.009$ (match) & $+0.003$ (match) & $+0.000$ (match) & $+0.002$ (match) & $-0.041$ (match) \\
+CDI proxy & 216.769 & 219.786 & 216.864 & 220.449 & 216.879 & 220.846 \\
+Learned soft tree ($N=5$) & $216.883\pm0.141$ & $219.786\pm0.000$ & $216.884\pm0.020$ & $220.449\pm0.000$ & $216.895\pm0.023$ & $220.848\pm0.005$ \\
+Learned vs.\ CDI (\%) & $+0.052\pm0.065$ (match) & $+0.000\pm0.000$ (match) & $+0.009\pm0.009$ (match) & $+0.000\pm0.000$ (match) & $+0.007\pm0.010$ (match) & $+0.001\pm0.002$ (match) \\
 Published A3C gap & 0.52\% & 0.80\% & 0.82\% & 0.51\% & 1.85\% & 1.33\% \\
 \bottomrule
 \end{tabular}}
-\par\medskip\footnotesize All six instances match CDI to within its own published optimality band ($\le0.11\%$): four are at or within the discrete-grid rounding floor ($\le+0.003\%$) and two are negligibly below CDI ($-0.009\%$, $-0.041\%$) under the paired CRN comparison. We report these as matches, not improvements.
+\par\medskip\footnotesize All six instances match CDI to within its own published optimality band
+($\le0.11\%$): the largest five-seed-mean paired gap is $+0.052\%$, and on two instances every
+optimizer seed reproduces CDI exactly. We report these as matches; no cell is claimed as an
+improvement or a loss.
 \end{table}
 \FloatBarrier
 
@@ -1717,8 +1771,10 @@ improvements over constant base-stock of $8.95\%\pm0.13\%$ and $12.09\%\pm0.39\%
 \emph{constant} (state-independent) base-stock by grid search over the physical operating region
 (warehouse up to $\approx C^w$, retailer up to $C^r$) rather than over the reduced grid. Policies
 are trained with CMA-ES; we sweep the action design against tree depth $\in\{2,3\}$ and evaluate
-under the multi-echelon protocol of Section~\ref{sec:methods-eval} (horizon $3\times 10^4$, $6$
-seeds).
+under the multi-echelon protocol of Section~\ref{sec:methods-eval}: each trained policy is evaluated
+at horizon $3\times 10^4$ over $6$ \emph{evaluation} (demand-path) seeds; the robustness statistics
+in the results below are over $5$ independent CMA-ES \emph{optimizer} seeds, a separate and
+deliberately distinct seed count.
 
 \subsection{Results}
 
@@ -2007,11 +2063,12 @@ Issuing rule & FIFO \emph{or} LIFO \\
 Table~\ref{tab:perish-results} compares the best learned depth-2 oblique-linear soft tree against the
 best base-stock under the common-random-number protocol. On both instances the learned policy
 \emph{beats} the best base-stock, and the beat is seed-robust: over $5$ independent CMA-ES seeds the FIFO
-improvement is $+1.171\%\pm0.002\%$ and the LIFO improvement is $+0.840\%\pm0.034\%$, with all $5$
-seeds beating the best base-stock on both (the cross-seed standard deviation is negligible against the mean
-margin, so the gain is not a single-seed artifact). The headline single-seed FIFO return improves
-from $-1475.08$ to $-1457.90$ and LIFO from $-1565.98$ to $-1553.16$, each many times its paired
-standard error, and both were obtained by selecting on the disjoint validation block
+improvement is $+1.166\%\pm0.030\%$ and the LIFO improvement is $+0.824\%\pm0.065\%$, with all $5$
+seeds beating the best base-stock on both (the cross-seed standard deviation is far smaller than the mean
+margin, so the gain is not a single-seed artifact). The five-seed-mean FIFO return improves
+from $-1475.71$ to $-1458.51\pm0.44$ and LIFO from $-1566.46$ to $-1553.55\pm0.99$, each seed's gain
+many times its paired standard error ($\ge8.9\times$ FIFO, $\ge6.2\times$ LIFO), with every seed
+selected on the disjoint validation block
 (Section~\ref{sec:perishable-setup}).
 
 \paragraph{Interpretation.}
@@ -2041,10 +2098,10 @@ optimum column is the \emph{analytic} reference of \citet{deMoor2022perishable} 
 \toprule
 Policy / metric & FIFO ($S=7$) & LIFO ($S=5$) \\
 \midrule
-Best tuned base-stock & $-1475.08$ & $-1565.98$ \\
-Learned soft tree (ours) & $\mathbf{-1457.90}$ & $\mathbf{-1553.16}$ \\
-Improvement over best base-stock $\Delta\%$ ($5$-seed mean) & $\mathbf{+1.171\%\pm0.002\%}$ & $\mathbf{+0.840\%\pm0.034\%}$ \\
-Gain / paired SEM (headline seed) & $\approx 9.5\times$ & $\approx 6.6\times$ \\
+Best tuned base-stock & $-1475.71$ & $-1566.46$ \\
+Learned soft tree (ours, seed mean, $N=5$) & $\mathbf{-1458.51\pm0.44_{\rm seed}}$ & $\mathbf{-1553.55\pm0.99_{\rm seed}}$ \\
+Improvement over best base-stock $\Delta\%$ ($5$-seed mean) & $\mathbf{+1.166\%\pm0.030\%}$ & $\mathbf{+0.824\%\pm0.065\%}$ \\
+SEM mult. (worst seed) & $\ge 8.9\times$ & $\ge 6.2\times$ \\
 \midrule
 VI optimum (analytic, context) & $-1457.28$ & $-1552.99$ \\
 \bottomrule
@@ -2055,7 +2112,7 @@ The VI-optimum row is the analytic discounted return under midpoint-binned Gamma
 on the same estimator (the best base-stock sits $\approx1\%$ below it purely from that mismatch); we report it
 as context, not as a separate improvement claim. The $\Delta\%$ row is the mean $\pm$ cross-seed
 standard deviation over $5$ independent CMA-ES seeds (all $5$ beat the best base-stock on both instances);
-the negated-cost values shown are the headline seed. Selection is on a disjoint validation block;
+the negated-cost values shown are five-seed means. Selection is on a disjoint validation block;
 selecting on the evaluation block instead flips FIFO to a small ($\approx-0.49\%$) loss.
 \end{table}
 \FloatBarrier
@@ -3569,7 +3626,9 @@ the scale-normalized leaf cannot reproduce the tuned pairwise base-stock exactly
 start away from the best heuristic and scatter widely, leaving the row only at parity (Section~\ref{sec:pirhoo-results}). The
 fix follows a simple design principle: rather than relying on the optimizer to \emph{rediscover} the
 best heuristic from an arbitrary initialization, we build the heuristic \emph{into} the policy as its backbone and let
-the search learn only a small correction on top of it. Concretely, we introduce a \emph{residual
+the search learn only a small correction on top of it --- the inventory-control analogue of residual
+reinforcement learning, which learns a correction around a fixed base controller \citep{johannink2019residualrl}.
+Concretely, we introduce a \emph{residual
 base-stock-backbone} action head, a new action geometry in which the learned policy outputs a signed
 correction \emph{around} the best heuristic rather than the order itself:
 \begin{equation}
@@ -3620,13 +3679,18 @@ on the \emph{same} held-out block ($4000$ paths), paired on identical demand rea
 \label{sec:pirhoo-results}
 
 Table~\ref{tab:pirhoo-results} reports the learned soft tree against the environment's own best
-pairwise base-stock on the held-out block. The learned policy \emph{beats the environment's own best
-heuristic}, robustly and reproducibly: the depth-2 oblique-linear tree improves the per-period cost
-from $60.24$ to $57.25\pm0.22$ ($-4.96\%$) on one CMA seed and to $54.96\pm0.23$ ($-8.77\%$) on
-another, and a depth-3 tree gives $57.85\pm0.25$ ($-3.97\%$); every configuration beats the best heuristic by
-more than $3.9\%$, outside the held-out standard error by $\ge 9\times$ SEM, across two seeds and two
-depths. The flow warm-start (generation~0) sits at $70.85\pm0.61$, so the improvement is the CMA-ES
-delta, not the initialization. The mechanism is a strictly richer control class on the \emph{same}
+pairwise base-stock on the held-out block. The honest five-seed verdict is \emph{seed-noisy parity
+with a favourable mean}: across five independent CMA-ES optimizer seeds the depth-2 oblique-linear
+tree averages $58.90\pm1.78$ against the $60.24$ best heuristic (mean improvement $-2.22\%\pm2.96\%$;
+four of five seeds below the heuristic, one seed $+2.06\%$ above it), which our verdict rule reports
+as parity, not a robust beat. Individual seeds reach much further --- the best seed improves
+$-5.82\%$, and the two illustrative early runs shown in the table reach $57.25\pm0.22$ ($-4.96\%$)
+and $54.96\pm0.23$ ($-8.77\%$), each far outside the held-out standard error --- but the
+\emph{across-seed} dispersion is of the same order as the mean improvement, so the per-seed SEM
+multiples certify only that individual runs genuinely beat the heuristic on their evaluation block,
+not that a fresh optimization seed reliably will. The flow warm-start (generation~0) sits at
+$70.85\pm0.61$, so the per-seed improvements are the CMA-ES delta, not the initialization. The
+mechanism remains a strictly richer control class on the \emph{same}
 action relations: the pairwise base-stock policy reacts only to the local raw-material position, while
 the learned linear-leaf tree additionally reads finished inventory, backlog, and inbound pipeline, and
 switches behaviour by inventory regime; constant-leaf trees stay at the flow regime and lose to the
@@ -3653,19 +3717,22 @@ three-layer assembly tree in which four sources feed two intermediate assembly n
 assembly node serving the customer). Both move the action space well beyond the serial chain: the
 distribution split and the assembly $\min(\cdot)$ production starve downstream stages, so the
 environment's own best pairwise base-stock needs much higher order-up-to levels (best-heuristic costs $297.69$ and
-$283.34$ per period, against $60.24$ for the serial case). On the pure assembly network the learned
-tree beats this best heuristic by $-2.98\%$ ($274.90\pm0.17$ vs $283.34$, outside the held-out standard error by
-$\approx40\times$). On the mixed distribution-and-assembly network, the residual base-stock-backbone head of
+$283.34$ per period, against $60.24$ for the serial case). On the pure assembly network the five-seed
+audit finds \emph{seed-noisy parity}: the learned tree averages $289.16\pm14.20$ against $283.34$
+(mean $+2.05\%\pm5.01\%$ \emph{above} the heuristic, two of five seeds below it). The single
+illustrative run in the table beats the heuristic by $-2.98\%$ ($274.90\pm0.17$, $\approx40\times$
+the held-out standard error), but the across-seed scatter ($\approx5\%$ of the mean) dwarfs that
+margin, so a fresh optimizer seed does not reliably reproduce it. On the mixed distribution-and-assembly network, the residual base-stock-backbone head of
 Section~\ref{sec:pirhoo-policy} (Eq.~\eqref{eq:residual-head}) upgrades the row from a heuristic-match to a
 \emph{robust beat over the best heuristic}. The earlier linear-leaf flow head could not reproduce the best heuristic on this topology, so
 its eight CMA seeds scattered to a seed-mean $306.10\pm22.89$ ($+2.82\%$ above the $297.69$ best heuristic, only
 four of eight seeds below it) --- parity, not a beat. With the residual head, which anchors every seed
 at the best heuristic by construction, the structure found by a search over the decoder classes (a
 residual-base-stock head with linear leaves, oblique splits, and a per-relation geometry) improves the
-per-period cost to a seed-robust mean $291.136\pm2.49$ over five
+per-period cost to a seed-robust mean $291.136\pm2.78$ over five
 optimizer seeds ($-2.20\%$ against the $297.69$ best heuristic; all five seeds below it, per-seed
-$287.36,294.42,290.74,293.22,289.93$). The seed scatter collapses from $\pm22.89$ to $2.49$
-($\approx0.86\%$ of the mean) precisely because the residual head reproduces the best heuristic exactly at
+$287.36,294.42,290.74,293.22,289.93$). The seed scatter collapses from $\pm22.89$ to $2.78$
+($\approx0.95\%$ of the mean) precisely because the residual head reproduces the best heuristic exactly at
 generation~0. As for the serial case, these comparators are the \emph{environment's own} grid-searched
 best heuristic on a faithful but not literature-verified environment --- the source paper gives no
 analytical optimum for mixed or assembly networks (only random-search, DFO, Spearmint, and DNN
@@ -3689,29 +3756,34 @@ Policy / config & Held-out cost ($\pm$ SEM) & $\Delta\%$ vs best heuristic & SEM
 \midrule
 Best pairwise base-stock (order-up-to $[8,7,9]$) & $60.24$ & --- & --- \\
 Flow warm-start (generation $0$)               & $70.85\pm0.61$ & $+17.6\%$ & --- \\
-Learned soft tree, depth $2$, run $1$          & $\mathbf{57.25\pm0.22}$ & $\mathbf{-4.96\%}$ & $\approx 14\times$ \\
-Learned soft tree, depth $2$, run $2$          & $\mathbf{54.96\pm0.23}$ & $\mathbf{-8.77\%}$ & $\approx 23\times$ \\
-Learned soft tree, depth $3$                   & $\mathbf{57.85\pm0.25}$ & $\mathbf{-3.97\%}$ & $\approx 10\times$ \\
+Learned soft tree, depth $2$ (seed mean, $N=5$) & $58.90\pm1.78_{\rm seed}$ & $-2.22\%\pm2.96\%$ & parity ($4/5$ below) \\
+\quad single seed, run $1$ (illustrative)      & $57.25\pm0.22$ & $-4.96\%$ & $\approx 14\times$ \\
+\quad single seed, run $2$ (illustrative)      & $54.96\pm0.23$ & $-8.77\%$ & $\approx 23\times$ \\
+\quad depth $3$, single seed (illustrative)    & $57.85\pm0.25$ & $-3.97\%$ & $\approx 10\times$ \\
 \midrule
 \multicolumn{4}{l}{\emph{Mixed distribution-and-assembly network} (best heuristic $297.69$, echelon order-up-to $[36,13,7]$)} \\
 Best pairwise base-stock                        & $297.69\pm0.67$ & --- & --- \\
 Flow-head linear leaf (seed mean, $N=8$)       & $306.10\pm22.89_{\rm seed}$ & $+2.82\%$ & heuristic-match \\
-Residual-head soft tree (seed mean, $N=5$)     & $\mathbf{291.136\pm2.49_{\rm seed}}$ & $\mathbf{-2.20\%}$ & robust beat \\
+Residual-head soft tree (seed mean, $N=5$)     & $\mathbf{291.136\pm2.78_{\rm seed}}$ & $\mathbf{-2.20\%}$ & robust beat \\
 \midrule
 \multicolumn{4}{l}{\emph{Pure assembly network} (best heuristic $283.34$, echelon order-up-to $[52,52,52]$)} \\
 Best pairwise base-stock                        & $283.34\pm0.20$ & --- & --- \\
-Learned soft tree, depth $2$                     & $\mathbf{274.90\pm0.17}$ & $\mathbf{-2.98\%}$ & $\approx 40\times$ \\
+Learned soft tree, depth $2$ (seed mean, $N=5$) & $289.16\pm14.20_{\rm seed}$ & $+2.05\%\pm5.01\%$ & parity ($2/5$ below) \\
+\quad single seed (illustrative)                 & $274.90\pm0.17$ & $-2.98\%$ & $\approx 40\times$ \\
 \bottomrule
 \end{tabular}
 \par\medskip\footnotesize The comparator is the environment's own best heuristic on a faithful but
 not literature-verified environment; the result is a research learned-versus-own-heuristic
 comparison, not a published-number beat (this environment has no published DRL/PPO baseline at all).
-The serial case-3 and pure-assembly rows are single-/two-seed results (a multi-seed audit is pending);
-the two mixed-network rows are seed-robust aggregates. The flow-head row is seed-noisy parity (seed
+All headline rows are now five-optimizer-seed aggregates ($N{=}5$, seeds run under the shared
+seed-robust protocol); the indented single-seed rows are retained as illustrative individual runs
+only. The serial case-3 and pure-assembly seed means are \emph{parity} verdicts: their across-seed
+dispersion is of the order of (or larger than) the mean margin, so the earlier single-run beats do
+not replicate as seed-robust. The flow-head row is seed-noisy parity (seed
 mean above the best heuristic, $4/8$ seeds below it, scatter $\pm22.89$); the residual base-stock-backbone head of
 Eq.~\eqref{eq:residual-head} anchors every seed at the best heuristic by construction, collapsing the scatter to
-$\pm2.49$ and turning the row into a robust beat over the best heuristic ($5/5$ seeds below the best heuristic, mean${}+{}$std
-$=293.63<297.69$). The serial optimum $47.65$ (Section~\ref{sec:serial}) is structurally
+$\pm2.78$ and turning the row into a robust beat over the best heuristic ($5/5$ seeds below the best heuristic, mean${}+{}$std
+$=293.92<297.69$). Seed dispersions are sample ($n{-}1$) standard deviations throughout. The serial optimum $47.65$ (Section~\ref{sec:serial}) is structurally
 unreachable by this environment's local pairwise policy and is not used as a target here.
 \end{table}
 \FloatBarrier
@@ -3755,10 +3827,14 @@ finding in the paper, and it is precisely the lever the most recent DRL literatu
 from the opposite direction: rather than freeing a large network to discover structure, that work
 \emph{injects} inventory structure into the learner. \citet{maggiar2025structure} build
 structure-informed policy networks that embed monotonicity and other analytically known properties of
-optimal policies; \citet{temizoz2025dcl} report that a model-based controlled-learning scheme reaches
+optimal policies, and report that a generic deep RL controller naturally recovers many
+such structural properties; \citet{madeka2022deepinv} learn a generic deep RL controller for a
+large-scale periodic-review system by turning historical data into a simulator; \citet{temizoz2025dcl} report that a model-based controlled-learning scheme reaches
 optimality gaps of at most $0.2\%$ on lost-sales and perishable problems, far inside earlier A3C gaps;
 and recent graph- and heuristic-parameterized agents make the parameters of a classical control the
-action space itself. Our policy-owned decoder is the same idea expressed as a design choice rather
+action space itself --- the inventory specialization of a broader move toward shaping and
+representing the action space rather than only the network \citep{kanervisto2020actionshaping,chandak2019actionrep}.
+Our policy-owned decoder is the same idea expressed as a design choice rather
 than a regularizer: we put the search directly in the heuristic's coordinate system and let a compact
 model modulate it. The convergence of independent lines on ``structure in the policy, not capacity in
 the network'' is, in our reading, the clearest signal of where the field is heading.
@@ -3791,8 +3867,9 @@ one of three honest verdicts. We \emph{beat} a comparator only when it is a heur
 clears the held-out standard error under common random numbers (general-network backorder by over
 $20\%$; ameliorating inventory's order-up-to heuristic by a wide margin; one-warehouse multi-retailer on the
 seed-robust asymmetric three-retailer, high-CV ten-retailer, and strongly heterogeneous ten-retailer
-best-heuristic rows; the production/assembly/distribution network's own serial, pure-assembly, \emph{and}
-mixed-topology pairwise base-stock heuristics). We \emph{match}, and say so explicitly, when the comparator is provably optimal
+best-heuristic rows; the production/assembly/distribution network's own \emph{mixed-topology} pairwise
+base-stock heuristic --- its serial and pure-assembly rows fell back to parity under the five-seed
+audit and are no longer claimed as beats). We \emph{match}, and say so explicitly, when the comparator is provably optimal
 or a near-optimal proxy: the dual-sourcing soft tree sits inside the capped-dual-index policy's own
 $\le 0.11\%$ optimality band --- comfortably inside the band the published A3C learner does not reach
 --- and the serial soft tree recovers the Clark--Scarf optimum to $+0.011\%$; neither is framed as a
@@ -3845,9 +3922,10 @@ strongly heterogeneous $K{=}10$ at $+12.44\%$ over five seeds) are over the best
 heuristic, not over PPO --- which is cross-protocol context only. (iv)~The
 ameliorating-inventory gap is to a perfect-information \emph{upper bound} and is structural; it is
 reported, never beaten. (v)~The production/assembly/distribution network result is a research result on
-a faithful but \emph{not} literature-anchored environment: the learned policy beats the environment's
-own best heuristic on the serial, pure-assembly, and mixed topologies (the mixed row upgraded from a
-heuristic-match to a seed-robust $-2.20\%$ beat by the residual base-stock-backbone head), but the environment has
+a faithful but \emph{not} literature-anchored environment: the learned policy robustly beats the
+environment's own best heuristic on the \emph{mixed} topology only (upgraded from a heuristic-match to
+a seed-robust $-2.20\%$ beat by the residual base-stock-backbone head), the serial and pure-assembly
+topologies being five-seed parity, and the environment has
 no published DRL/PPO baseline, so none of these is a published-cost beat. (vi)~Methodologically, CMA-ES --- though far more
 sample-efficient than A3C here --- is still data-hungry relative to settings with scarce historical
 demand, and its population-based evaluation cost grows with the covariance dimension, so very large
@@ -3883,7 +3961,7 @@ reproducible policy is often enough.
 % Bibliography embedded inline (natbib-compatible \bibitem labels) so the manuscript is
 % self-contained and renders with a single pdflatex pass -- no bibtex step required. The
 % same entries are also kept in references.bib for tooling that prefers a .bib database.
-\begin{thebibliography}{31}
+\begin{thebibliography}{43}
 
 \bibitem[Bijvank et al.(2015)]{Bijvank2015ParametricPolicies}
 M.~Bijvank, S.~Bhulai, and W.~T. Huh.
@@ -4039,6 +4117,61 @@ Use of proximal policy optimization for the joint replenishment problem.
 T.~Temiz\"oz, C.~Imdahl, R.~Dijkman, D.~Lamghari-Idrissi, and W.~van Jaarsveld.
 Zero-shot generalization in inventory management: Train, then estimate and decide.
 \emph{arXiv preprint arXiv:2411.00515}, 2024.
+
+\bibitem[Arrow et al.(1951)]{arrow1951optimal}
+K.~J. Arrow, T.~Harris, and J.~Marschak.
+Optimal inventory policy.
+\emph{Econometrica}, 19(3):250--272, 1951.
+
+\bibitem[Scarf(1960)]{scarf1960ss}
+H.~Scarf.
+The optimality of $(s,S)$ policies in the dynamic inventory problem.
+In K.~J. Arrow, S.~Karlin, and P.~Suppes, editors, \emph{Mathematical Methods in the Social Sciences}. Stanford University Press, 1960.
+
+\bibitem[Clark and Scarf(1960)]{clarkscarf1960}
+A.~J. Clark and H.~Scarf.
+Optimal policies for a multi-echelon inventory problem.
+\emph{Management Science}, 6(4):475--490, 1960.
+
+\bibitem[Schwarz(1973)]{schwarz1973owmr}
+L.~B. Schwarz.
+A simple continuous review deterministic one-warehouse $N$-retailer inventory problem.
+\emph{Management Science}, 19(5):555--566, 1973.
+
+\bibitem[Sun and Van Mieghem(2019)]{sun2019cappeddualindex}
+J.~Sun and J.~A. Van Mieghem.
+Robust dual sourcing inventory management: Optimality of capped dual index policies and smoothing.
+\emph{Manufacturing \& Service Operations Management}, 21(4):912--931, 2019.
+
+\bibitem[Powell(2011)]{powell2011adp}
+W.~B. Powell.
+\emph{Approximate Dynamic Programming: Solving the Curses of Dimensionality}.
+Wiley, 2nd edition, 2011.
+
+\bibitem[Chandak et al.(2019)]{chandak2019actionrep}
+Y.~Chandak, G.~Theocharous, J.~Kostas, S.~Jordan, and P.~Thomas.
+Learning action representations for reinforcement learning.
+In \emph{Proceedings of the 36th International Conference on Machine Learning}, volume~97 of \emph{PMLR}, pages 941--950, 2019.
+
+\bibitem[Dulac-Arnold et al.(2015)]{dulacarnold2015largeaction}
+G.~Dulac-Arnold, R.~Evans, H.~van Hasselt, P.~Sunehag, T.~Lillicrap, J.~Hunt, T.~Mann, T.~Weber, T.~Degris, and B.~Coppin.
+Deep reinforcement learning in large discrete action spaces.
+\emph{arXiv preprint arXiv:1512.07679}, 2015.
+
+\bibitem[Johannink et al.(2019)]{johannink2019residualrl}
+T.~Johannink, S.~Bahl, A.~Nair, J.~Luo, A.~Kumar, M.~Loskyll, J.~A. Ojea, E.~Solowjow, and S.~Levine.
+Residual reinforcement learning for robot control.
+In \emph{2019 International Conference on Robotics and Automation (ICRA)}, pages 6023--6029, 2019.
+
+\bibitem[Kanervisto et al.(2020)]{kanervisto2020actionshaping}
+A.~Kanervisto, C.~Scheller, and V.~Hautam\"aki.
+Action space shaping in deep reinforcement learning.
+In \emph{2020 IEEE Conference on Games (CoG)}, pages 479--486, 2020.
+
+\bibitem[Madeka et al.(2022)]{madeka2022deepinv}
+D.~Madeka, K.~Torkkola, C.~Eisenach, A.~Luo, D.~P. Foster, and S.~M. Kakade.
+Deep inventory management.
+\emph{arXiv preprint arXiv:2210.03137}, 2022.
 
 \end{thebibliography}
 
@@ -4376,9 +4509,13 @@ Single-node newsvendor cost & $127.11$ & $127.10$ & $+0.008\%$ \\
 Two points keep the network-level result honest, consistent with the scope stated in
 Section~\ref{sec:pirhoo}. First, the Section~\ref{sec:pirhoo} learned-policy result is a
 \emph{research} result, not a
-published-number beat: the learned soft tree improves on the environment's \emph{own} best
-grid-searched pairwise base-stock heuristic by roughly $5$--$9\%$ on held-out paths, and that
-heuristic is not a published optimum. Second, the textbook serial optimum $47.65$
+published-number beat: under the five-seed audit of Section~\ref{sec:pirhoo-results}, the learned soft
+tree is seed-noisy \emph{parity} with the environment's \emph{own} best grid-searched pairwise
+base-stock on the serial and pure-assembly topologies ($-2.22\%\pm2.96\%$ and $+2.05\%\pm5.01\%$ seed
+means; the earlier single-run beats do not replicate across optimizer seeds), and only on the mixed
+distribution-and-assembly topology does the residual base-stock-backbone head deliver a seed-robust
+$-2.20\%$ beat over that heuristic; in every case the comparator is the environment's own heuristic,
+not a published optimum. Second, the textbook serial optimum $47.65$
 (Section~\ref{app:serial-validation}) is \emph{not} a valid target for this environment: it is an
 \emph{echelon} base-stock cost, whereas this environment's pairwise policy targets the \emph{local}
 raw-material position (and excludes finished goods), so $47.65$ is structurally unreachable here and we
