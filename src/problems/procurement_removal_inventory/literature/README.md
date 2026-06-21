@@ -90,10 +90,29 @@ Itemized status of each block (do not overclaim):
 `literature_verified = false` is therefore the correct status: it is a deliberate structural
 reduction, not a defect.
 
+## Faithful pricing-coupled model (added)
+
+A faithful, pricing-coupled environment now exists alongside the legacy control-only slice:
+`joint_pricing_removal_env.rs` (state `z = (x, y)`, joint pricing + signed net-flow decision, Eq. 4
+reward under backlogging with the `h- = c + k` convention, terminal `V_T = s*min(x,y)+l*max(x-y,0)`),
+`price_dependent_gamma_demand.rs` (additive log-linear `d_t(p) = mu_t*exp(-beta(p-p0))` with
+`E = -beta*p0` and Gamma(mean, CV=1) quantile discretization), and `joint_pricing_removal_dp.rs`
+(executing finite-horizon DP for the NPV surface). The faithful env reproduces the paper's exact
+PROVEN structural properties (Lemma 3.1 monotonicities, value-function supermodularity) by re-running
+the DP, and brackets the `~84000` NPV magnitude; the exact figure is not reproducible to tight
+tolerance because the `mu_t` profile is given only graphically (Figure 6) and the headline is a
+conditional NPV surface. `literature_verified` stays `false` for the NPV figure; the structural
+reproduction is the executing literature-grounded correctness anchor. The legacy control-only files
+(`env.rs`, `demand.rs`) are retained for the existing learned-policy pipeline.
+
 ## Source of truth in code
 
 Use `literature/references.rs` for:
 
+- `MAGGIAR_SADIGHIAN_2017_FAITHFUL_INSTANCE` — Table 1 parameters and the reported `~84000`
+  NPV-surface peak (Figure 7), with `npv_peak_is_exact = false`
+- `FAITHFUL_VERIFICATION_INSTANCE` — small exactly-solvable faithful instance used by the structural
+  tests
 - `PRIMARY_REFERENCE_INSTANCE` — carried repo-native primary instance (removal lever inactive)
 - `REMOVAL_ACTIVE_REFERENCE_INSTANCE` — repo-native instance where the removal lever binds (added in
   the 2026-05-31 audit so the benchmark exercises the distinguishing procurement-vs-removal feature)

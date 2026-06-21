@@ -68,6 +68,54 @@ state but strips away pricing/markdown, uses lost-sales instead of backlog, and 
 is therefore a **repo-native control-only slice**, not the published model, and there is **no public
 exact cost row to reproduce**.
 
+## Faithful pricing-coupled model (added — the literature target)
+
+Alongside the control-only slice above, a **faithful** environment now adds the PRICING / MARKDOWN
+decision that the paper's reward structure (Eq. 4) requires, so the model matches the paper rather
+than a reduction.
+
+Files:
+
+- `joint_pricing_removal_env.rs` — faithful state `z = (x, y)` (inventory level, returnable level),
+  the joint decision (target demand `d` = price/markdown, and signed net flow `q`: remove if `q > 0`,
+  purchase if `q < 0`), and the Eq. 4 period reward under backlogging with the paper's backorder
+  convention `h- = c + k`. Includes the terminal value `V_T(x,y) = s*min(x,y) + l*max(x-y,0)`.
+- `price_dependent_gamma_demand.rs` — the additive log-linear price-dependent demand
+  `d_t(p) = mu_t exp(-beta(p-p0))` with inverse `p(d)`, plus the Gamma(mean mu_t, CV=1) noise and its
+  K equally-likely quantile discretization (paper Sections 7.1.1 and 6.2.1).
+- `joint_pricing_removal_dp.rs` — the executing finite-horizon DP that solves the value function
+  `V_t(x,y)` (the NPV surface), recovers the optimal decisions, and exposes them for verification.
+
+Literature instance and anchors live in `literature/references.rs`:
+
+- `MAGGIAR_SADIGHIAN_2017_FAITHFUL_INSTANCE` — Table 1 parameters
+  (`p0=90, c=75, s=30, l=5, h+=2, k=15.5, E=-2`, 40 periods, `gamma=0.9984`, 99 demand quantiles) and
+  the reported NPV-surface peak `~84000` (Figure 7, t=24).
+- `FAITHFUL_VERIFICATION_INSTANCE` — the same faithful dynamics shrunk to a coarse `(x,y)` grid so the
+  DP solves exactly inside `cargo test`.
+
+### What is reproduced (executing tests in `verification/tests.rs`)
+
+- the price/demand log-linear map and elasticity relation,
+- the Gamma(CV=1) noise quantiles (centred, variance ~ mu^2),
+- the Eq. 4 single-period reward by hand, the `h- = c + k` backorder convention, and the
+  return-then-liquidate terminal value,
+- **the paper's PROVEN optimal-policy structure (Lemma 3.1 / Section 3.2 / 7.2.1)**: markdown/target
+  demand nondecreasing in inventory and nonincreasing in returnable level, returns nondecreasing in
+  inventory, purchases nonincreasing in inventory, and value-function supermodularity (L♮-concavity),
+- the Table-1 NPV-surface magnitude: the env-computed peak at `t=24` brackets the reported `~84000`.
+
+### What is NOT exactly reproduced (honest limitation)
+
+The paper specifies the per-period mean-demand profile `mu_t` **only graphically** (Figure 6:
+baseline ~50, peak ~500 near period 20). The headline output is a NPV **surface** at fixed `t=24`
+whose top contour is `~84000`, not a single tabulated cost. Because `mu_t` and the conditional
+plotting window are graphical, the exact `84000` is not reproducible to tight tolerance. The faithful
+DP reproduces the paper's exact PROVEN structural properties (independent of the `mu_t` shape) and the
+NPV magnitude band, so `literature_verified` stays **false** for the NPV figure; the structural
+monotonicity / supermodularity reproduction is the executing literature-grounded correctness anchor.
+The legacy control-only files are retained for the existing learned-policy pipeline.
+
 ## Verification status
 
 Honest, itemized (no published number is reproduced, so this is **not** literature-verified):
