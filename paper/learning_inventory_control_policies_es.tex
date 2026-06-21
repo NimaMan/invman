@@ -4197,9 +4197,10 @@ cost: it is a faithful but \emph{not} literature-verified environment at the net
 validation is a single-node fidelity check rather than a published-number reproduction of the
 Section~\ref{sec:pirhoo} result (Section~\ref{app:pirhoo-validation}). The two remaining studied
 problems are anchored differently and therefore do not appear as published-number rows here: the
-one-warehouse multi-retailer and ameliorating-inventory results are reported against a best tuned
-in-environment heuristic (with, for ameliorating inventory, a perfect-information upper bound
-reported strictly as a bound).
+one-warehouse multi-retailer (Section~\ref{app:owmr-validation}) and ameliorating-inventory
+(Section~\ref{app:amelior-validation}) results are reported against a best tuned in-environment
+heuristic (with, for ameliorating inventory, a perfect-information upper bound reported strictly as a
+bound); their anchoring subsections close this appendix.
 
 \subsection{Published vanilla lost-sales validation}
 
@@ -4521,5 +4522,34 @@ not a published optimum. Second, the textbook serial optimum $47.65$
 raw-material position (and excludes finished goods), so $47.65$ is structurally unreachable here and we
 do not use it as a comparator. The single-node reduction above is therefore the only published anchor
 we claim for this environment, and it holds.
+
+\subsection{One-warehouse multi-retailer anchoring}
+\label{app:owmr-validation}
+
+The one-warehouse multi-retailer environment (Section~\ref{sec:owmr}) is not anchored to a reproduced
+published cost, and we list no published-number row for it. The comparator scalars of
+\citet{kaynov2024owmr} rest on a demand convention we could not verify and on unpublished PPO
+hyperparameters, so neither their environment nor their learner is reproducible from the paper; their
+PPO numbers are quoted in Section~\ref{sec:owmr-results} strictly as cross-protocol context, never as a
+head-to-head beat. Verification here is instead internal to the environment: the learned policy is
+compared, under our own protocol, against the environment's \emph{own} best tuned echelon base-stock
+with allocation heuristic, with the seed-robust improvements reported in Table~\ref{tab:owmr-results};
+and we additionally train a faithful in-protocol PPO under our own convention as a corroborating
+baseline, which converges to the same heuristic basin. No published quantity is reproduced and none is
+claimed.
+
+\subsection{Ameliorating-inventory anchoring}
+\label{app:amelior-validation}
+
+The ameliorating-inventory environment (Section~\ref{sec:amelior}) likewise reproduces no published
+cost. Its like-for-like result is a beat over the environment's \emph{own} best tuned order-up-to
+purchase heuristic (Table~\ref{tab:amelior-results}). The only absolute reference we report is a
+perfect-information steady-state linear-programming value, used \emph{strictly as an upper bound}: it is
+computed by our own LP (spirits bound $1991.93$, port-wine bound $2444.80$), is not validated against
+any published number, and the large residual gap to it ($79$--$94\%$) is \emph{structural}, as the
+learned policy controls only a scalar purchase volume whereas the bound assumes the full three-part
+issuance and blending decision under perfect information. For the same reason the gap is not comparable
+to the ${\approx}3.5\%$ deep-reinforcement-learning gap of \citet{pahrGrunow2025}, whose agent controls
+the full action space; we report the gap to the bound, never a beat against it.
 
 \end{document}
