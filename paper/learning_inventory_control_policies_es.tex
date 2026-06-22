@@ -306,9 +306,15 @@ bounded-DP optimum on small instances. For divergent \emph{multi-echelon} contro
 sales, the relevant family includes the neuro-dynamic-programming study of \citet{vanroy1997ndp}, the
 partial-lost-sales two-echelon model of \citet{nahmias1994partial}, multilocation approximations
 \citep{federgruen1984multilocation}, the broad typology of \citet{dekok2018typology}, the classical one-warehouse $N$-retailer
-distribution problem of \citet{schwarz1973owmr}, and recent DRL
-for one-warehouse multi-retailer systems \citep{kaynov2024owmr}. We use these as external benchmarks
-and otherwise train directly for each problem.
+distribution problem of \citet{schwarz1973owmr}, recent DRL for one-warehouse multi-retailer systems
+\citep{kaynov2024owmr}, and the serial Clark--Scarf optimum in \citet{snyder2019foundations}. The
+same validation frame also touches perishable inventory \citep{deMoor2022perishable,farrington2025perishable},
+joint replenishment \citep{vanvuchelen2020jrp}, non-stationary lot sizing
+\citep{dehaybe2024nonstationary}, spare-parts lateral transshipment
+\citep{kranenburg2006spares}, vendor-managed inventory \citep{sui2010vmi}, and decentralized
+Beer-Game control \citep{sterman1989beer,edali2014beer}. We use these rows as external benchmarks
+only where their verification status supports that claim; otherwise they serve as formulation or
+reference context and the learned-policy comparisons are same-protocol internal comparisons.
 
 \section{Policy representation, optimization, and evaluation}
 \label{sec:methods}
@@ -3961,7 +3967,7 @@ reproducible policy is often enough.
 % Bibliography embedded inline (natbib-compatible \bibitem labels) so the manuscript is
 % self-contained and renders with a single pdflatex pass -- no bibtex step required. The
 % same entries are also kept in references.bib for tooling that prefers a .bib database.
-\begin{thebibliography}{43}
+\begin{thebibliography}{47}
 
 \bibitem[Bijvank et al.(2015)]{Bijvank2015ParametricPolicies}
 M.~Bijvank, S.~Bhulai, and W.~T. Huh.
@@ -4173,6 +4179,31 @@ D.~Madeka, K.~Torkkola, C.~Eisenach, A.~Luo, D.~P. Foster, and S.~M. Kakade.
 Deep inventory management.
 \emph{arXiv preprint arXiv:2210.03137}, 2022.
 
+\bibitem[Dehaybe et al.(2024)]{dehaybe2024nonstationary}
+D.~Dehaybe, D.~Catanzaro, and P.~Chevalier.
+Deep reinforcement learning for inventory optimization with non-stationary uncertain demand.
+\emph{European Journal of Operational Research}, 314(2):433--445, 2024.
+
+\bibitem[Kranenburg(2006)]{kranenburg2006spares}
+A.~A. Kranenburg.
+\emph{Spare Parts Inventory Control under System Availability Constraints}.
+PhD thesis, Technische Universiteit Eindhoven, 2006.
+
+\bibitem[Sui et al.(2010)]{sui2010vmi}
+Z.~Sui, A.~Gosavi, and L.~Lin.
+A reinforcement learning approach for inventory replenishment in vendor-managed inventory systems with consignment inventory.
+\emph{Engineering Management Journal}, 22(4):44--53, 2010.
+
+\bibitem[Sterman(1989)]{sterman1989beer}
+J.~D. Sterman.
+Modeling managerial behavior: Misperceptions of feedback in a dynamic decision making experiment.
+\emph{Management Science}, 35(3):321--339, 1989.
+
+\bibitem[Edali and Yasarcan(2014)]{edali2014beer}
+M.~Edali and H.~Yasarcan.
+A mathematical model of the beer game.
+\emph{Journal of Artificial Societies and Social Simulation}, 17(4):2, 2014.
+
 \end{thebibliography}
 
 \clearpage
@@ -4181,26 +4212,70 @@ Deep inventory management.
 \section{Environment validation against the published literature}
 \label{app:validation}
 
-Every environment used in this paper is anchored to the published literature before it
-supports any learned-policy claim. For each problem we reproduce a known reference cost --- an exact
-optimum, an exact dynamic-programming cost, or a published heuristic / constant-base-stock cost ---
-under the same evaluation protocol as the main text, and report our reproduced value alongside the
-published one with the relative gap. The remainder of this appendix carries out this check problem by
-problem; where a residual gap remains (most notably one multi-echelon case study below, reproduced to
-within $1.31\%$), we state it explicitly and treat the reproduction as an implementation-fidelity
-check rather than a re-derivation of the published result. The per-problem subsections that follow
-validate the seven problems whose comparator is a published reproduction-able quantity (vanilla lost
-sales, fixed-cost lost sales, multi-echelon Van~Roy / dual sourcing, perishable inventory,
-general-network backorder, and serial multi-echelon), and then the
-production/assembly/distribution network, whose only published anchor is the single-node newsvendor
-cost: it is a faithful but \emph{not} literature-verified environment at the network level, so its
-validation is a single-node fidelity check rather than a published-number reproduction of the
-Section~\ref{sec:pirhoo} result (Section~\ref{app:pirhoo-validation}). The two remaining studied
-problems are anchored differently and therefore do not appear as published-number rows here: the
-one-warehouse multi-retailer (Section~\ref{app:owmr-validation}) and ameliorating-inventory
-(Section~\ref{app:amelior-validation}) results are reported against a best tuned in-environment
-heuristic (with, for ameliorating inventory, a perfect-information upper bound reported strictly as a
-bound); their anchoring subsections close this appendix.
+Every environment used in this paper has an executable validation anchor before it supports a
+learned-policy claim, but the anchors are not all the same kind. Some reproduce strict literature
+numbers or published action anchors; others are companion-code, handout, closed-form-reference, or
+repo-native self-consistency checks that are useful for implementation fidelity but are not strict
+literature verification. The machine-readable README contracts are the source of truth for that
+distinction. Tables~\ref{tab:validation-crosswalk-strict} and
+\ref{tab:validation-crosswalk-reference} summarize the current top-level contracts parsed by
+\texttt{python -m invman.benchmarks.verify PROBLEM --json}; this crosswalk is intentionally broader
+than the paper's empirical sections where the repository already carries a verification contract. The
+detailed subsections then give the paper-facing checks, including fixed-cost lost sales and
+additional multi-echelon rows that are not the top-level README contract.
+
+\begin{table}[!htbp]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\caption{README verification-contract crosswalk: strict literature and published-action anchors.}
+\label{tab:validation-crosswalk-strict}
+\begin{tabular}{p{0.16\textwidth}p{0.24\textwidth}p{0.14\textwidth}p{0.14\textwidth}p{0.24\textwidth}}
+\toprule
+Problem & Instance / policy & Expected reference value & Reproduced code value & Reference locator / status \\
+\midrule
+Lost sales & vanilla $L=4,p=4$, Poisson(5) / Myopic-2 & $4.82$ & $4.82075$ & Zipkin Table~3(a); strict literature \\
+Dual sourcing & \texttt{dual\_l2\_ce105} / single-index & $0.56$ pp & $0.567514$ pp & Gijsbrechts et al.\ Section~6.2 / Figure~9; strict literature \\
+Serial multi-echelon & Snyder--Shen Example~6.1 / serial DP & $47.65$ & $47.6654$ & Snyder \& Shen Example~6.1; strict literature \\
+Perishable inventory & De Moor--Farrington $m=2,L=1$, FIFO / value iteration & $-1457$ (rounded) & $-1457.2813$ & Farrington et al.\ Table~3; strict literature \\
+Joint replenishment & Vanvuchelen setting~5, state $(5,0)$ / value iteration & $q=(0,6)$ & $q=(0,6)$ & Vanvuchelen et al.\ Figure~3; strict published-action anchor \\
+Spare-parts inventory & Kranenburg Table~5.2 base case / analytical lateral transshipment & $91.9$ & $91.9$ & Kranenburg Table~5.2; strict adjacent analytical module, not the trainable env.rs model \\
+\bottomrule
+\end{tabular}
+\end{table}
+\FloatBarrier
+
+\begin{table}[!htbp]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\caption{README verification-contract crosswalk: non-strict reference, companion, handout, and repo-native anchors.}
+\label{tab:validation-crosswalk-reference}
+\begin{tabular}{p{0.16\textwidth}p{0.24\textwidth}p{0.14\textwidth}p{0.14\textwidth}p{0.24\textwidth}}
+\toprule
+Problem & Instance / policy & Expected reference value & Reproduced code value & Reference locator / status \\
+\midrule
+One-warehouse multi-retailer & Kaynov instance~7 / min-shortage echelon base stock & $1408.08$ & $1394.8165$ & Kaynov published heuristic row; non-strict stochastic cross-check, \texttt{literature\_verified=false} \\
+Ameliorating inventory & spirits\_0001 / perfect-information LP & $1991.9344293377$ & $1991.9344293931$ & Pahr--Grunow companion/reference LP bound; not a peer-reviewed published policy-cost reproduction \\
+Non-stationary lot sizing & \texttt{constant\_10} / simple $(s,S)$ & $1832.9142436489$ & $1834.918166$ & Dehaybe companion-code CSV; reference/companion, not article-table verification \\
+Vendor-managed inventory & Gosavi worked VMI newsvendor / newsvendor & $26.96$ & $26.96$ & Gosavi teaching handout; handout anchor, not peer-reviewed paper row \\
+Decentralized inventory control & classic Beer Game / closed-form anchor-and-adjust & $204.0$ & $204.0$ & Sterman / Edali--Yasarcan closed-form port; reference anchor, trainable env.rs not verified \\
+Joint pricing inventory & reduced exact verifier / exact DP & no public value carried & $-33.178121049724$ & repo-native exact-DP self-consistency; no public numeric anchor \\
+Procurement-removal inventory & reduced exact verifier / exact DP & no public value carried & $31.780261113697$ & repo-native exact-DP self-consistency; no public numeric anchor \\
+Random-yield inventory & reduced all-or-nothing verifier / exact DP & no public value carried & $40.059897609854$ & repo-native exact-DP self-consistency; no public numeric anchor \\
+\bottomrule
+\end{tabular}
+\end{table}
+\FloatBarrier
+
+The remainder of this appendix carries out the paper-facing checks problem by problem. Where a
+residual gap remains (for example, a calibrated multi-echelon case study reproduced to within
+$1.31\%$), we state it explicitly and treat the reproduction as an implementation-fidelity check
+rather than a re-derivation of the published result. The production/assembly/distribution network is
+handled similarly: its only published anchor is the single-node newsvendor cost, so the network-level
+learned-policy result remains a same-protocol research comparison rather than a published-number
+beat. One-warehouse multi-retailer and ameliorating inventory are closed with their own non-strict
+anchoring subsections.
 
 \subsection{Published vanilla lost-sales validation}
 
@@ -4314,6 +4389,14 @@ bounded-DP cost is mildly inconsistent --- it falls slightly below the simulated
 and widening the bounds to remove the truncation is computationally prohibitive at $l_r=4$. The
 capped dual-index proxy is near-exact to within its published gap and is evaluated on the identical
 common-random-number rollout as the learned policies.
+
+The README verification contract deliberately uses a different Figure~9 row from the same source:
+\texttt{dual\_l2\_ce105} with the single-index policy. That contract checks the reported
+single-index optimality gap of $0.56$ percentage points against the reproduced value
+$0.567514$ percentage points with a $0.01$-point tolerance
+\citep[Section~6.2 / Figure~9]{gijsbrechts2022drl}. Thus the machine-readable strict anchor is the
+single-index row, while the experiment design still uses capped dual-index as the near-optimal
+comparator because it is the strongest published static heuristic on the same grid.
 
 \paragraph{Robustness of CDI's near-optimality (regime sweep).} The proxy choice is further justified
 by a direct regime sweep at $l_r=2$, where the bounded-DP value iteration \emph{can} be validated by
@@ -4527,29 +4610,33 @@ we claim for this environment, and it holds.
 \label{app:owmr-validation}
 
 The one-warehouse multi-retailer environment (Section~\ref{sec:owmr}) is not anchored to a reproduced
-published cost, and we list no published-number row for it. The comparator scalars of
-\citet{kaynov2024owmr} rest on a demand convention we could not verify and on unpublished PPO
-hyperparameters, so neither their environment nor their learner is reproducible from the paper; their
-PPO numbers are quoted in Section~\ref{sec:owmr-results} strictly as cross-protocol context, never as a
-head-to-head beat. Verification here is instead internal to the environment: the learned policy is
-compared, under our own protocol, against the environment's \emph{own} best tuned echelon base-stock
-with allocation heuristic, with the seed-robust improvements reported in Table~\ref{tab:owmr-results};
-and we additionally train a faithful in-protocol PPO under our own convention as a corroborating
-baseline, which converges to the same heuristic basin. No published quantity is reproduced and none is
-claimed.
+strict literature optimum or exact published environment reproduction. The README contract instead
+carries a non-strict published-heuristic simulation cross-check: Kaynov instance~7, min-shortage
+echelon base stock, has reference cost $1408.08$ and our reproduction is $1394.8165$ under a loose
+$1.2\%$ stochastic tolerance, with \texttt{literature\_verified=false}. The comparator scalars of
+\citet{kaynov2024owmr} rest on a demand convention we could not fully verify and on unpublished PPO
+hyperparameters, so their PPO numbers are quoted in Section~\ref{sec:owmr-results} strictly as
+cross-protocol context, never as a head-to-head beat. The paper's learned-policy comparison remains
+same-protocol and internal: the learned policy is compared against the environment's \emph{own} best
+tuned echelon base-stock with allocation heuristic, with the seed-robust improvements reported in
+Table~\ref{tab:owmr-results}; and we additionally train a faithful in-protocol PPO under our own
+convention as a corroborating baseline, which converges to the same heuristic basin.
 
 \subsection{Ameliorating-inventory anchoring}
 \label{app:amelior-validation}
 
-The ameliorating-inventory environment (Section~\ref{sec:amelior}) likewise reproduces no published
-cost. Its like-for-like result is a beat over the environment's \emph{own} best tuned order-up-to
-purchase heuristic (Table~\ref{tab:amelior-results}). The only absolute reference we report is a
-perfect-information steady-state linear-programming value, used \emph{strictly as an upper bound}: it is
-computed by our own LP (spirits bound $1991.93$, port-wine bound $2444.80$), is not validated against
-any published number, and the large residual gap to it ($79$--$94\%$) is \emph{structural}, as the
-learned policy controls only a scalar purchase volume whereas the bound assumes the full three-part
-issuance and blending decision under perfect information. For the same reason the gap is not comparable
-to the ${\approx}3.5\%$ deep-reinforcement-learning gap of \citet{pahrGrunow2025}, whose agent controls
-the full action space; we report the gap to the bound, never a beat against it.
+The ameliorating-inventory environment (Section~\ref{sec:amelior}) likewise has no strict
+peer-reviewed published policy-cost reproduction. Its like-for-like result is a beat over the
+environment's \emph{own} best tuned order-up-to purchase heuristic (Table~\ref{tab:amelior-results}).
+The README contract carries a companion/reference perfect-information steady-state
+linear-programming bound for the spirits instance: reference value $1991.9344293376805$ and reproduced
+LP value $1991.9344293930808$, with \texttt{literature\_verified=false}. We use this value
+\emph{strictly as an upper bound}, not as an achieved trainable-policy cost and not as a
+peer-reviewed published-cost reproduction; the analogous port-wine bound is $2444.80$. The large
+residual gap to these bounds ($79$--$94\%$) is \emph{structural}, as the learned policy controls only a
+scalar purchase volume whereas the bound assumes the full three-part issuance and blending decision
+under perfect information. For the same reason the gap is not comparable to the ${\approx}3.5\%$
+deep-reinforcement-learning gap of \citet{pahrGrunow2025}, whose agent controls the full action
+space; we report the gap to the bound, never a beat against it.
 
 \end{document}
