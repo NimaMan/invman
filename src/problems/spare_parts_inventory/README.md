@@ -8,32 +8,25 @@ The fenced block is the machine-readable contract. The sections below it are the
 {
   "schema_version": 1,
   "problem": "spare_parts_inventory",
-  "status": "reference_adjacent_strict_number",
-  "instance": {
-    "id": "kranenburg2006_table5_2_base_case",
-    "parameters": {
-      "situation": 1
-    }
+  "instance_id": "kranenburg2006_table5_2_base_case",
+  "instance_parameters": {
+    "situation": 1
   },
-  "comparator": {
-    "policy": "lateral_transshipment_analytical",
-    "metric": "cost"
+  "policy": "lateral_transshipment_analytical",
+  "metric": "cost",
+  "expected_value": 91.9,
+  "reference": {
+    "citation": "Kranenburg (2006), Spare parts inventory control under system availability constraints",
+    "locator": "Chapter 5, Table 5.2 base case, situation 1 cost C",
+    "doi_or_url": "https://doi.org/10.6100/IR616052",
+    "literature_verified": true,
+    "notes": "Adjacent analytical lateral-transshipment module; this does not verify the trainable periodic-review env.rs model."
   },
-  "literature": {
-    "value": 91.9,
-    "units": "cost",
-    "source": "Kranenburg (2006) lateral-transshipment analytical table",
-    "locator": "Table 5.2 base case, situation 1 cost C",
-    "url_or_doi": null
+  "code_value": 91.9,
+  "tolerance": {
+    "absolute": 0.02
   },
-  "reproduction": {
-    "current_value": 91.9,
-    "tolerance": {
-      "absolute": 0.02
-    },
-    "last_validated": "2026-06-22",
-    "command": "python - <<'PY'\nimport invman_rust as ir\ns = ir.spare_parts_inventory_kranenburg_exact_summary(\"kranenburg2006_table5_2_base_case\")\nprint(s[\"evaluation\"])\nprint(s[\"published_table_comparison\"])\nassert s[\"published_table_comparison\"][\"all_within_tolerance\"]\nPY"
-  }
+  "command": "python - <<'PY'\nimport invman_rust as ir\ns = ir.spare_parts_inventory_kranenburg_exact_summary(\"kranenburg2006_table5_2_base_case\")\nprint(s[\"evaluation\"])\nprint(s[\"published_table_comparison\"])\nassert s[\"published_table_comparison\"][\"all_within_tolerance\"]\nPY"
 }
 ```
 

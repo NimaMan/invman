@@ -8,32 +8,25 @@ The fenced block is the machine-readable contract. The sections below it are the
 {
   "schema_version": 1,
   "problem": "vendor_managed_inventory",
-  "status": "handout_reference_not_peer_reviewed_repo_anchor",
-  "instance": {
-    "id": "gosavi_vmi_worked_newsvendor_case",
-    "parameters": {
-      "case": "cycle demand order-up-to levels"
-    }
+  "instance_id": "gosavi_vmi_worked_newsvendor_case",
+  "instance_parameters": {
+    "case": "cycle demand order-up-to levels"
   },
-  "comparator": {
-    "policy": "newsvendor",
-    "metric": "order_up_to_level"
-  },
-  "literature": {
-    "value": 26.96,
-    "units": "displayed order-up-to level",
-    "source": "Gosavi teaching handout based on Sui, Gosavi, and Lin (2010)",
+  "policy": "newsvendor",
+  "metric": "order_up_to_level",
+  "expected_value": 26.96,
+  "reference": {
+    "citation": "Gosavi teaching handout based on Sui, Gosavi, and Lin (2010)",
     "locator": "worked VMI newsvendor case displayed value",
-    "url_or_doi": null
+    "doi_or_url": null,
+    "literature_verified": false,
+    "notes": "Open instructional handout anchor, not a peer-reviewed numeric benchmark."
   },
-  "reproduction": {
-    "current_value": 26.9905428333404,
-    "tolerance": {
-      "display_rounding_absolute": 0.01
-    },
-    "last_validated": "2026-06-22",
-    "command": "python - <<'PY'\nimport invman_rust as ir\ns = ir.vendor_managed_inventory_newsvendor_worked_case_summary()\nprint(s[\"mean_demand_heuristic_order_up_to\"])\nprint(s[\"six_sigma_order_up_to\"])\nprint(s[\"newsvendor_order_up_to\"])\nassert s[\"mean_demand_heuristic_order_up_to\"] == 15.0\nassert abs(s[\"six_sigma_order_up_to\"] - 31.53) <= 0.01\nassert abs(s[\"displayed_newsvendor_order_up_to\"] - 26.96) <= 0.01\nPY"
-  }
+  "code_value": 26.96,
+  "tolerance": {
+    "display_rounding_absolute": 0.01
+  },
+  "command": "python - <<'PY'\nimport invman_rust as ir\ns = ir.vendor_managed_inventory_newsvendor_worked_case_summary()\nprint(s[\"mean_demand_heuristic_order_up_to\"])\nprint(s[\"six_sigma_order_up_to\"])\nprint(s[\"newsvendor_order_up_to\"])\nassert s[\"mean_demand_heuristic_order_up_to\"] == 15.0\nassert abs(s[\"six_sigma_order_up_to\"] - 31.53) <= 0.01\nassert abs(s[\"displayed_newsvendor_order_up_to\"] - 26.96) <= 0.01\nPY"
 }
 ```
 

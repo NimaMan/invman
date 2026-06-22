@@ -8,32 +8,25 @@ The fenced block is the machine-readable contract. The sections below it are the
 {
   "schema_version": 1,
   "problem": "multi_echelon",
-  "status": "strict_peer_reviewed_number",
-  "instance": {
-    "id": "serial_clark_scarf_snyder_shen_example_6_1",
-    "parameters": {
-      "network": "serial"
-    }
+  "instance_id": "serial_clark_scarf_snyder_shen_example_6_1",
+  "instance_parameters": {
+    "network": "serial"
   },
-  "comparator": {
-    "policy": "serial_dp",
-    "metric": "optimal_average_cost"
-  },
-  "literature": {
-    "value": 47.65,
-    "units": "average cost",
-    "source": "Snyder and Shen serial Clark-Scarf example 6.1",
+  "policy": "serial_dp",
+  "metric": "optimal_average_cost",
+  "expected_value": 47.65,
+  "reference": {
+    "citation": "Snyder and Shen serial Clark-Scarf example 6.1",
     "locator": "Example 6.1 optimal serial-system cost",
-    "url_or_doi": null
+    "doi_or_url": null,
+    "literature_verified": true,
+    "notes": "Primary strict target for the multi_echelon umbrella family."
   },
-  "reproduction": {
-    "current_value": 47.66539330768766,
-    "tolerance": {
-      "absolute": 0.03
-    },
-    "last_validated": "2026-06-22",
-    "command": "python - <<'PY'\nimport invman_rust as ir\ns = ir.multi_echelon_serial_exact_normal_solution(\n    [3, 2, 2],\n    [1, 1, 2],\n    37.12,\n    5.0,\n    1.0,\n)\nprint(s[\"optimal_cost\"])\nassert abs(s[\"optimal_cost\"] - 47.65) <= 0.03\nPY"
-  }
+  "code_value": 47.66539330768766,
+  "tolerance": {
+    "absolute": 0.03
+  },
+  "command": "python - <<'PY'\nimport invman_rust as ir\ns = ir.multi_echelon_serial_exact_normal_solution(\n    [3, 2, 2],\n    [1, 1, 2],\n    37.12,\n    5.0,\n    1.0,\n)\nprint(s[\"optimal_cost\"])\nassert abs(s[\"optimal_cost\"] - 47.65) <= 0.03\nPY"
 }
 ```
 

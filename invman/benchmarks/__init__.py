@@ -11,11 +11,12 @@ Two layers, one source of truth (`docs/benchmarks/BENCHMARK_MANIFEST.json`):
   baselines, re-runs those baselines on the live env (`run_baselines`), and
   scores their own soft-tree policy (`evaluate`). Imports `invman_rust` lazily —
   only when a runner is actually requested. See `runners/`.
+* `verify` — README-local verification-target contract parser and CLI helper.
 """
 
 from invman.benchmarks import catalog
 
-__all__ = ["catalog", "runners"]
+__all__ = ["catalog", "runners", "verify"]
 
 
 def __getattr__(name):
@@ -24,8 +25,8 @@ def __getattr__(name):
     # runners package / invman_rust. Use importlib with the FULL path so the
     # submodule is bound directly (a relative `from . import runners` would route
     # back through this __getattr__ and recurse).
-    if name == "runners":
+    if name in {"runners", "verify"}:
         import importlib
 
-        return importlib.import_module("invman.benchmarks.runners")
+        return importlib.import_module(f"invman.benchmarks.{name}")
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

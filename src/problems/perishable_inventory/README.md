@@ -8,34 +8,27 @@ The fenced block is the machine-readable contract. The sections below it are the
 {
   "schema_version": 1,
   "problem": "perishable_inventory",
-  "status": "strict_peer_reviewed_number",
-  "instance": {
-    "id": "de_moor2022_m2_exp2_l1_cp7_fifo",
-    "parameters": {
-      "lifetime": 2,
-      "lead_time": 1,
-      "policy": "FIFO"
-    }
+  "instance_id": "de_moor2022_m2_exp2_l1_cp7_fifo",
+  "instance_parameters": {
+    "lifetime": 2,
+    "lead_time": 1,
+    "policy": "FIFO"
   },
-  "comparator": {
-    "policy": "value_iteration",
-    "metric": "mean_return_rounded"
+  "policy": "value_iteration",
+  "metric": "mean_return_rounded",
+  "expected_value": -1457,
+  "reference": {
+    "citation": "Farrington, Wong, Li, and Utley (2025), Going faster to see further: graphics processing unit-accelerated value iteration and simulation for perishable inventory control using JAX",
+    "locator": "Table 3, m=2, experiment 2, L=1, c_p=7, FIFO row",
+    "doi_or_url": "https://doi.org/10.1007/s10479-025-06551-6",
+    "literature_verified": true,
+    "notes": "Rounded mean-return table convention; De Moor et al. (2022) is the secondary structural source."
   },
-  "literature": {
-    "value": -1457,
-    "units": "rounded mean return",
-    "source": "De Moor et al. (2022) perishable inventory value-iteration table",
-    "locator": "m=2, experiment 2, L=1, c_p=7, FIFO row",
-    "url_or_doi": null
+  "code_value": -1457.281304782201,
+  "tolerance": {
+    "rounded_exact": true
   },
-  "reproduction": {
-    "current_value": -1457.281304782201,
-    "tolerance": {
-      "rounded_exact": true
-    },
-    "last_validated": "2026-06-22",
-    "command": "python - <<'PY'\nimport invman_rust as ir\ns = ir.perishable_inventory_exact_mdp_summary(\"de_moor2022_m2_exp2_l1_cp7_fifo\")\nprint(s[\"value_iteration_mean_return\"])\nprint(s[\"value_iteration_mean_return_rounded\"])\nprint(s[\"matches_published_value_iteration_mean_return\"])\nprint(s[\"matches_published_policy_table\"])\nprint(s[\"matches_published_base_stock_level\"])\nassert s[\"value_iteration_mean_return_rounded\"] == -1457\nassert s[\"matches_published_value_iteration_mean_return\"]\nassert s[\"matches_published_policy_table\"]\nassert s[\"matches_published_base_stock_level\"]\nPY"
-  }
+  "command": "python - <<'PY'\nimport invman_rust as ir\ns = ir.perishable_inventory_exact_mdp_summary(\"de_moor2022_m2_exp2_l1_cp7_fifo\")\nprint(s[\"value_iteration_mean_return\"])\nprint(s[\"value_iteration_mean_return_rounded\"])\nprint(s[\"matches_published_value_iteration_mean_return\"])\nprint(s[\"matches_published_policy_table\"])\nprint(s[\"matches_published_base_stock_level\"])\nassert s[\"value_iteration_mean_return_rounded\"] == -1457\nassert s[\"matches_published_value_iteration_mean_return\"]\nassert s[\"matches_published_policy_table\"]\nassert s[\"matches_published_base_stock_level\"]\nPY"
 }
 ```
 

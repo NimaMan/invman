@@ -8,33 +8,26 @@ The fenced block is the machine-readable contract. The sections below it are the
 {
   "schema_version": 1,
   "problem": "random_yield_inventory",
-  "status": "no_public_literature_number_repo_exact_anchor",
-  "instance": {
-    "id": "reduced_exact_verification_instance",
-    "parameters": {
-      "yield_model": "all_or_nothing",
-      "scope": "finite-horizon discounted MDP"
-    }
+  "instance_id": "reduced_exact_verification_instance",
+  "instance_parameters": {
+    "yield_model": "all_or_nothing",
+    "scope": "finite-horizon discounted MDP"
   },
-  "comparator": {
-    "policy": "exact_dynamic_program",
-    "metric": "discounted_optimal_cost"
-  },
-  "literature": {
-    "value": null,
-    "units": "cost",
-    "source": "No public literature number currently carried for this exact all-or-nothing yield MDP",
+  "policy": "exact_dynamic_program",
+  "metric": "discounted_optimal_cost",
+  "expected_value": null,
+  "reference": {
+    "citation": "No public literature number currently carried for this exact all-or-nothing yield MDP",
     "locator": null,
-    "url_or_doi": null
+    "doi_or_url": null,
+    "literature_verified": false,
+    "notes": "Repo-native exact-DP self-consistency anchor; formulation-class papers do not provide this carried public numeric target."
   },
-  "reproduction": {
-    "current_value": 40.05989760985441,
-    "tolerance": {
-      "absolute": 1e-09
-    },
-    "last_validated": "2026-06-22",
-    "command": "python - <<'PY'\nimport invman_rust as ir\ns = ir.random_yield_inventory_exact_dp_summary()\nprint(s[\"optimal_discounted_cost\"])\nprint(s[\"optimal_first_action\"])\nassert abs(s[\"optimal_discounted_cost\"] - 40.05989760985441) <= 1e-9\nassert s[\"optimal_first_action\"] == 4\nPY"
-  }
+  "code_value": 40.05989760985441,
+  "tolerance": {
+    "absolute": 1e-09
+  },
+  "command": "python - <<'PY'\nimport invman_rust as ir\ns = ir.random_yield_inventory_exact_dp_summary()\nprint(s[\"optimal_discounted_cost\"])\nprint(s[\"optimal_first_action\"])\nassert abs(s[\"optimal_discounted_cost\"] - 40.05989760985441) <= 1e-9\nassert s[\"optimal_first_action\"] == 4\nPY"
 }
 ```
 

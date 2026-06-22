@@ -8,33 +8,26 @@ The fenced block is the machine-readable contract. The sections below it are the
 {
   "schema_version": 1,
   "problem": "one_warehouse_multi_retailer",
-  "status": "published_heuristic_simulation_match",
-  "instance": {
-    "id": "kaynov2024_instance_7",
-    "parameters": {
-      "replications": 1000,
-      "seed": 2222
-    }
+  "instance_id": "kaynov2024_instance_7",
+  "instance_parameters": {
+    "replications": 1000,
+    "seed": 2222
   },
-  "comparator": {
-    "policy": "lost_sales_echelon_base_stock_min_shortage",
-    "metric": "simulation_cost"
-  },
-  "literature": {
-    "value": 1408.08,
-    "units": "cost",
-    "source": "Kaynov et al. (2024) published one-warehouse multi-retailer benchmark row",
+  "policy": "lost_sales_echelon_base_stock_min_shortage",
+  "metric": "simulation_cost",
+  "expected_value": 1408.08,
+  "reference": {
+    "citation": "Kaynov et al. (2024) published one-warehouse multi-retailer benchmark row",
     "locator": "instance 7 min-shortage benchmark cost, standard error 0.95",
-    "url_or_doi": null
+    "doi_or_url": "https://doi.org/10.1016/j.ijpe.2023.109088",
+    "literature_verified": false,
+    "notes": "A published heuristic simulation row that reproduces within a loose stochastic tolerance; not a strict literature optimum."
   },
-  "reproduction": {
-    "current_value": 1394.8165,
-    "tolerance": {
-      "relative_percent": 1.2
-    },
-    "last_validated": "2026-06-22",
-    "command": "python scripts/one_warehouse_multi_retailer/validate_reference_instance.py \\\n  --reference_name kaynov2024_instance_7 \\\n  --benchmark_replications 1000 \\\n  --seed 2222"
-  }
+  "code_value": 1394.8165,
+  "tolerance": {
+    "relative_percent": 1.2
+  },
+  "command": "python scripts/one_warehouse_multi_retailer/validate_reference_instance.py \\\n  --reference_name kaynov2024_instance_7 \\\n  --benchmark_replications 1000 \\\n  --seed 2222"
 }
 ```
 

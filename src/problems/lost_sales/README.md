@@ -8,39 +8,32 @@ The fenced block is the machine-readable contract. The sections below it are the
 {
   "schema_version": 1,
   "problem": "lost_sales",
-  "status": "strict_peer_reviewed_number",
-  "instance": {
-    "id": "vanilla_l4_p4_poisson5",
-    "parameters": {
-      "demand_distribution": "Poisson",
-      "demand_mean": 5.0,
-      "lead_time": 4,
-      "holding_cost": 1.0,
-      "lost_sales_penalty": 4.0,
-      "fixed_order_cost": 0.0,
-      "horizon": 100000,
-      "seed": 123
-    }
+  "instance_id": "vanilla_l4_p4_poisson5",
+  "instance_parameters": {
+    "demand_distribution": "Poisson",
+    "demand_mean": 5.0,
+    "lead_time": 4,
+    "holding_cost": 1.0,
+    "lost_sales_penalty": 4.0,
+    "fixed_order_cost": 0.0,
+    "horizon": 100000,
+    "seed": 123
   },
-  "comparator": {
-    "policy": "myopic2",
-    "metric": "average_cost"
-  },
-  "literature": {
-    "value": 4.82,
-    "units": "average cost",
-    "source": "Zipkin (2008), Old and New Methods for Lost-Sales Inventory Systems, Operations Research 56(5):1256-1263",
+  "policy": "myopic2",
+  "metric": "average_cost",
+  "expected_value": 4.82,
+  "reference": {
+    "citation": "Zipkin (2008), Old and New Methods for Lost-Sales Inventory Systems, Operations Research 56(5):1256-1263",
     "locator": "Table 3(a), Poisson demand, penalty p=4, lead-time column L=4, p.1261",
-    "url_or_doi": "https://doi.org/10.1287/opre.1070.0471"
+    "doi_or_url": "https://doi.org/10.1287/opre.1070.0471",
+    "literature_verified": true,
+    "notes": "Myopic-2 row exercises the repo environment and heuristic evaluator."
   },
-  "reproduction": {
-    "current_value": 4.82075,
-    "tolerance": {
-      "absolute": 0.02
-    },
-    "last_validated": "2026-06-22",
-    "command": "python -c \"import invman_rust as ir; s=ir.lost_sales_heuristics_all('Poisson',5.0,0,0,0,0,4,1.0,4.0,0.0,0.0,100000,123,0.2,200,0.995); got=s['myopic2']; print(got); assert abs(got - 4.82) <= 0.02\""
-  }
+  "code_value": 4.82075,
+  "tolerance": {
+    "absolute": 0.02
+  },
+  "command": "python -c \"import invman_rust as ir; s=ir.lost_sales_heuristics_all('Poisson',5.0,0,0,0,0,4,1.0,4.0,0.0,0.0,100000,123,0.2,200,0.995); got=s['myopic2']; print(got); assert abs(got - 4.82) <= 0.02\""
 }
 ```
 

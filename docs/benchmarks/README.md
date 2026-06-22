@@ -44,6 +44,8 @@ The pre-rendered cards live in [`cards/`](./cards/) — one **BENCHMARK_CARD** p
 
 Each implemented problem family under `src/problems/<problem>/` has one primary verification target section in that folder's `README.md`. The section starts with a parseable `json verification-target` block, then gives a human-readable source, target, tolerance, and command for checking whether the environment still reproduces its target.
 
+The contract is intentionally flat and README-local. Required machine fields are `problem`, `instance_id`, `instance_parameters`, `policy`, `metric`, `expected_value`, `reference`, `code_value`, `tolerance`, and `command`. `expected_value` is the literature/reference value when one exists; when it is `null`, the target is explicitly not literature-verified and `code_value` is only a repo-native self-consistency anchor. The helper `python -m invman.benchmarks.verify <problem>` validates the block and compares `code_value` to `expected_value`; add `--run-command` to execute the declared command as well.
+
 | Problem | Verification README | Primary target status |
 | --- | --- | --- |
 | `ameliorating_inventory` | `src/problems/ameliorating_inventory/README.md` | companion LP bound |
@@ -61,7 +63,7 @@ Each implemented problem family under `src/problems/<problem>/` has one primary 
 | `spare_parts_inventory` | `src/problems/spare_parts_inventory/README.md` | adjacent Kranenburg analytical table |
 | `vendor_managed_inventory` | `src/problems/vendor_managed_inventory/README.md` | open handout anchor, not peer reviewed |
 
-Do not mark a problem `literature_verified` just because it has a structurally faithful environment. Literature verification requires an executable comparison between a repo-generated quantity and a clearly referenced published or companion-source quantity. When no public number exists, the README contract must say so directly and point to the repo-native exact anchor instead.
+Do not mark a problem `literature_verified` just because it has a structurally faithful environment. Literature verification requires an executable comparison between a repo-generated quantity and a clearly referenced published or companion-source quantity. When no public number exists, the README contract must say so directly with `expected_value: null`, `reference.literature_verified: false`, and a repo-native `code_value` anchor.
 
 ### Executable layer — run a baseline, not just read it
 

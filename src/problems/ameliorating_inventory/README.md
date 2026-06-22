@@ -8,32 +8,25 @@ The fenced block is the machine-readable contract. The sections below it are the
 {
   "schema_version": 1,
   "problem": "ameliorating_inventory",
-  "status": "reference_companion_bound",
-  "instance": {
-    "id": "pahr_grunow2025_spirits_0001",
-    "parameters": {
-      "source_dataset": "author companion spirits instance 0001"
-    }
+  "instance_id": "pahr_grunow2025_spirits_0001",
+  "instance_parameters": {
+    "source_dataset": "author companion spirits instance 0001"
   },
-  "comparator": {
-    "policy": "perfect_information_lp",
-    "metric": "max_reward_average_profit_upper_bound"
-  },
-  "literature": {
-    "value": 1991.9344293376805,
-    "units": "average profit upper bound",
-    "source": "Pahr and Grunow (2025) companion dataset/reference implementation",
+  "policy": "perfect_information_lp",
+  "metric": "max_reward_average_profit_upper_bound",
+  "expected_value": 1991.9344293376805,
+  "reference": {
+    "citation": "Pahr and Grunow (2025), The Value of Blending - Managing Ameliorating Inventory Using Deep Reinforcement Learning, Production and Operations Management",
     "locator": "spirits_0001 companion LP reference row",
-    "url_or_doi": null
+    "doi_or_url": "https://doi.org/10.1177/10591478251387795",
+    "literature_verified": false,
+    "notes": "Author companion-data perfect-information upper bound; not an achieved trainable-env policy value."
   },
-  "reproduction": {
-    "current_value": 1991.9344293930808,
-    "tolerance": {
-      "absolute": 1e-06
-    },
-    "last_validated": "2026-06-22",
-    "command": "python - <<'PY'\nimport invman_rust as ir\ns = ir.ameliorating_inventory_perfect_info_lp_bound_summary(\"pahr_grunow2025_spirits_0001\")\nprint(s[\"upper_bound_max_reward\"])\nprint(s[\"published_max_reward\"])\nprint(s[\"max_reward_gap_to_published\"])\nassert abs(s[\"upper_bound_max_reward\"] - s[\"published_max_reward\"]) <= 1e-6\nPY"
-  }
+  "code_value": 1991.9344293930808,
+  "tolerance": {
+    "absolute": 1e-06
+  },
+  "command": "python - <<'PY'\nimport invman_rust as ir\ns = ir.ameliorating_inventory_perfect_info_lp_bound_summary(\"pahr_grunow2025_spirits_0001\")\nprint(s[\"upper_bound_max_reward\"])\nprint(s[\"published_max_reward\"])\nprint(s[\"max_reward_gap_to_published\"])\nassert abs(s[\"upper_bound_max_reward\"] - s[\"published_max_reward\"]) <= 1e-6\nPY"
 }
 ```
 

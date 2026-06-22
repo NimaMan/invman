@@ -8,34 +8,27 @@ The fenced block is the machine-readable contract. The sections below it are the
 {
   "schema_version": 1,
   "problem": "decentralized_inventory_control",
-  "status": "reference_closed_form_number",
-  "instance": {
-    "id": "beer_game_classic_four_stage",
-    "parameters": {
-      "horizon_weeks": 36,
-      "stages": 4,
-      "demand_path": "4 for 4 weeks, then 8"
-    }
+  "instance_id": "beer_game_classic_four_stage",
+  "instance_parameters": {
+    "horizon_weeks": 36,
+    "stages": 4,
+    "demand_path": "4 for 4 weeks, then 8"
   },
-  "comparator": {
-    "policy": "classic_anchor_and_adjust_closed_form",
-    "metric": "total_cost_36_weeks"
-  },
-  "literature": {
-    "value": 204.0,
-    "units": "total cost",
-    "source": "Sterman / Edali-Yasarcan classic Beer Game closed-form reference carried by repo",
+  "policy": "classic_anchor_and_adjust_closed_form",
+  "metric": "total_cost_36_weeks",
+  "expected_value": 204.0,
+  "reference": {
+    "citation": "Sterman / Edali-Yasarcan classic Beer Game closed-form reference carried by repo",
     "locator": "per-stage costs [46, 50, 54, 54]",
-    "url_or_doi": null
+    "doi_or_url": null,
+    "literature_verified": false,
+    "notes": "Closed-form reference anchor, not a peer-reviewed printed cost table reproduced by the trainable env.rs MDP."
   },
-  "reproduction": {
-    "current_value": 204.0,
-    "tolerance": {
-      "absolute": 0.0
-    },
-    "last_validated": "2026-06-22",
-    "command": "python - <<'PY'\nimport invman_rust as ir\ns = ir.decentralized_inventory_control_classic_sterman_literature_summary()\nprint(s)\nassert s[\"per_agent_costs\"] == [46.0, 50.0, 54.0, 54.0]\nassert s[\"total_cost\"] == 204.0\nPY"
-  }
+  "code_value": 204.0,
+  "tolerance": {
+    "absolute": 0.0
+  },
+  "command": "python - <<'PY'\nimport invman_rust as ir\ns = ir.decentralized_inventory_control_classic_sterman_literature_summary()\nprint(s)\nassert s[\"per_agent_costs\"] == [46.0, 50.0, 54.0, 54.0]\nassert s[\"total_cost\"] == 204.0\nPY"
 }
 ```
 

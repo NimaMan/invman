@@ -8,41 +8,34 @@ The fenced block is the machine-readable contract. The sections below it are the
 {
   "schema_version": 1,
   "problem": "joint_replenishment",
-  "status": "published_action_reproduction",
-  "instance": {
-    "id": "vanvuchelen_setting_5_state_5_0",
-    "parameters": {
-      "state": [
-        5,
-        0
-      ]
-    }
+  "instance_id": "vanvuchelen_setting_5_state_5_0",
+  "instance_parameters": {
+    "state": [
+      5,
+      0
+    ]
   },
-  "comparator": {
-    "policy": "infinite_horizon_value_iteration",
-    "metric": "optimal_action"
+  "policy": "infinite_horizon_value_iteration",
+  "metric": "optimal_action",
+  "expected_value": [
+    0,
+    6
+  ],
+  "reference": {
+    "citation": "Vanvuchelen, Gijsbrechts, and Boute (2020), Use of Proximal Policy Optimization for the Joint Replenishment Problem",
+    "locator": "Figure 3 / setting 5, published optimal action at state (5, 0)",
+    "doi_or_url": "https://doi.org/10.1016/j.compind.2020.103239",
+    "literature_verified": true,
+    "notes": "The published anchor is an action, not an absolute cost."
   },
-  "literature": {
-    "value": [
-      0,
-      6
-    ],
-    "units": "order quantities",
-    "source": "Vanvuchelen et al. joint replenishment setting 5",
-    "locator": "published optimal action at state (5, 0)",
-    "url_or_doi": null
+  "code_value": [
+    0,
+    6
+  ],
+  "tolerance": {
+    "exact": true
   },
-  "reproduction": {
-    "current_value": [
-      0,
-      6
-    ],
-    "tolerance": {
-      "exact": true
-    },
-    "last_validated": "2026-06-22",
-    "command": "python - <<'PY'\nimport invman_rust as ir\na = ir.joint_replenishment_published_action_anchor()\nprint(a)\nassert list(a[\"state_inventory_levels\"]) == [5, 0]\nassert list(a[\"optimal_action\"]) == [0, 6]\nPY"
-  }
+  "command": "python - <<'PY'\nimport invman_rust as ir\na = ir.joint_replenishment_published_action_anchor()\nprint(a)\nassert list(a[\"state_inventory_levels\"]) == [5, 0]\nassert list(a[\"optimal_action\"]) == [0, 6]\nPY"
 }
 ```
 

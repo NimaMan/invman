@@ -8,32 +8,26 @@ The fenced block is the machine-readable contract. The sections below it are the
 {
   "schema_version": 1,
   "problem": "nonstationary_lot_sizing",
-  "status": "reference_companion_code_number",
-  "instance": {
-    "id": "constant_10",
-    "parameters": {
-      "source": "author companion-code single-item branch"
-    }
+  "instance_id": "constant_10",
+  "instance_parameters": {
+    "source": "author companion-code single-item branch",
+    "replications": 25000
   },
-  "comparator": {
-    "policy": "simple_s_s",
-    "metric": "total_cost"
+  "policy": "simple_s_s",
+  "metric": "total_cost",
+  "expected_value": 1832.9142436489014,
+  "reference": {
+    "citation": "Dehaybe, Catanzaro, and Chevalier (2024), Deep Reinforcement Learning for inventory optimization with non-stationary uncertain demand",
+    "locator": "constant_10 author companion-code CSV row, simple (s,S) total cost",
+    "doi_or_url": "https://doi.org/10.1016/j.ejor.2023.10.007",
+    "literature_verified": false,
+    "notes": "Author companion-code CSV value, not a peer-reviewed article table cell."
   },
-  "literature": {
-    "value": 1832.9142436489014,
-    "units": "total cost",
-    "source": "Dehaybe, Catanzaro, and Chevalier (2024) companion-code CSVs",
-    "locator": "constant_10 author testbed row, simple (s,S) total cost",
-    "url_or_doi": "https://doi.org/10.1016/j.ejor.2023.10.007"
+  "code_value": 1834.918166,
+  "tolerance": {
+    "absolute": 35.0
   },
-  "reproduction": {
-    "current_value": null,
-    "tolerance": {
-      "description": "script tolerances; use 25000 replications for publication-grade stochastic validation"
-    },
-    "last_validated": "2026-06-22",
-    "command": "python scripts/nonstationary_lot_sizing/run_literature_benchmark.py \\\n  --instances constant_10 \\\n  --replications 25000"
-  }
+  "command": "python scripts/nonstationary_lot_sizing/run_literature_benchmark.py \\\n  --instances constant_10 \\\n  --replications 25000"
 }
 ```
 
