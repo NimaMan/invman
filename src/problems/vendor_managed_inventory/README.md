@@ -1,5 +1,77 @@
 # Vendor Managed Inventory
 
+## Verification target
+
+The fenced block is the machine-readable contract. The sections below it are the human-readable audit trail: what instance is built, which literature/reference number is used, and how the repo-generated number is checked.
+
+```json verification-target
+{
+  "schema_version": 1,
+  "problem": "vendor_managed_inventory",
+  "status": "handout_reference_not_peer_reviewed_repo_anchor",
+  "instance": {
+    "id": "gosavi_vmi_worked_newsvendor_case",
+    "parameters": {
+      "case": "cycle demand order-up-to levels"
+    }
+  },
+  "comparator": {
+    "policy": "newsvendor",
+    "metric": "order_up_to_level"
+  },
+  "literature": {
+    "value": 26.96,
+    "units": "displayed order-up-to level",
+    "source": "Gosavi teaching handout based on Sui, Gosavi, and Lin (2010)",
+    "locator": "worked VMI newsvendor case displayed value",
+    "url_or_doi": null
+  },
+  "reproduction": {
+    "current_value": 26.9905428333404,
+    "tolerance": {
+      "display_rounding_absolute": 0.01
+    },
+    "last_validated": "2026-06-22",
+    "command": "python - <<'PY'\nimport invman_rust as ir\ns = ir.vendor_managed_inventory_newsvendor_worked_case_summary()\nprint(s[\"mean_demand_heuristic_order_up_to\"])\nprint(s[\"six_sigma_order_up_to\"])\nprint(s[\"newsvendor_order_up_to\"])\nassert s[\"mean_demand_heuristic_order_up_to\"] == 15.0\nassert abs(s[\"six_sigma_order_up_to\"] - 31.53) <= 0.01\nassert abs(s[\"displayed_newsvendor_order_up_to\"] - 26.96) <= 0.01\nPY"
+  }
+}
+```
+
+### Primary target
+
+| Field | Value |
+| --- | --- |
+| Status | `handout_reference_not_peer_reviewed_repo_anchor` |
+| Instance | Gosavi VMI worked newsvendor case |
+| Metric | cycle demand order-up-to levels |
+| Open reference value | mean-demand heuristic `15.0`, six-sigma `31.53`, displayed newsvendor `26.96` |
+| Current repo value | mean-demand heuristic `15.0`, six-sigma `31.53122046311161`, newsvendor `26.9905428333404` |
+| Tolerance | display rounding for `31.53` and `26.96`; exact for mean-demand `15.0` |
+| Last validated | `2026-06-22` |
+
+### Source
+
+Gosavi teaching handout, "Case Study for Vendor-Managed Inventory (Based on Sui, Gosavi, & Lin, 2010)". This is an open instructional handout, not a peer-reviewed numeric benchmark. The peer-reviewed VMI paper's usable numeric table is not currently carried.
+
+### Validation command
+
+```bash
+python - <<'PY'
+import invman_rust as ir
+s = ir.vendor_managed_inventory_newsvendor_worked_case_summary()
+print(s["mean_demand_heuristic_order_up_to"])
+print(s["six_sigma_order_up_to"])
+print(s["newsvendor_order_up_to"])
+assert s["mean_demand_heuristic_order_up_to"] == 15.0
+assert abs(s["six_sigma_order_up_to"] - 31.53) <= 0.01
+assert abs(s["displayed_newsvendor_order_up_to"] - 26.96) <= 0.01
+PY
+```
+
+### Notes
+
+This file is intentionally conservative: the repo has a useful open worked-case anchor, but not a peer-reviewed literature number for the trainable VMI env. Upgrade only after locating and reproducing a citeable public row.
+
 Rust-first problem home for `vendor_managed_inventory`.
 
 ## Formulation

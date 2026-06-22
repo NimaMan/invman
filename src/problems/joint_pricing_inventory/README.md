@@ -1,5 +1,75 @@
 # joint_pricing_inventory
 
+## Verification target
+
+The fenced block is the machine-readable contract. The sections below it are the human-readable audit trail: what instance is built, which literature/reference number is used, and how the repo-generated number is checked.
+
+```json verification-target
+{
+  "schema_version": 1,
+  "problem": "joint_pricing_inventory",
+  "status": "no_public_literature_number_repo_exact_anchor",
+  "instance": {
+    "id": "reduced_exact_verification_instance",
+    "parameters": {
+      "scope": "finite-horizon discounted MDP"
+    }
+  },
+  "comparator": {
+    "policy": "exact_dynamic_program",
+    "metric": "discounted_optimal_cost"
+  },
+  "literature": {
+    "value": null,
+    "units": "cost",
+    "source": "No public literature number currently carried for this exact reduced instance",
+    "locator": null,
+    "url_or_doi": null
+  },
+  "reproduction": {
+    "current_value": -33.178121049724,
+    "tolerance": {
+      "absolute": 1e-09
+    },
+    "last_validated": "2026-06-22",
+    "command": "python - <<'PY'\nimport invman_rust as ir\ns = ir.joint_pricing_inventory_exact_dp_summary()\nprint(s[\"optimal_discounted_cost\"])\nprint(s[\"optimal_first_action\"])\nassert abs(s[\"optimal_discounted_cost\"] - (-33.178121049724)) <= 1e-9\nassert list(s[\"optimal_first_action\"]) == [2, 1]\nPY"
+  }
+}
+```
+
+### Primary target
+
+| Field | Value |
+| --- | --- |
+| Status | `no_public_literature_number_repo_exact_anchor` |
+| Instance | reduced exact verification instance |
+| Metric | finite-horizon discounted optimal cost |
+| Literature value | none currently available |
+| Current repo value | `-33.178121049724` |
+| Tolerance | `1e-9` against the repo exact DP anchor |
+| Last validated | `2026-06-22` |
+
+### Source
+
+The code cites formulation-class references such as Qin, Simchi-Levi, and Wang (2022), DOI `10.1287/mnsc.2021.4212`, but the repo does not currently carry a public per-instance optimal-profit or optimal-cost number from the literature for this exact reduced MDP.
+
+### Validation command
+
+```bash
+python - <<'PY'
+import invman_rust as ir
+s = ir.joint_pricing_inventory_exact_dp_summary()
+print(s["optimal_discounted_cost"])
+print(s["optimal_first_action"])
+assert abs(s["optimal_discounted_cost"] - (-33.178121049724)) <= 1e-9
+assert list(s["optimal_first_action"]) == [2, 1]
+PY
+```
+
+### Notes
+
+This file intentionally records the absence of a literature number. Future upgrade path: find a citeable joint-pricing-and-inventory worked instance with a public optimal value, add it to `literature/references.rs`, and replace this repo-native anchor with the published number.
+
 Rust-first problem home for `joint_pricing_inventory`.
 
 ## Formulation

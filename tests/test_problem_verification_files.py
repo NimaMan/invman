@@ -1,3 +1,5 @@
+import json
+import re
 from pathlib import Path
 
 
@@ -13,20 +15,64 @@ def problem_dirs() -> list[Path]:
     )
 
 
-def test_every_problem_has_verification_file():
-    missing = [p.name for p in problem_dirs() if not (p / "VERIFICATION.md").is_file()]
+CONTRACT_RE = re.compile(
+    r"```json verification-target\n(?P<body>.*?)\n```",
+    flags=re.DOTALL,
+)
+
+
+def readme_contract(problem: Path) -> dict:
+    text = (problem / "README.md").read_text(encoding="utf-8")
+    match = CONTRACT_RE.search(text)
+    assert match is not None, f"{problem.name} missing json verification-target block"
+    return json.loads(match.group("body"))
+
+
+def test_every_problem_has_readme_verification_contract():
+    missing = [p.name for p in problem_dirs() if not (p / "README.md").is_file()]
     assert missing == []
 
 
-def test_verification_files_have_minimum_contract():
+def test_no_problem_uses_separate_verification_file():
+    leftovers = [p.name for p in problem_dirs() if (p / "VERIFICATION.md").exists()]
+    assert leftovers == []
+
+
+def test_readme_verification_contracts_are_machine_readable():
+    required_top_level = {
+        "schema_version",
+        "problem",
+        "status",
+        "instance",
+        "comparator",
+        "literature",
+        "reproduction",
+    }
+    for problem in problem_dirs():
+        contract = readme_contract(problem)
+        assert required_top_level <= set(contract), problem.name
+        assert contract["schema_version"] == 1
+        assert contract["problem"] == problem.name
+        assert contract["status"]
+        assert contract["instance"]["id"]
+        assert contract["comparator"]["metric"]
+        assert "value" in contract["literature"]
+        assert contract["literature"]["source"]
+        assert "current_value" in contract["reproduction"]
+        assert contract["reproduction"]["command"]
+        assert contract["reproduction"]["tolerance"]
+        assert contract["reproduction"]["last_validated"]
+
+
+def test_readme_verification_contracts_have_human_audit_sections():
     required = [
-        "# Verification Target - ",
-        "## Primary Target",
-        "## Source",
-        "## Validation Command",
+        "## Verification target",
+        "### Primary target",
+        "### Source",
+        "### Validation command",
         "Last validated",
     ]
     for problem in problem_dirs():
-        text = (problem / "VERIFICATION.md").read_text(encoding="utf-8")
+        text = (problem / "README.md").read_text(encoding="utf-8")
         for needle in required:
             assert needle in text, f"{problem.name} missing {needle!r}"

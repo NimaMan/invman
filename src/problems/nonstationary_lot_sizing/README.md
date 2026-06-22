@@ -1,5 +1,80 @@
 # nonstationary_lot_sizing
 
+## Verification target
+
+The fenced block is the machine-readable contract. The sections below it are the human-readable audit trail: what instance is built, which literature/reference number is used, and how the repo-generated number is checked.
+
+```json verification-target
+{
+  "schema_version": 1,
+  "problem": "nonstationary_lot_sizing",
+  "status": "reference_companion_code_number",
+  "instance": {
+    "id": "constant_10",
+    "parameters": {
+      "source": "author companion-code single-item branch"
+    }
+  },
+  "comparator": {
+    "policy": "simple_s_s",
+    "metric": "total_cost"
+  },
+  "literature": {
+    "value": 1832.9142436489014,
+    "units": "total cost",
+    "source": "Dehaybe, Catanzaro, and Chevalier (2024) companion-code CSVs",
+    "locator": "constant_10 author testbed row, simple (s,S) total cost",
+    "url_or_doi": "https://doi.org/10.1016/j.ejor.2023.10.007"
+  },
+  "reproduction": {
+    "current_value": null,
+    "tolerance": {
+      "description": "script tolerances; use 25000 replications for publication-grade stochastic validation"
+    },
+    "last_validated": "2026-06-22",
+    "command": "python scripts/nonstationary_lot_sizing/run_literature_benchmark.py \\\n  --instances constant_10 \\\n  --replications 25000"
+  }
+}
+```
+
+### Primary target
+
+| Field | Value |
+| --- | --- |
+| Status | `reference_companion_code_number` |
+| Instance | `constant_10` author testbed row |
+| Metric | total cost and shortage rate for simple `(s,S)` and rolling-DP `(s,S)` policies |
+| Companion value | simple cost `1832.9142436489014`, simple shortage `0.0029443487165113735`; rolling-DP cost `1711.741`, rolling-DP shortage `0.04793465748308879` |
+| Current repo value | Monte Carlo reproduction via `run_literature_benchmark.py` |
+| Tolerance | use script tolerances; stochastic check should be run with `25000` replications for publication-grade validation |
+| Last validated | `2026-06-22` |
+
+### Source
+
+Dehaybe, Catanzaro, and Chevalier (2024), "Deep Reinforcement Learning for inventory optimization with non-stationary uncertain demand", EJOR 314(2):433-445, DOI `10.1016/j.ejor.2023.10.007`, plus the author's public `HenriDeh/DRL_MMULS` `single-item` branch testbed CSVs.
+
+The carried numeric rows are from the public companion-code CSVs, not peer-reviewed article table cells. The repo correctly keeps `literature_verified=false` on these instances under the strict rule.
+
+### Validation command
+
+```bash
+python scripts/nonstationary_lot_sizing/run_literature_benchmark.py \
+  --instances constant_10 \
+  --replications 25000
+```
+
+Quick smoke version:
+
+```bash
+python scripts/nonstationary_lot_sizing/run_literature_benchmark.py \
+  --instances constant_10 \
+  --replications 1000
+```
+
+### Notes
+
+This is a useful reference-implementation benchmark, but not a strict literature table reproduction. Future upgrade path: obtain an article-printed per-instance value and add a deterministic or high-replication assertion against that value.
+
 Canonical Rust-first home for the nonstationary single-item lot-sizing family
 (Dehaybe, Catanzaro & Chevalier 2024, EJOR 314(2):433-445).
 

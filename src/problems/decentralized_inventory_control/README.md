@@ -1,5 +1,76 @@
 # decentralized_inventory_control
 
+## Verification target
+
+The fenced block is the machine-readable contract. The sections below it are the human-readable audit trail: what instance is built, which literature/reference number is used, and how the repo-generated number is checked.
+
+```json verification-target
+{
+  "schema_version": 1,
+  "problem": "decentralized_inventory_control",
+  "status": "reference_closed_form_number",
+  "instance": {
+    "id": "beer_game_classic_four_stage",
+    "parameters": {
+      "horizon_weeks": 36,
+      "stages": 4,
+      "demand_path": "4 for 4 weeks, then 8"
+    }
+  },
+  "comparator": {
+    "policy": "classic_anchor_and_adjust_closed_form",
+    "metric": "total_cost_36_weeks"
+  },
+  "literature": {
+    "value": 204.0,
+    "units": "total cost",
+    "source": "Sterman / Edali-Yasarcan classic Beer Game closed-form reference carried by repo",
+    "locator": "per-stage costs [46, 50, 54, 54]",
+    "url_or_doi": null
+  },
+  "reproduction": {
+    "current_value": 204.0,
+    "tolerance": {
+      "absolute": 0.0
+    },
+    "last_validated": "2026-06-22",
+    "command": "python - <<'PY'\nimport invman_rust as ir\ns = ir.decentralized_inventory_control_classic_sterman_literature_summary()\nprint(s)\nassert s[\"per_agent_costs\"] == [46.0, 50.0, 54.0, 54.0]\nassert s[\"total_cost\"] == 204.0\nPY"
+  }
+}
+```
+
+### Primary target
+
+| Field | Value |
+| --- | --- |
+| Status | `reference_closed_form_number` |
+| Instance | `beer_game_classic_four_stage` closed-form anchor |
+| Metric | 36-week classic Beer Game total cost |
+| Literature / reference value | `204.0` total, from per-stage costs `[46.0, 50.0, 54.0, 54.0]` |
+| Current repo value | `204.0` total |
+| Tolerance | exact, `0.0` absolute |
+| Last validated | `2026-06-22` |
+
+### Source
+
+Sterman / Edali-Yasarcan classic anchor-and-adjust Beer Game reference as carried by the repo's closed-form port. This is a reference/closed-form reproduction, not a peer-reviewed printed cost table reproduced by the trainable `env.rs`.
+
+### Validation command
+
+```bash
+python - <<'PY'
+import invman_rust as ir
+s = ir.decentralized_inventory_control_classic_sterman_literature_summary()
+print(s)
+assert s["per_agent_costs"] == [46.0, 50.0, 54.0, 54.0]
+assert s["total_cost"] == 204.0
+PY
+```
+
+### Notes
+
+The reusable trainable MDP does not reproduce this closed-form `204` bookkeeping value; prior audits recorded env-level costs of `378`/`278` under comparable settings. Treat `204` as a closed-form reference anchor and keep the trainable env status honest until an executable env-level literature number exists.
+
 Rust-first home for decentralized serial inventory control with Beer-Game-style local observations.
 
 Formulation carried here:

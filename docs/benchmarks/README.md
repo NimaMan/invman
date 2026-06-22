@@ -42,26 +42,26 @@ The pre-rendered cards live in [`cards/`](./cards/) — one **BENCHMARK_CARD** p
 
 ### Verification targets
 
-Each implemented problem family under `src/problems/<problem>/` has one primary verification target file. These files are narrower than `BENCHMARK.md`: they give a future agent one canonical value, source, tolerance, and command for checking whether the environment still reproduces its target.
+Each implemented problem family under `src/problems/<problem>/` has one primary verification target section in that folder's `README.md`. The section starts with a parseable `json verification-target` block, then gives a human-readable source, target, tolerance, and command for checking whether the environment still reproduces its target.
 
-| Problem | Verification file | Primary target status |
+| Problem | Verification README | Primary target status |
 | --- | --- | --- |
-| `ameliorating_inventory` | `src/problems/ameliorating_inventory/VERIFICATION.md` | companion LP bound |
-| `decentralized_inventory_control` | `src/problems/decentralized_inventory_control/VERIFICATION.md` | closed-form reference number |
-| `dual_sourcing` | `src/problems/dual_sourcing/VERIFICATION.md` | published Figure 9 gap |
-| `joint_pricing_inventory` | `src/problems/joint_pricing_inventory/VERIFICATION.md` | no public number; repo exact anchor |
-| `joint_replenishment` | `src/problems/joint_replenishment/VERIFICATION.md` | published action |
-| `lost_sales` | `src/problems/lost_sales/VERIFICATION.md` | peer-reviewed cost table |
-| `multi_echelon` | `src/problems/multi_echelon/VERIFICATION.md` | peer-reviewed serial optimum |
-| `nonstationary_lot_sizing` | `src/problems/nonstationary_lot_sizing/VERIFICATION.md` | author companion-code CSV |
-| `one_warehouse_multi_retailer` | `src/problems/one_warehouse_multi_retailer/VERIFICATION.md` | published heuristic simulation row |
-| `perishable_inventory` | `src/problems/perishable_inventory/VERIFICATION.md` | peer-reviewed VI table |
-| `procurement_removal_inventory` | `src/problems/procurement_removal_inventory/VERIFICATION.md` | no public number; repo exact anchor |
-| `random_yield_inventory` | `src/problems/random_yield_inventory/VERIFICATION.md` | no public number; repo exact anchor |
-| `spare_parts_inventory` | `src/problems/spare_parts_inventory/VERIFICATION.md` | adjacent Kranenburg analytical table |
-| `vendor_managed_inventory` | `src/problems/vendor_managed_inventory/VERIFICATION.md` | open handout anchor, not peer reviewed |
+| `ameliorating_inventory` | `src/problems/ameliorating_inventory/README.md` | companion LP bound |
+| `decentralized_inventory_control` | `src/problems/decentralized_inventory_control/README.md` | closed-form reference number |
+| `dual_sourcing` | `src/problems/dual_sourcing/README.md` | published Figure 9 gap |
+| `joint_pricing_inventory` | `src/problems/joint_pricing_inventory/README.md` | no public number; repo exact anchor |
+| `joint_replenishment` | `src/problems/joint_replenishment/README.md` | published action |
+| `lost_sales` | `src/problems/lost_sales/README.md` | peer-reviewed cost table |
+| `multi_echelon` | `src/problems/multi_echelon/README.md` | peer-reviewed serial optimum |
+| `nonstationary_lot_sizing` | `src/problems/nonstationary_lot_sizing/README.md` | author companion-code CSV |
+| `one_warehouse_multi_retailer` | `src/problems/one_warehouse_multi_retailer/README.md` | published heuristic simulation row |
+| `perishable_inventory` | `src/problems/perishable_inventory/README.md` | peer-reviewed VI table |
+| `procurement_removal_inventory` | `src/problems/procurement_removal_inventory/README.md` | no public number; repo exact anchor |
+| `random_yield_inventory` | `src/problems/random_yield_inventory/README.md` | no public number; repo exact anchor |
+| `spare_parts_inventory` | `src/problems/spare_parts_inventory/README.md` | adjacent Kranenburg analytical table |
+| `vendor_managed_inventory` | `src/problems/vendor_managed_inventory/README.md` | open handout anchor, not peer reviewed |
 
-Do not mark a problem `literature_verified` just because it has a structurally faithful environment. Literature verification requires an executable comparison between a repo-generated quantity and a clearly referenced published or companion-source quantity. When no public number exists, the file must say so directly and point to the repo-native exact anchor instead.
+Do not mark a problem `literature_verified` just because it has a structurally faithful environment. Literature verification requires an executable comparison between a repo-generated quantity and a clearly referenced published or companion-source quantity. When no public number exists, the README contract must say so directly and point to the repo-native exact anchor instead.
 
 ### Executable layer — run a baseline, not just read it
 

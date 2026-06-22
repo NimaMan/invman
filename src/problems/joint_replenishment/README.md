@@ -1,5 +1,91 @@
 # joint_replenishment
 
+## Verification target
+
+The fenced block is the machine-readable contract. The sections below it are the human-readable audit trail: what instance is built, which literature/reference number is used, and how the repo-generated number is checked.
+
+```json verification-target
+{
+  "schema_version": 1,
+  "problem": "joint_replenishment",
+  "status": "published_action_reproduction",
+  "instance": {
+    "id": "vanvuchelen_setting_5_state_5_0",
+    "parameters": {
+      "state": [
+        5,
+        0
+      ]
+    }
+  },
+  "comparator": {
+    "policy": "infinite_horizon_value_iteration",
+    "metric": "optimal_action"
+  },
+  "literature": {
+    "value": [
+      0,
+      6
+    ],
+    "units": "order quantities",
+    "source": "Vanvuchelen et al. joint replenishment setting 5",
+    "locator": "published optimal action at state (5, 0)",
+    "url_or_doi": null
+  },
+  "reproduction": {
+    "current_value": [
+      0,
+      6
+    ],
+    "tolerance": {
+      "exact": true
+    },
+    "last_validated": "2026-06-22",
+    "command": "python - <<'PY'\nimport invman_rust as ir\na = ir.joint_replenishment_published_action_anchor()\nprint(a)\nassert list(a[\"state_inventory_levels\"]) == [5, 0]\nassert list(a[\"optimal_action\"]) == [0, 6]\nPY"
+  }
+}
+```
+
+### Primary target
+
+| Field | Value |
+| --- | --- |
+| Status | `published_action_reproduction` |
+| Instance | Vanvuchelen et al. setting 5 |
+| Metric | optimal action at state `(I1, I2) = (5, 0)` |
+| Literature value | `q = (0, 6)` |
+| Current repo value | `q = (0, 6)` via independent infinite-horizon VI script |
+| Tolerance | exact action match |
+| Last validated | `2026-06-22` |
+
+### Source
+
+Vanvuchelen, Gijsbrechts, and Boute (2020), "Use of Proximal Policy Optimization for the Joint Replenishment Problem", Computers in Industry 119, 103239, DOI `10.1016/j.compind.2020.103239`, Figure 3 / setting 5.
+
+The published anchor is an action, not an absolute cost. The paper does not provide a public absolute optimal-cost table for this setting.
+
+### Validation command
+
+```bash
+python - <<'PY'
+import invman_rust as ir
+a = ir.joint_replenishment_published_action_anchor()
+print(a)
+assert list(a["state_inventory_levels"]) == [5, 0]
+assert list(a["optimal_action"]) == [0, 6]
+PY
+```
+
+For a full re-derivation rather than inspecting the carried anchor:
+
+```bash
+python scripts/joint_replenishment/benchmark_vanvuchelen_settings.py --periods 1 --replications 1
+```
+
+### Notes
+
+The reduced finite-horizon DP summary in `joint_replenishment_exact_dp_summary()` is a repo self-consistency comparator; it should not be confused with the Figure 3 literature action.
+
 Rust-first problem home for `joint_replenishment`.
 
 Repo interpretation:

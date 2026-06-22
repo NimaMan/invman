@@ -1,5 +1,76 @@
 # random_yield_inventory
 
+## Verification target
+
+The fenced block is the machine-readable contract. The sections below it are the human-readable audit trail: what instance is built, which literature/reference number is used, and how the repo-generated number is checked.
+
+```json verification-target
+{
+  "schema_version": 1,
+  "problem": "random_yield_inventory",
+  "status": "no_public_literature_number_repo_exact_anchor",
+  "instance": {
+    "id": "reduced_exact_verification_instance",
+    "parameters": {
+      "yield_model": "all_or_nothing",
+      "scope": "finite-horizon discounted MDP"
+    }
+  },
+  "comparator": {
+    "policy": "exact_dynamic_program",
+    "metric": "discounted_optimal_cost"
+  },
+  "literature": {
+    "value": null,
+    "units": "cost",
+    "source": "No public literature number currently carried for this exact all-or-nothing yield MDP",
+    "locator": null,
+    "url_or_doi": null
+  },
+  "reproduction": {
+    "current_value": 40.05989760985441,
+    "tolerance": {
+      "absolute": 1e-09
+    },
+    "last_validated": "2026-06-22",
+    "command": "python - <<'PY'\nimport invman_rust as ir\ns = ir.random_yield_inventory_exact_dp_summary()\nprint(s[\"optimal_discounted_cost\"])\nprint(s[\"optimal_first_action\"])\nassert abs(s[\"optimal_discounted_cost\"] - 40.05989760985441) <= 1e-9\nassert s[\"optimal_first_action\"] == 4\nPY"
+  }
+}
+```
+
+### Primary target
+
+| Field | Value |
+| --- | --- |
+| Status | `no_public_literature_number_repo_exact_anchor` |
+| Instance | reduced exact verification instance |
+| Metric | finite-horizon discounted optimal cost |
+| Literature value | none currently available for this exact all-or-nothing yield MDP |
+| Current repo value | `40.05989760985441` |
+| Tolerance | `1e-9` against the repo exact DP anchor |
+| Last validated | `2026-06-22` |
+
+### Source
+
+Yan, Chen, Fu, and Bi (2026), "Heuristics and deep reinforcement learning for the inventory problem with an all-or-nothing yield pattern and non-zero leadtimes", Computers & Operations Research 186, 107305, DOI `10.1016/j.cor.2025.107305`, is the current formulation-class source. The repo has not yet found a public per-instance numeric target from that paper or a matching earlier paper.
+
+### Validation command
+
+```bash
+python - <<'PY'
+import invman_rust as ir
+s = ir.random_yield_inventory_exact_dp_summary()
+print(s["optimal_discounted_cost"])
+print(s["optimal_first_action"])
+assert abs(s["optimal_discounted_cost"] - 40.05989760985441) <= 1e-9
+assert s["optimal_first_action"] == 4
+PY
+```
+
+### Notes
+
+Do not claim literature verification from this file. It exists so future agents can still check that the repo's random-yield mechanics have not drifted while searching for a public numeric literature anchor.
+
 Rust-first problem home for `random_yield_inventory`.
 
 ## Formulation

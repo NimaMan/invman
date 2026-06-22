@@ -1,5 +1,75 @@
 # procurement_removal_inventory
 
+## Verification target
+
+The fenced block is the machine-readable contract. The sections below it are the human-readable audit trail: what instance is built, which literature/reference number is used, and how the repo-generated number is checked.
+
+```json verification-target
+{
+  "schema_version": 1,
+  "problem": "procurement_removal_inventory",
+  "status": "no_public_literature_number_repo_exact_anchor",
+  "instance": {
+    "id": "reduced_exact_verification_instance",
+    "parameters": {
+      "scope": "finite-horizon discounted MDP"
+    }
+  },
+  "comparator": {
+    "policy": "exact_dynamic_program",
+    "metric": "discounted_optimal_cost"
+  },
+  "literature": {
+    "value": null,
+    "units": "cost",
+    "source": "No public literature number currently carried for this exact reduced instance",
+    "locator": null,
+    "url_or_doi": null
+  },
+  "reproduction": {
+    "current_value": 31.78026111369698,
+    "tolerance": {
+      "absolute": 1e-09
+    },
+    "last_validated": "2026-06-22",
+    "command": "python - <<'PY'\nimport invman_rust as ir\ns = ir.procurement_removal_inventory_exact_dp_summary()\nprint(s[\"optimal_discounted_cost\"])\nprint(s[\"optimal_first_action\"])\nassert abs(s[\"optimal_discounted_cost\"] - 31.78026111369698) <= 1e-9\nassert list(s[\"optimal_first_action\"]) == [0, 0]\nPY"
+  }
+}
+```
+
+### Primary target
+
+| Field | Value |
+| --- | --- |
+| Status | `no_public_literature_number_repo_exact_anchor` |
+| Instance | reduced exact verification instance |
+| Metric | finite-horizon discounted optimal cost |
+| Literature value | none currently available |
+| Current repo value | `31.78026111369698` |
+| Tolerance | `1e-9` against the repo exact DP anchor |
+| Last validated | `2026-06-22` |
+
+### Source
+
+Maggiar and Sadighian (2017), "Joint Inventory and Revenue Management with Removal Decisions", SSRN/Amazon Science working paper, is a structural source for the problem class. The repo does not currently carry a public control-only per-instance cost row from that paper.
+
+### Validation command
+
+```bash
+python - <<'PY'
+import invman_rust as ir
+s = ir.procurement_removal_inventory_exact_dp_summary()
+print(s["optimal_discounted_cost"])
+print(s["optimal_first_action"])
+assert abs(s["optimal_discounted_cost"] - 31.78026111369698) <= 1e-9
+assert list(s["optimal_first_action"]) == [0, 0]
+PY
+```
+
+### Notes
+
+This is a strong repo-native regression target, not a literature verification. Future upgrade path: identify a public procurement/removal instance with a printed or companion-code optimal value and add it here.
+
 Rust-first problem home for `procurement_removal_inventory`: a single-item finite-horizon system in
 which the controller jointly decides, each period, how much to **purchase** and how much to
 **remove** (return to the vendor or liquidate), under a returnable-quota state.
