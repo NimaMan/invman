@@ -40,6 +40,29 @@ catalog.render_all_cards('docs/benchmarks/cards')   # writes one card per proble
 
 The pre-rendered cards live in [`cards/`](./cards/) — one **BENCHMARK_CARD** per problem with instances, baselines, reference results, and a **"How to reproduce & compare"** block (command + expected value + tolerance) so a consumer can regenerate the baseline and compare their own approach. Regenerate them any time with `catalog.render_all_cards('docs/benchmarks/cards')`.
 
+### Verification targets
+
+Each implemented problem family under `src/problems/<problem>/` has one primary verification target file. These files are narrower than `BENCHMARK.md`: they give a future agent one canonical value, source, tolerance, and command for checking whether the environment still reproduces its target.
+
+| Problem | Verification file | Primary target status |
+| --- | --- | --- |
+| `ameliorating_inventory` | `src/problems/ameliorating_inventory/VERIFICATION.md` | companion LP bound |
+| `decentralized_inventory_control` | `src/problems/decentralized_inventory_control/VERIFICATION.md` | closed-form reference number |
+| `dual_sourcing` | `src/problems/dual_sourcing/VERIFICATION.md` | published Figure 9 gap |
+| `joint_pricing_inventory` | `src/problems/joint_pricing_inventory/VERIFICATION.md` | no public number; repo exact anchor |
+| `joint_replenishment` | `src/problems/joint_replenishment/VERIFICATION.md` | published action |
+| `lost_sales` | `src/problems/lost_sales/VERIFICATION.md` | peer-reviewed cost table |
+| `multi_echelon` | `src/problems/multi_echelon/VERIFICATION.md` | peer-reviewed serial optimum |
+| `nonstationary_lot_sizing` | `src/problems/nonstationary_lot_sizing/VERIFICATION.md` | author companion-code CSV |
+| `one_warehouse_multi_retailer` | `src/problems/one_warehouse_multi_retailer/VERIFICATION.md` | published heuristic simulation row |
+| `perishable_inventory` | `src/problems/perishable_inventory/VERIFICATION.md` | peer-reviewed VI table |
+| `procurement_removal_inventory` | `src/problems/procurement_removal_inventory/VERIFICATION.md` | no public number; repo exact anchor |
+| `random_yield_inventory` | `src/problems/random_yield_inventory/VERIFICATION.md` | no public number; repo exact anchor |
+| `spare_parts_inventory` | `src/problems/spare_parts_inventory/VERIFICATION.md` | adjacent Kranenburg analytical table |
+| `vendor_managed_inventory` | `src/problems/vendor_managed_inventory/VERIFICATION.md` | open handout anchor, not peer reviewed |
+
+Do not mark a problem `literature_verified` just because it has a structurally faithful environment. Literature verification requires an executable comparison between a repo-generated quantity and a clearly referenced published or companion-source quantity. When no public number exists, the file must say so directly and point to the repo-native exact anchor instead.
+
 ### Executable layer — run a baseline, not just read it
 
 `catalog` reads metadata; `invman.benchmarks.runners` **runs** it. `catalog.get(problem).load_instance(name)` returns a runnable `ReferenceInstance` that carries the env params + published baselines, re-runs those baselines on the live env, and scores your own soft-tree policy on the same instance — through the *same* seam the CMA-ES optimizer uses (no second, drifting evaluator).
