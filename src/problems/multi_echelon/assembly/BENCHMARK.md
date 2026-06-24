@@ -20,15 +20,15 @@ Assembly multi-echelon under long-run average cost. Several upstream component s
 
 ## Verification
 - Published number: none directly reproducible. The verified content is the *structural equivalence* (Rosling 1989), checked in src verification.rs; the instance costs are solver-derived.
-- **Re-run reproduced: NOT re-run via bindings this audit.** There is no assembly env / no reduction binding exposed to Python; the audit's manual remap gave 26.55 vs the solver-derived 22.759 (mismatch), so the only positive evidence is the Rust-only in-crate equivalence + env-sim test. Verdict: **faithful_unverified** (Group 4 — faithful trainable env where the *adjacent* serial module is verified, but assembly itself reproduces no published number and was not re-run via bindings).
+- **Re-run reproduced: structural equivalence re-run passed.** There is still no assembly env / no reduction binding exposed to Python, but the independent Python Rosling verifier passes all three carried assembly instances against the serial reduction and the benchmark script reproduces the solver-derived optima. Verdict: **faithful_unverified** (Group 4 — faithful trainable env where the *adjacent* serial module is verified, but assembly itself reproduces no published number).
 
 ## Results (learned policy)
 - No learned-policy benchmark claim is carried for assembly in the manifest results list. (The verified learned-policy "match" lives in the sibling `multi_echelon/serial` family.) No win or beat is claimed here.
 
 ## Reproduce
 ```bash
-# No Python binding for the assembly env / Rosling reduction (audit gap).
-# Rust-only equivalence + env-sim checks:
+# No Python binding for the assembly env / Rosling reduction (learned-policy audit gap).
+# Independent structural-equivalence verifier + policy benchmark:
 #   cargo test -p invman_rust ...assembly...   (in-crate verification.rs)
 python scripts/assembly/verify_assembly_rosling_independent.py
 python scripts/assembly/benchmark_assembly_policies.py
@@ -36,5 +36,5 @@ python scripts/assembly/benchmark_assembly_policies.py
 
 ## Pointers & caveats
 - code: src/problems/multi_echelon/assembly/{env.rs, rosling.rs, echelon_base_stock.rs, references.rs, verification.rs} ; scripts: scripts/assembly/ ; autoresearch: none dedicated (covered under policy_search/programs/program_multi_echelon.md).
-- HONEST DEBT: no assembly env binding is exposed to Python, so the costs were NOT reproduced by re-run this audit (manual remap gave 26.55 ≠ 22.759). Treat the 22.759/52.536/27.530 figures as solver-derived self-consistency anchors, not published numbers.
+- HONEST DEBT: no assembly env binding is exposed to Python, so learned policies cannot be trained or evaluated through the normal Python rollout seam. Treat the 22.759/52.536/27.530 figures as solver-derived structural-equivalence anchors, not published numbers.
 - The honesty guard test `no_assembly_instance_is_literature_verified` enforces that every instance stays `literature_verified=false`; do not promote any of these to a published-number row.

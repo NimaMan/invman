@@ -68,8 +68,8 @@ serial: exact Clark-Scarf recursive-newsvendor decomposition (TRUE optimum, mirr
 | `single_seed` | False | no | serial: warm-started echelon soft tree ties Clark-Scarf optimum 47.6554 vs 47.65 (+0.011%). MATCH-only. |
 | `multi_seed_mean_std` | False | yes | divergent setting1: direct-level learned seed mean 776.15+/-14.27 vs best constant base-stock gate 910.34+/-0.51 -> 14.74%+/-1.60% cost reduction; 5/5 seeds beat the gate. A3C 8.95% remains cross-protocol context. |
 | `multi_seed_mean_std` | False | yes | divergent setting2: direct-level learned seed mean 1001.07+/-25.63 vs best constant base-stock gate 1138.04+/-0.43 -> 12.04%+/-2.26% cost reduction; 5/5 seeds beat the gate. A3C 12.09% remains cross-protocol context. |
-| `single_seed` | True | no | padn serial case3: learned beats env gate 60.24 (seed123 57.25 -4.96%, seed321 54.96 -8.77%). Env-own-heuristic beat. |
-| `single_seed` | True | no | padn pure-assembly: learned 274.90 vs gate 283.34 -> -2.98%. Env-own-heuristic beat. |
+| `multi_seed_mean_std` | False | no | padn serial case3: five-seed audit is parity (mean 58.90 vs env gate 60.24, 4/5 below); single-run wins are illustrative only. |
+| `multi_seed_mean_std` | False | no | padn pure-assembly: five-seed audit is parity/loss (289.16 ± 14.20 vs env gate 283.34, 2/5 below); single-run win is illustrative only. |
 | `multi_seed_mean_std` | False | yes | padn mixed distribution-assembly: residual base-stock-backbone head beats the env-own gate 297.69 with 291.136+/-2.78 over 5 seeds (-2.20%, 5/5 below gate). The older vector/flow-head audit remains parity at 306.10+/-22.89 (+2.82%, 4/8 below). Not a published-number beat. |
 | `multi_seed_mean_std` | False | yes | gbk set1 (CardBoard): learned seed mean 7772.10+/-142.21 vs reproduced gate 10354.82 -> 24.94%+/-1.37% cost reduction; 5/5 seeds beat the gate. |
 | `multi_seed_runs_no_aggregate_json` | False | yes | gbk Kunnumkal-Topaloglu: five full-budget seed rows all beat reproduced gate 3930.4 by about 36.7% (learned 2469.1..2498.4); published DRL 3724 remains cross-protocol context. |
@@ -78,7 +78,7 @@ serial: exact Clark-Scarf recursive-newsvendor decomposition (TRUE optimum, mirr
 
 **Expected (published) value:** serial Snyder-Shen Ex6.1 = 47.65; divergent Van Roy const base-stock 51.7/1302/1449; padn single-node 12.71..127.11 (7 cases); gbk set1 = 10467, KT = 4059; gbk set2/3 = 4797 (NOT reproduced)
 
-**Reproduced value (this audit):** serial: 47.6654 (Ex6.1), Poisson N1/N2/N3 = 4.2211/16.7983/72.0467, 5-stage 225.867/226.846, 2-stage 166.271 (ALL re-run). divergent: Van Roy all 3 rows within 2% (51.77/1284.70/1437.96); A3C relative rows NOT reproduced. padn: single-node 7 cases to ~0.005 abs. gbk: set1 = 10384.9 (-0.78%), KT = 3933.3 (-3.1%), set2 = 15497 (+223%, NOT reproduced). assembly: could NOT re-run via bindings (no assembly env binding).
+**Reproduced value (this audit):** serial: 47.6654 (Ex6.1), Poisson N1/N2/N3 = 4.2211/16.7983/72.0467, 5-stage 225.867/226.846, 2-stage 166.271 (ALL re-run). divergent: Van Roy all 3 rows within 2% (51.77/1284.70/1437.96); A3C relative rows NOT reproduced. padn: single-node 7 cases to ~0.005 abs. gbk: set1 = 10384.9 (-0.78%), KT = 3933.3 (-3.1%), set2 = 15497 (+223%, NOT reproduced). assembly: independent Rosling structural verifier passes, but no learned-policy env binding.
 
 **Rerun method / tolerance:** ir.multi_echelon_serial_exact_normal_solution([3,2,2],[1,1,2],37.12,5,1)->47.6654; ir.multi_echelon_serial_exact_poisson_solution(...)->72.0467; ir.multi_echelon_van_roy_reproduction_summary(repo_audit_replications=20,seed=1); ir.production_assembly_distribution_network_literature_benchmark_summary(serial_replications=10000,seed=1234); ir.multi_echelon_general_backorder_fixed_cost_audit_base_stock('geevers2023_general_set1',replications=200,seed=1234).
 

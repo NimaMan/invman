@@ -24,8 +24,8 @@ General production/assembly/distribution supply network (Pirhooshyaran & Snyder 
 - **DEBT / caveat (faithful_unverified, Group 4):** the general-network / serial protocol reproduces NO published cost. Carried Pirhooshyaran serial/network optima are table-only; the env does NOT reproduce 47.65 / 72.04 under the carried echelon levels (documented local-vs-echelon order-up-to interpretation gap). The serial/mixed/pure-assembly "gates" (60.24 / 297.69 / 283.34) are the environment's OWN best heuristic, NOT published numbers.
 
 ## Results (learned policy)
-- serial case3: learned beats env's own gate 60.24 — seed123 57.25 (−4.96%), seed321 54.96 (−8.77%), depth-3 57.85 (−3.97%); ≥9× SEM. **single_seed, at_risk=true.** Env-own-heuristic beat (research result, NOT a published-number beat).
-- pure-assembly: learned 274.90 vs gate 283.34 → **−2.98%** (~40× SEM). **single_seed, at_risk=true.** Env-own-heuristic beat.
+- serial case3: illustrative single runs beat env's own gate 60.24 (seed123 57.25, seed321 54.96, depth-3 57.85), but the seed-robust audit is **parity**: mean **58.90** vs gate 60.24, 4/5 seeds below gate. Not a robust beat; research result, NOT a published-number beat.
+- pure-assembly: illustrative single run 274.90 vs gate 283.34, but the seed-robust audit is **parity/loss**: mean **289.16 ± 14.20** vs gate 283.34, 2/5 seeds below gate. Not a robust beat.
 - mixed distribution-assembly: residual base-stock-backbone head improves the env's own gate 297.69 to **291.136 ± 2.78** over 5 optimizer seeds (**−2.20%**, 5/5 below gate). **multi_seed_mean_std, at_risk=false.** The earlier vector/flow-head audit remains parity (306.10 ± 22.89, +2.82% above gate, 4/8 below); the residual head supersedes it for the mixed topology.
 - All comparators are the environment's OWN grid-searched best heuristic on a faithful-but-unverified env — research learned-vs-own-heuristic, NOT published-number beats. The serial optimum 47.65 is structurally unreachable by this env's local pairwise policy and is not used as a target.
 

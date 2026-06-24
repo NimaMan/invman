@@ -20,12 +20,13 @@ set, against the exact Clark-Scarf optimum:
                     the GLOBAL critical ratio p/(p+H_tot) (ignores the Clark-Scarf
                     induced-penalty coupling between stages).
 
-WHY THIS IS A FAITHFUL PORT (not the installed Rust)
-----------------------------------------------------
-The serial env (env.rs) is NOT exposed to Python in the installed invman_rust build
-(there is no `serial_*` binding and serial/bindings.rs does not exist; the
-`multi_echelon_*` functions belong to production_assembly_distribution_network). So a
-learned soft-tree rollout on the serial env cannot be run without rebuilding Rust.
+WHY THIS IS A FAITHFUL PORT
+---------------------------
+This script is a standalone Python port of the serial env and exact solver so the exact
+Clark-Scarf policy and simple heuristics can be checked without depending on the Rust
+extension. The Rust extension now also exposes serial learned-policy bindings
+(`multi_echelon_serial_soft_tree_rollout` and population rollout); those are used by the
+training / seed-robust scripts, not by this exact-policy benchmark.
 
 This script therefore re-implements env.rs (`consume`/`replenish` + the echelon
 base-stock evaluator) and exact.rs (the recursive newsvendor decomposition) in Python,
@@ -380,13 +381,12 @@ def main():
     print("  exact ~25.1, ~20% under). Resolve the in-transit-holding convention first.")
     print("=" * 96)
 
-    print("\nTO ADD A LEARNED SOFT-TREE COMPARISON (requires Rust rebuild + new binding):")
-    print("  blocker: no `serial_*` Python binding exists in the installed invman_rust;")
-    print("  serial/bindings.rs is absent and serial is not registered in")
-    print("  multi_echelon/bindings.rs. Once a `serial_soft_tree_rollout_from_demands`")
-    print("  (mirroring lost_sales_soft_tree_rollout_from_demands) is added and the")
-    print("  extension is rebuilt, drop it into the `heur` dict above keyed by the")
-    print("  trained params and re-run; the exact optimum here is the reference floor.")
+    print("\nLEARNED SOFT-TREE COMPARISON:")
+    print("  The Rust extension exposes `multi_echelon_serial_soft_tree_rollout` and")
+    print("  `multi_echelon_serial_soft_tree_population_rollout`. Use the seed-robust")
+    print("  training/evaluation scripts for learned-policy runs; this script is kept")
+    print("  as a standalone exact-policy and heuristic benchmark. The exact optimum")
+    print("  here is the reference floor, so learned rows should be reported as matches.")
 
 
 if __name__ == "__main__":

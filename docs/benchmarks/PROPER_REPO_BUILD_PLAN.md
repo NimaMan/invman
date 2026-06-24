@@ -75,7 +75,7 @@ Each below currently asserts carried==published *literals* without executing the
 
 | Item | Scope | Effort | Needs |
 |---|---|---|---|
-| S-H1 | **OWMR instance_13** (+6.44%) and **instance_14** + regime rows (3/9/10): paper-table wins are single-seed; run ≥5 seeds (instance_12 already has a robust +4.99% — reconcile paper to it) | M | CMA |
+| S-H1 | **RESOLVED 2026-06-24 — OWMR headline rows reconciled**: instance_12 and instance_13 now use finalized 6-seed gate-beat numbers in the paper/manifest; instance_14 and the regime rows are explicitly gate ties, not wins | done | paper+docs |
 | S-H2 | **RESOLVED 2026-06-06 — multi_echelon/divergent settings 1&2**: 5-seed direct-level re-run gives setting1 14.74%±1.60% and setting2 12.04%±2.26%, 5/5 below same-protocol gate; A3C remains cross-protocol context | done | `scripts/multi_echelon/seed_robust_divergent_multi_echelon.py` |
 | S-H3 | **RESOLVED 2026-06-06 — multi_echelon/gbk set1 + KT**: set1 has canonical 5-seed JSON (24.94%±1.37%, 5/5); KT has five full-budget seed rows all about 36.7% below gate, though no aggregate JSON yet | done / polish | aggregate KT JSON if this becomes paper-facing |
 | S-H4 | **lost_sales vanilla 22/24-win + fixed-cost surface**: every learned cell is a single optimizer seed; sub-percent "beats myopic2 -1.20%" needs ≥5 seeds | L (whole surface) | CMA |

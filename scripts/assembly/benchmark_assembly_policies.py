@@ -3,13 +3,14 @@
 
 OBJECTIVE
 ---------
-The assembly problem is literature-verified (Rosling 1989 reduction to a serial system +
-the Clark-Scarf serial solver that reproduces published optima). For this problem the
-OPTIMAL policy is known analytically: the echelon base-stock policy at the Rosling
-serial-equivalent levels. There is no learned-policy Python binding for `assembly` in the
-installed invman_rust (the module is not registered in multi_echelon/bindings.rs and has
-no rollout binding), so a learned soft-tree benchmark cannot be run without a Rust rebuild
-(which is out of scope for this agent). See the BLOCKER note in the report.
+The assembly problem is structurally anchored by Rosling's 1989 reduction to a serial
+system, and the Clark-Scarf serial solver reproduces published serial optima. The
+assembly instance costs below are solver-derived, not paper-printed literature numbers.
+For this problem the OPTIMAL policy is known analytically: the echelon base-stock policy
+at the Rosling serial-equivalent levels. There is no learned-policy Python binding for
+`assembly` in the installed invman_rust (the module is not registered in
+multi_echelon/bindings.rs and has no rollout binding), so a learned soft-tree benchmark
+cannot be run without a Rust rebuild.
 
 What this DOES benchmark (all runnable now, no Rust):
   - OPTIMAL: echelon base-stock at the exact Rosling/Clark-Scarf levels (the analytic
@@ -22,7 +23,7 @@ What this DOES benchmark (all runnable now, no Rust):
 
 It reuses the faithful Python reimplementation in
 verify_assembly_rosling_independent.py (already independently validated to reproduce the
-published serial anchors and the assembly verification.rs instances).
+published serial anchors and the solver-derived assembly verification.rs instances).
 
 The instance set is the three verification.rs instances (the problem's literature anchor
 set) plus two additional in-scope instances (finished lead time 1) for breadth.

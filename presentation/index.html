@@ -1172,7 +1172,7 @@
             <text class="f-tick" x="180" y="200" text-anchor="end" fill="var(--grey-soft)">09</text>
           </g>
 
-          <!-- 10 Production network — assembly + distribution — beat -->
+          <!-- 10 Production network — assembly + distribution — context -->
           <g transform="translate(880,288)">
             <rect x="0" y="0" width="200" height="220" rx="14" fill="var(--paper)" stroke="var(--rule)" stroke-width="2"></rect>
             <text class="f-tag ink" x="22" y="44">Production network</text>
@@ -1637,7 +1637,7 @@
         <div class="badge">
           <span class="fam">One-warehouse multi-retailer</span>
           <span class="verdict beat">beat</span>
-          <span class="note">+4.6% / +7.1% / +12.4% vs best heuristic &middot; 5-seed means</span>
+          <span class="note">+4.6% / +7.2% vs best heuristic; heterogeneous-10 ties gate &middot; 6-seed means</span>
         </div>
 
         <div class="badge">
@@ -1655,14 +1655,14 @@
         <div class="badge">
           <span class="fam">Production / assembly network</span>
           <span class="verdict context">context</span>
-          <span class="note">mixed topology beats (&minus;2.2%); serial &amp; assembly seed-noisy parity &middot; not literature-verified, no published DRL baseline</span>
+          <span class="note">mixed topology beats (&minus;2.2%); PADN serial &amp; PADN pure-assembly seed-noisy parity &middot; not literature-verified, no published DRL baseline</span>
         </div>
 
       </div>
     </div>
 
     <div class="caption">
-      <p class="lede"><b>Two of the hardest geometries</b> &mdash; the heterogeneous multi-retailer and the mixed assembly head &mdash; were found by a search over decoder classes.</p>
+      <p class="lede"><b>The mixed assembly head</b> was found by a search over decoder classes; heterogeneous multi-retailer now reports two gate beats and one tie.</p>
       <span class="src">Ten inventory families &middot; one fixed CMA-ES loop</span>
     </div>
   </div>
@@ -3326,9 +3326,8 @@
     <p class="dek">
       One gradient-free loop &mdash; <b>state &rarr; normalize &rarr; backbone &rarr; action</b> &mdash; is held
       fixed across every problem. Only the single bracketed <b>decoder</b> slot takes a problem-specific shape.
-      The same slot carries across all ten families; the three drawn below are illustrative, and the two
-      hardest geometries &mdash; the heterogeneous multi-retailer and the mixed-assembly head &mdash; were
-      found by a <b>search over decoder classes</b>, not hand-designed.
+      The same slot carries across all ten families; the three drawn below are illustrative, and the
+      mixed-assembly head was found by a <b>search over decoder classes</b>, not hand-designed.
     </p>
 
     <div class="figure">

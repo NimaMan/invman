@@ -150,13 +150,13 @@ Monte-Carlo error; a per-echelon newsvendor that ignores the Clark-Scarf induced
 loses 2–7% on the multi-stage instances; the naive no-safety-stock lead-time-mean policy loses
 36–120%. The exact optimum is the reference floor for any future learned policy.
 
-**Learned soft-tree comparison — BLOCKED (no rebuild allowed).** The serial env is *not exposed to
-Python*: there is no `serial_*` function in the installed `invman_rust`, `serial/bindings.rs` does
-not exist, and `serial` is not registered in `multi_echelon/bindings.rs` (the `multi_echelon_*`
-Python functions belong to `production_assembly_distribution_network`). A learned soft-tree rollout
-on this env therefore cannot be run without adding a binding and rebuilding Rust. The benchmark
-script is written so the trained policy drops straight in once the binding exists; the exact
-blocker and the proposed binding are recorded in `next_steps`.
+**Learned soft-tree comparison — exposed through Rust bindings.** The serial env now exposes
+`multi_echelon_serial_soft_tree_rollout` and
+`multi_echelon_serial_soft_tree_population_rollout` through `serial/bindings.rs`, alongside the
+Normal and Poisson exact-solution bindings. The standalone benchmark script below remains a
+faithful Python port for exact-policy and heuristic comparisons; learned-policy seed-robust runs use
+the Rust rollout binding directly. The honest paper-facing result is match-only: the warm-started
+soft tree recovers the Clark-Scarf optimum, not a beat over it.
 
 ### Tooling note
 

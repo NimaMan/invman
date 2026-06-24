@@ -51,7 +51,7 @@ published assembly number**, for two structural reasons:
 
 **What IS verified (the honest basis), strictly stronger than "self-consistent only":**
 
-- The equivalence is **literature-verified at the structural level** (Rosling 1989): the
+- The equivalence is **structurally anchored by Rosling (1989)**: the
   equal-lead-time reduction in `rosling.rs` is exactly the collapse to a 2-stage `kit → finished`
   serial system.
 - The serial system the assembly reduces to is the same Clark & Scarf model whose published anchor
@@ -68,8 +68,9 @@ published assembly number**, for two structural reasons:
   literature verification.
 
 The assembly *instance numbers themselves* (22.759 / 52.536 / 27.530) are **solver-derived**, not
-published. Net: literature-verified at the structural/equivalence level + reproduction of the
-(literature-verified) serial solver's optima by the env — but **not** a published assembly anchor.
+published. Net: structurally anchored by the Rosling equivalence + reproduction of the verified serial
+solver's optima by the env — but **not** a published assembly anchor, and every carried assembly
+instance remains `literature_verified=false`.
 
 ### Earlier note (retained for the metadata + independent-reproduction record)
 

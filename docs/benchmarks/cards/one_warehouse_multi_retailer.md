@@ -52,10 +52,9 @@ Reduced finite-horizon DP on VERIFICATION_PROBLEM_INSTANCE (2 retailers, binary 
 | seed_reporting | at_risk | seed-robust | Claim |
 | --- | --- | --- | --- |
 | `single_seed` | False | no | Symmetric Poisson(3) K=3 (1/6/11/7): learned TIES grid-searched gate (0.0000%); warm-started constant leaf reproduces gate at gen 0. No win claimed. |
-| `best_of_n` | True | no | instance_12: learned per-retailer echelon_targets linear-leaf beats tuned gate by +1.33% (1154.09 vs 1169.59). This is the PAPER Table number. |
-| `multi_seed_mean_std` | False | yes | instance_12 SEED-ROBUST restatement: +4.99% mean over 4 seeds (all positive +4.21..+7.17%); depth not the lever. Supersedes +1.33% but NOT in paper table. |
-| `multi_seed_mean_std` | True | no | instance_12 vs published PPO: learned closes gap to within seed noise (mean +0.69%, range -0.13..+1.36%); seeds STRADDLE PPO line. No robust PPO beat. |
-| `single_seed` | True | no | instance_13 (K=10 high-CV): linear-leaf beats gate by +6.44% (85974.79 vs 91890.25). PAPER Table win. |
+| `multi_seed_mean_std` | False | yes | instance_12: learned per-retailer echelon_targets_with_alloc_targets linear-leaf beats tuned gate by +4.63% (1115.44 ± 5.51 vs 1169.59) over 6 optimizer seeds; all seeds beat gate. |
+| `multi_seed_mean_std` | True | no | instance_12 vs published PPO: learned closes gap to within seed noise (mean +0.31%, 5/6 seeds below PPO); seeds STRADDLE PPO line. No robust PPO beat. |
+| `multi_seed_mean_std` | False | yes | instance_13 (K=10 high-CV): linear-leaf beats gate by +7.16% (85310 ± 946 vs 91890.25) over 6 optimizer seeds; all seeds beat gate. |
 | `single_seed` | False | no | instance_14 (K=10 strongly heterogeneous): learned TIES strong gate (50445.20, +0.00%). Search-limited. No win. |
 | `single_seed` | False | no | Backorder/lost-sales K=3 (3/9/10): learned TIES gate exactly (+0.00%) on all three; below published PPO (no PPO claim). |
 
@@ -81,4 +80,3 @@ python scripts/one_warehouse_multi_retailer/verify_ppo_beat_disjoint_blocks.py
 To compare your own policy: run the command(s) above to regenerate the baseline on the named instance(s), evaluate your policy under the SAME instance + eval protocol (seeds / horizon / tolerance shown above), and report mean±std over ≥5 optimizer seeds vs the strongest baseline.
 
 _Generated from `docs/benchmarks/BENCHMARK_MANIFEST.json` via `invman.benchmarks.catalog.render_card`. Do not edit by hand._
-
