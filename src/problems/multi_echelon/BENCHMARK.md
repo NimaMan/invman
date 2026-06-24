@@ -29,10 +29,12 @@ sub-families have different verdicts).
 
 ## Learned-policy results — honesty at a glance
 - Reproductions/matches (not wins): serial matches the proven optimum to +0.011% (single_seed, NOT at risk).
-- Best-of-N / single-seed (at_risk, NOT yet seed-robust): divergent −14.4% both settings; gbk set1 −22.4%/−26.7%;
-  gbk KT ~−37%; padn serial case3 and padn pure-assembly env-own-heuristic beats.
-- Seed-robust correction: padn mixed distribution-assembly is **gate-match** (8 seeds 306.10±22.89, +2.82% above gate,
-  4/8 below) — the earlier −0.99% was best-of-3.
+- Seed-robust same-protocol gate beats: divergent setting1 14.74%±1.60% (5/5 below gate), divergent setting2
+  12.04%±2.26% (5/5 below gate), gbk set1 24.94%±1.37% (5/5 below gate), gbk KT about 36.7%
+  (five full-budget seed rows below gate), and padn mixed distribution-assembly residual head 291.136±2.78 vs
+  gate 297.69 (−2.20%, 5/5 below gate; own-heuristic research comparison, not a published-number beat).
+- Best-of-N / single-seed (at_risk, NOT yet seed-robust): padn serial case3 and padn pure-assembly
+  env-own-heuristic beats.
 - All PPO/A3C/DRL comparators are **cross-protocol context, never "beats."**
 
 ## Pointers

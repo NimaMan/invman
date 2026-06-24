@@ -41,9 +41,9 @@ exact tabular value iteration (value_iteration_mdp.rs; gamma=0.99; midpoint-binn
 
 | seed_reporting | at_risk | seed-robust | Claim |
 | --- | --- | --- | --- |
-| `single_seed` | True | no | Learned depth-2 oblique-linear soft tree (21 params) beats best base-stock gate FIFO m2/exp2: -1457.90 vs -1475.08, +1.16% |
-| `single_seed` | True | no | Learned beats gate LIFO m2/exp1: -1553.16 vs -1565.98, +0.82% |
-| `single_seed` | True | no | Learned beats gate on 3 further instances (m3 exp2 +0.70%, m2/L2 exp6 +2.21%, m2 exp4 cp10 +1.44%) |
+| `multi_seed_mean_std` | False | yes | Seed-robust exact-anchor FIFO m2/exp2: learned -1458.509+/-0.438 vs base-stock gate -1475.709+/-0.037, +1.166%+/-0.030%, 5/5 seeds beat the gate. |
+| `multi_seed_mean_std` | False | yes | Seed-robust exact-anchor LIFO m2/exp1: learned -1553.552+/-0.988 vs base-stock gate -1566.455+/-0.033, +0.824%+/-0.065%, 5/5 seeds beat the gate. |
+| `single_seed` | True | no | Learned beats gate on 3 further larger/table-only instances (m3 exp2 +0.70%, m2/L2 exp6 +2.21%, m2 exp4 cp10 +1.44%); these remain single-seed observations. |
 | `single_seed` | True | no | exact_slice_report: soft_tree_sigmoid_linear beats best heuristic FIFO ~15.6 units, LIFO ~14 units; soft_tree_linear LIFO worse basin (honest negative) |
 
 ## How to reproduce & compare
@@ -67,4 +67,3 @@ python3 /home/nima/code/ml/invman/scripts/perishable_inventory/run_exact_slice_b
 To compare your own policy: run the command(s) above to regenerate the baseline on the named instance(s), evaluate your policy under the SAME instance + eval protocol (seeds / horizon / tolerance shown above), and report mean±std over ≥5 optimizer seeds vs the strongest baseline.
 
 _Generated from `docs/benchmarks/BENCHMARK_MANIFEST.json` via `invman.benchmarks.catalog.render_card`. Do not edit by hand._
-

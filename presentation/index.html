@@ -10,7 +10,7 @@
   ============================================================================
   This file is the design-system FOUNDATION and ENGINE for a from-scratch
   academic conference deck. It carries NO slides. The build assembler injects
-  the 21 <section class="slide"> fragments, in order, at the literal marker
+  the 23 <section class="slide"> fragments, in order, at the literal marker
   line  <!-‑‑SLIDES-‑‑>  inside <main class="deck"> near the bottom.
 
   ----------------------------------------------------------------------------
@@ -209,6 +209,7 @@
     font-family:var(--serif); font-weight:600;
     font-size:var(--t-h2); line-height:1.04; letter-spacing:-0.01em;
     max-width:30ch; margin-top:clamp(12px,1.4vw,18px); text-wrap:balance;
+    min-width:0;
   }
   .headline .accent{ color:var(--accent); }
 
@@ -216,6 +217,7 @@
   .dek{
     font-size:var(--t-caption); line-height:1.34; color:var(--ink-soft);
     max-width:80ch; margin-top:clamp(12px,1.4vw,18px);
+    min-width:0;
   }
   .dek b{ color:var(--ink); font-weight:650; }
 
@@ -227,6 +229,7 @@
     flex:1; min-height:0; display:grid;
     grid-template-rows:auto 1fr auto;
     gap:var(--gap-m); margin-top:var(--gap-m);
+    min-width:0;
   }
 
   /* SPLIT layout — compact text column left, figure-dominant column right.
@@ -247,6 +250,7 @@
   /* the figure stage — claims the slide; min-height keeps it dominant */
   .figure{
     min-height:0; display:flex; align-items:center; justify-content:center;
+    min-width:0;
   }
   .figure svg{ width:100%; height:100%; display:block; }
 
@@ -254,16 +258,23 @@
   .caption{
     display:flex; justify-content:space-between; align-items:baseline;
     gap:2ch; border-top:1px solid var(--rule); padding-top:var(--gap-s);
+    min-width:0;
   }
   .caption .lede{
     font-size:var(--t-caption); line-height:1.3; color:var(--ink-soft);
     max-width:86ch;
+    min-width:0;
   }
   .caption .lede b{ color:var(--ink); font-weight:650; }
   .caption .src{
     flex:0 0 auto; font-family:var(--mono); font-size:var(--t-folio);
     letter-spacing:.02em; color:var(--grey-soft); white-space:nowrap;
     align-self:flex-end;
+  }
+  @media (max-width:640px){
+    .caption{ flex-wrap:wrap; }
+    .caption .src{ display:none; }
+    .runfoot{ display:none; }
   }
 
   /* ---- in-figure typography (applied to SVG <text> via these classes) ----
@@ -2916,6 +2927,253 @@
     </div>
   </div>
 </section>
+<section class="slide" data-title="Multi-Echelon Decoders" aria-label="Multi-echelon family: policy and decoder variants">
+  <header>
+    <span class="eyebrow">Multi-echelon family</span>
+    <h2 class="headline">The same recipe uses three different network decoders<span class="accent">.</span></h2>
+  </header>
+
+  <div class="slide-body">
+    <p class="dek">
+      Divergent Gijs settings use direct physical levels; serial Clark&ndash;Scarf is a
+      warm-started match to a proven optimum; the mixed PADN head anchors at the
+      best pairwise base-stock and learns residual adjustments.
+    </p>
+
+    <div class="figure">
+      <svg viewBox="0 0 1280 640" role="img"
+           aria-label="Three policy decoder rows for the multi-echelon family. Divergent Gijs settings use a soft tree over the raw warehouse and retailer state, with a direct-level decoder that emits warehouse and retailer order-up-to levels bounded by physical caps. Serial Clark-Scarf uses a warm-started direct-level echelon order-up-to decoder and is match-only against a proven optimum. The mixed production assembly distribution network uses a residual base-stock-backbone decoder: zero residual reproduces the best pairwise base-stock, and training learns residual adjustments.">
+        <defs>
+          <marker id="mefam-arrow" markerWidth="10" markerHeight="10" refX="7.5" refY="3" orient="auto">
+            <path d="M0,0 L7.5,3 L0,6 Z" fill="var(--grey-soft)"></path>
+          </marker>
+          <marker id="mefam-arrow-a" markerWidth="10" markerHeight="10" refX="7.5" refY="3" orient="auto">
+            <path d="M0,0 L7.5,3 L0,6 Z" fill="var(--accent)"></path>
+          </marker>
+        </defs>
+
+        <!-- Shared column geometry: state -> backbone -> [decoder] -> projection -> action. -->
+        <text class="f-region-label" x="28" y="30">policy-owned decoder slot across the multi-echelon family</text>
+
+        <!-- ====================== Row 1: Divergent Gijs settings ====================== -->
+        <g transform="translate(0,52)">
+          <rect x="14" y="0" width="1252" height="162" rx="12"
+                fill="var(--paper)" stroke="var(--rule)" stroke-width="2"></rect>
+          <text class="f-title left" x="38" y="48">Divergent Gijs settings</text>
+          <text class="f-sub" x="38" y="78">one warehouse, K retailers, special delivery</text>
+
+          <rect x="292" y="26" width="154" height="72" rx="10" fill="var(--paper)" stroke="var(--rule)" stroke-width="1.8"></rect>
+          <text class="f-tag ink" x="369" y="55" text-anchor="middle">Raw state</text>
+          <text class="f-tick" x="369" y="80" text-anchor="middle">WH + retailers</text>
+          <line class="axis" x1="446" y1="62" x2="482" y2="62" marker-end="url(#mefam-arrow)"></line>
+
+          <rect x="486" y="26" width="136" height="72" rx="10" fill="var(--paper)" stroke="var(--rule)" stroke-width="1.8"></rect>
+          <text class="f-tag ink" x="554" y="55" text-anchor="middle">Soft tree</text>
+          <text class="f-tick" x="554" y="80" text-anchor="middle">over raw state</text>
+          <line x1="622" y1="62" x2="656" y2="62" stroke="var(--accent)" stroke-width="2.6" marker-end="url(#mefam-arrow-a)"></line>
+
+          <rect x="660" y="18" width="190" height="88" rx="12" fill="var(--accent-tint-2)" stroke="var(--accent)" stroke-width="2.8"></rect>
+          <text class="f-tag right" x="755" y="49" text-anchor="middle">[ direct-level ]</text>
+          <text class="f-tick" x="755" y="74" text-anchor="middle">y^w_S, y^r_S</text>
+          <line x1="850" y1="62" x2="884" y2="62" stroke="var(--accent)" stroke-width="2.6" marker-end="url(#mefam-arrow-a)"></line>
+
+          <rect x="888" y="26" width="178" height="72" rx="10" fill="var(--paper)" stroke="var(--rule)" stroke-width="1.8"></rect>
+          <text class="f-tag ink" x="977" y="55" text-anchor="middle">Physical caps</text>
+          <text class="f-tick" x="977" y="80" text-anchor="middle">C^w, C^r, C^m</text>
+          <line class="axis" x1="1066" y1="62" x2="1100" y2="62" marker-end="url(#mefam-arrow)"></line>
+
+          <rect x="1104" y="26" width="132" height="72" rx="10" fill="var(--paper)" stroke="var(--rule)" stroke-width="1.8"></rect>
+          <text class="f-tag ink" x="1170" y="55" text-anchor="middle">Action</text>
+          <text class="f-tick" x="1170" y="80" text-anchor="middle">q^w_t, y^r_t</text>
+
+          <text class="f-note region" x="755" y="135" text-anchor="middle">levels are bounded by physical caps; warehouse order raises IP^w toward min(y^w_S, C^w)</text>
+        </g>
+
+        <!-- ====================== Row 2: Serial Clark-Scarf ====================== -->
+        <g transform="translate(0,246)">
+          <rect x="14" y="0" width="1252" height="162" rx="12"
+                fill="var(--paper)" stroke="var(--rule)" stroke-width="2"></rect>
+          <text class="f-title left" x="38" y="48">Serial Clark&ndash;Scarf</text>
+          <text class="f-sub" x="38" y="78">classical serial chain with proven echelon base-stock optimum</text>
+
+          <rect x="292" y="26" width="154" height="72" rx="10" fill="var(--paper)" stroke="var(--rule)" stroke-width="1.8"></rect>
+          <text class="f-tag ink" x="369" y="55" text-anchor="middle">Serial state</text>
+          <text class="f-tick" x="369" y="80" text-anchor="middle">stock, pipes, B_t</text>
+          <line class="axis" x1="446" y1="62" x2="482" y2="62" marker-end="url(#mefam-arrow)"></line>
+
+          <rect x="486" y="26" width="136" height="72" rx="10" fill="var(--paper)" stroke="var(--rule)" stroke-width="1.8"></rect>
+          <text class="f-tag ink" x="554" y="55" text-anchor="middle">Soft tree</text>
+          <text class="f-tick" x="554" y="80" text-anchor="middle">warm start</text>
+          <line x1="622" y1="62" x2="656" y2="62" stroke="var(--accent)" stroke-width="2.6" marker-end="url(#mefam-arrow-a)"></line>
+
+          <rect x="660" y="18" width="190" height="88" rx="12" fill="var(--accent-tint-2)" stroke="var(--accent)" stroke-width="2.8"></rect>
+          <text class="f-tag right" x="755" y="49" text-anchor="middle">[ echelon levels ]</text>
+          <text class="f-tick" x="755" y="74" text-anchor="middle">S^1_S ... S^N_S</text>
+          <line x1="850" y1="62" x2="884" y2="62" stroke="var(--accent)" stroke-width="2.6" marker-end="url(#mefam-arrow-a)"></line>
+
+          <rect x="888" y="26" width="178" height="72" rx="10" fill="var(--paper)" stroke="var(--rule)" stroke-width="1.8"></rect>
+          <text class="f-tag ink" x="977" y="55" text-anchor="middle">Echelon raise</text>
+          <text class="f-tick" x="977" y="80" text-anchor="middle">q^k = [S^k - IP^k]^+</text>
+          <line class="axis" x1="1066" y1="62" x2="1100" y2="62" marker-end="url(#mefam-arrow)"></line>
+
+          <rect x="1104" y="26" width="132" height="72" rx="10" fill="var(--slate-tint)" stroke="var(--slate)" stroke-width="1.8"></rect>
+          <text class="f-tag left" x="1170" y="55" text-anchor="middle">Match only</text>
+          <text class="f-tick" x="1170" y="80" text-anchor="middle">proven optimum</text>
+
+          <text class="f-note region" x="755" y="135" text-anchor="middle">CMA-ES starts at the exact Clark&ndash;Scarf base-stock levels; the claim is reproduction, not improvement</text>
+        </g>
+
+        <!-- ====================== Row 3: PADN mixed topology ====================== -->
+        <g transform="translate(0,440)">
+          <rect x="14" y="0" width="1252" height="162" rx="12"
+                fill="var(--paper)" stroke="var(--rule)" stroke-width="2"></rect>
+          <text class="f-title left" x="38" y="48">PADN mixed topology</text>
+          <text class="f-sub" x="38" y="78">production / assembly / distribution network</text>
+
+          <rect x="292" y="26" width="154" height="72" rx="10" fill="var(--paper)" stroke="var(--rule)" stroke-width="1.8"></rect>
+          <text class="f-tag ink" x="369" y="55" text-anchor="middle">Network state</text>
+          <text class="f-tick" x="369" y="80" text-anchor="middle">raw, fin, pipes, B_t</text>
+          <line class="axis" x1="446" y1="62" x2="482" y2="62" marker-end="url(#mefam-arrow)"></line>
+
+          <rect x="486" y="26" width="136" height="72" rx="10" fill="var(--paper)" stroke="var(--rule)" stroke-width="1.8"></rect>
+          <text class="f-tag ink" x="554" y="55" text-anchor="middle">Soft tree</text>
+          <text class="f-tick" x="554" y="80" text-anchor="middle">signed residual</text>
+          <line x1="622" y1="62" x2="656" y2="62" stroke="var(--accent)" stroke-width="2.6" marker-end="url(#mefam-arrow-a)"></line>
+
+          <rect x="660" y="18" width="190" height="88" rx="12" fill="var(--accent-tint-2)" stroke="var(--accent)" stroke-width="2.8"></rect>
+          <text class="f-tag right" x="755" y="49" text-anchor="middle">[ q^bs anchor + &Delta; ]</text>
+          <text class="f-tick" x="755" y="74" text-anchor="middle">best pairwise base-stock</text>
+          <line x1="850" y1="62" x2="884" y2="62" stroke="var(--accent)" stroke-width="2.6" marker-end="url(#mefam-arrow-a)"></line>
+
+          <rect x="888" y="26" width="178" height="72" rx="10" fill="var(--paper)" stroke="var(--rule)" stroke-width="1.8"></rect>
+          <text class="f-tag ink" x="977" y="55" text-anchor="middle">Round + clamp</text>
+          <text class="f-tick" x="977" y="80" text-anchor="middle">0 &le; q^r_t &le; qbar^r</text>
+          <line class="axis" x1="1066" y1="62" x2="1100" y2="62" marker-end="url(#mefam-arrow)"></line>
+
+          <rect x="1104" y="26" width="132" height="72" rx="10" fill="var(--paper)" stroke="var(--rule)" stroke-width="1.8"></rect>
+          <text class="f-tag ink" x="1170" y="55" text-anchor="middle">Action</text>
+          <text class="f-tick" x="1170" y="80" text-anchor="middle">q^bs + residual</text>
+
+          <text class="f-note region" x="755" y="135" text-anchor="middle">zero residual reproduces the best pairwise base-stock exactly; training learns adjustments around that anchor</text>
+        </g>
+      </svg>
+    </div>
+
+    <div class="caption">
+      <p class="lede"><b>Same optimization loop, different comparator logic.</b> Direct levels are used when the heuristic is a physical order-up-to target; warm-started echelon levels are match-only against Clark&ndash;Scarf; residual PADN control keeps the best base-stock as the floor.</p>
+      <span class="src">Divergent &middot; serial Clark&ndash;Scarf &middot; mixed PADN</span>
+    </div>
+  </div>
+</section>
+<section class="slide" data-title="Perishable Decoder" aria-label="Perishable inventory decoder: age-bucket state to bounded scalar order">
+  <header>
+    <span class="eyebrow">Perishable inventory</span>
+    <h2 class="headline">The scalar decoder keeps the base-stock gate and learns age dependence<span class="accent">.</span></h2>
+  </header>
+
+  <div class="slide-body">
+    <p class="dek">
+      The state is pipeline-first plus age buckets, normalized by demand mean. A depth-2
+      oblique soft tree emits one scalar leaf value; <b>softplus, round, and clamp</b>
+      turn it into a bounded order q<sub>t</sub> &le; 10.
+    </p>
+
+    <div class="figure">
+      <svg viewBox="0 0 1280 640" role="img"
+           aria-label="Perishable inventory policy and decoder. Pipeline and age-bucket state is divided by max demand mean one, routed through a depth-2 oblique soft tree with linear scalar leaves, then decoded by softplus, round, and clamp to an order q_t between zero and ten. The base-stock gate is exactly represented at warm start with S equals 7 for FIFO and S equals 5 for LIFO. FIFO robust beat: learned minus 1458.509 plus or minus 0.438 versus gate minus 1475.709 plus or minus 0.037, savings 1.166 percent plus or minus 0.030 percent, five of five seeds. LIFO robust beat: learned minus 1553.552 plus or minus 0.988 versus gate minus 1566.455 plus or minus 0.033, savings 0.824 percent plus or minus 0.065 percent, five of five seeds.">
+        <defs>
+          <marker id="perish-arrow" markerWidth="10" markerHeight="10" refX="7.5" refY="3" orient="auto">
+            <path d="M0,0 L7.5,3 L0,6 Z" fill="var(--grey-soft)"></path>
+          </marker>
+          <marker id="perish-arrow-a" markerWidth="10" markerHeight="10" refX="7.5" refY="3" orient="auto">
+            <path d="M0,0 L7.5,3 L0,6 Z" fill="var(--accent)"></path>
+          </marker>
+        </defs>
+
+        <text class="f-region-label" x="28" y="34">policy path for perishable_inventory</text>
+
+        <!-- top pipeline: state -> normalize -> depth-2 tree -> scalar leaf -> decoder -> action -->
+        <g transform="translate(26,66)">
+          <rect x="0" y="0" width="186" height="94" rx="12" fill="var(--paper)" stroke="var(--rule)" stroke-width="2"></rect>
+          <text class="f-tag ink" x="93" y="31" text-anchor="middle">State</text>
+          <text class="f-tick" x="93" y="55" text-anchor="middle">pipeline(L-1)</text>
+          <text class="f-tick" x="93" y="76" text-anchor="middle">age buckets</text>
+          <line class="axis" x1="186" y1="47" x2="224" y2="47" marker-end="url(#perish-arrow)"></line>
+
+          <rect x="228" y="0" width="166" height="94" rx="12" fill="var(--paper)" stroke="var(--rule)" stroke-width="2"></rect>
+          <text class="f-tag ink" x="311" y="31" text-anchor="middle">Normalize</text>
+          <text class="f-tick" x="311" y="58" text-anchor="middle">/ max(mu, 1)</text>
+          <line class="axis" x1="394" y1="47" x2="432" y2="47" marker-end="url(#perish-arrow)"></line>
+
+          <rect x="436" y="0" width="166" height="94" rx="12" fill="var(--paper)" stroke="var(--rule)" stroke-width="2"></rect>
+          <text class="f-tag ink" x="519" y="30" text-anchor="middle">Soft tree</text>
+          <text class="f-tick" x="519" y="54" text-anchor="middle">depth 2</text>
+          <text class="f-tick" x="519" y="75" text-anchor="middle">oblique splits</text>
+          <line class="axis" x1="602" y1="47" x2="640" y2="47" marker-end="url(#perish-arrow)"></line>
+
+          <rect x="644" y="0" width="174" height="94" rx="12" fill="var(--paper)" stroke="var(--rule)" stroke-width="2"></rect>
+          <text class="f-tag ink" x="731" y="30" text-anchor="middle">Linear leaf</text>
+          <text class="f-tick" x="731" y="58" text-anchor="middle">z = b + w^T x</text>
+          <line x1="818" y1="47" x2="856" y2="47" stroke="var(--accent)" stroke-width="2.8" marker-end="url(#perish-arrow-a)"></line>
+
+          <rect x="860" y="-7" width="224" height="108" rx="14" fill="var(--accent-tint-2)" stroke="var(--accent)" stroke-width="3"></rect>
+          <text class="f-tag right" x="972" y="27" text-anchor="middle">[ Decoder ]</text>
+          <text class="f-tick" x="972" y="53" text-anchor="middle">softplus -> round</text>
+          <text class="f-tick" x="972" y="76" text-anchor="middle">clamp 0..10</text>
+          <line x1="1084" y1="47" x2="1122" y2="47" stroke="var(--accent)" stroke-width="2.8" marker-end="url(#perish-arrow-a)"></line>
+
+          <rect x="1126" y="0" width="124" height="94" rx="12" fill="var(--paper)" stroke="var(--rule)" stroke-width="2"></rect>
+          <text class="f-tag ink" x="1188" y="37" text-anchor="middle">Action</text>
+          <text class="f-tick" x="1188" y="66" text-anchor="middle">q_t</text>
+        </g>
+
+        <!-- exact base-stock anchor -->
+        <g transform="translate(54,212)">
+          <rect x="0" y="0" width="1172" height="126" rx="14" fill="var(--slate-tint)" stroke="var(--slate)" stroke-width="2.2"></rect>
+          <text class="f-title left" x="32" y="42">Base-stock warm start is inside the decoder</text>
+          <text class="f-note" x="32" y="74" fill="var(--ink)">Set bias S and negative inventory-position weights so q_t = [S - IP_t]^+ after round/clamp.</text>
+          <rect x="848" y="26" width="134" height="72" rx="10" fill="var(--paper)" stroke="var(--rule)" stroke-width="1.8"></rect>
+          <text class="f-tag left" x="915" y="56" text-anchor="middle">FIFO S = 7</text>
+          <text class="f-tick" x="915" y="80" text-anchor="middle">exact anchor</text>
+          <rect x="1006" y="26" width="134" height="72" rx="10" fill="var(--paper)" stroke="var(--rule)" stroke-width="1.8"></rect>
+          <text class="f-tag left" x="1073" y="56" text-anchor="middle">LIFO S = 5</text>
+          <text class="f-tick" x="1073" y="80" text-anchor="middle">exact anchor</text>
+        </g>
+
+        <!-- robust-beat metric panels -->
+        <g transform="translate(42,384)">
+          <rect x="0" y="0" width="584" height="188" rx="14" fill="var(--paper)" stroke="var(--rule)" stroke-width="2"></rect>
+          <text class="f-title right" x="32" y="42">FIFO robust beat</text>
+          <text class="f-sub" x="32" y="70">de_moor2022_m2_exp2_l1_cp7</text>
+          <text class="f-note" x="32" y="112" fill="var(--ink)">learned &minus;1458.509 &plusmn; 0.438</text>
+          <text class="f-note" x="32" y="140" fill="var(--ink)">gate &minus;1475.709 &plusmn; 0.037</text>
+          <text class="f-cost huge right" x="398" y="126" text-anchor="middle">+1.166%</text>
+          <text class="f-note region" x="398" y="156" text-anchor="middle">&plusmn; 0.030% savings</text>
+          <text class="f-tag right" x="530" y="42" text-anchor="end">5/5 seeds</text>
+        </g>
+
+        <g transform="translate(654,384)">
+          <rect x="0" y="0" width="584" height="188" rx="14" fill="var(--paper)" stroke="var(--rule)" stroke-width="2"></rect>
+          <text class="f-title right" x="32" y="42">LIFO robust beat</text>
+          <text class="f-sub" x="32" y="70">de_moor2022_m2_exp1_l1_cp7</text>
+          <text class="f-note" x="32" y="112" fill="var(--ink)">learned &minus;1553.552 &plusmn; 0.988</text>
+          <text class="f-note" x="32" y="140" fill="var(--ink)">gate &minus;1566.455 &plusmn; 0.033</text>
+          <text class="f-cost huge right" x="398" y="126" text-anchor="middle">+0.824%</text>
+          <text class="f-note region" x="398" y="156" text-anchor="middle">&plusmn; 0.065% savings</text>
+          <text class="f-tag right" x="530" y="42" text-anchor="end">5/5 seeds</text>
+        </g>
+
+        <text class="f-note region" x="640" y="614" text-anchor="middle">Verifier reproduces De Moor 9x9 optimal policy tables and Farrington VI returns around FIFO &minus;1457 and LIFO &minus;1553.</text>
+      </svg>
+    </div>
+
+    <div class="caption">
+      <p class="lede"><b>The warm start is the comparator.</b> Generation zero is the exact base-stock
+        gate, then CMA-ES learns age-aware scalar leaves that beat that gate on both FIFO and LIFO anchors.</p>
+      <span class="src">Perishable inventory &middot; scalar_quantity q &le; 10 &middot; 5 optimizer seeds</span>
+    </div>
+  </div>
+</section>
 <section class="slide" data-title="Synthesis" aria-label="Synthesis">
   <header>
     <span class="eyebrow">Synthesis</span>
@@ -3065,7 +3323,7 @@
   </div>
 </section>
 <section class="slide section-slide" data-title="Takeaways" aria-label="Takeaways">
-  <div class="section-no">20 / 21</div>
+  <div class="section-no">22 / 23</div>
   <h2>In these benchmarks, the action space often matters more than model <span class="accent">capacity</span>.</h2>
   <ul class="takeaways">
     <li>One gradient-free CMA-ES loop, held fixed, learns compact policies across structurally different inventory systems.</li>

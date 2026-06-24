@@ -25,8 +25,8 @@ Per-period stages: (i) due shipments arrive at on-hand; (ii) suppliers ship last
 - **DEBT (snapshot_only_not_rerun, ledger D2):** set2/set3 (published 4797) carried as table-only rows. The order-per-edge / restricted-transition spec exists only in the gated CEJOR full text; the env yields ~15497 = **+223% = NOT reproduced**. literature_verified=false for both. Do not present alongside the verified set1/KT rows without this flag.
 
 ## Results (learned policy)
-- set1 (CardBoard): learned beats the *reproduced* gate (10354.8 in audit; paper reports 10354.8 paired gate). seed123 → 8034.8±17.6 (−22.4%), seed777 → 7590.7±19.2 (−26.7%); ≫2× SEM, robust to init. **best_of_n, at_risk=true — both seeds beat, but manifest labels this best_of_n; NOT a multi-seed mean±std statement.**
-- Kunnumkal–Topaloglu: learned beats reproduced gate (3930.4) by ~37% (seed123 2469.1±7.6 = −37.2%, seed777 2477.9±8.0 = −37.0%). **best_of_n, at_risk=true.**
+- set1 (CardBoard): learned beats the *reproduced* gate (10354.8 in audit; paper reports 10354.8 paired gate). The 5-seed robust report gives **7772.10±142.21 vs 10354.82**, a **24.94%±1.37%** cost reduction, **5/5 optimizer seeds below the gate**. Earlier seed123 / seed777 rows (8034.8±17.6, 7590.7±19.2) remain individual-run diagnostics, not the headline.
+- Kunnumkal–Topaloglu: learned beats reproduced gate (3930.4) by about **36.7% across five optimizer seeds** in `outputs/autoresearch/general_backorder_fixed_cost_autoresearch/results.tsv` (seed123, seed777, seed9101, seed9102, seed9103 all below the gate; learned costs 2469.1..2498.4). Treat the published DRL 3724 as cross-protocol context, not head-to-head.
 - The published PPO/DRL figures (8714 / 3724) are **cross-protocol context, NOT head-to-head**: a different learner under the source's own protocol. The learned policy lands below them but under a different protocol — NOT claimed as a PPO/DRL beat.
 - The like-for-like claim is the paired same-environment improvement over the reproduced constant node-base-stock gate.
 
@@ -40,4 +40,4 @@ python scripts/general_backorder_fixed_cost/autoresearch_general_backorder_fixed
 ## Pointers & caveats
 - code: src/problems/multi_echelon/general_backorder_fixed_cost/{env.rs, heuristics.rs, references.rs, rollout.rs, literature/, tests/, bindings.rs} ; scripts: scripts/general_backorder_fixed_cost/ ; autoresearch: policy_search/programs/program_general_backorder_fixed_cost.md.
 - Family name is a misnomer: there is NO fixed ordering cost (holding + backorder only) — the section title reflects the model actually implemented and verified.
-- set1/KT are verified_rerun within the published band; set2/set3 are a NOT-reproduced (+223%) snapshot debt (D2). PPO/DRL comparators are cross-protocol context, never "beats." The learned set1/KT improvements are best-of-N (at_risk), not yet a multi-seed mean±std restatement.
+- set1/KT are verified_rerun within the published band; set2/set3 are a NOT-reproduced (+223%) snapshot debt (D2). PPO/DRL comparators are cross-protocol context, never "beats." The learned set1/KT improvements are same-protocol gate beats; set1 has a canonical 5-seed mean±std JSON, while KT has five full-budget seed rows in the autoresearch TSV but no separate aggregate JSON yet.

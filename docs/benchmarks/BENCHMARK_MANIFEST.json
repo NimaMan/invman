@@ -134,13 +134,13 @@
     },
     "results": [
       { "claim": "serial: warm-started echelon soft tree ties Clark-Scarf optimum 47.6554 vs 47.65 (+0.011%). MATCH-only.", "seed_reporting": "single_seed", "at_risk": false },
-      { "claim": "divergent setting1: learned 779.81 vs best constant base-stock 911.39 -> -14.44%, exceeding A3C savings 8.95%.", "seed_reporting": "best_of_n", "at_risk": true },
-      { "claim": "divergent setting2: learned 973.55 vs corrected best constant 1137.79 -> -14.43%, exceeding A3C 12.09%.", "seed_reporting": "best_of_n", "at_risk": true },
+      { "claim": "divergent setting1: direct-level learned seed mean 776.15+/-14.27 vs best constant base-stock gate 910.34+/-0.51 -> 14.74%+/-1.60% cost reduction; 5/5 seeds beat the gate. A3C 8.95% remains cross-protocol context.", "seed_reporting": "multi_seed_mean_std", "at_risk": false },
+      { "claim": "divergent setting2: direct-level learned seed mean 1001.07+/-25.63 vs best constant base-stock gate 1138.04+/-0.43 -> 12.04%+/-2.26% cost reduction; 5/5 seeds beat the gate. A3C 12.09% remains cross-protocol context.", "seed_reporting": "multi_seed_mean_std", "at_risk": false },
       { "claim": "padn serial case3: learned beats env gate 60.24 (seed123 57.25 -4.96%, seed321 54.96 -8.77%). Env-own-heuristic beat.", "seed_reporting": "single_seed", "at_risk": true },
       { "claim": "padn pure-assembly: learned 274.90 vs gate 283.34 -> -2.98%. Env-own-heuristic beat.", "seed_reporting": "single_seed", "at_risk": true },
-      { "claim": "padn mixed distribution-assembly: CORRECTED to gate-match. 8 CMA seeds -> 306.10+/-22.89 (+2.82% vs gate 297.69, 4/8 below). Earlier -0.99% was best-of-3.", "seed_reporting": "multi_seed_mean_std", "at_risk": false },
-      { "claim": "gbk set1 (CardBoard): learned beats reproduced gate 10354.8 by 22.4% (seed123) and 26.7% (seed777).", "seed_reporting": "best_of_n", "at_risk": true },
-      { "claim": "gbk Kunnumkal-Topaloglu: learned beats reproduced gate 3930.4 by ~37% (seed123/seed777); both below published DRL 3724 (cross-protocol).", "seed_reporting": "best_of_n", "at_risk": true }
+      { "claim": "padn mixed distribution-assembly: residual base-stock-backbone head beats the env-own gate 297.69 with 291.136+/-2.78 over 5 seeds (-2.20%, 5/5 below gate). The older vector/flow-head audit remains parity at 306.10+/-22.89 (+2.82%, 4/8 below). Not a published-number beat.", "seed_reporting": "multi_seed_mean_std", "at_risk": false },
+      { "claim": "gbk set1 (CardBoard): learned seed mean 7772.10+/-142.21 vs reproduced gate 10354.82 -> 24.94%+/-1.37% cost reduction; 5/5 seeds beat the gate.", "seed_reporting": "multi_seed_mean_std", "at_risk": false },
+      { "claim": "gbk Kunnumkal-Topaloglu: five full-budget seed rows all beat reproduced gate 3930.4 by about 36.7% (learned 2469.1..2498.4); published DRL 3724 remains cross-protocol context.", "seed_reporting": "multi_seed_runs_no_aggregate_json", "at_risk": false }
     ],
     "reproduce_commands": [
       "python -c \"import invman_rust as ir; print(ir.multi_echelon_serial_exact_normal_solution([3,2,2],[1,1,2],37.12,5.0,1.0))\"",
@@ -150,9 +150,11 @@
       "python -c \"import invman_rust as ir,json; print(json.dumps(ir.production_assembly_distribution_network_literature_benchmark_summary(serial_replications=10000,seed=1234),default=str))\"",
       "python -c \"import invman_rust as ir; print(ir.multi_echelon_general_backorder_fixed_cost_audit_base_stock('geevers2023_general_set1',replications=200,seed=1234)['mean_cost'])\"",
       "python -c \"import invman_rust as ir; print(ir.multi_echelon_general_backorder_fixed_cost_audit_base_stock('kunnumkal_topaloglu_divergent',replications=500,seed=1234)['mean_cost'])\"",
-      "python scripts/multi_echelon/train_multi_echelon_policy.py --reference gijsbrechts2022_setting1 --budget full",
+      "RAYON_NUM_THREADS=2 OMP_NUM_THREADS=2 python scripts/multi_echelon/seed_robust_divergent_multi_echelon.py --reference gijsbrechts2022_setting1 --budget full --designs direct_level --depths 2 3 --seeds 9001 9002 9003 9004 9005 --mp_num_processors 2",
+      "RAYON_NUM_THREADS=2 OMP_NUM_THREADS=2 python scripts/multi_echelon/seed_robust_divergent_multi_echelon.py --reference gijsbrechts2022_setting2 --budget full --designs direct_level --depths 2 3 --seeds 9001 9002 9003 9004 9005 --mp_num_processors 2",
       "python scripts/multi_echelon_serial/benchmark_serial_clark_scarf.py",
       "RAYON_NUM_THREADS=2 OMP_NUM_THREADS=2 python scripts/production_assembly_distribution_network/autoresearch_mixed_distribution_assembly_network.py --budget full --warm_start_flow 10 --seed 7 --run_tag mixed_flow10_verify",
+      "RAYON_NUM_THREADS=4 OMP_NUM_THREADS=4 python policy_search/agentic/evaluate_policy_spec_padn.py --spec policy_search/agentic/specs/padn_explore_best.json --problem production_assembly_distribution_network --instance 0 --seeds 5 --budget full",
       "python scripts/general_backorder_fixed_cost/autoresearch_general_backorder_fixed_cost.py --reference kunnumkal_topaloglu_divergent --budget full"
     ]
   },
@@ -233,9 +235,9 @@
       "rerun_method": "python3 -c ir.perishable_inventory_exact_mdp_summary('de_moor2022_m2_exp2_l1_cp7_fifo'); ...('de_moor2022_m2_exp1_l1_cp7_lifo'); ir.perishable_inventory_flownet_policy_verification_summary() — all matches_published_* True THIS audit."
     },
     "results": [
-      { "claim": "Learned depth-2 oblique-linear soft tree (21 params) beats best base-stock gate FIFO m2/exp2: -1457.90 vs -1475.08, +1.16%", "seed_reporting": "single_seed", "at_risk": true },
-      { "claim": "Learned beats gate LIFO m2/exp1: -1553.16 vs -1565.98, +0.82%", "seed_reporting": "single_seed", "at_risk": true },
-      { "claim": "Learned beats gate on 3 further instances (m3 exp2 +0.70%, m2/L2 exp6 +2.21%, m2 exp4 cp10 +1.44%)", "seed_reporting": "single_seed", "at_risk": true },
+      { "claim": "Seed-robust exact-anchor FIFO m2/exp2: learned -1458.509+/-0.438 vs base-stock gate -1475.709+/-0.037, +1.166%+/-0.030%, 5/5 seeds beat the gate.", "seed_reporting": "multi_seed_mean_std", "at_risk": false },
+      { "claim": "Seed-robust exact-anchor LIFO m2/exp1: learned -1553.552+/-0.988 vs base-stock gate -1566.455+/-0.033, +0.824%+/-0.065%, 5/5 seeds beat the gate.", "seed_reporting": "multi_seed_mean_std", "at_risk": false },
+      { "claim": "Learned beats gate on 3 further larger/table-only instances (m3 exp2 +0.70%, m2/L2 exp6 +2.21%, m2 exp4 cp10 +1.44%); these remain single-seed observations.", "seed_reporting": "single_seed", "at_risk": true },
       { "claim": "exact_slice_report: soft_tree_sigmoid_linear beats best heuristic FIFO ~15.6 units, LIFO ~14 units; soft_tree_linear LIFO worse basin (honest negative)", "seed_reporting": "single_seed", "at_risk": true }
     ],
     "reproduce_commands": [

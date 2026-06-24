@@ -1707,6 +1707,84 @@ far above the reduced grid's cap of $100$, so the grid cannot express the operat
 policy artifact, not a problem constraint. We train for the problem itself and use the published
 numbers only as a benchmark, independently of the learner in \citet{gijsbrechts2022drl}.
 
+Figure~\ref{fig:me-family-decoders} summarizes the policy/decoder variants used across the
+multi-echelon family: the divergent Gijsbrechts/Van Roy settings use a direct-level soft-tree decoder
+over the raw decision state; the serial Clark--Scarf row uses the same direct-level idea in echelon
+coordinates, warm-started at the exact optimum; and the mixed production/assembly/distribution network
+uses a residual decoder anchored at the best pairwise base-stock policy.
+
+\begin{figure}[t]
+  \centering
+  \resizebox{\textwidth}{!}{%
+  \begin{tikzpicture}[x=1cm,y=1cm,
+    famrow/.style={draw=mydarkblue!22,rounded corners=5pt,inner sep=8pt},
+    famlabel/.style={font=\small\bfseries,mydarkblue,align=left},
+    famnode/.style={stage mid,font=\small,minimum width=32mm,minimum height=12mm},
+    famstate/.style={stage in,font=\small,minimum width=31mm,minimum height=12mm},
+    famdec/.style={stage dec,font=\small,minimum width=35mm,minimum height=12mm},
+    famout/.style={stage out,font=\small,minimum width=31mm,minimum height=12mm},
+    famnote/.style={font=\footnotesize,mydarkblue,align=center,fill=white,
+                    fill opacity=0.85,text opacity=1,inner sep=2pt}
+  ]
+    % Row 1: divergent Gijsbrechts / Van Roy settings.
+    \node[famstate] (gstate) at (3.0,0) {\textbf{raw decision state}\\warehouse + retailer\\on-hand/pipelines};
+    \node[famnode]  (gtree)  at (6.4,0) {normalize\\soft tree};
+    \node[famdec]   (gdec)   at (9.8,0) {\textbf{direct-level decoder}\\$y^w_S,\ y^r_S$};
+    \node[famnode]  (gproj)  at (13.2,0) {physical caps\\$C^w,\ C^r,\ C^m$};
+    \node[famout]   (gout)   at (16.4,0) {valid action\\$q^w_t,\ y^r_t$};
+    \draw[flow] (gstate) -- (gtree);
+    \draw[flow] (gtree) -- (gdec);
+    \draw[flow] (gdec) -- (gproj);
+    \draw[flow] (gproj) -- (gout);
+    \node[famlabel,anchor=east] at (0.65,0.25) {Divergent\\Gijs settings};
+    \node[famnote,below=3pt of gproj.south] {$q^w_t=\big[\min(y^w_S,C^w)-\mathrm{IP}^w_t\big]^+$, then cap by $C^m$; retailers raise toward $\min(y^r_S,C^r)$};
+
+    % Row 2: serial Clark--Scarf.
+    \node[famstate] (sstate) at (3.0,-2.7) {\textbf{serial state}\\on-hand, pipelines\\backorder};
+    \node[famnode]  (stree)  at (6.4,-2.7) {normalize\\soft tree};
+    \node[famdec]   (sdec)   at (9.8,-2.7) {\textbf{echelon decoder}\\$S^1_S,\dots,S^N_S$};
+    \node[famnode]  (sproj)  at (13.2,-2.7) {echelon raise\\$q^k_t=[S^k_S-\mathrm{IP}^k_t]^+$};
+    \node[famout]   (sout)   at (16.4,-2.7) {match-only\\proven optimum};
+    \draw[flow] (sstate) -- (stree);
+    \draw[flow] (stree) -- (sdec);
+    \draw[flow] (sdec) -- (sproj);
+    \draw[flow] (sproj) -- (sout);
+    \node[famlabel,anchor=east] at (0.65,-2.45) {Serial\\Clark--Scarf};
+    \node[famnote,below=3pt of sdec.south] {CMA-ES is warm-started at the exact Clark--Scarf echelon base-stock levels, so the row is reported as reproduction, not a beat};
+
+    % Row 3: production/assembly/distribution network, mixed topology.
+    \node[famstate] (pstate) at (3.0,-5.4) {\textbf{network state}\\raw/finished stock\\pipelines, backlog};
+    \node[famnode]  (ptree)  at (6.4,-5.4) {soft-tree residual\\signed $\Delta^r_t$};
+    \node[famdec]   (pdec)   at (9.8,-5.4) {\textbf{base-stock backbone}\\$q^{\mathrm{bs},r}_t+\Delta^r_t$};
+    \node[famnode]  (pproj)  at (13.2,-5.4) {round + clamp\\$0\le q^r_t\le \bar q^r$};
+    \node[famout]   (pout)   at (16.4,-5.4) {mixed PADN\\residual action};
+    \draw[flow] (pstate) -- (ptree);
+    \draw[flow] (ptree) -- (pdec);
+    \draw[flow] (pdec) -- (pproj);
+    \draw[flow] (pproj) -- (pout);
+    \node[famlabel,anchor=east] at (0.65,-5.15) {Production / assembly /\\distribution network};
+    \node[famnote,below=3pt of pdec.south] {zero residual reproduces the best pairwise base-stock policy exactly; CMA-ES learns residual adjustments around that anchor};
+
+    \begin{scope}[on background layer]
+      \node[famrow,fit=(gstate)(gtree)(gdec)(gproj)(gout)] {};
+      \node[famrow,fit=(sstate)(stree)(sdec)(sproj)(sout)] {};
+      \node[famrow,fit=(pstate)(ptree)(pdec)(pproj)(pout)] {};
+    \end{scope}
+  \end{tikzpicture}%
+  }
+  \caption{Policy/decoder designs for the multi-echelon family. The divergent
+  Gijsbrechts/Van Roy settings of Section~\ref{sec:me-policy} feed the raw decision state
+  through a soft tree whose direct-level decoder emits warehouse and retailer order-up-to levels,
+  then clips them to the physical caps before forming feasible orders. The serial
+  Clark--Scarf policy of Section~\ref{sec:serial-policy} uses a warm-started direct-level decoder in
+  echelon order-up-to coordinates and is a match-only result because the comparator is a proven
+  optimum. The mixed production/assembly/distribution network of Section~\ref{sec:pirhoo-policy}
+  uses the residual base-stock-backbone head
+  $q^r_t=\mathrm{clamp}(q^{\mathrm{bs},r}_t+\mathrm{round}(\Delta^r_t),0,\bar q^r)$: zero residual
+  anchors the policy at the best pairwise base-stock, and training learns residual adjustments.}
+  \label{fig:me-family-decoders}
+\end{figure}
+
 \paragraph{Decision path: a worked example.}
 We use setting 1, where the best run is a depth-2 oblique soft tree with
 linear leaves in the direct-level action mode. The raw decision state has dimension $22$ (warehouse
@@ -2006,6 +2084,75 @@ stock level cannot. The whole policy carries $21$ parameters. We warm-start CMA-
 best base-stock level (Section~\ref{sec:methods-cmaes}): the generation-0 mean return reproduces the
 best base-stock to within its standard error, so the search starts \emph{at} the heuristic and any
 improvement is attributable to the learned age-dependence rather than to a lucky initialization.
+Figure~\ref{fig:perish-policy-decoder} spells out the resulting policy and decoder.
+
+\begin{figure}[t]
+  \centering
+  \resizebox{\textwidth}{!}{%
+  \begin{tikzpicture}[x=1cm,y=1cm,
+    perishstate/.style={stage in,font=\small,minimum width=31mm,minimum height=12mm},
+    perishnode/.style={stage mid,font=\small,minimum width=28mm,minimum height=12mm},
+    perishdec/.style={stage dec,font=\small,minimum width=33mm,minimum height=12mm},
+    perishout/.style={stage out,font=\small,minimum width=24mm,minimum height=12mm},
+    perishnote/.style={draw=mydarkblue!35,rounded corners=4pt,fill=mydarkblue!4,
+                       font=\footnotesize,align=center,inner sep=6pt},
+    perishmetric/.style={draw=myorange!55!black,rounded corners=4pt,fill=myorange!8,
+                         font=\footnotesize,align=center,inner sep=6pt}
+  ]
+    \node[perishstate] (state) at (1.8,0)
+      {\textbf{state}\\pipeline first\\age buckets};
+    \node[perishnode] (norm) at (5.0,0)
+      {normalize\\$\mathbf{x}=\mathbf S_t/\max(\mu,1)$};
+    \node[perishnode] (tree) at (8.1,0)
+      {depth-2\\oblique soft tree};
+    \node[perishdec] (leaf) at (11.3,0)
+      {linear scalar leaf\\$z=b+w^\top\mathbf{x}$};
+    \node[perishdec] (decoder) at (14.7,0)
+      {scalar decoder\\$\mathrm{clamp}(\lfloor\mathrm{softplus}(z)\rceil,0,10)$};
+    \node[perishout] (out) at (17.8,0)
+      {order\\$q_t$};
+
+    \draw[flow] (state) -- (norm);
+    \draw[flow] (norm) -- (tree);
+    \draw[flow] (tree) -- (leaf);
+    \draw[flow] (leaf) -- (decoder);
+    \draw[flow] (decoder) -- (out);
+
+    \node[perishnote] (anchor) at (5.2,-2.1)
+      {\textbf{Base-stock warm start}\\Set bias $S$ and negative inventory-position weights so the\\
+       gate represents $q_t=[S-\mathrm{IP}_t]^+$ after round/clamp.\\
+       FIFO anchor $S=7$; LIFO anchor $S=5$.};
+    \node[perishmetric] (fifo) at (11.2,-2.1)
+      {\textbf{FIFO robust beat}\\de\_moor2022\_m2\_exp2\_l1\_cp7\\
+       learned $-1458.509\pm0.438$ vs.\ gate $-1475.709\pm0.037$\\
+       savings $+1.166\%\pm0.030\%$; $5/5$ seeds};
+    \node[perishmetric] (lifo) at (16.0,-2.1)
+      {\textbf{LIFO robust beat}\\de\_moor2022\_m2\_exp1\_l1\_cp7\\
+       learned $-1553.552\pm0.988$ vs.\ gate $-1566.455\pm0.033$\\
+       savings $+0.824\%\pm0.065\%$; $5/5$ seeds};
+
+    \draw[flow,myorange!70!black] (decoder.south) |- (fifo.north);
+    \draw[flow,myorange!70!black] (decoder.south) |- (lifo.north);
+    \draw[connect arrow,mydarkblue] (anchor.north) -- (norm.south);
+
+    \begin{scope}[on background layer]
+      \node[draw=mydarkblue!45,dashed,rounded corners=5pt,inner sep=8pt,
+            fit=(norm)(tree)(leaf)(decoder)] {};
+    \end{scope}
+  \end{tikzpicture}%
+  }
+  \caption{Perishable policy/decoder. The policy uses the pipeline-first plus age-bucket state,
+  normalized by $\max(\mu,1)$, and a CMA-ES-trained depth-2 oblique soft tree with linear scalar
+  leaves. The decoder maps each scalar leaf value through
+  $q_t=\mathrm{clamp}(\lfloor\mathrm{softplus}(z)\rceil,0,10)$, the
+  \texttt{scalar\_quantity} action mode for the perishable benchmark. The base-stock policy is encoded
+  exactly at the warm start by choosing the bias and inventory-position weights so the rounded and
+  clamped decoder gives $[S-\mathrm{IP}_t]^+$. On the two exact-anchor instances this age-aware
+  decoder robustly beats the base-stock gate over five optimizer seeds; the literature verifier
+  reproduces the De Moor $9\times9$ optimal policy tables/base-stock levels and the Farrington value-
+  iteration returns around FIFO $-1457$ and LIFO $-1553$.}
+  \label{fig:perish-policy-decoder}
+\end{figure}
 
 \subsection{Experiment setup}
 \label{sec:perishable-setup}

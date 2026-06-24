@@ -161,15 +161,19 @@ not bind — always check the best `(yw,yr)` is interior to the benchmark grid.
   single-retailer near-newsvendor system).
 - **gijs_2022 setting 1**: resolved. Autoresearch sweep (`--designs grid,direct_level --depths 2,3`,
   full budget): operating-region best constant base-stock `(300,25)` = 911.4; `grid` policies stay
-  stuck at ~3090 (+238%, the `{50..100}` trap); **`direct_level` depth-2 = 779.8, a −14.44%
-  improvement over best constant base-stock — exceeding Gijs's published A3C savings of 8.95%.**
+  stuck at ~3090 (+238%, the `{50..100}` trap); the seed-robust re-run reports
+  **`direct_level` depth-2 = 776.15 ± 14.27 vs gate 910.34 ± 0.51, a 14.74% ± 1.60%
+  improvement over best constant base-stock (5/5 seeds)**. This exceeds Gijs's published A3C
+  savings of 8.95% as cross-protocol context.
   `direct_level` depth-3 (1226, +34%) underperformed in this budget; the design search picked depth-2.
   This is the same relative-improvement metric Gijs reports; absolute costs differ (gijs_2022 mode).
 - **gijs_2022 setting 2**: done. Sweep result: `grid` stuck at ~3795 (+231%, the trap);
-  **`direct_level` depth-3 = 973.6, a −14.43% improvement over the (corrected) operating-region best
-  constant base-stock `(525,25)=1137.8` — exceeding Gijs's published A3C savings of 12.09%.** Here
+  seed-robust re-run reports **`direct_level` depth-3 = 1001.07 ± 25.63 vs gate 1138.04 ± 0.43,
+  a 12.04% ± 2.26% improvement over the (corrected) operating-region best constant base-stock
+  `(525,25)=1137.8` (5/5 seeds)**. This is essentially tied with Gijs's published A3C savings of
+  12.09% as cross-protocol context. Here
   depth-3 beat depth-2 (1023.8), unlike setting 1 — depth is instance-dependent. (The initial
   benchmark grid bound at `yw=500`; extending it gave the firm `(525,25)` benchmark above.)
-- **Both faithful settings beat the published A3C savings** with the problem-appropriate
+- **Both faithful settings robustly beat the same-protocol constant-base-stock gate** with the problem-appropriate
   direct-estimation policy. Next: broaden the sweep (direct order-quantity, per-retailer heads, finer
   grid, depth-3 warm start) to push the margins further and stress-test robustness.

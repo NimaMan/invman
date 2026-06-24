@@ -69,15 +69,15 @@ Each below currently asserts carried==published *literals* without executing the
 
 ## (c) Seed-robustness debt — every at_risk result → mean±std over ≥5 optimizer seeds
 
-**Project mandate (MEMORY: seed-robust-reporting-standard):** report mean±std over ≥5 *optimizer* seeds, never single-seed/best-of-N. Almost every "beats heuristic" headline is currently a single CMA-ES seed (the large eval-SEM is demand-path CRN noise, NOT optimizer-seed variance). Build one shared `seed_robust_<problem>.py` pattern (model on the existing `seed_robust_mixed_distribution_assembly_network.py`) that loops ≥5 seeds and emits mean±std + per-seed range.
+**Project mandate (MEMORY: seed-robust-reporting-standard):** report mean±std over ≥5 *optimizer* seeds, never single-seed/best-of-N. Many remaining "beats heuristic" headlines are still a single CMA-ES seed (the large eval-SEM is demand-path CRN noise, NOT optimizer-seed variance). Use the existing `seed_robust_<problem>.py` pattern for each remaining at-risk surface.
 
 ### HIGH (headline / paper-table claims that are single-seed or best-of-N)
 
 | Item | Scope | Effort | Needs |
 |---|---|---|---|
 | S-H1 | **OWMR instance_13** (+6.44%) and **instance_14** + regime rows (3/9/10): paper-table wins are single-seed; run ≥5 seeds (instance_12 already has a robust +4.99% — reconcile paper to it) | M | CMA |
-| S-H2 | **multi_echelon/divergent settings 1&2** (-14.4% "beats A3C"): currently best-of-N single optimizer seed → ≥5-seed mean±std before "beats A3C" survives | L | CMA (slow env) |
-| S-H3 | **multi_echelon/gbk set1 (22.4/26.7%) + KT (~37%)**: only N=2 seeds (123,777) despite large margins → add ≥3 more seeds | M | CMA |
+| S-H2 | **RESOLVED 2026-06-06 — multi_echelon/divergent settings 1&2**: 5-seed direct-level re-run gives setting1 14.74%±1.60% and setting2 12.04%±2.26%, 5/5 below same-protocol gate; A3C remains cross-protocol context | done | `scripts/multi_echelon/seed_robust_divergent_multi_echelon.py` |
+| S-H3 | **RESOLVED 2026-06-06 — multi_echelon/gbk set1 + KT**: set1 has canonical 5-seed JSON (24.94%±1.37%, 5/5); KT has five full-budget seed rows all about 36.7% below gate, though no aggregate JSON yet | done / polish | aggregate KT JSON if this becomes paper-facing |
 | S-H4 | **lost_sales vanilla 22/24-win + fixed-cost surface**: every learned cell is a single optimizer seed; sub-percent "beats myopic2 -1.20%" needs ≥5 seeds | L (whole surface) | CMA |
 | S-H5 | **joint_replenishment 6/16 MOQ-beats** (setting 5 +13.05% etc.): single-seed; the setting-10 flip is best-of-N=2 inside noise → ≥5 seeds | M | CMA |
 | S-H6 | **ameliorating_inventory** spirits_0001/port_wine/spirits_1002 (+450/+278/+524%): huge margins but single-seed → ≥5 seeds to make robust | S (fast env) | CMA |
@@ -86,7 +86,7 @@ Each below currently asserts carried==published *literals* without executing the
 
 | Item | Scope | Effort | Needs |
 |---|---|---|---|
-| S-M1 | **perishable_inventory** 5 "beats gate" rows (+0.70..+2.21%): single-seed; MEMORY already flags "perishable x5" as a MED debt → `seed_robust_perishable_inventory.py` | M | CMA |
+| S-M1 | **PARTLY RESOLVED 2026-06-06 — perishable_inventory**: exact-anchor FIFO/LIFO rows are 5-seed robust gate beats (FIFO +1.166%±0.030%, LIFO +0.824%±0.065%, 5/5); larger/table-only rows remain single-seed observations | done / residual | rerun larger/table-only perishable cells only if used as headlines |
 | S-M2 | **random_yield_inventory**: sweep is 4 seeds (one short of ≥5); add a 5th, make the d1-linear-b8 number canonical (the d3 headline contradicts saved evidence) | S | CMA |
 | S-M3 | **joint_pricing_inventory** (+25.15%): single training seed; no seed-sweep runner exists | M | CMA |
 | S-M4 | **nonstationary_lot_sizing** (beats DP 8/8): single seed=1234, best-of-population; no multi-seed runner | M | CMA |

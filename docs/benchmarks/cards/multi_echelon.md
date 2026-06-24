@@ -66,13 +66,13 @@ serial: exact Clark-Scarf recursive-newsvendor decomposition (TRUE optimum, mirr
 | seed_reporting | at_risk | seed-robust | Claim |
 | --- | --- | --- | --- |
 | `single_seed` | False | no | serial: warm-started echelon soft tree ties Clark-Scarf optimum 47.6554 vs 47.65 (+0.011%). MATCH-only. |
-| `best_of_n` | True | no | divergent setting1: learned 779.81 vs best constant base-stock 911.39 -> -14.44%, exceeding A3C savings 8.95%. |
-| `best_of_n` | True | no | divergent setting2: learned 973.55 vs corrected best constant 1137.79 -> -14.43%, exceeding A3C 12.09%. |
+| `multi_seed_mean_std` | False | yes | divergent setting1: direct-level learned seed mean 776.15+/-14.27 vs best constant base-stock gate 910.34+/-0.51 -> 14.74%+/-1.60% cost reduction; 5/5 seeds beat the gate. A3C 8.95% remains cross-protocol context. |
+| `multi_seed_mean_std` | False | yes | divergent setting2: direct-level learned seed mean 1001.07+/-25.63 vs best constant base-stock gate 1138.04+/-0.43 -> 12.04%+/-2.26% cost reduction; 5/5 seeds beat the gate. A3C 12.09% remains cross-protocol context. |
 | `single_seed` | True | no | padn serial case3: learned beats env gate 60.24 (seed123 57.25 -4.96%, seed321 54.96 -8.77%). Env-own-heuristic beat. |
 | `single_seed` | True | no | padn pure-assembly: learned 274.90 vs gate 283.34 -> -2.98%. Env-own-heuristic beat. |
-| `multi_seed_mean_std` | False | yes | padn mixed distribution-assembly: CORRECTED to gate-match. 8 CMA seeds -> 306.10+/-22.89 (+2.82% vs gate 297.69, 4/8 below). Earlier -0.99% was best-of-3. |
-| `best_of_n` | True | no | gbk set1 (CardBoard): learned beats reproduced gate 10354.8 by 22.4% (seed123) and 26.7% (seed777). |
-| `best_of_n` | True | no | gbk Kunnumkal-Topaloglu: learned beats reproduced gate 3930.4 by ~37% (seed123/seed777); both below published DRL 3724 (cross-protocol). |
+| `multi_seed_mean_std` | False | yes | padn mixed distribution-assembly: residual base-stock-backbone head beats the env-own gate 297.69 with 291.136+/-2.78 over 5 seeds (-2.20%, 5/5 below gate). The older vector/flow-head audit remains parity at 306.10+/-22.89 (+2.82%, 4/8 below). Not a published-number beat. |
+| `multi_seed_mean_std` | False | yes | gbk set1 (CardBoard): learned seed mean 7772.10+/-142.21 vs reproduced gate 10354.82 -> 24.94%+/-1.37% cost reduction; 5/5 seeds beat the gate. |
+| `multi_seed_runs_no_aggregate_json` | False | yes | gbk Kunnumkal-Topaloglu: five full-budget seed rows all beat reproduced gate 3930.4 by about 36.7% (learned 2469.1..2498.4); published DRL 3724 remains cross-protocol context. |
 
 ## How to reproduce & compare
 
@@ -92,13 +92,14 @@ python -c "import invman_rust as ir,json; print(json.dumps(ir.multi_echelon_gijs
 python -c "import invman_rust as ir,json; print(json.dumps(ir.production_assembly_distribution_network_literature_benchmark_summary(serial_replications=10000,seed=1234),default=str))"
 python -c "import invman_rust as ir; print(ir.multi_echelon_general_backorder_fixed_cost_audit_base_stock('geevers2023_general_set1',replications=200,seed=1234)['mean_cost'])"
 python -c "import invman_rust as ir; print(ir.multi_echelon_general_backorder_fixed_cost_audit_base_stock('kunnumkal_topaloglu_divergent',replications=500,seed=1234)['mean_cost'])"
-python scripts/multi_echelon/train_multi_echelon_policy.py --reference gijsbrechts2022_setting1 --budget full
+RAYON_NUM_THREADS=2 OMP_NUM_THREADS=2 python scripts/multi_echelon/seed_robust_divergent_multi_echelon.py --reference gijsbrechts2022_setting1 --budget full --designs direct_level --depths 2 3 --seeds 9001 9002 9003 9004 9005 --mp_num_processors 2
+RAYON_NUM_THREADS=2 OMP_NUM_THREADS=2 python scripts/multi_echelon/seed_robust_divergent_multi_echelon.py --reference gijsbrechts2022_setting2 --budget full --designs direct_level --depths 2 3 --seeds 9001 9002 9003 9004 9005 --mp_num_processors 2
 python scripts/multi_echelon_serial/benchmark_serial_clark_scarf.py
 RAYON_NUM_THREADS=2 OMP_NUM_THREADS=2 python scripts/production_assembly_distribution_network/autoresearch_mixed_distribution_assembly_network.py --budget full --warm_start_flow 10 --seed 7 --run_tag mixed_flow10_verify
+RAYON_NUM_THREADS=4 OMP_NUM_THREADS=4 python policy_search/agentic/evaluate_policy_spec_padn.py --spec policy_search/agentic/specs/padn_explore_best.json --problem production_assembly_distribution_network --instance 0 --seeds 5 --budget full
 python scripts/general_backorder_fixed_cost/autoresearch_general_backorder_fixed_cost.py --reference kunnumkal_topaloglu_divergent --budget full
 ```
 
 To compare your own policy: run the command(s) above to regenerate the baseline on the named instance(s), evaluate your policy under the SAME instance + eval protocol (seeds / horizon / tolerance shown above), and report mean±std over ≥5 optimizer seeds vs the strongest baseline.
 
 _Generated from `docs/benchmarks/BENCHMARK_MANIFEST.json` via `invman.benchmarks.catalog.render_card`. Do not edit by hand._
-

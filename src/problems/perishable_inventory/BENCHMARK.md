@@ -58,13 +58,13 @@ Best learned **depth-2 oblique-split, linear-leaf soft tree (21 params)**, warm-
 
 | instance | gate (MC) | learned (MC) | Δ vs gate | seed status |
 |---|---:|---:|---|---|
-| `m2_exp2_l1_cp7_fifo` | −1475.08 | −1457.90 | **+17.18 (+1.16%)**, ≈9.5× paired SEM | **single_seed, NOT yet seed-robust** |
-| `m2_exp1_l1_cp7_lifo` | −1565.98 | −1553.16 | **+12.82 (+0.82%)**, ≈6.6× paired SEM | **single_seed, NOT yet seed-robust** |
+| `m2_exp2_l1_cp7_fifo` | −1475.709±0.037 | −1458.509±0.438 | **+1.166%±0.030%**, 5/5 optimizer seeds | **seed-robust** |
+| `m2_exp1_l1_cp7_lifo` | −1566.455±0.033 | −1553.552±0.988 | **+0.824%±0.065%**, 5/5 optimizer seeds | **seed-robust** |
 | `m2_exp4_l1_cp10_fifo` | −1485.40 | −1464.06 | +21.34 (+1.44%) | **single_seed, NOT yet seed-robust** |
 | `m3_exp2_l1_cp7_fifo` | −1435.30 | −1425.20 | +10.09 (+0.70%) | **single_seed, NOT yet seed-robust** |
 | `m2_exp6_l2_cp7_fifo` | −1495.44 | −1462.45 | +32.99 (+2.21%) | **single_seed, NOT yet seed-robust** |
 
-- **HONESTY FLAG:** every row above is from a **single optimizer seed** (`seed=123`; the 2048 seeds are demand-path eval seeds, not optimizer seeds). The manifest marks all of these `at_risk: true, seed_reporting: single_seed`. Per the project's seed-robust reporting standard (mean±std over ≥5 optimizer seeds, never single/best-of-N), these "beats gate" claims are **NOT yet seed-robust** and must be read as single-seed observations, not certified beats. The paper presents the two `m=2/L=1` rows as headline gate beats; that framing is single-seed.
+- **HONESTY FLAG:** the two exact-anchor `m=2/L=1` rows above are now certified seed-robust over five optimizer seeds in `outputs/perishable_inventory/seed_robust_report.json`. The remaining larger/table-only rows are still from a **single optimizer seed** (`seed=123`; the 2048 seeds are demand-path eval seeds, not optimizer seeds) and must remain at-risk until re-run as mean±std over ≥5 optimizer seeds.
 - The exact_slice_report (separate runner) reports `soft_tree_sigmoid_linear` beating the best heuristic FIFO ~15.6 / LIFO ~14 units, with `soft_tree_linear` landing in a worse LIFO basin (an honest negative). Also single-seed.
 - The VI-optimum proximity (learned ≈ −1457.90 vs analytic −1457.28 FIFO) is **context only** (mixes estimators).
 
@@ -89,7 +89,7 @@ python3 /home/nima/code/ml/invman/scripts/perishable_inventory/run_exact_slice_b
 - **scripts:** `scripts/perishable_inventory/` — `autoresearch_perishable_inventory.py` (the working soft-tree CMA-ES runner), `run_exact_slice_benchmark.py` (working), `run_practical_benchmark.py`. NOTE: `run_paper_benchmark.py` and `common.py` are **dead** (import the removed `invman.policies.soft_tree`); use the autoresearch / exact-slice runners.
 - **autoresearch:** `policy_search/programs/program_perishable_inventory.md`; ledger `outputs/autoresearch/perishable_inventory_autoresearch/results.tsv`.
 - **caveats:**
-  - All learned "beats gate" results are **single optimizer seed** — not seed-robust; do not cite as certified beats.
+  - The exact-anchor FIFO/LIFO learned "beats gate" results are seed-robust; the larger/table-only learned rows are still **single optimizer seed** observations and should not be cited as certified beats.
   - The VI optimum and Farrington Table 3 numbers are **analytic** (midpoint-binned Gamma); learned/gate rows are **Monte-Carlo** — only the gate comparison is apples-to-apples.
   - De Moor DQN / shaped-DQN are documented but NOT re-implemented (cross-protocol DRL context).
   - Demand is **Gamma(μ=4, cv=0.5) rounded to integer** (cv = coefficient of variation, not variance).

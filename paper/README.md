@@ -27,7 +27,8 @@ The manuscript is kept self-contained. The benchmark results tables are maintain
 The paper uses comparator-specific verdicts rather than a single leaderboard: beat a heuristic only
 under the same protocol, match proven optima, and report bound gaps or gate-matches explicitly. Recent
 updates include the seed-robust OWMR gate beat on Kaynov instance 12, the mixed
-production/assembly/distribution correction from best-of-seeds beat to gate-match, and the
+production/assembly/distribution correction from a fragile flow-head audit to a residual
+base-stock-backbone own-heuristic beat, and the
 ImageNet-style baseline-ledger direction described in `../plan.md`.
 
 The divergent multi-echelon section reports the learned soft-tree policy improving on the

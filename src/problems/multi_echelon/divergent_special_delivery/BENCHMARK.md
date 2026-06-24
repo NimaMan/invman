@@ -26,19 +26,20 @@ Per-period stages (faithful Gijsbrechts 2022 convention used for all experiments
 - **DEBT (snapshot_only_not_rerun, ledger D1):** the published A3C relative savings rows (8.95% / 12.09%) are carried as snapshot literals and CANNOT be re-run — the repo does not implement A3C. Only the constant base-stock anchor is executable. These rows are published context, NOT reproduced; the drift guards in references.rs assert literals and are NOT verification.
 
 ## Results (learned policy)
-- setting1: learned 779.81 vs best constant base-stock 911.39 → **−14.44%** (Gijs cost convention). **best_of_n, at_risk=true — single-run/best-of-N, NOT yet seed-robust.**
-- setting2: learned 973.55 vs corrected best constant 1137.79 → **−14.43%**. **best_of_n, at_risk=true — NOT yet seed-robust.**
+- setting1: direct-level learned policy seed mean 776.15 ± 14.27 vs best constant base-stock gate 910.34 ± 0.51 → **14.74% ± 1.60% cost reduction** (5/5 optimizer seeds beat the gate). **multi_seed_mean_std, at_risk=false — robust same-protocol gate beat.**
+- setting2: direct-level learned policy seed mean 1001.07 ± 25.63 vs best constant base-stock gate 1138.04 ± 0.43 → **12.04% ± 2.26% cost reduction** (5/5 optimizer seeds beat the gate). **multi_seed_mean_std, at_risk=false — robust same-protocol gate beat.**
 - The cross-method comparison to A3C (8.95% / 12.09%) is INDICATIVE only: different baseline, different cost convention (ours = Gijs 2022; A3C = Van Roy 1997). NOT a like-for-like beat. The grid-action policy (yʷ≤100) stays ~230% above the benchmark — the action-space-trap finding.
-- The paper Table tab:me-results carries the −14.4% numbers (779.8 / 973.6); per the manifest these are best-of-N and not yet seed-robust.
+- The older best-of-N headlines (779.81 / 973.55; −14.44% / −14.43%) are superseded by `outputs/multi_echelon/gijsbrechts2022_setting{1,2}_seed_robust/seed_robust_full.json` and paper Table `tab:me-results`, which report 5-seed means and 5/5 gate beats.
 
 ## Reproduce
 ```bash
 python -c "import invman_rust as ir,json; print(json.dumps(ir.multi_echelon_van_roy_reproduction_summary(repo_audit_replications=20,seed=1),default=str))"
 python -c "import invman_rust as ir,json; print(json.dumps(ir.multi_echelon_gijs_relative_verification_summary(repo_audit_replications=20,seed=1),default=str))"
-python scripts/multi_echelon/train_multi_echelon_policy.py --reference gijsbrechts2022_setting1 --budget full
+RAYON_NUM_THREADS=2 OMP_NUM_THREADS=2 python scripts/multi_echelon/seed_robust_divergent_multi_echelon.py --reference gijsbrechts2022_setting1 --budget full --designs direct_level --depths 2 3 --seeds 9001 9002 9003 9004 9005 --mp_num_processors 2
+RAYON_NUM_THREADS=2 OMP_NUM_THREADS=2 python scripts/multi_echelon/seed_robust_divergent_multi_echelon.py --reference gijsbrechts2022_setting2 --budget full --designs direct_level --depths 2 3 --seeds 9001 9002 9003 9004 9005 --mp_num_processors 2
 ```
 
 ## Pointers & caveats
 - code: src/problems/multi_echelon/divergent_special_delivery/{env.rs, finite_horizon_dp.rs, exact_rollout.rs, heuristics.rs, references.rs, rollout.rs, bindings.rs} ; scripts: scripts/multi_echelon/ (train_multi_echelon_policy.py, autoresearch_multi_echelon.py) ; autoresearch: policy_search/programs/program_multi_echelon.md.
 - Two cost conventions coexist: Gijs 2022 (pre-shipment merge, holding on end-of-period on-hand — used for all training/experiments) vs Van Roy 1997 (post-shipment installation position — used ONLY to reproduce the published constant base-stock). Do not mix them.
-- The A3C savings are cross-protocol DRL context and are NOT reproduced; the learned −14.4% rows are best-of-N and NOT yet seed-robust.
+- The A3C savings are cross-protocol DRL context and are NOT reproduced; the learned Gijs rows are seed-robust vs the same-protocol base-stock gate, not head-to-head A3C beats.

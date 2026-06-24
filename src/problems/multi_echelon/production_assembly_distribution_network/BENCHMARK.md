@@ -26,18 +26,20 @@ General production/assembly/distribution supply network (Pirhooshyaran & Snyder 
 ## Results (learned policy)
 - serial case3: learned beats env's own gate 60.24 — seed123 57.25 (−4.96%), seed321 54.96 (−8.77%), depth-3 57.85 (−3.97%); ≥9× SEM. **single_seed, at_risk=true.** Env-own-heuristic beat (research result, NOT a published-number beat).
 - pure-assembly: learned 274.90 vs gate 283.34 → **−2.98%** (~40× SEM). **single_seed, at_risk=true.** Env-own-heuristic beat.
-- mixed distribution-assembly: **CORRECTED to gate-match.** 8 CMA seeds → 306.10 ± 22.89 = **+2.82% ABOVE** gate 297.69, 4/8 seeds below. **multi_seed_mean_std, at_risk=false.** The earlier −0.99% was best-of-3; the honest verdict is parity / gate-match, NOT a beat.
+- mixed distribution-assembly: residual base-stock-backbone head improves the env's own gate 297.69 to **291.136 ± 2.78** over 5 optimizer seeds (**−2.20%**, 5/5 below gate). **multi_seed_mean_std, at_risk=false.** The earlier vector/flow-head audit remains parity (306.10 ± 22.89, +2.82% above gate, 4/8 below); the residual head supersedes it for the mixed topology.
 - All comparators are the environment's OWN grid-searched best heuristic on a faithful-but-unverified env — research learned-vs-own-heuristic, NOT published-number beats. The serial optimum 47.65 is structurally unreachable by this env's local pairwise policy and is not used as a target.
 
 ## Reproduce
 ```bash
 python -c "import invman_rust as ir,json; print(json.dumps(ir.production_assembly_distribution_network_literature_benchmark_summary(serial_replications=10000,seed=1234),default=str))"
 RAYON_NUM_THREADS=2 OMP_NUM_THREADS=2 python scripts/production_assembly_distribution_network/autoresearch_mixed_distribution_assembly_network.py --budget full --warm_start_flow 10 --seed 7 --run_tag mixed_flow10_verify
-# seed-robust mixed audit (the source of the corrected gate-match verdict):
+# seed-robust vector/flow mixed audit (parity / gate-floor check):
 python scripts/production_assembly_distribution_network/seed_robust_mixed_distribution_assembly_network.py
+# seed-robust residual-head mixed result:
+RAYON_NUM_THREADS=4 OMP_NUM_THREADS=4 python policy_search/agentic/evaluate_policy_spec_padn.py --spec policy_search/agentic/specs/padn_explore_best.json --problem production_assembly_distribution_network --instance 0 --seeds 5 --budget full
 python scripts/production_assembly_distribution_network/reproduce_pirhooshyaran_serial_case3.py
 ```
 
 ## Pointers & caveats
 - code: src/problems/multi_echelon/production_assembly_distribution_network/{env.rs, finite_horizon_dp.rs, serial_echelon_simulation.rs, demand.rs, rollout.rs, heuristics/, flownet/, literature/, verification.rs, bindings.rs} ; scripts: scripts/production_assembly_distribution_network/ ; autoresearch: policy_search/programs/program_production_assembly_distribution_network.md.
-- Only the single-node analytical rows are verified_rerun. The serial/mixed/pure-assembly rows are learned-vs-own-heuristic on a faithful-but-unverified env; mixed is gate-match (the prior −0.99% was best-of-3). van Oers 2024 Table 1 is an adjacent frozen-snapshot debt (D3).
+- Only the single-node analytical rows are verified_rerun. The serial/mixed/pure-assembly rows are learned-vs-own-heuristic on a faithful-but-unverified env; mixed is a residual-head own-gate beat, not a published-number beat. van Oers 2024 Table 1 is an adjacent frozen-snapshot debt (D3).

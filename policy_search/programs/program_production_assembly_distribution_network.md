@@ -132,6 +132,15 @@ the env's own best pairwise base-stock, NOT that it reproduces or beats any publ
 
 ## Mixed distribution-and-assembly network: seed-ROBUST verdict (2026-06-06)
 
+### Superseding residual-head result
+
+The flow-head audit below remains useful because it diagnosed the representation problem, but it is
+no longer the headline for the mixed network. A residual base-stock-backbone head
+(`action = best_pairwise_base_stock + Delta_tree`, then round/clamp) exactly anchors the policy at the
+best env-own pairwise base-stock gate when the residual is zero. The 5-seed re-run gives
+**291.136 ± 2.78 vs gate 297.69, -2.20%, 5/5 below gate**. This is still a research
+learned-versus-own-heuristic result, not a published-number beat.
+
 The mixed-network row (`autoresearch_mixed_distribution_assembly_network.py`, gate 297.69,
 echelon OUL [36,13,7]) was originally reported in the paper as a -0.99% beat (294.73)
 **on the best of three CMA seeds** — a seed cherry-pick. A seed-robust re-audit at the **paper's
