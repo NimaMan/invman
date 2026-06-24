@@ -84,6 +84,16 @@ HARD CPU CAP: the runner sets `RAYON_NUM_THREADS`/`OMP_NUM_THREADS` to 2 before 
 
 ## Autoresearch outcome (what we know)
 
+### Seed-robust headline
+
+The single-seed rows below are superseded as the headline by the five full-budget
+rows in `outputs/autoresearch/general_backorder_fixed_cost_autoresearch/results.tsv`.
+Those tracked rows give the paper-table set-1 summary **7837.0 +/- 189.7 vs gate
+10354.8**, a **24.3% +/- 1.8%** reduction with **5/5 optimizer seeds below the
+gate**. The Kunnumkal-Topaloglu divergent instance also has five full-budget rows
+in the same TSV, **2484.6 +/- 11.3 vs gate 3930.4**, about **36.8% +/- 0.3%**
+below the reproduced gate. Published PPO/DRL rows remain cross-protocol context.
+
 Commit `01c657a`, `geevers2023_general_set1`, full budget (popsize 24 x 80 gen, 12 train /
 2,000 held-out CRN seeds, sigma 0.20), depth-2 oblique **constant-leaf**
 `node_base_stock_targets`, warm-started at the published levels `[82,100,64,83,35x5]`:
@@ -93,15 +103,16 @@ Commit `01c657a`, `geevers2023_general_set1`, full budget (popsize 24 x 80 gen, 
 | warm-start (gen 0 = benchmark) | 10,378.6 +/- 10.6 | +0.2% | -0.8% | +1,664 |
 | **learned soft tree** | **8,034.8 +/- 17.6** | **-22.4%** | **-2,432** | **-679** |
 
-The learned policy **beats the constant node-base-stock benchmark by 22.4%** (>> 2x SEM, a
+This seed-123 learned policy **beats the constant node-base-stock benchmark by 22.4%** (>> 2x SEM, a
 genuine out-of-sample win, not eval-seed noise) and lands **679 below the published PPO best
 (8,714)**, i.e. it surpasses the paper's DRL row on this set-1 instance. Generation 0
 reproduces the benchmark (10,378.6 ~ repo 10,354.8), so the warm-start guarantee holds and the
 2,320-cost improvement is what CMA-ES added on top.
 
-A second full run with a different CMA seed (777) reached **7,590.7 +/- 19.2**
+An early second full run with a different CMA seed (777) reached **7,590.7 +/- 19.2**
 (-26.7% vs heuristic, -1,123 vs PPO best) -- both independent seeds beat the benchmark by
->22% and land below the PPO best, so the win is robust to CMA initialization, not seed-luck.
+>22% and land below the PPO best. The later 5-seed runner is the robust headline; these
+two rows remain diagnostics.
 
 Screening probes (256 eval seeds) ranked the structures: depth-1 constant sigma-0.2 ~8,095,
 depth-1 constant sigma-0.3 ~8,183, depth-2 constant sigma-0.3 ~8,061. depth-2 constant won and

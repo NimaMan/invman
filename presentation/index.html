@@ -10,7 +10,7 @@
   ============================================================================
   This file is the design-system FOUNDATION and ENGINE for a from-scratch
   academic conference deck. It carries NO slides. The build assembler injects
-  the 23 <section class="slide"> fragments, in order, at the literal marker
+  the 24 <section class="slide"> fragments, in order, at the literal marker
   line  <!-‑‑SLIDES-‑‑>  inside <main class="deck"> near the bottom.
 
   ----------------------------------------------------------------------------
@@ -246,6 +246,32 @@
   .slide.split > .col-fig{ min-width:0; min-height:0; display:flex;
     align-items:center; justify-content:center; }
   .slide.split > .col-fig .figure{ width:100%; height:100%; }
+
+  @media (min-width:641px){
+    .slide.general-backorder-slide{
+      display:grid; grid-template-columns:minmax(0,37%) minmax(0,1fr);
+      column-gap:clamp(30px,4vw,76px); align-items:stretch;
+    }
+    .slide.general-backorder-slide header{ min-width:0; }
+    .slide.general-backorder-slide .headline{
+      max-width:none; font-size:clamp(1.9rem,3.4vw,3.05rem);
+    }
+    .slide.general-backorder-slide .slide-body{ display:contents; }
+    .slide.general-backorder-slide .dek{
+      grid-column:1; align-self:start; max-width:46ch;
+    }
+    .slide.general-backorder-slide .figure{
+      grid-column:2; grid-row:1 / 4; width:100%; height:100%;
+      align-self:center;
+    }
+    .slide.general-backorder-slide .caption{
+      grid-column:1; align-self:end; flex-direction:column;
+      align-items:flex-start; gap:.5ch;
+    }
+    .slide.general-backorder-slide .caption .src{
+      white-space:normal; align-self:flex-start;
+    }
+  }
 
   /* the figure stage — claims the slide; min-height keeps it dominant */
   .figure{
@@ -3174,6 +3200,122 @@
     </div>
   </div>
 </section>
+<section class="slide general-backorder-slide" data-title="General Backorder Decoder" aria-label="General-network backorder decoder: vector base-stock targets become valid routed orders">
+  <header>
+    <span class="eyebrow">General-network backorder</span>
+    <h2 class="headline">The decoder learns node targets, then projects them to valid routed orders<span class="accent">.</span></h2>
+  </header>
+
+  <div class="slide-body">
+    <p class="dek">
+      The compact pre-decision summary feeds the same depth-2 oblique soft tree. Each leaf emits
+      <b>node_base_stock_targets</b> [S<sup>w</sup>, S<sup>r</sup>]; clamp and order-up-to routing turn
+      those targets into feasible warehouse and retailer orders.
+    </p>
+
+    <div class="figure">
+      <svg viewBox="0 0 1280 640" role="img"
+           aria-label="General-network backorder policy and decoder. The compact inventory-position summary is normalized, routed through a depth-two oblique soft tree with constant vector leaves, decoded as node base-stock targets S w and S r, clamped to warehouse and retailer boxes, and projected through order-up-to and routing logic into valid network orders. Constant leaves warm-start the CardBoard set one gate at levels 82, 100, 64, 83, and five retailer levels of 35, and the Kunnumkal Topaloglu divergent gate at 124, 30, 30, 30. CardBoard learned cost 7837.0 plus or minus 189.7 versus gate 10354.8, improvement 24.3 percent plus or minus 1.8 percent, five of five seeds. Kunnumkal Topaloglu learned cost 2484.6 plus or minus 11.3 versus gate 3930.4, improvement 36.8 percent plus or minus 0.3 percent, five of five seeds.">
+        <defs>
+          <marker id="gbk-arrow" markerWidth="10" markerHeight="10" refX="7.5" refY="3" orient="auto">
+            <path d="M0,0 L7.5,3 L0,6 Z" fill="var(--grey-soft)"></path>
+          </marker>
+          <marker id="gbk-arrow-a" markerWidth="10" markerHeight="10" refX="7.5" refY="3" orient="auto">
+            <path d="M0,0 L7.5,3 L0,6 Z" fill="var(--accent)"></path>
+          </marker>
+        </defs>
+
+        <text class="f-region-label" x="28" y="34">policy path for general_backorder_fixed_cost</text>
+
+        <!-- state -> normalize -> depth-2 tree -> vector target decoder -> projection/routing -> valid orders -->
+        <g transform="translate(26,68)">
+          <rect x="0" y="0" width="174" height="96" rx="12" fill="var(--paper)" stroke="var(--rule)" stroke-width="2"></rect>
+          <text class="f-tag ink" x="87" y="30" text-anchor="middle">State</text>
+          <text class="f-tick" x="87" y="55" text-anchor="middle">IP^w, IP^r</text>
+          <text class="f-tick" x="87" y="77" text-anchor="middle">totals, mean, tau</text>
+          <line class="axis" x1="174" y1="48" x2="208" y2="48" marker-end="url(#gbk-arrow)"></line>
+
+          <rect x="212" y="0" width="150" height="96" rx="12" fill="var(--paper)" stroke="var(--rule)" stroke-width="2"></rect>
+          <text class="f-tag ink" x="287" y="30" text-anchor="middle">Normalize</text>
+          <text class="f-tick" x="287" y="56" text-anchor="middle">divide by scale</text>
+          <text class="f-tick" x="287" y="77" text-anchor="middle">14 features</text>
+          <line class="axis" x1="362" y1="48" x2="396" y2="48" marker-end="url(#gbk-arrow)"></line>
+
+          <rect x="400" y="0" width="174" height="96" rx="12" fill="var(--paper)" stroke="var(--rule)" stroke-width="2"></rect>
+          <text class="f-tag ink" x="487" y="29" text-anchor="middle">Soft tree</text>
+          <text class="f-tick" x="487" y="54" text-anchor="middle">depth 2</text>
+          <text class="f-tick" x="487" y="75" text-anchor="middle">oblique splits</text>
+          <line class="axis" x1="574" y1="48" x2="608" y2="48" marker-end="url(#gbk-arrow)"></line>
+
+          <rect x="612" y="-8" width="250" height="112" rx="14" fill="var(--accent-tint-2)" stroke="var(--accent)" stroke-width="3"></rect>
+          <text class="f-tag right" x="737" y="27" text-anchor="middle">[ Decoder ]</text>
+          <text class="f-tick" x="737" y="53" text-anchor="middle">node_base_stock_targets</text>
+          <text class="f-tick" x="737" y="76" text-anchor="middle">clip [S^w, S^r]</text>
+          <line x1="862" y1="48" x2="896" y2="48" stroke="var(--accent)" stroke-width="2.8" marker-end="url(#gbk-arrow-a)"></line>
+
+          <rect x="900" y="0" width="226" height="96" rx="12" fill="var(--paper)" stroke="var(--rule)" stroke-width="2"></rect>
+          <text class="f-tag ink" x="1013" y="29" text-anchor="middle">Projection / routing</text>
+          <text class="f-tick" x="1013" y="55" text-anchor="middle">q^w = [S^w - IP^w]^+</text>
+          <text class="f-tick" x="1013" y="77" text-anchor="middle">retailers use edge weights</text>
+          <line class="axis" x1="1126" y1="48" x2="1160" y2="48" marker-end="url(#gbk-arrow)"></line>
+
+          <rect x="1164" y="0" width="90" height="96" rx="12" fill="var(--paper)" stroke="var(--rule)" stroke-width="2"></rect>
+          <text class="f-tag ink" x="1209" y="39" text-anchor="middle">Valid</text>
+          <text class="f-tick" x="1209" y="66" text-anchor="middle">orders</text>
+        </g>
+
+        <!-- exact warm-start anchors -->
+        <g transform="translate(54,214)">
+          <rect x="0" y="0" width="1172" height="124" rx="14" fill="var(--slate-tint)" stroke="var(--slate)" stroke-width="2.2"></rect>
+          <text class="f-title left" x="32" y="41">Warm start: constant leaves encode the published gates</text>
+          <text class="f-note" x="32" y="74" fill="var(--ink)">Zero split weights and identical leaves make generation 0 the constant node-base-stock benchmark.</text>
+
+          <rect x="680" y="24" width="238" height="74" rx="10" fill="var(--paper)" stroke="var(--rule)" stroke-width="1.8"></rect>
+          <text class="f-tag left" x="799" y="53" text-anchor="middle">CardBoard set 1</text>
+          <text class="f-tick" x="799" y="78" text-anchor="middle">[82,100,64,83 | 35x5]</text>
+
+          <rect x="942" y="24" width="178" height="74" rx="10" fill="var(--paper)" stroke="var(--rule)" stroke-width="1.8"></rect>
+          <text class="f-tag left" x="1031" y="53" text-anchor="middle">KT divergent</text>
+          <text class="f-tick" x="1031" y="78" text-anchor="middle">[124 | 30,30,30]</text>
+        </g>
+
+        <!-- robust-beat metric panels -->
+        <g transform="translate(42,384)">
+          <rect x="0" y="0" width="584" height="188" rx="14" fill="var(--paper)" stroke="var(--rule)" stroke-width="2"></rect>
+          <text class="f-title right" x="32" y="41">CardBoard set 1 robust beat</text>
+          <text class="f-sub" x="32" y="70">Geevers / CardBoard general network</text>
+          <text class="f-note" x="32" y="109" fill="var(--ink)">learned 7,837.0 &plusmn; 189.7</text>
+          <text class="f-note" x="32" y="136" fill="var(--ink)">gate 10,354.8</text>
+          <text class="f-note region" x="32" y="164">published 10,467; within published band</text>
+          <text class="f-cost huge right" x="410" y="124" text-anchor="middle">24.3%</text>
+          <text class="f-note region" x="410" y="154" text-anchor="middle">&plusmn; 1.8% reduction</text>
+          <text class="f-tag right" x="530" y="41" text-anchor="end">5/5 seeds</text>
+        </g>
+
+        <g transform="translate(654,384)">
+          <rect x="0" y="0" width="584" height="188" rx="14" fill="var(--paper)" stroke="var(--rule)" stroke-width="2"></rect>
+          <text class="f-title right" x="32" y="41">KT divergent robust beat</text>
+          <text class="f-sub" x="32" y="70">Kunnumkal&ndash;Topaloglu general-network tree</text>
+          <text class="f-note" x="32" y="109" fill="var(--ink)">learned 2,484.6 &plusmn; 11.3</text>
+          <text class="f-note" x="32" y="136" fill="var(--ink)">gate 3,930.4</text>
+          <text class="f-note region" x="32" y="164">published 4,059; within published band</text>
+          <text class="f-cost huge right" x="410" y="124" text-anchor="middle">36.8%</text>
+          <text class="f-note region" x="410" y="154" text-anchor="middle">&plusmn; 0.3% reduction</text>
+          <text class="f-tag right" x="530" y="41" text-anchor="end">5/5 seeds</text>
+        </g>
+
+        <text class="f-note region" x="640" y="614" text-anchor="middle">PPO / DRL rows are cross-protocol context only, not head-to-head comparisons.</text>
+      </svg>
+    </div>
+
+    <div class="caption">
+      <p class="lede"><b>The action geometry is the heuristic's coordinate system.</b> CMA-ES starts at
+        the constant node-base-stock gate, then learns state-dependent node targets inside the same valid
+        order projection.</p>
+      <span class="src">CardBoard set 1 &middot; Kunnumkal-Topaloglu &middot; 5 optimizer seeds</span>
+    </div>
+  </div>
+</section>
 <section class="slide" data-title="Synthesis" aria-label="Synthesis">
   <header>
     <span class="eyebrow">Synthesis</span>
@@ -3323,7 +3465,7 @@
   </div>
 </section>
 <section class="slide section-slide" data-title="Takeaways" aria-label="Takeaways">
-  <div class="section-no">22 / 23</div>
+  <div class="section-no">23 / 24</div>
   <h2>In these benchmarks, the action space often matters more than model <span class="accent">capacity</span>.</h2>
   <ul class="takeaways">
     <li>One gradient-free CMA-ES loop, held fixed, learns compact policies across structurally different inventory systems.</li>

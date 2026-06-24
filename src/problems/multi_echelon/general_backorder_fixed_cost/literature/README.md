@@ -89,7 +89,7 @@ while set-2's average 314923 does not.
 
 ## Current Verification Status
 
-**Not literature-verified.** This problem is at best *partial*. Stated precisely:
+**Partly literature-verified by executing checks.** Stated precisely:
 
 - **Citations: literature-verified.** Every cited paper is real and its metadata
   (authors / year / title / venue / volume / issue / pages / DOI) is correct -- checked against
@@ -120,10 +120,12 @@ Per-row reproduction status:
 | geevers2023_general_set1  | 10467     | ~10355 (single-connection) | -1.1%   | reproduced within tolerance    |
 | geevers2023_general_set2  | 4797      | ~15306 (split by weight)   | +219%   | NOT reproduced (table-only)     |
 | geevers2023_general_set3  | 4797      | ~15306 (split by weight)   | +219%   | NOT reproduced (set-2 mechanic)|
+| kunnumkal_topaloglu_divergent | 4059  | ~3931 (single edge)        | -3.0%   | reproduced within tolerance    |
 
 Numbers from `scripts/general_backorder_fixed_cost/benchmark_general_backorder_fixed_cost.py`
 (500 replications x 3 seeds for set 1; 500 replications for the sweeps). Set-1 fill rates land in
-the 98-99% band at the retailers and ~98% at the warehouses, matching the paper's fill-rate target.
+the 98-99% band at the retailers, matching the customer-facing fill-rate target. Warehouse /
+paper-mill fill is intentionally lower in the thesis figure and is not a 98% target.
 
 ## Root Cause of the Set 2 / Set 3 Gap (precise)
 
@@ -210,9 +212,10 @@ faithful for set 1 — they were not changed.
    published level 30 reproduces 4797 at ~98% fill. This is the single change that would flip sets
    2/3 from "carried" to "reproduced". It is deferred because the correct equation is not yet known
    and changing the existing `retailer_total_inventory_positions` convention would regress set 1.
-2. Learned soft-tree benchmark: the `..._soft_tree_rollout` binding runs (depth-2 oblique/linear
-   `vector_quantity` needs a 585-length flat-param vector for this network), but a trained vector is
-   not checked in. Producing one requires a CMA-ES run through the `invman/` Python harness.
+2. Learned-policy artifact polish: the tracked autoresearch TSV now carries five set-1 and five
+   Kunnumkal-Topaloglu full-budget rows in
+   `outputs/autoresearch/general_backorder_fixed_cost_autoresearch/results.tsv`. The remaining
+   cleanup is a standardized aggregate JSON/per-seed artifact, not policy training from scratch.
 
 ## Related Literature
 

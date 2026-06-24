@@ -92,7 +92,10 @@ See `literature/README.md` for the full literature audit and the verification ta
 
 ## Current Verification Status
 
-This subproblem is **not literature-verified**.
+This subproblem is **partly literature-verified by executing checks**. The set-1 CardBoard row and
+the Kunnumkal-Topaloglu divergent row reproduce published constant node-base-stock benchmarks within
+tolerance; set 2 and set 3 remain table-only debt because the gated paper's order-per-edge
+transition is not implemented.
 
 Benchmark results (node-base-stock heuristic at published levels, configured routing mode), from
 `scripts/general_backorder_fixed_cost/benchmark_general_backorder_fixed_cost.py`
@@ -103,11 +106,14 @@ Benchmark results (node-base-stock heuristic at published levels, configured rou
 | set 1    | 10467     | 10355 | -1.1%  | reproduced within tolerance         |
 | set 2    | 4797      | 15306 | +219%  | NOT reproduced (table-only anchor)  |
 | set 3    | 4797      | 15306 | +219%  | NOT reproduced (set-2 mechanic)     |
+| KT divergent | 4059  | 3931  | -3.0%  | reproduced within tolerance         |
 
 (The set-1 published anchor is confirmed verbatim in the open thesis; the set-2/set-3 anchors exist
 only in the gated journal full text and could not be confirmed against an open copy.)
 
-Set 1 also reproduces the paper's fill-rate target (retailer fill 98-99%, warehouse fill ~98%).
+Set 1 also reproduces the paper's customer-facing fill-rate target: retailer fill is in the
+98-99% band. The warehouse / paper-mill fill rate is intentionally lower in the thesis figure, so it
+is not a 98% verification target.
 
 ### Root cause of the set 2 / set 3 gap (precise)
 
@@ -145,6 +151,9 @@ No implemented routing mode reproduces 4797 at the published level 30 (see `lite
 - **set 1: faithful + reproduced within tolerance (-1.1%)** — inputs confirmed verbatim against the
   open thesis Sec. 6.6 (levels `[82,100,64,83,35,35,35,35,35]`, cost 10467, 50-period x 500-rep,
   Poisson(15), K&T-2011 costs), and the published 10467 is re-derived by the repo solver (~10355);
+- **Kunnumkal-Topaloglu divergent: reproduced within tolerance (-3.0%)** — the open thesis reports
+  the 1-warehouse / 3-retailer base case at levels `[124,30,30,30]`, cost 4059, and the repo's
+  resampled-uniform-Poisson demand path re-runs it at ~3931;
 - **set 2 / set 3: table-only and NOT independently confirmable** — the numbers (4797, 4175, 3935,
   averages 314923 / 4481, levels `[37,47,33,63,30,...]`) appear only in the gated journal full text
   (the open thesis has set 1 only; SSRN returns 403) and are carried as published rows. The per-edge
@@ -215,9 +224,13 @@ warm-started at `[124,30,30,30]`, depth-2 oblique constant leaf):
 
 | seed | warm-start gen0 | learned held-out | vs repo heuristic (3,930) | vs published 4,059 | vs published DRL 3,724 | verdict |
 |-----:|----------------:|-----------------:|--------------------------:|-------------------:|-----------------------:|---------|
-| 123  | 3,913.5         | **2,469.1 ± 7.6**| -1,461 (-37.2%)           | -1,590             | -1,255                 | beats   |
-| 777  | 3,913.5         | **2,477.9 ± 8.0**| -1,453 (-37.0%)           | -1,581             | -1,246                 | beats   |
+| 123  | 3,936.5         | **2,469.1 ± 7.6**| -1,461 (-37.2%)           | -1,590             | -1,255                 | beats   |
+| 777  | 3,936.5         | **2,477.9 ± 8.0**| -1,453 (-37.0%)           | -1,581             | -1,246                 | beats   |
+| 9101 | 3,936.5         | **2,488.4 ± 7.9**| -1,442 (-36.7%)           | -1,571             | -1,236                 | beats   |
+| 9102 | 3,936.5         | **2,498.4 ± 7.6**| -1,432 (-36.4%)           | -1,561             | -1,226                 | beats   |
+| 9103 | 3,936.5         | **2,489.0 ± 6.8**| -1,441 (-36.7%)           | -1,570             | -1,235                 | beats   |
 
-Both seeds beat the reproduced constant node-base-stock benchmark by ~37% (≫ 2× SEM, genuine
-out-of-sample) and land below the published DRL 3,724. The DRL number is cross-protocol context, not
-a like-for-like beat; the gate is the repo's own reproduced constant base-stock benchmark.
+All five seeds beat the reproduced constant node-base-stock benchmark by about 36.8% (well beyond
+SEM, genuine out-of-sample) and land below the published DRL 3,724. The DRL number is cross-protocol
+context, not a like-for-like beat; the gate is the repo's own reproduced constant base-stock
+benchmark.

@@ -27,19 +27,19 @@ ALGORITHM
         per-edge inventory-position / order-up-to timing convention difference in the journal's
         "order per edge" transition (exact equation only in the gated journal full text).
 
-3. learned soft-tree policy (NOT runnable here without a trained parameter vector):
-   - The binding `multi_echelon_general_backorder_fixed_cost_soft_tree_rollout` EXISTS and runs
-     (a depth-2 oblique/linear vector_quantity policy needs a 585-length flat-param vector for the
-     CardBoard network), but a *trained* parameter vector is not checked into the repo. Training it
-     requires running CMA-ES through the invman/ Python harness (out of scope for a read-only
-     benchmark). This script prints the exact rollout call so the learned-policy benchmark can be
-     wired in once a trained vector exists.
+3. learned soft-tree policy artifacts:
+   - Training/evaluation lives in `autoresearch_general_backorder_fixed_cost.py`, not in this
+     diagnostic harness.
+   - This script prints the tracked five-seed full-budget TSV rows for set 1 and
+     Kunnumkal-Topaloglu so the verification command does not drift from the learned-policy result.
 
 USAGE
 -----
     python scripts/general_backorder_fixed_cost/benchmark_general_backorder_fixed_cost.py
 """
 
+import csv
+from pathlib import Path
 import statistics as st
 
 import invman_rust as ir
@@ -58,6 +58,10 @@ ROUTING_MODES = [
 ]
 SEEDS = [1234, 5678, 9012]
 REPLICATIONS = 500
+REPO_ROOT = Path(__file__).resolve().parents[2]
+AUTORESEARCH_TSV = (
+    REPO_ROOT / "outputs" / "autoresearch" / "general_backorder_fixed_cost_autoresearch" / "results.tsv"
+)
 
 
 def published_row_comparison() -> None:
@@ -120,27 +124,46 @@ def retailer_level_sweep(name: str) -> None:
         print(f"{r:14d} {a['mean_cost']:9.1f} {sum(cf)/len(cf):14.3f} {min(ef):11.3f}")
 
 
-def learned_policy_blocker_note() -> None:
+def learned_policy_artifact_note() -> None:
     print("\n" + "=" * 92)
-    print("3) LEARNED SOFT-TREE POLICY: binding exists and runs, trained vector NOT available")
+    print("3) LEARNED SOFT-TREE POLICY: seed-robust artifacts and rollout shape")
     print("=" * 92)
-    ref = ir.multi_echelon_general_backorder_fixed_cost_get_reference_instance("geevers2023_general_set1")
-    nW, nR = ref["num_warehouses"], ref["num_retailers"]
-    input_dim = nW + nR + 5  # compact_summary
-    action_dim = nW + nR
-    depth = 2
-    # depth-2 oblique/linear vector_quantity needs a 585-length flat-param vector for this network.
     print(
-        "   call: multi_echelon_general_backorder_fixed_cost_soft_tree_rollout(\n"
-        f"             flat_params=<len 585>, input_dim={input_dim}, depth={depth},\n"
-        f"             min_values=[0]*{action_dim}, max_values=[<bound>]*{action_dim},\n"
-        "             action_mode='vector_quantity', reference_name=<set>,\n"
-        "             policy_feature_mode='compact_summary',\n"
-        "             policy_action_mode='node_base_stock_targets')\n"
-        "   BLOCKER: a trained 585-length parameter vector must first be produced by CMA-ES via the\n"
-        "   invman/ Python training harness; it is not checked in. Until then only the heuristic\n"
-        "   benchmark above is runnable."
+        "   rollout shape: depth=2 split=oblique leaf=constant param_dim=81 input_dim=14\n"
+        "      action_mode=vector_quantity policy_action_mode=node_base_stock_targets"
     )
+
+    if AUTORESEARCH_TSV.exists():
+        with AUTORESEARCH_TSV.open(newline="") as fh:
+            all_rows = list(csv.DictReader(fh, delimiter="\t"))
+        for reference, label in [
+            ("geevers2023_general_set1", "set1 CardBoard rows"),
+            ("kunnumkal_topaloglu_divergent", "KT divergent rows"),
+        ]:
+            rows = [
+                row
+                for row in all_rows
+                if row["reference"] == reference
+                and row["budget"] == "full"
+                and row["depth"] == "2"
+                and row["leaf_type"] == "constant"
+                and row["sigma_init"] == "0.2"
+            ]
+            learned = [float(row["learned_heldout"]) for row in rows]
+            savings = [-float(row["gap_pct_vs_heuristic"]) for row in rows]
+            if learned:
+                learned_std = st.stdev(learned) if len(learned) > 1 else 0.0
+                savings_std = st.stdev(savings) if len(savings) > 1 else 0.0
+                gate = float(rows[0]["repo_heuristic"])
+                seeds = ", ".join(row["experiment"].rsplit("_s", 1)[-1] for row in rows)
+                print(
+                    f"   {label}: {AUTORESEARCH_TSV.relative_to(REPO_ROOT)}\n"
+                    f"      seeds {seeds}; learned mean {st.mean(learned):.1f} +/- {learned_std:.1f} "
+                    f"vs gate {gate:.1f}; savings {st.mean(savings):.2f}% +/- {savings_std:.2f}%; "
+                    f"{sum(float(row['learned_heldout']) < gate for row in rows)}/{len(rows)} seeds"
+                )
+    else:
+        print(f"   autoresearch TSV missing: {AUTORESEARCH_TSV.relative_to(REPO_ROOT)}")
 
 
 if __name__ == "__main__":
@@ -148,4 +171,4 @@ if __name__ == "__main__":
     for name in ["geevers2023_general_set2"]:
         routing_mode_sweep(name)
         retailer_level_sweep(name)
-    learned_policy_blocker_note()
+    learned_policy_artifact_note()

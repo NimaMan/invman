@@ -2544,6 +2544,77 @@ learned policy improves. We warm-start CMA-ES at this benchmark encoding with a 
 ($\sigma=0.2$): a large $\sigma$ saturates the sigmoid leaves and lets the oblique split weights
 diverge, so the lever is re-anchoring and shrinking $\sigma$, not adding optimizer budget.
 
+\begin{figure}[t]
+  \centering
+  \resizebox{\textwidth}{!}{%
+  \begin{tikzpicture}[x=1cm,y=1cm,
+    gbkstate/.style={stage in,font=\small,minimum width=27mm,minimum height=13mm},
+    gbknode/.style={stage mid,font=\small,minimum width=29mm,minimum height=13mm},
+    gbkdec/.style={stage dec,font=\small,minimum width=34mm,minimum height=13mm},
+    gbkout/.style={stage out,font=\small,minimum width=25mm,minimum height=13mm},
+    gbknote/.style={draw=mydarkblue!35,rounded corners=4pt,fill=mydarkblue!4,
+                    font=\footnotesize,align=center,inner sep=6pt},
+    gbkmetric/.style={draw=myorange!55!black,rounded corners=4pt,fill=myorange!8,
+                      font=\footnotesize,align=center,inner sep=6pt}
+  ]
+    \node[gbkstate] (state) at (1.6,0)
+      {\textbf{compact state}\\$\mathrm{IP}^w,\mathrm{IP}^r$\\totals, $\mu$, horizon};
+    \node[gbknode] (norm) at (4.7,0)
+      {normalize\\divide by scales\\$14$ features (set~1)};
+    \node[gbknode] (tree) at (8.0,0)
+      {depth-2\\oblique soft tree\\constant vector leaves};
+    \node[gbkdec] (decoder) at (11.6,0)
+      {\texttt{node\_base\_stock\_targets}\\$\mathrm{clip}_{\mathcal B}[S^w,S^r]$\\
+       $S^w\!\in[0,220],\ S^r\!\in[0,140]$};
+    \node[gbkdec] (project) at (15.4,0)
+      {order-up-to\\projection/routing\\
+       $q^w_j=[S^w_j-\mathrm{IP}^w_j]^+$\\retailers route by weights};
+    \node[gbkout] (orders) at (18.7,0)
+      {\textbf{valid}\\network orders};
+
+    \draw[flow] (state) -- (norm);
+    \draw[flow] (norm) -- (tree);
+    \draw[flow] (tree) -- (decoder);
+    \draw[flow] (decoder) -- (project);
+    \draw[flow] (project) -- (orders);
+
+    \node[gbknote] (warm) at (5.8,-2.35)
+      {\textbf{Warm start}\\Identical leaves exactly encode the constant gate.\\
+       CardBoard set~1: $[82,100,64,83,35,35,35,35,35]$\\
+       KT divergent: $[124,30,30,30]$\\
+       Generation~0 reproduces the benchmark.};
+    \node[gbkmetric] (card) at (11.9,-2.35)
+      {\textbf{CardBoard/Geevers set~1}\\
+       learned $7{,}837.0\pm189.7$ vs.\ gate $10{,}354.8$\\
+       improvement $24.3\%\pm1.8\%$; $5/5$ seeds\\
+       reproduced benchmark within published band};
+    \node[gbkmetric] (kt) at (17.0,-2.35)
+      {\textbf{Kunnumkal--Topaloglu divergent}\\
+       learned $2{,}484.6\pm11.3$ vs.\ gate $3{,}930.4$\\
+       improvement $36.8\%\pm0.3\%$; $5/5$ seeds\\
+       reproduced benchmark within published band};
+
+    \draw[connect arrow,mydarkblue] (warm.north) -- (tree.south);
+    \draw[flow,myorange!70!black] (decoder.south) |- (card.north);
+    \draw[flow,myorange!70!black] (project.south) |- (kt.north);
+
+    \begin{scope}[on background layer]
+      \node[draw=mydarkblue!45,dashed,rounded corners=5pt,inner sep=8pt,
+            fit=(norm)(tree)(decoder)(project)] {};
+    \end{scope}
+  \end{tikzpicture}%
+  }
+  \caption{General-network backorder policy/decoder. The policy maps the compact normalized
+  pre-decision summary to a depth-2 oblique soft tree whose leaves emit per-node base-stock targets
+  in the \texttt{node\_base\_stock\_targets} action mode. The decoder clamps the warehouse and
+  retailer target vector and the environment's order-up-to projection/routing converts those targets
+  into feasible warehouse and retailer orders. Constant leaves exactly encode the published constant
+  node-base-stock gates, so generation~0 is the benchmark; the learned state-dependent tree keeps the
+  same action geometry and robustly improves on both literature-verified reproduced gates. Published
+  PPO/DRL figures remain cross-protocol context, not head-to-head comparators.}
+  \label{fig:gbk-policy-decoder}
+\end{figure}
+
 \paragraph{Decision path: a worked example.}
 The best run is a depth-2 oblique soft tree with constant leaves emitting per-node order-up-to targets
 ($81$ parameters). The compact state summary is read by the tree; the dominant leaf emits the $9$-dim

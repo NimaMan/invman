@@ -96,7 +96,7 @@ write-ups, not an active surface:
 |---|---|---|
 | one_warehouse_multi_retailer (instance_14) | −12.57% robust (10/10 seeds, Evrim) | tuned echelon base-stock + allocation |
 | production_assembly_distribution_network (mixed) | −2.20% robust (5/5 seeds, Evrim residual head) | env's own best pairwise base-stock |
-| general_backorder_fixed_cost (Geevers set-1) | −22.4% (held-out, 2 CMA seeds) | published node base-stock ~10,355 |
+| general_backorder_fixed_cost (Geevers set-1) | −24.3% robust (5/5 seeds, paper-table TSV rows) | published node base-stock ~10,355 |
 | multi_echelon (Gijs settings 1&2, direct_level) | ~−14.4% (> published A3C gap) | best in-env constant base-stock |
 | lost_sales fixed-order-cost (canonical) | 8.776 (50k) vs heuristic 9.165 | s,S / s,nQ / modified s,S,q |
 | lost_sales vanilla | 4.754 (oblique depth-2 linear-leaf) | Zipkin myopic family |
