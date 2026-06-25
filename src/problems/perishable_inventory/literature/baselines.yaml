@@ -110,10 +110,10 @@ entries:
       policy: "Exact value iteration versus tuned base_stock, bsp_low_ew, and CMA-ES soft tree."
       script: scripts/perishable_inventory/run_exact_slice_benchmark.py
       eval: "gamma=0.99; exact analytic MDP row plus Monte-Carlo heuristic/soft-tree rows; see report for seeds and estimator caveat."
-      latest_report: src/problems/perishable_inventory/experiments/reports/exact_slice_report.md
+      latest_report: src/problems/perishable_inventory/experiments/reports/exact_slice_report/README.md
       notes: "Gap-to-exact mixes analytic and Monte-Carlo estimators; gap-to-best-heuristic is the apples-to-apples gate."
     paper_link:
-      section: "paper/sections/perishable_inventory.tex::sec:perishable and appendix app:perishable-validation"
+      section: "paper/learning_inventory_control_policies_es.tex::sec:perishable and appendix app:perishable-validation"
       claim: "Exact LIFO m=2/L=1 perishable slice reproduces De Moor/Farrington anchors."
       caveats:
         - "Estimator caveat applies when comparing exact analytic return against Monte-Carlo heuristic and learned rows."
@@ -226,10 +226,10 @@ entries:
       policy: "Exact value iteration versus tuned base_stock, bsp_low_ew, and CMA-ES soft tree."
       script: scripts/perishable_inventory/run_exact_slice_benchmark.py
       eval: "gamma=0.99; exact analytic MDP row plus Monte-Carlo heuristic/soft-tree rows; see report for seeds and estimator caveat."
-      latest_report: src/problems/perishable_inventory/experiments/reports/exact_slice_report.md
+      latest_report: src/problems/perishable_inventory/experiments/reports/exact_slice_report/README.md
       notes: "Current report has soft-tree rows and the best-heuristic gate for the primary FIFO instance."
     paper_link:
-      section: "paper/sections/perishable_inventory.tex::sec:perishable and appendix app:perishable-validation"
+      section: "paper/learning_inventory_control_policies_es.tex::sec:perishable and appendix app:perishable-validation"
       claim: "Primary FIFO m=2/L=1 perishable slice reproduces De Moor/Farrington anchors."
       caveats:
         - "Estimator caveat applies when comparing exact analytic return against Monte-Carlo heuristic and learned rows."
@@ -346,7 +346,7 @@ entries:
       latest_report: src/problems/perishable_inventory/practical/reports/README.md
       notes: "The practical report is not a literature reproduction and should not be cited as Farrington Table 3 verification."
     paper_link:
-      section: "paper/sections/perishable_inventory.tex::sec:perishable-results"
+      section: "paper/learning_inventory_control_policies_es.tex::sec:perishable-results"
       claim: "Medium perishable slice is used for practical/reporting context, while exact claims stay on the m=2/L=1 slice."
       caveats:
         - "Published Scenario A row is table-only."

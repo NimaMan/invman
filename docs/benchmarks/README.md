@@ -79,7 +79,7 @@ my_cost = inst.evaluate(my_trained_params)   # score your policy (size it with i
 inst.compare(my_cost)       # signed gap vs the reference + a 'beats' verdict
 ```
 
-All 14 catalog families have a runner, but the **default surface is the 9 literature-verified families** — `runners.available_runners()` and `catalog.list_problems(literature_verified=True)` exclude the 5 repo-native `faithful` families (`one_warehouse_multi_retailer`, `joint_pricing_inventory`, `procurement_removal_inventory`, `random_yield_inventory`, `vendor_managed_inventory`), which an adversarial 28-agent audit found reproduce no published number (they stay reachable via `include_unverified=True`). Every runner supports `list_instances` / `load_instance` / `published_baselines` / `run_baselines` / `compare`; `lost_sales` (+fixed), `dual_sourcing`, and `multi_echelon` additionally support `evaluate`. See the per-family table in [`../../invman/benchmarks/runners/README.md`](../../invman/benchmarks/runners/README.md) and the verification partition in [`LITERATURE_VERIFICATION_AUDIT_2026_06_12.md`](./LITERATURE_VERIFICATION_AUDIT_2026_06_12.md). Worked per-family reports live in [`../../scripts/benchmark_baselines/`](../../scripts/benchmark_baselines/) (`run_<family>_baselines.py --simulate`).
+All 14 catalog families have a runner, but the **default surface is the 9 literature-verified families** — `runners.available_runners()` and `catalog.list_problems(literature_verified=True)` exclude the 5 repo-native `faithful` families (`one_warehouse_multi_retailer`, `joint_pricing_inventory`, `procurement_removal_inventory`, `random_yield_inventory`, `vendor_managed_inventory`), which an adversarial 28-agent audit found reproduce no published number (they stay reachable via `include_unverified=True`). Every runner supports `list_instances` / `load_instance` / `published_baselines` / `run_baselines` / `compare`; `lost_sales` (+fixed), `dual_sourcing`, and `multi_echelon` additionally support `evaluate`. See the per-family table in [`../../invman/benchmarks/runners/README.md`](../../invman/benchmarks/runners/README.md) and the verification partition in [`LITERATURE_VERIFICATION_AUDIT_2026_06_12/README.md`](./LITERATURE_VERIFICATION_AUDIT_2026_06_12/README.md). Worked per-family reports live in [`../../scripts/benchmark_baselines/`](../../scripts/benchmark_baselines/) (`run_<family>_baselines.py --simulate`).
 
 ### Difficulty rubric (`easy` / `medium` / `hard`)
 
@@ -113,7 +113,7 @@ The companion paper is `paper/learning_inventory_control_policies_es.tex` (compi
 
 ## Master table — one row per system (multi_echelon split by sub-family)
 
-Grouped by verification status (best provenance first), matching `VERIFICATION_LEDGER.md`.
+Grouped by verification status (best provenance first), matching `VERIFICATION_LEDGER/README.md`.
 
 ### Group 1 — verified_rerun against a PEER-REVIEWED published number
 
@@ -161,8 +161,8 @@ Grouped by verification status (best provenance first), matching `VERIFICATION_L
 ## Backbone artifacts
 
 - **`BENCHMARK_MANIFEST.json`** — the machine-readable spine: per-system instances + `coverage_dimensions`, baselines (heuristic / exact), per-result `seed_reporting` + `at_risk` flags, and `reproduce_commands`. ([file](./BENCHMARK_MANIFEST.json))
-- **`VERIFICATION_LEDGER.md`** — the honest per-system verdict: what published number was reproduced **by re-run** this audit, by what method, and the four standing snapshot debts (D1–D5). ([file](./VERIFICATION_LEDGER.md))
-- **`PROPER_REPO_BUILD_PLAN.md`** — the work plan to turn scattered logs into a proper benchmark repo: standard API per problem, verification-debt closures (V1–V8), seed-robustness debts (S-H/S-M/S-L), reproducibility spine (R1–R5), cleanup (F1–F5). ([file](./PROPER_REPO_BUILD_PLAN.md))
+- **`VERIFICATION_LEDGER/README.md`** — the honest per-system verdict: what published number was reproduced **by re-run** this audit, by what method, and the four standing snapshot debts (D1–D5). ([file](./VERIFICATION_LEDGER/README.md))
+- **`PROPER_REPO_BUILD_PLAN/README.md`** — the work plan to turn scattered logs into a proper benchmark repo: standard API per problem, verification-debt closures (V1–V8), seed-robustness debts (S-H/S-M/S-L), reproducibility spine (R1–R5), cleanup (F1–F5). ([file](./PROPER_REPO_BUILD_PLAN/README.md))
 
 ---
 
@@ -205,7 +205,7 @@ Most "beats heuristic/gate" headlines outside the newly re-run families are stil
 - **multi_echelon/divergent** settings 1&2 are now seed-robust same-protocol gate beats (setting1 14.74%±1.60%, setting2 12.04%±2.26%, 5/5 each). **gbk** set1 is now seed-robust vs the reproduced gate (24.94%±1.37%, 5/5); the Kunnumkal-Topaloglu rerun rows also all beat the gate by about 36.7% across five optimizer seeds. **padn mixed** is now a residual base-stock-backbone robust own-heuristic beat (291.136±2.78 vs 297.69, 5/5); the older vector/flow-head audit remains a parity diagnostic (306.10±22.89, 4/8 below), not the current headline. **padn** serial case3 and pure-assembly are five-seed parity, with any single-run beats treated as illustrative only.
 - **lost_sales** vanilla 22/24-instance sweep + fixed-cost 48-instance sweep (single-seed); only the canonical vanilla L4-Poisson Tree-2 = 4.7537 is multi-seed.
 - **dual_sourcing** "beats CDI on 2 rows" + factor-screen negatives (single-seed; margins inside CDI's own ≤0.11% band, economically negligible); the only seed-robust result is "matches CDI on all 6".
-- **OWMR** instance_12 and instance_13 are reconciled to finalized 6-seed numbers in `SEED_ROBUST_BENCHMARK_2026_06_06.md` and the paper table now uses those headline forms (instance_12 +4.63% / 1115.44±5.51; instance_13 +7.16% / 85310±946). Instance_14 remains a gate tie, not a win.
+- **OWMR** instance_12 and instance_13 are reconciled to finalized 6-seed numbers in `SEED_ROBUST_BENCHMARK_2026_06_06/README.md` and the paper table now uses those headline forms (instance_12 +4.63% / 1115.44±5.51; instance_13 +7.16% / 85310±946). Instance_14 remains a gate tie, not a win.
 - **perishable** exact-anchor FIFO/LIFO rows are now seed-robust base-stock-gate beats (FIFO +1.166%±0.030%, LIFO +0.824%±0.065%, 5/5 each); the larger/table-only perishable rows remain single-seed observations. **ameliorating** spirits/port_wine (+450/+278/+524%) single-seed; **joint_replenishment** 6/16 MOQ-beats single-seed + setting-10 flip best-of-N=2; **joint_pricing** +25.15% single-seed; **nonstationary_lot_sizing** beats DP 8/8 single seed=1234; **random_yield** seed slice is 4 seeds (one short of ≥5) and the d3 headline contradicts a saved d1-linear artifact; **vendor_managed_inventory** low_penalty −0.31% two-seed best-of (marginal tie); **spare_parts** +1.34% single-seed (margin ≪ cost std); **procurement_removal** never beats its gate anyway.
 
 ### Documentation / consistency caveats

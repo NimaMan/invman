@@ -138,7 +138,7 @@ entries:
       policy: "Myopic-2 is the executable published heuristic gate; optimal and Better vector base-stock are table anchors."
       script: scripts/lost_sales/validate_reference_instance.py
       eval: "CLI defaults: reference=vanilla_l4_p4_poisson5, horizon=100000, seed=123, num_seeds=3; unit test uses horizon=100000 and seed=123."
-      latest_report: docs/benchmarks/lost_sales_l4_refresh.md
+      latest_report: docs/benchmarks/lost_sales_l4_refresh/README.md
       notes: "Learned-policy refresh rows in the latest report are repo-native and should not be treated as published literature numbers."
     paper_link:
       section: "paper/learning_inventory_control_policies_es.tex::sec:lostsales-results-vanilla and appendix table tab:vanilla-lost-sales-validation"

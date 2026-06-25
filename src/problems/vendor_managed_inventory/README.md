@@ -123,7 +123,7 @@ Published paper experiment rows:
 - the repo-constructed 8-case truck-dispatch case definitions are a structural interpretation, not
   transcriptions of a published table, and their profit rows do not reproduce the published table
 
-## Current Status (HONEST, per docs/rust.md "What counts as literature-verified")
+## Current Status (HONEST, per docs/rust/README.md "What counts as literature-verified")
 
 - literature-verified against a number printed in the peer-reviewed Sui/Gosavi/Lin (2010) paper:
   **NO**. The paper's results table is paywalled and not openly reproducible, so no peer-reviewed
@@ -204,7 +204,7 @@ helpers in `benchmark_reduced_single_retailer.py` (instance set, heuristic tunin
 adds structure-aware rollout wrappers so the CLI flags flow through to
 `vendor_managed_inventory_soft_tree_population_rollout` (no Rust rebuild).
 
-- program file: [policy_search/programs/program_vendor_managed_inventory.md](/home/nima/code/ml/invman/policy_search/programs/program_vendor_managed_inventory.md)
+- program file: [policy_search/programs/vendor_managed_inventory/README.md](/home/nima/code/ml/invman/policy_search/programs/vendor_managed_inventory/README.md)
 - runner: [scripts/vendor_managed_inventory/autoresearch_vendor_managed_inventory.py](/home/nima/code/ml/invman/scripts/vendor_managed_inventory/autoresearch_vendor_managed_inventory.py)
 
 Run (mind the hard CPU cap — the bindings otherwise grab ~27 cores):

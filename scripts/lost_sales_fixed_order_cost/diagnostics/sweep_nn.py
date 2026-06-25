@@ -46,7 +46,7 @@ def build_command(experiment):
     )
     cmd = [
         sys.executable,
-        "scripts/run_experiment.py",
+        "scripts/experiments/run_experiment.py",
         "--problem",
         "lost_sales_fixed_order_cost",
         "--policy_name",

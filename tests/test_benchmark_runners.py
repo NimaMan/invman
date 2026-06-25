@@ -34,7 +34,7 @@ def test_every_catalog_family_has_a_runner() -> None:
 SEAM_FAMILIES = {"lost_sales", "dual_sourcing", "multi_echelon"}
 
 # The 5 repo-native '<author>_style' / paywalled families that the adversarial
-# audit (docs/benchmarks/LITERATURE_VERIFICATION_AUDIT_2026_06_12.md) found are
+# audit (docs/benchmarks/LITERATURE_VERIFICATION_AUDIT_2026_06_12/README.md) found are
 # NOT literature-verified — hidden from the default runner/catalog surface.
 FAITHFUL_UNVERIFIED = {
     "one_warehouse_multi_retailer",

@@ -3,7 +3,7 @@
 `spare_parts_inventory` is exercised by executable assertions in `tests/verification.rs`.
 This file states, honestly, which of those assertions are LITERATURE VERIFICATION (an
 in-crate test re-runs an env/solver and reproduces a paper-printed number within a stated
-tolerance) and which are not, per the repo rule in `docs/rust.md`.
+tolerance) and which are not, per the repo rule in `docs/rust/README.md`.
 
 ## Literature-verified (the only one in this family)
 

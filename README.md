@@ -21,7 +21,7 @@ detailed READMEs for that family.
   variants usually own their own subproblem catalogs.
 - `AGENTS.md`: repo-local setup, sanity checks, and ready experiment-suite
   commands.
-- `policy_search/README.md` and `policy_search/POLICY_DESIGN_GUIDELINES.md`:
+- `policy_search/README.md` and `policy_search/POLICY_DESIGN_GUIDELINES/README.md`:
   learned-policy and decoder design workflow.
 - `presentation/index.html`: current deck framing for learned policies,
   heuristics, action parameterizations, and reporting language.
@@ -177,8 +177,8 @@ The current policy-learning frame is:
 - policy-search programs document the trusted instance, heuristic gate,
   editable surface, Rust binding, and known outcomes.
 
-Read `policy_search/POLICY_DESIGN_GUIDELINES.md` before designing a new decoder
-or policy surface. Read `policy_search/programs/program_<problem>.md` before
+Read `policy_search/POLICY_DESIGN_GUIDELINES/README.md` before designing a new decoder
+or policy surface. Read `policy_search/programs/<problem>/README.md` before
 running a family-specific policy search when that program exists. The deck in
 `presentation/index.html` shows the intended learned-policy versus heuristic
 framing: match optima, beat same-protocol heuristics when supported, and keep
@@ -208,7 +208,7 @@ python -m pip install maturin
 Build the Rust Python extension into the active environment:
 
 ```bash
-python scripts/build_rust_extension.py
+python scripts/rust/build_extension.py
 ```
 
 Run broad health checks:
@@ -235,7 +235,7 @@ python numerical_experiments/run.py --suite fixed_cost_single_instance_check
 Run the generic small experiment path:
 
 ```bash
-python scripts/run_experiment.py --training_episodes 20 --horizon 200 --eval_horizon 2000 --eval_seeds 5
+python scripts/experiments/run_experiment.py --training_episodes 20 --horizon 200 --eval_horizon 2000 --eval_seeds 5
 ```
 
 Outputs from ad hoc and benchmark runs are written under `outputs/`, especially

@@ -104,7 +104,7 @@ def fig_overview():
     # ordered top-to-bottom; grouped by verdict for visual clarity
     # All learned numbers are seed-robust means (mean ± std over >=5 optimizer
     # seeds) sourced from the paper abstract / tables and the seed-robust re-run
-    # ledger (docs/benchmarks/SEED_ROBUST_RERUNS_2026_06_06.md).
+    # ledger (docs/benchmarks/SEED_ROBUST_RERUNS_2026_06_06/README.md).
     rows = [
         ("Dual sourcing",                 "match",    "capped dual-index (heuristic-near-optimal anchor)", "matches optimum  (≤0.11% band)"),
         ("Serial multi-echelon\n(Clark–Scarf)", "match", "proven Clark–Scarf optimum",          "matches optimum  (+0.011%)"),

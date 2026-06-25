@@ -12,5 +12,5 @@ The intention is that every result written here should be traceable to:
 Current canonical outputs from `scripts/run_month_ahead_simulation.py`:
 
 - `month_ahead_price_scenarios_2026-04-06.json`
-- `month_ahead_price_scenarios_2026-04-06.md`
+- `month_ahead_price_scenarios_2026-04-06/README.md`
 - `month_ahead_price_paths_2026-04-06.csv`

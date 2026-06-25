@@ -15,7 +15,7 @@ See the repo-wide note in `../../literature/README.md`.
 ## Latest exact-slice benchmark
 
 - machine-readable: `exact_slice_report.json`
-- human-readable: `exact_slice_report.md`
+- human-readable: `exact_slice_report/README.md`
 
 Settings: depth-2 oblique soft tree, leaf types `linear` and `sigmoid_linear`,
 CMA-ES 150 generations / popsize 16, gamma 0.99, 48 search seeds, 256 eval seeds.

@@ -167,7 +167,7 @@ Constraints the compiler enforces (feasibility — every emitted spec must be ev
   - `src/brain.rs` — `CodexBrainConfig` (ReadOnly sandbox), the OWMR system prompt, and the
     policy-spec JSON schema Codex must satisfy.
 - `archive.jsonl` — runtime population of `{spec, result}` rows (git-ignored).
-- `SMOKE.md` — one-iteration end-to-end runbook + integration punch-list.
+- `SMOKE/README.md` — one-iteration end-to-end runbook + integration punch-list.
 
 Every source file carries a full algorithmic-description header comment (lab convention).
 
@@ -193,5 +193,5 @@ Next (the actual research run): real Codex at `--budget small/full` over more ge
 propose per-retailer / state-dependent-leaf heads — the geometry the audit says flipped the sign on
 instances 12/13 — and attempt a robust gate-beat on `instance_14`. PPO stays cross-protocol context.
 
-Open polish (non-blocking, see SMOKE.md punch-list): widen the action descriptor's
+Open polish (non-blocking, see SMOKE/README.md punch-list): widen the action descriptor's
 number fields to `["number","null"]`; trim unused Cargo deps.

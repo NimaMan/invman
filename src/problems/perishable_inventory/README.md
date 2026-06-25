@@ -115,7 +115,7 @@ Benchmark:
 
 - working runner: `scripts/perishable_inventory/run_exact_slice_benchmark.py`
   (exact optimum vs tuned `base_stock` / `bsp_low_ew` vs CMA-ES soft tree)
-- latest report: `experiments/reports/exact_slice_report.md`
+- latest report: `experiments/reports/exact_slice_report/README.md`
 - NOTE: the older `scripts/perishable_inventory/run_paper_benchmark.py` is dead
   (imports the removed `invman.policies.soft_tree`); use the runner above.
 

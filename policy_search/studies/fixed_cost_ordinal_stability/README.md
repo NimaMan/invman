@@ -291,13 +291,13 @@ The following local proxy sweeps answer that question on the same benchmark:
 Files:
 
 - ordinal local sweep:
-  `policy_search/studies/fixed_cost_ordinal_stability/scale_local_p50_results.md`
+  `policy_search/studies/fixed_cost_ordinal_stability/scale_local_p50_results/README.md`
 - depth-1 tree local sweep:
-  `policy_search/studies/fixed_cost_ordinal_stability/scale_tree_d1_local_p50_results.md`
+  `policy_search/studies/fixed_cost_ordinal_stability/scale_tree_d1_local_p50_results/README.md`
 - depth-2 tree local sweep:
-  `policy_search/studies/fixed_cost_ordinal_stability/scale_tree_d2_local_p50_results.md`
+  `policy_search/studies/fixed_cost_ordinal_stability/scale_tree_d2_local_p50_results/README.md`
 - combined comparison:
-  `policy_search/studies/fixed_cost_ordinal_stability/scale_policy_comparison_local_p50_results.md`
+  `policy_search/studies/fixed_cost_ordinal_stability/scale_policy_comparison_local_p50_results/README.md`
 
 ### Cross-policy comparison at population 50
 

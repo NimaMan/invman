@@ -61,9 +61,9 @@ It is intentionally not a full oil-market warehouse.
 
 ## Current result summaries
 
-- `one_year_backtest_summary.md` / `.json`
-- `ten_year_market_context_summary.md` / `.json`
-- `twenty_year_market_context_summary.md` / `.json`
+- `one_year_backtest_summary/README.md` / `.json`
+- `ten_year_market_context_summary/README.md` / `.json`
+- `twenty_year_market_context_summary/README.md` / `.json`
 
 ## Coverage note
 

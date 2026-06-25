@@ -32,7 +32,7 @@ Key tests:
   stay `false` and that the source strings correctly attribute the paper to Sui/Gosavi/Lin (2010)
   and label the worked example as the Gosavi instructor teaching case study
 
-Honesty note (per docs/rust.md "What counts as literature-verified"):
+Honesty note (per docs/rust/README.md "What counts as literature-verified"):
 
 - NEITHER scope is literature verification of a peer-reviewed-paper number.
   - The Gosavi worked example is an INSTRUCTOR teaching handout, not the peer-reviewed paper; per the

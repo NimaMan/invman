@@ -73,7 +73,7 @@ Repo interpretation:
   reusable numeric benchmark rows, even if the repo-native executable primary instance is a
   different spare-parts subfamily
 
-## Verification status (honest, per docs/rust.md "What counts as literature-verified")
+## Verification status (honest, per docs/rust/README.md "What counts as literature-verified")
 
 A benchmark is literature-verified ONLY when an in-crate test RE-RUNS the env/solver
 and asserts the freshly computed metric reproduces a number PRINTED IN A PAPER within

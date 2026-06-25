@@ -12,7 +12,7 @@ the perfect-information LP UPPER BOUND on average profit
 (spirits_0001 = 1991.9344293376805; port_wine = 2444.8010643781136). The paper
 reports DRL within ~3.5% of this bound on the generic instance set.
 
-WHY THIS DESIGN (policy_search/POLICY_DESIGN_GUIDELINES.md)
+WHY THIS DESIGN (policy_search/POLICY_DESIGN_GUIDELINES/README.md)
 ----------------------------------------------------------
 1. BASELINE = the perfect-information LP upper bound (max_reward), the literature
    anchor. It is a LOOSE upper bound (perfect information + full LP issuance), so a
@@ -318,7 +318,7 @@ def train(kw_train, x0, popsize, generations, sigma_init, seed):
     # The historical deployed endpoint is cma_best = xbest = es.best_param() = result[0]
     # (the single best individual ever sampled, which can overfit the small training
     # CRN batch). xfavorite is the mean of the search distribution -- the honest-floor
-    # endpoint from the training-path audit (TRAINING_PATH_AUDIT_2026_06_06.md). It is
+    # endpoint from the training-path audit (TRAINING_PATH_AUDIT_2026_06_06/README.md). It is
     # returned ADDITIVELY here so main() can add it to the existing best-of candidate
     # set; nothing about the xbest path changes.
     cma_xfavorite = np.asarray(es.current_param(), dtype=np.float32)
@@ -393,7 +393,7 @@ def main():
     # The runner already deploys the best-of a candidate set on the held-out block
     # (an honest floor): cma_incumbent = xbest = es.best_param(), order_up_to_anchor =
     # warm-start gate anchor, gen_best = best per-generation incumbent. The training-
-    # path audit (TRAINING_PATH_AUDIT_2026_06_06.md) adds the CMA-ES distribution-MEAN
+    # path audit (TRAINING_PATH_AUDIT_2026_06_06/README.md) adds the CMA-ES distribution-MEAN
     # endpoint xfavorite (= es.current_param() = result[5]) to that set ADDITIVELY: it
     # is downside-safe (best-of can never deploy worse than xbest) and helps where
     # xbest overfits the small training CRN batch.

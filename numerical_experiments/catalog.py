@@ -2,13 +2,56 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+SuiteStatus = Literal["ready", "exploratory"]
+READY: SuiteStatus = "ready"
+EXPLORATORY: SuiteStatus = "exploratory"
+VALID_STATUSES = frozenset((READY, EXPLORATORY))
+
+LOST_SALES_BASE_POLICIES = (
+    "linear_categorical_quantity_q20",
+    "nn_categorical_quantity_q20",
+)
+LOST_SALES_IMPROVED_POLICIES = (
+    "linear_sigmoid_direct_quantity",
+    "linear_soft_gated_direct_quantity",
+    "nn_soft_gated_direct_quantity_h8_selu",
+    "linear_hard_gated_direct_quantity",
+    "linear_soft_gated_ordinal_quantity",
+    "nn_soft_gated_ordinal_quantity_h8_selu",
+    "nn_soft_gated_ordinal_quantity",
+    "soft_tree_depth1_linear_leaf",
+    "soft_tree_depth2_linear_leaf",
+    "soft_tree_depth1_sigmoid_linear_leaf_q20",
+    "soft_tree_depth2_sigmoid_linear_leaf_q20",
+)
+FIXED_COST_BASE_POLICIES = (
+    "linear_categorical_quantity",
+    "nn_categorical_quantity",
+)
+FIXED_COST_IMPROVED_POLICIES = (
+    "linear_sigmoid_direct_quantity",
+    "linear_soft_gated_direct_quantity",
+    "nn_soft_gated_direct_quantity_h8_selu",
+    "linear_hard_gated_direct_quantity",
+    "linear_soft_gated_ordinal_quantity",
+    "nn_soft_gated_ordinal_quantity_h8_selu",
+    "nn_soft_gated_ordinal_quantity",
+    "soft_tree_depth2_linear_leaf",
+    "soft_tree_depth1_linear_leaf",
+    "soft_tree_depth2_sigmoid_linear_leaf_q20",
+    "soft_tree_depth1_sigmoid_linear_leaf_q20",
+)
 
 
 @dataclass(frozen=True)
 class ExperimentSuite:
     suite_id: str
     problem: str
-    status: str
+    status: SuiteStatus
     purpose: str
     heuristics: tuple[str, ...]
     base_policies: tuple[str, ...]
@@ -29,26 +72,11 @@ EXPERIMENT_SUITES: tuple[ExperimentSuite, ...] = (
     ExperimentSuite(
         suite_id="lost_sales_single_instance_check",
         problem="lost_sales",
-        status="ready",
+        status=READY,
         purpose="Run one canonical vanilla lost-sales instance end-to-end as a preflight check before the full literature grid run.",
         heuristics=("myopic1", "myopic2", "svbs", "capped_base_stock_literature"),
-        base_policies=(
-            "linear_categorical_quantity_q20",
-            "nn_categorical_quantity_q20",
-        ),
-        improved_policies=(
-            "linear_sigmoid_direct_quantity",
-            "linear_soft_gated_direct_quantity",
-            "nn_soft_gated_direct_quantity_h8_selu",
-            "linear_hard_gated_direct_quantity",
-            "linear_soft_gated_ordinal_quantity",
-            "nn_soft_gated_ordinal_quantity_h8_selu",
-            "nn_soft_gated_ordinal_quantity",
-            "soft_tree_depth1_linear_leaf",
-            "soft_tree_depth2_linear_leaf",
-            "soft_tree_depth1_sigmoid_linear_leaf_q20",
-            "soft_tree_depth2_sigmoid_linear_leaf_q20",
-        ),
+        base_policies=LOST_SALES_BASE_POLICIES,
+        improved_policies=LOST_SALES_IMPROVED_POLICIES,
         script_path="scripts/lost_sales/benchmark_canonical_suite.py",
         notes=(
             "Uses the canonical L=4, p=4, Poisson(5) instance.",
@@ -58,26 +86,11 @@ EXPERIMENT_SUITES: tuple[ExperimentSuite, ...] = (
     ExperimentSuite(
         suite_id="lost_sales_full_policy_grid",
         problem="lost_sales",
-        status="ready",
+        status=READY,
         purpose="Run the full 32-instance vanilla lost-sales paper-style grid with heuristics and learned policy families.",
         heuristics=("myopic1", "myopic2", "svbs", "capped_base_stock_literature", "optimal_literature_when_available"),
-        base_policies=(
-            "linear_categorical_quantity_q20",
-            "nn_categorical_quantity_q20",
-        ),
-        improved_policies=(
-            "linear_sigmoid_direct_quantity",
-            "linear_soft_gated_direct_quantity",
-            "nn_soft_gated_direct_quantity_h8_selu",
-            "linear_hard_gated_direct_quantity",
-            "linear_soft_gated_ordinal_quantity",
-            "nn_soft_gated_ordinal_quantity_h8_selu",
-            "nn_soft_gated_ordinal_quantity",
-            "soft_tree_depth1_linear_leaf",
-            "soft_tree_depth2_linear_leaf",
-            "soft_tree_depth1_sigmoid_linear_leaf_q20",
-            "soft_tree_depth2_sigmoid_linear_leaf_q20",
-        ),
+        base_policies=LOST_SALES_BASE_POLICIES,
+        improved_policies=LOST_SALES_IMPROVED_POLICIES,
         script_path="scripts/lost_sales/benchmark_full_suite.py",
         notes=(
             "This suite is the main data-generation path for the vanilla lost-sales paper section.",
@@ -87,23 +100,11 @@ EXPERIMENT_SUITES: tuple[ExperimentSuite, ...] = (
     ExperimentSuite(
         suite_id="fixed_cost_known_optimum_validation",
         problem="lost_sales_fixed_order_cost",
-        status="ready",
+        status=READY,
         purpose="Run the published Bijvank-Bhulai-Huh Table 1 validation instance end-to-end and compare heuristics and learned policies to the known exact optimum.",
         heuristics=("s_s", "s_nq", "modified_s_s_q", "optimal_literature_when_available"),
-        base_policies=("linear_categorical_quantity", "nn_categorical_quantity"),
-        improved_policies=(
-            "linear_sigmoid_direct_quantity",
-            "linear_soft_gated_direct_quantity",
-            "nn_soft_gated_direct_quantity_h8_selu",
-            "linear_hard_gated_direct_quantity",
-            "linear_soft_gated_ordinal_quantity",
-            "nn_soft_gated_ordinal_quantity_h8_selu",
-            "nn_soft_gated_ordinal_quantity",
-            "soft_tree_depth2_linear_leaf",
-            "soft_tree_depth1_linear_leaf",
-            "soft_tree_depth2_sigmoid_linear_leaf_q20",
-            "soft_tree_depth1_sigmoid_linear_leaf_q20",
-        ),
+        base_policies=FIXED_COST_BASE_POLICIES,
+        improved_policies=FIXED_COST_IMPROVED_POLICIES,
         script_path="scripts/lost_sales_fixed_order_cost/benchmark_canonical_suite.py",
         script_args=(
             "--reference",
@@ -119,23 +120,11 @@ EXPERIMENT_SUITES: tuple[ExperimentSuite, ...] = (
     ExperimentSuite(
         suite_id="fixed_cost_single_instance_check",
         problem="lost_sales_fixed_order_cost",
-        status="ready",
+        status=READY,
         purpose="Run one fixed-cost literature-aligned instance end-to-end as a preflight check before the full grid run.",
         heuristics=("s_s", "s_nq", "modified_s_s_q"),
-        base_policies=("linear_categorical_quantity", "nn_categorical_quantity"),
-        improved_policies=(
-            "linear_sigmoid_direct_quantity",
-            "linear_soft_gated_direct_quantity",
-            "nn_soft_gated_direct_quantity_h8_selu",
-            "linear_hard_gated_direct_quantity",
-            "linear_soft_gated_ordinal_quantity",
-            "nn_soft_gated_ordinal_quantity_h8_selu",
-            "nn_soft_gated_ordinal_quantity",
-            "soft_tree_depth2_linear_leaf",
-            "soft_tree_depth1_linear_leaf",
-            "soft_tree_depth2_sigmoid_linear_leaf_q20",
-            "soft_tree_depth1_sigmoid_linear_leaf_q20",
-        ),
+        base_policies=FIXED_COST_BASE_POLICIES,
+        improved_policies=FIXED_COST_IMPROVED_POLICIES,
         script_path="scripts/lost_sales_fixed_order_cost/benchmark_canonical_suite.py",
         notes=(
             "Uses the canonical L=4, p=4, K=5 literature-aligned instance.",
@@ -145,23 +134,11 @@ EXPERIMENT_SUITES: tuple[ExperimentSuite, ...] = (
     ExperimentSuite(
         suite_id="fixed_cost_full_policy_grid",
         problem="lost_sales_fixed_order_cost",
-        status="ready",
+        status=READY,
         purpose="Run the full fixed-cost paper-style grid with heuristics and learned policy families on the literature-aligned instance set.",
         heuristics=("s_s", "s_nq", "modified_s_s_q"),
-        base_policies=("linear_categorical_quantity", "nn_categorical_quantity"),
-        improved_policies=(
-            "linear_sigmoid_direct_quantity",
-            "linear_soft_gated_direct_quantity",
-            "nn_soft_gated_direct_quantity_h8_selu",
-            "linear_hard_gated_direct_quantity",
-            "linear_soft_gated_ordinal_quantity",
-            "nn_soft_gated_ordinal_quantity_h8_selu",
-            "nn_soft_gated_ordinal_quantity",
-            "soft_tree_depth2_linear_leaf",
-            "soft_tree_depth1_linear_leaf",
-            "soft_tree_depth2_sigmoid_linear_leaf_q20",
-            "soft_tree_depth1_sigmoid_linear_leaf_q20",
-        ),
+        base_policies=FIXED_COST_BASE_POLICIES,
+        improved_policies=FIXED_COST_IMPROVED_POLICIES,
         script_path="scripts/lost_sales_fixed_order_cost/benchmark_full_suite.py",
         notes=(
             "This suite is the main data-generation path for the fixed-cost paper section.",
@@ -171,7 +148,7 @@ EXPERIMENT_SUITES: tuple[ExperimentSuite, ...] = (
     ExperimentSuite(
         suite_id="dual_sourcing_reference_grid",
         problem="dual_sourcing",
-        status="ready",
+        status=READY,
         purpose="Validate the six literature dual-sourcing instances and their heuristic/DP baselines.",
         heuristics=("single_index", "dual_index", "capped_dual_index", "tailored_base_surge", "optimal_dp"),
         base_policies=(),
@@ -184,7 +161,7 @@ EXPERIMENT_SUITES: tuple[ExperimentSuite, ...] = (
     ExperimentSuite(
         suite_id="dual_sourcing_backbone_screen",
         problem="dual_sourcing",
-        status="exploratory",
+        status=EXPLORATORY,
         purpose="Screen linear and NN backbones under identity vs structured action adapters.",
         heuristics=("single_index", "dual_index", "capped_dual_index", "tailored_base_surge"),
         base_policies=("linear_bounded_quantity_identity", "nn_bounded_quantity_identity"),
@@ -198,7 +175,7 @@ EXPERIMENT_SUITES: tuple[ExperimentSuite, ...] = (
     ExperimentSuite(
         suite_id="dual_sourcing_tree_autoresearch",
         problem="dual_sourcing",
-        status="exploratory",
+        status=EXPLORATORY,
         purpose="Run structured soft-tree policy search on the primary dual-sourcing instance.",
         heuristics=("single_index", "dual_index", "capped_dual_index", "tailored_base_surge"),
         base_policies=("soft_tree_identity",),
@@ -212,7 +189,7 @@ EXPERIMENT_SUITES: tuple[ExperimentSuite, ...] = (
     ExperimentSuite(
         suite_id="multi_echelon_autoresearch",
         problem="multi_echelon",
-        status="exploratory",
+        status=EXPLORATORY,
         purpose="Run the current multi-echelon soft-tree benchmark loop on the larger reference setting.",
         heuristics=("constant_base_stock",),
         base_policies=("soft_tree_constant_leaf",),
@@ -226,7 +203,7 @@ EXPERIMENT_SUITES: tuple[ExperimentSuite, ...] = (
     ExperimentSuite(
         suite_id="owmr_kaynov_full_paper_benchmark",
         problem="one_warehouse_multi_retailer",
-        status="ready",
+        status=READY,
         purpose="Run the full 14-instance Kaynov OWMR paper benchmark with literature-aligned heuristic evaluation and soft-tree learned policies.",
         heuristics=("echelon_base_stock_proportional", "echelon_base_stock_min_shortage", "published_ppo"),
         base_policies=(),
@@ -240,7 +217,7 @@ EXPERIMENT_SUITES: tuple[ExperimentSuite, ...] = (
     ExperimentSuite(
         suite_id="multi_echelon_gijs_full_paper_benchmark",
         problem="multi_echelon",
-        status="exploratory",
+        status=EXPLORATORY,
         purpose="Run the two Gijs / Van Roy literature settings with the current best Rust-backed soft-tree policy family and compare to the published relative improvements.",
         heuristics=("constant_base_stock_grid_search", "published_a3c_relative_savings", "published_van_roy_relative_savings"),
         base_policies=(),
@@ -272,7 +249,26 @@ EXPERIMENT_SUITES: tuple[ExperimentSuite, ...] = (
 )
 
 
-def list_suites(*, status: str | None = None) -> list[ExperimentSuite]:
+def _validate_suites() -> None:
+    seen: set[str] = set()
+    for suite in EXPERIMENT_SUITES:
+        if suite.suite_id in seen:
+            raise ValueError(f"duplicate numerical experiment suite id: {suite.suite_id}")
+        seen.add(suite.suite_id)
+        if suite.status not in VALID_STATUSES:
+            raise ValueError(f"{suite.suite_id}: invalid status {suite.status!r}")
+        script_path = PROJECT_ROOT / suite.script_path
+        if not script_path.is_file():
+            raise FileNotFoundError(f"{suite.suite_id}: missing suite script {suite.script_path}")
+
+
+_validate_suites()
+
+
+def list_suites(*, status: SuiteStatus | None = None) -> list[ExperimentSuite]:
+    if status is not None and status not in VALID_STATUSES:
+        allowed = ", ".join(sorted(VALID_STATUSES))
+        raise ValueError(f"unknown suite status {status!r}; expected one of: {allowed}")
     suites = list(EXPERIMENT_SUITES)
     if status is not None:
         suites = [suite for suite in suites if suite.status == status]

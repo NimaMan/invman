@@ -17,7 +17,7 @@ can, with minimal effort,
   (4) drop in THEIR OWN soft-tree policy and score it on the SAME instance under
       the SAME eval protocol (`evaluate`) so they can compare apples-to-apples.
 
-This is `PROPER_REPO_BUILD_PLAN.md` workstream (a): one uniform Python surface so
+This is `PROPER_REPO_BUILD_PLAN/README.md` workstream (a): one uniform Python surface so
 a benchmark consumer never has to parse Rust or markdown. Each problem family has
 a different env contract (lost-sales scalar order vs dual-sourcing two-source
 vector vs multi-echelon allocation), so the family specifics live in per-family
@@ -381,7 +381,7 @@ class ProblemRunner(ABC):
         Derived from the manifest tier (the single source of truth): everything
         except `faithful` is literature-anchored. This matches, family-for-family,
         the adversarial audit in
-        docs/benchmarks/LITERATURE_VERIFICATION_AUDIT_2026_06_12.md.
+        docs/benchmarks/LITERATURE_VERIFICATION_AUDIT_2026_06_12/README.md.
         """
         return self.verification_tier != "faithful"
 

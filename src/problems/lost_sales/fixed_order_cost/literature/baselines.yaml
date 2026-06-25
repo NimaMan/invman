@@ -4,7 +4,7 @@ registry_owner: src/problems/lost_sales/fixed_order_cost
 source_of_truth:
   - src/problems/lost_sales/fixed_order_cost/literature/references.rs
   - src/problems/lost_sales/fixed_order_cost/verification/tests.rs
-  - docs/benchmarks/fixed_cost_l4_refresh.md
+  - docs/benchmarks/fixed_cost_l4_refresh/README.md
 entries:
   - id: bijvank2015_table1_l2_p14_k5
     problem: lost_sales_fixed_order_cost
@@ -174,12 +174,12 @@ entries:
       tolerance: null
       reproduced_rows: []
       table_only_rows: []
-      artifact: docs/benchmarks/fixed_cost_l4_refresh.md
+      artifact: docs/benchmarks/fixed_cost_l4_refresh/README.md
     repo_baseline_gate:
       policy: "Best current heuristic anchor is modified (s,S,q) with params s=22, S=30, q=8 and mean cost 9.17436."
       script: scripts/lost_sales_fixed_order_cost/benchmark_canonical_suite.py
-      eval: "docs/benchmarks/fixed_cost_l4_refresh.md reports evaluation horizon 1000000, eval_seeds=10, warm-up 20 percent."
-      latest_report: docs/benchmarks/fixed_cost_l4_refresh.md
+      eval: "docs/benchmarks/fixed_cost_l4_refresh/README.md reports evaluation horizon 1000000, eval_seeds=10, warm-up 20 percent."
+      latest_report: docs/benchmarks/fixed_cost_l4_refresh/README.md
       rows:
         - row_id: modified_s_s_q_repo_gate_mean_cost
           policy_id: modified_s_s_q
@@ -191,7 +191,7 @@ entries:
             S: 30
             q: 8
           source_ref:
-            artifact: docs/benchmarks/fixed_cost_l4_refresh.md
+            artifact: docs/benchmarks/fixed_cost_l4_refresh/README.md
             row: "best current heuristic anchor"
       notes: "Learned-policy rows in the report are repo-native comparator rows and should not be promoted as literature values."
     paper_link:
@@ -199,6 +199,6 @@ entries:
       claim: "Canonical fixed-cost policy-design comparison on L=4, p=4, K=5, Poisson mean 5."
       caveats:
         - "Repo-native gate only; no published exact comparator is encoded for this specific instance."
-        - "The nn_categorical_quantity row in docs/benchmarks/fixed_cost_l4_refresh.md is explicitly provisional."
+        - "The nn_categorical_quantity row in docs/benchmarks/fixed_cost_l4_refresh/README.md is explicitly provisional."
     unknowns:
       - "No current strict literature verifier for this specific L=4, p=4, K=5 instance."

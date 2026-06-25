@@ -149,7 +149,7 @@ Full cost-row table, corroboration of the carried PPO bands, and root-cause disc
 Because the learned soft-tree currently *loses* to the tuned heuristic by 0.4%-1.7% on the three
 instances above, there is a single-policy autoresearch loop to search the policy/control surface and
 try to flip the sign. The program file
-`policy_search/programs/program_one_warehouse_multi_retailer.md` states the trusted benchmark (the Kaynov
+`policy_search/programs/one_warehouse_multi_retailer/README.md` states the trusted benchmark (the Kaynov
 instances + the grid-searched echelon base-stock heuristic under the better of
 `{min_shortage, proportional}` allocation), the editable search surface (tree depth / temperature /
 split `{oblique, axis_aligned}` / leaf `{constant, linear}`; action design

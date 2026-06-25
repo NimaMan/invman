@@ -5,7 +5,7 @@ space of *policy architectures* (action geometry, tree splits/leaves, regime gat
 each inventory problem, scored by the invman Rust rollout oracle under a **seed-robust keep/discard
 gate** (the strongest in-repo heuristic). It does **not** search the action *design* itself — that is
 the human-authored per-problem coordinate system documented in
-[`POLICY_DESIGN_GUIDELINES.md`](POLICY_DESIGN_GUIDELINES.md); this subsystem searches *structures*
+[`POLICY_DESIGN_GUIDELINES/README.md`](POLICY_DESIGN_GUIDELINES/README.md); this subsystem searches *structures*
 expressed in that coordinate system.
 
 It is the merge of two formerly-separate folders that were the **same topic at two automation levels**:
@@ -17,7 +17,7 @@ It is the merge of two formerly-separate folders that were the **same topic at t
   and *same* gate. Its own framing: it *"automates the single human-bottlenecked step that
   autoresearch documents a person doing today."*
 
-> **Designing a policy for a new problem? Read [`POLICY_DESIGN_GUIDELINES.md`](POLICY_DESIGN_GUIDELINES.md) first** —
+> **Designing a policy for a new problem? Read [`POLICY_DESIGN_GUIDELINES/README.md`](POLICY_DESIGN_GUIDELINES/README.md) first** —
 > the reusable recipe: anchor the env to published costs → treat the action parameterization as part
 > of the policy → encode in the best heuristic's coordinate system → warm-start CMA-ES → run the
 > search loop → checklist for adding a new problem.
@@ -27,7 +27,7 @@ It is the merge of two formerly-separate folders that were the **same topic at t
 ```
 policy_search/
   README.md                     # this index
-  POLICY_DESIGN_GUIDELINES.md   # the shared, canonical policy-design recipe (read first)
+  POLICY_DESIGN_GUIDELINES/README.md   # the shared, canonical policy-design recipe (read first)
   programs/                     # 12 per-problem "program" contracts (the manual loop's instructions)
   agentic/                      # Evrim: the LLM agent that automates the loop
   studies/                      # finished one-off search/ablation studies (read-only provenance)
@@ -67,9 +67,9 @@ LLM (Codex) proposes a policy-spec (DSL JSON)              [agent/ : Rust beden+
   builders and the per-problem `scripts/<problem>/` modules.
 - Honest metric: `robust_gate_beat` (every seed below gate AND mean+std < gate); `deployed_cost =
   min(trained, gate)`. PPO is cross-protocol context, never a head-to-head beat.
-- See `agentic/README.md`, `agentic/SMOKE.md`, and the two result logs
-  `agentic/RESULTS_instance14.md` (OWMR instance_14 −12.57%, 10/10 seeds) and
-  `agentic/RESULTS_padn_mixed.md` (PADN mixed −2.20%, 5/5 seeds).
+- See `agentic/README.md`, `agentic/SMOKE/README.md`, and the two result logs
+  `agentic/RESULTS_instance14/README.md` (OWMR instance_14 −12.57%, 10/10 seeds) and
+  `agentic/RESULTS_padn_mixed/README.md` (PADN mixed −2.20%, 5/5 seeds).
 
 ### `studies/` — finished one-off studies (provenance)
 Conclusions already folded into the `programs/` files and project memory; kept as read-only

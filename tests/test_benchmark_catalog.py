@@ -26,7 +26,7 @@ VALID_TIERS = {"strict", "reference", "faithful", "mixed"}
 EXPECTED_PROBLEM_COUNT = 14
 
 # The honest, ledger-reconciled headline verification tier per family
-# (docs/benchmarks/VERIFICATION_LEDGER.md + FUNDAMENTAL_QUESTIONS.md are the
+# (docs/benchmarks/VERIFICATION_LEDGER/README.md + FUNDAMENTAL_QUESTIONS/README.md are the
 # authority; these are read VERBATIM from the manifest, never string-derived).
 EXPECTED_TIER = {
     "lost_sales": "strict",
@@ -214,6 +214,6 @@ def test_render_all_cards_writes_15_files(tmp_path: Path) -> None:
     assert len(written) == EXPECTED_PROBLEM_COUNT + 1
     assert (tmp_path / "README.md").exists()
     for problem in catalog.list_problems():
-        path = tmp_path / f"{problem}.md"
+        path = tmp_path / problem / "README.md"
         assert path.exists()
         assert path.read_text(encoding="utf-8").strip()

@@ -22,7 +22,7 @@ python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 python -m pip install -e .
 python -m pip install maturin
-python scripts/build_rust_extension.py
+python scripts/rust/build_extension.py
 ```
 
 The Rust build helper is portable across these layouts:
@@ -34,7 +34,7 @@ The Rust build helper is portable across these layouts:
 If Rust source changes, rebuild the extension:
 
 ```bash
-python scripts/build_rust_extension.py
+python scripts/rust/build_extension.py
 ```
 
 The Rust crate defaults to Rust-native development. The Python extension feature is enabled by the

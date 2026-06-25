@@ -6,7 +6,7 @@
 // PURPOSE
 //   Single source of truth for the literature instances this family carries, and
 //   the HONEST verification scope for each one. "Literature-verified" here follows
-//   the repo rule (docs/rust.md): a benchmark is literature-verified ONLY when an
+//   the repo rule (docs/rust/README.md): a benchmark is literature-verified ONLY when an
 //   in-crate test RE-RUNS the env/solver and asserts the freshly computed metric
 //   reproduces a number PRINTED IN A PAPER within a stated tolerance. A frozen
 //   snapshot (assert_eq! of carried constants vs the same published constants) is

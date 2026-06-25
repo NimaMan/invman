@@ -245,7 +245,7 @@ pub const LITERATURE_REFERENCE_INSTANCES: &[GeneralBackorderFixedCostReferenceIn
         source: GEEVERS_2023_REFERENCE.source,
         url: GEEVERS_2023_REFERENCE.url,
         // carried as published-row provenance only; env does NOT reproduce this cost (+~223%),
-        // see VERIFICATION_LEDGER.md debt D2.
+        // see VERIFICATION_LEDGER/README.md debt D2.
         literature_verified: false,
         num_suppliers: 4,
         num_warehouses: 4,
@@ -279,7 +279,7 @@ pub const LITERATURE_REFERENCE_INSTANCES: &[GeneralBackorderFixedCostReferenceIn
         source: GEEVERS_2023_REFERENCE.source,
         url: GEEVERS_2023_REFERENCE.url,
         // carried as published-row provenance only; env does NOT reproduce this cost (+~223%),
-        // see VERIFICATION_LEDGER.md debt D2.
+        // see VERIFICATION_LEDGER/README.md debt D2.
         literature_verified: false,
         num_suppliers: 4,
         num_warehouses: 4,

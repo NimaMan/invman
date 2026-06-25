@@ -106,7 +106,7 @@ pub const SHEOPURI_2010_REFERENCE: PublishedBenchmarkReference = PublishedBenchm
     notes: "This paper extends the classical dual-sourcing policy family beyond the original dual-index rule. It is the right policy-family source for capped or weighted dual-sourcing heuristics, but it is not the source of the six exact Figure 9 benchmark gap labels used by Gijsbrechts et al. (2022).",
 };
 
-// Three-tier CDI-optimality taxonomy (docs/benchmarks/DUAL_SOURCING_INSTANCE_TAXONOMY_2026_06_07.md).
+// Three-tier CDI-optimality taxonomy (docs/benchmarks/DUAL_SOURCING_INSTANCE_TAXONOMY_2026_06_07/README.md).
 // The six Gijsbrechts rows above are Tier A (CDI-optimal, gap <= 0.12% to the bounded-DP optimum).
 // The two synthetic rows below are ADDITIVE explorations of the harder end of the *reachable*
 // regime, found by a validated-box bounded-DP sweep over expedite premium / penalty / demand
@@ -121,7 +121,7 @@ pub const SHEOPURI_2010_REFERENCE: PublishedBenchmarkReference = PublishedBenchm
 pub const DUAL_SOURCING_TAXONOMY_SOURCE: &str =
     "invman repo-native CDI-optimality taxonomy (2026-06-07), bounded-DP optimum denominator";
 pub const DUAL_SOURCING_TAXONOMY_URL: &str =
-    "docs/benchmarks/DUAL_SOURCING_INSTANCE_TAXONOMY_2026_06_07.md";
+    "docs/benchmarks/DUAL_SOURCING_INSTANCE_TAXONOMY_2026_06_07/README.md";
 
 pub const DUAL_SOURCING_TAXONOMY_INSTANCES: [DualSourcingReferenceInstance; 2] = [
     DualSourcingReferenceInstance {

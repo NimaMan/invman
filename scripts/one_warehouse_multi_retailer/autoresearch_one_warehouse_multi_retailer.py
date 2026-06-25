@@ -12,7 +12,7 @@ dual_sourcing / multi_echelon autoresearch runners, but reuses the helpers built
 the learned-benchmark phase for THIS problem so the env, the heuristic search, and the
 paired held-out evaluation are bit-identical to benchmark_learned_vs_heuristic.py.
 
-WHY (carried from program_one_warehouse_multi_retailer.md)
+WHY (carried from one_warehouse_multi_retailer/README.md)
 ----------------------------------------------------------
 The learned depth-2 soft-tree LOSES to the tuned echelon base-stock + allocation
 heuristic by 0.4%-1.7% on the three currently-losing instances:

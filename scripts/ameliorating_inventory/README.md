@@ -51,9 +51,9 @@ PRIMARY_REFERENCE_INSTANCE of the older finite-horizon discounted-cost env.
 Explicitly NOT literature-comparable (see its honest-scope docstring); documents the
 binding blockers for exact-optimal comparison.
 
-### `RESULTS_FULL_BUDGET.md`
+### `RESULTS_FULL_BUDGET/README.md`
 Embedded full-budget single-seed numbers (outputs/ is gitignored). Single-seed —
 superseded as a headline by the seed-robust runner above.
 
-### `PAPER_SECTION_DRAFT.md`
+### `PAPER_SECTION_DRAFT/README.md`
 Draft paper subsection text for this family (editorial pass required before use).

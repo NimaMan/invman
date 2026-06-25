@@ -12,7 +12,7 @@ OBJECTIVE
     scripts/multi_echelon/autoresearch_multi_echelon.py. It exists because the
     learned soft tree currently LOSES (or marginally ties) to the tuned
     base-stock heuristic on ~4/5 reduced single-retailer instances (see
-    policy_search/programs/program_vendor_managed_inventory.md). The loop's job is to find
+    policy_search/programs/vendor_managed_inventory/README.md). The loop's job is to find
     a structure + warm-start that BEATS the base-stock heuristic on the losing
     instances.
 

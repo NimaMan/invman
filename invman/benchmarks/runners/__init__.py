@@ -81,7 +81,7 @@ def is_literature_verified(problem: str) -> bool:
     procurement_removal_inventory, random_yield_inventory, vendor_managed_inventory)
     are repo-native '<author>_style' / paywalled instances solved by the repo's own
     DP — NOT a reproduction of any published number. See
-    docs/benchmarks/LITERATURE_VERIFICATION_AUDIT_2026_06_12.md.
+    docs/benchmarks/LITERATURE_VERIFICATION_AUDIT_2026_06_12/README.md.
     """
     return verification_tier(problem) != "faithful"
 

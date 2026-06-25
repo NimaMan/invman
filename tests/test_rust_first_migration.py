@@ -71,7 +71,9 @@ def test_cargo_features_keep_rust_tests_separate_from_python_extension_builds():
 
 
 def test_build_script_uses_root_manifest_and_explicit_python_extension_feature():
-    source = (PROJECT_ROOT / "scripts" / "build_rust_extension.py").read_text(encoding="utf-8")
+    source = (
+        PROJECT_ROOT / "scripts" / "rust" / "build_extension.py"
+    ).read_text(encoding="utf-8")
 
     assert 'manifest_path = project_root / "Cargo.toml"' in source
     assert 'manifest_path = project_root / "rust" / "Cargo.toml"' not in source

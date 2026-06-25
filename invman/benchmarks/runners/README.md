@@ -7,7 +7,7 @@ This package is the **executable** half of the benchmark surface. The catalog
 a literature instance, re-run its baseline on the live env, and score your own
 policy on the same instance under the same protocol.
 
-It implements `PROPER_REPO_BUILD_PLAN.md` workstream **(a)** ("standard benchmark
+It implements `PROPER_REPO_BUILD_PLAN/README.md` workstream **(a)** ("standard benchmark
 API per problem") on top of the Rust reference accessors that already exist in
 `invman_rust` (`<problem>_list_reference_instances` /
 `<problem>_get_reference_instance` / the `*_search_from_demands` and
@@ -57,7 +57,7 @@ they are hidden by default. They stay fully usable via `get_runner(name)` /
 `load_instance(name)` and `available_runners(include_unverified=True)`; each
 instance self-reports `inst.literature_verified` / `inst.verification_tier`. The
 partition, with file:line evidence (adversarially verified, 28 agents), is in
-[`../../../docs/benchmarks/LITERATURE_VERIFICATION_AUDIT_2026_06_12.md`](../../../docs/benchmarks/LITERATURE_VERIFICATION_AUDIT_2026_06_12.md).
+[`../../../docs/benchmarks/LITERATURE_VERIFICATION_AUDIT_2026_06_12/README.md`](../../../docs/benchmarks/LITERATURE_VERIFICATION_AUDIT_2026_06_12/README.md).
 
 | Runner file | Family | Inst. | `evaluate` | Lit-verified | Reference / `run_baselines` |
 |---|---|---:|:---:|:---:|---|
@@ -95,7 +95,7 @@ Every `Baseline` records its `source` and whether it is `is_published` (a paper
 number) vs recomputed on the live env, and whether it is the exact optimum
 (`is_optimal`) or the family's declared canonical comparator (`is_reference`).
 Published numbers are never silently conflated with recomputed ones — the same
-honesty rule as `docs/benchmarks/VERIFICATION_LEDGER.md`.
+honesty rule as `docs/benchmarks/VERIFICATION_LEDGER/README.md`.
 
 ## Coverage today / next
 

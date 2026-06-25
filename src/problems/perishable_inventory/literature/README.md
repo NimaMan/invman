@@ -107,7 +107,7 @@ comparator is the soft tree.)
 
 ## Benchmark results (exact slice)
 
-See `../experiments/reports/exact_slice_report.md` (refresh with
+See `../experiments/reports/exact_slice_report/README.md` (refresh with
 `scripts/perishable_inventory/run_exact_slice_benchmark.py`). Summary on the
 shared Monte-Carlo estimator and eval seeds:
 

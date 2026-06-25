@@ -32,7 +32,7 @@ This is the assembly literature anchor: Rosling's equivalence + the serial Clark
 
 **`literature_verified = false` for every carried assembly instance** (encoded in `references.rs`
 and guarded by `references::tests::no_assembly_instance_is_literature_verified`). Per the repo rule
-in `docs/rust.md`, a family is literature-verified only when an in-crate test re-runs the
+in `docs/rust/README.md`, a family is literature-verified only when an in-crate test re-runs the
 env/solver and reproduces a number PRINTED IN A PAPER. This family has **no directly reproducible
 published assembly number**, for two structural reasons:
 

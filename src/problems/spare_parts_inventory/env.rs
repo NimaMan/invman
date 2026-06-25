@@ -24,7 +24,7 @@
 //                    + holding_cost   * post_failure_on_hand
 //                    + downtime_cost  * post_failure_backlog.
 //
-// VERIFICATION STATUS (honest, per docs/rust.md)
+// VERIFICATION STATUS (honest, per docs/rust/README.md)
 //   NOT literature-verified. No paper publishes a numeric cost for this exact
 //   construction (binomial failures + deterministic fixed-lead-time repair return
 //   + finite-horizon DP). The Kranenburg (2006) Table 5.2 reproduction belongs to

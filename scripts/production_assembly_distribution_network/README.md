@@ -32,7 +32,7 @@ here are RESEARCH comparisons against the env's OWN best heuristic, not literatu
 
   Budgets: `smoke` (validate only), `screening`, `full`. CPU cap is HARD — launch with
   `RAYON_NUM_THREADS=2 OMP_NUM_THREADS=2` (parallelism is rayon inside the binding; no Python
-  process pool). See `policy_search/programs/program_production_assembly_distribution_network.md` for the
+  process pool). See `policy_search/programs/production_assembly_distribution_network/README.md` for the
   search direction and the headline result vs the baseline.
 
   Usage (smoke):
@@ -89,5 +89,5 @@ All seed-robust runners in this folder aggregate through
 list 9001..9005, sample (n-1) std, shared verdict rule). Savings sign convention:
 positive = learned cheaper than the gate. The mixed topology's committed agentic result
 (291.136, residual gate-backbone head) lives in
-`policy_search/agentic/RESULTS_padn_mixed.md`; the serial and pure-assembly 5-seed audits
+`policy_search/agentic/RESULTS_padn_mixed/README.md`; the serial and pure-assembly 5-seed audits
 are produced by the new runner above.

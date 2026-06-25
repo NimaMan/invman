@@ -12,7 +12,7 @@ DEFAULT_RUN_TAG = "dual_sourcing_factor_screen_v1"
 DEFAULT_INPUT = (
     PACKAGE_ROOT / "outputs" / "autoresearch" / DEFAULT_RUN_TAG / "factor_screen_summary.json"
 )
-DEFAULT_OUTPUT = Path(__file__).resolve().parent / "factor_screen_results.md"
+DEFAULT_OUTPUT = Path(__file__).resolve().parent / "factor_screen_results/README.md"
 
 FOLLOWUP_SCREENING_SUMMARIES = [
     PACKAGE_ROOT

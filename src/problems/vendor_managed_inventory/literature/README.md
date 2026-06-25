@@ -31,7 +31,7 @@ scope for a string-only citation fix). Renaming them to `SUI_GOSAVI_LIN_2010_*` 
 - the Gosavi instructor-case single-retailer newsvendor worked example
 - the repo-native reduced single-retailer primary instance and exact verifier instance
 
-What is and is NOT literature-verified (per docs/rust.md):
+What is and is NOT literature-verified (per docs/rust/README.md):
 
 - NOT literature-verified: no number printed in the peer-reviewed Sui/Gosavi/Lin (2010) paper is
   re-run by this family. The paper's experimental results table (pp. 44-53) is paywalled and not

@@ -67,4 +67,4 @@ reuse live in `outputs/dual_sourcing_policy_search/` (see its README).
 - **`cdi_gap_to_optimum_regime_sweep.py`** / **`cdi_out_of_sample_gap_to_optimum.py`**
   — CDI's gap to the bounded-DP optimum across demand/cost regimes, in-sample and
   out-of-sample (basis of the instance taxonomy in
-  `docs/benchmarks/DUAL_SOURCING_INSTANCE_TAXONOMY_2026_06_07.md`).
+  `docs/benchmarks/DUAL_SOURCING_INSTANCE_TAXONOMY_2026_06_07/README.md`).

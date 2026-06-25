@@ -1,6 +1,14 @@
 # Numerical Experiments
 
-This folder is the experiment catalog and launch layer for the project.
+This folder is the curated experiment-suite catalog and launch layer for the
+project.
+
+It intentionally stays separate from `scripts/`: scripts own the concrete
+problem-specific training, validation, and reporting logic; this package owns the
+cross-problem registry that says which scripts form a coherent numerical
+experiment suite. Keeping that registry as a small importable package gives the
+README, agent guide, and tests one stable command surface:
+`python numerical_experiments/run.py ...`.
 
 Its purpose is to keep one explicit place that answers:
 
@@ -12,133 +20,39 @@ Its purpose is to keep one explicit place that answers:
 
 ## Structure
 
-- [catalog.py](/Users/nimamanaf/Desktop/code/ML/inventory_management/invman/numerical_experiments/catalog.py):
-  curated suite registry
-- [run.py](/Users/nimamanaf/Desktop/code/ML/inventory_management/invman/numerical_experiments/run.py):
-  list and run suites from the catalog
+- `catalog.py`: curated suite registry.
+- `run.py`: list and run suites from the catalog.
+- `__init__.py`: package export for tests and agent tooling.
 
 The runner does not re-implement the experiment logic. It delegates to the benchmark and
-autoresearch scripts already in [scripts](/Users/nimamanaf/Desktop/code/ML/inventory_management/invman/scripts).
+autoresearch scripts already in `scripts/`.
 That keeps the catalog clean while avoiding duplicate experiment code.
 
-## Problem Matrix
+## Suite Roster
 
-### Vanilla lost sales
+The source of truth is `catalog.py`. Use `python numerical_experiments/run.py --list`
+for full details, including scripts, heuristics, learned-policy families, and notes.
 
-Heuristics:
+Current ready suites:
 
-- `myopic1`
-- `myopic2`
-- `svbs`
-- literature `capped_base_stock`
-- literature `optimal` when reported
+- `lost_sales_single_instance_check`
+- `lost_sales_full_policy_grid`
+- `fixed_cost_known_optimum_validation`
+- `fixed_cost_single_instance_check`
+- `fixed_cost_full_policy_grid`
+- `dual_sourcing_reference_grid`
+- `owmr_kaynov_full_paper_benchmark`
 
-Policy families:
+Current exploratory suites:
 
-- base:
-  - `linear_categorical_quantity_q8`
-  - `linear_categorical_quantity_q20`
-  - `nn_categorical_quantity_q8`
-  - `nn_categorical_quantity_q20`
-- improved:
-  - `soft_tree_depth2_linear_leaf_q8`
+- `dual_sourcing_backbone_screen`
+- `dual_sourcing_tree_autoresearch`
+- `multi_echelon_autoresearch`
+- `multi_echelon_gijs_full_paper_benchmark`
 
-Current interpretation:
-
-- the stable setup is intentionally split into only two modes:
-  - one single-instance preflight run
-  - one full literature-aligned grid run
-- the single-instance run is only for checking that the full experiment path behaves as intended
-- the full policy grid suite is the data-generation path for paper tables
-
-Status:
-
-- single-instance preflight suite is ready
-- full policy grid suite is ready
-
-### Fixed-order-cost lost sales
-
-Heuristics:
-
-- `s_s`
-- `s_nq`
-- `modified_s_s_q`
-
-Policy families:
-
-- base:
-  - `linear_categorical_quantity`
-  - `nn_categorical_quantity`
-- improved:
-  - `linear_soft_gated_ordinal_quantity`
-  - `nn_soft_gated_ordinal_quantity`
-  - `soft_tree_depth2_linear_leaf`
-  - `soft_tree_depth1_linear_leaf`
-
-Current interpretation:
-
-- this problem already shows that action-space design matters strongly
-- the stable setup is intentionally split into only two modes:
-  - one single-instance preflight run
-  - one full literature-aligned grid run
-- the single-instance run is only for checking that the full experiment path behaves as intended
-- the full policy grid suite is the data-generation path for paper tables
-
-Status:
-
-- single-instance preflight suite is ready
-- full policy grid suite is ready
-
-### Dual sourcing
-
-Heuristics:
-
-- `single_index`
-- `dual_index`
-- `capped_dual_index`
-- `tailored_base_surge`
-- `optimal_dp` on the small reference settings
-
-Policy families:
-
-- base:
-  - `linear_bounded_quantity_identity`
-  - `nn_bounded_quantity_identity`
-  - `soft_tree_identity`
-- improved / structured:
-  - `linear_base_surge_targets`
-  - `nn_base_surge_targets`
-  - `soft_tree_base_surge_targets`
-
-Current interpretation:
-
-- this problem still requires policy-design work
-- structured action spaces appear necessary
-
-Status:
-
-- exploratory
-
-### Multi-echelon
-
-Heuristics / references:
-
-- `constant_base_stock`
-
-Policy families:
-
-- current:
-  - `soft_tree_constant_leaf`
-  - `soft_tree_linear_leaf`
-
-Current interpretation:
-
-- the benchmark layer exists
-- the final learned policy family is not yet frozen
-
-Status:
-
-- exploratory
+Ready suites are expected to be runnable entry points for benchmark or
+paper-supporting workflows. Exploratory suites are still useful, but they are
+policy-design or protocol-screening work and should be launched explicitly.
 
 ## Linux Usage
 
@@ -151,7 +65,7 @@ python -m pip install --upgrade pip
 pip install -r requirements.txt
 pip install -e .
 python -m pip install maturin
-python scripts/build_rust_extension.py
+python scripts/rust/build_extension.py
 ```
 
 List the suites:

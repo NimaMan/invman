@@ -14,7 +14,7 @@ best base-stock level 7, optimal-policy table) and the Farrington (2025) Table-3
 returns. The metric is the mean discounted return (gamma=0.99) vs the VI optimum
 (optimality gap) and vs the in-repo base-stock gate.
 
-WHY THIS DESIGN (the recipe, from policy_search/POLICY_DESIGN_GUIDELINES.md)
+WHY THIS DESIGN (the recipe, from policy_search/POLICY_DESIGN_GUIDELINES/README.md)
 --------------------------------------------------------------------------
 1. BASELINE. Two anchors, both honest:
    - VI optimum = the analytic expected discounted return under the midpoint-binned

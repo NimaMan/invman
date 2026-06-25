@@ -47,7 +47,7 @@ python policy_search/studies/dual_sourcing_policy_search/summarize_factor_screen
 
 The summary lands in:
 
-- `policy_search/studies/dual_sourcing_policy_search/factor_screen_results.md`
+- `policy_search/studies/dual_sourcing_policy_search/factor_screen_results/README.md`
 
 ## Candidate Surface
 
@@ -92,7 +92,7 @@ So the best next design is not "linear leaves everywhere." It is:
 
 See also:
 
-- `policy_search/studies/dual_sourcing_policy_search/factor_screen_results.md`
+- `policy_search/studies/dual_sourcing_policy_search/factor_screen_results/README.md`
 - `outputs/autoresearch/dual_l2_ce110_axis_family_probe/`
 - `outputs/autoresearch/dual_l3_axis_linear_cappeddelta_probe/`
 - `outputs/autoresearch/dual_hard_axis_linear_smallcap_probe/`

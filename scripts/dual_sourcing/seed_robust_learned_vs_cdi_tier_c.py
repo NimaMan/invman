@@ -1,7 +1,7 @@
 """Seed-robust learned-policy vs CDI on the Tier-C (hardest demonstrable) dual-sourcing cell.
 
 OBJECTIVE
-  The CDI-optimality taxonomy (docs/benchmarks/DUAL_SOURCING_INSTANCE_TAXONOMY_2026_06_07.md)
+  The CDI-optimality taxonomy (docs/benchmarks/DUAL_SOURCING_INSTANCE_TAXONOMY_2026_06_07/README.md)
   identifies dual_l2_ce110_b50_u08_catC (l_r=2, c_e=110, b=50, demand U[0,8]) as the hardest
   *reachable* cell: CDI's gap to the bounded-DP optimum is +0.305% single-path / +0.160%
   out-of-sample -- i.e. SMALLER than the path-to-path sampling noise. The expectation is

@@ -86,7 +86,7 @@ Working runner (self-contained, no Rust rebuild):
 Default outputs (pass `--output_json` / `--output_markdown`):
 
 - `src/problems/perishable_inventory/experiments/reports/exact_slice_report.json`
-- `src/problems/perishable_inventory/experiments/reports/exact_slice_report.md`
+- `src/problems/perishable_inventory/experiments/reports/exact_slice_report/README.md`
 
 It exercises exactly the comparison above (exact optimum vs tuned `base_stock` /
 `bsp_low_ew` vs CMA-ES soft tree) on the two `m = 2` exact instances, using the

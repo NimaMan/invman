@@ -4,7 +4,7 @@ registry_owner: src/problems/one_warehouse_multi_retailer
 source_of_truth:
   - src/problems/one_warehouse_multi_retailer/references.rs
   - src/problems/one_warehouse_multi_retailer/literature/README.md
-  - scripts/one_warehouse_multi_retailer/PPO_GAP_FOLLOWUP_2026_06_05.md
+  - scripts/one_warehouse_multi_retailer/PPO_GAP_FOLLOWUP_2026_06_05/README.md
 entries:
   - id: kaynov2024_instance12_partial_backorder_ppo_gap
     problem: one_warehouse_multi_retailer
@@ -134,7 +134,7 @@ entries:
       policy: "Current repo-native gate is grid-searched echelon base-stock under the better held-out allocation; current learned frontier is a decoupled target soft tree with augmented state."
       script: scripts/one_warehouse_multi_retailer/run_asymmetric_learned_vs_gate.py
       eval: "100-period costs; held-out CRN block with 4096 paths; gate_search_paths=64; training under min_shortage; deployment picks the best held-out allocation."
-      latest_report: scripts/one_warehouse_multi_retailer/PPO_GAP_FOLLOWUP_2026_06_05.md
+      latest_report: scripts/one_warehouse_multi_retailer/PPO_GAP_FOLLOWUP_2026_06_05/README.md
       rows:
         - row_id: repo_tuned_gate_mean_cost
           policy_id: echelon_base_stock_grid_search
@@ -145,7 +145,7 @@ entries:
             allocation_policy: proportional
             heldout_paths: 4096
           source_ref:
-            artifact: scripts/one_warehouse_multi_retailer/PPO_GAP_FOLLOWUP_2026_06_05.md
+            artifact: scripts/one_warehouse_multi_retailer/PPO_GAP_FOLLOWUP_2026_06_05/README.md
             row: "Absolute-state augmented result"
         - row_id: repo_best_learned_mean_cost
           policy_id: soft_tree_echelon_targets_with_alloc_targets
@@ -166,7 +166,7 @@ entries:
             training_episodes: 200
             sigma_init: 0.00125
           source_ref:
-            artifact: scripts/one_warehouse_multi_retailer/PPO_GAP_FOLLOWUP_2026_06_05.md
+            artifact: scripts/one_warehouse_multi_retailer/PPO_GAP_FOLLOWUP_2026_06_05/README.md
             row: "Absolute-state augmented result"
         - row_id: repo_best_learned_vs_published_ppo_pct
           policy_id: soft_tree_echelon_targets_with_alloc_targets
@@ -179,11 +179,11 @@ entries:
               - published_ppo_mean_cost
             formula: "(published_ppo_cost - learned_cost) / published_ppo_cost * 100"
           source_ref:
-            artifact: scripts/one_warehouse_multi_retailer/PPO_GAP_FOLLOWUP_2026_06_05.md
+            artifact: scripts/one_warehouse_multi_retailer/PPO_GAP_FOLLOWUP_2026_06_05/README.md
             row: "Absolute-state augmented result"
       notes: "The repo-native learned policy beats the tuned in-repo gate beyond paired SEM but still trails published PPO."
     paper_link:
-      section: "paper/sections/one_warehouse_multi_retailer.tex::sec:owmr"
+      section: "paper/learning_inventory_control_policies_es.tex::sec:owmr"
       claim: "OWMR learned-policy results should be framed as repo-native gate improvements while published PPO remains the stronger published learned comparator."
       caveats:
         - "The Kaynov table rows are table-only; the repo heuristic protocol does not bit-reproduce them."

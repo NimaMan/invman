@@ -29,7 +29,7 @@ under the same protocol, match proven optima, and report bound gaps or gate-matc
 updates include the seed-robust OWMR gate beat on Kaynov instance 12, the mixed
 production/assembly/distribution correction from a fragile flow-head audit to a residual
 base-stock-backbone own-heuristic beat, and the
-ImageNet-style baseline-ledger direction described in `../plan.md`.
+ImageNet-style baseline-ledger direction described in `../plan/README.md`.
 
 The divergent multi-echelon section reports the learned soft-tree policy improving on the
 in-environment constant base-stock by about 14.4% on both Gijs settings, with the published A3C

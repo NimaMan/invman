@@ -97,7 +97,7 @@ fn kranenburg_table_5_2_rows_are_reproduced_within_table_rounding() {
 //
 // This test is a frozen snapshot: it asserts that the carried van Oers (2024)
 // Table 1 constants equal themselves so they cannot silently drift. Per the repo
-// rule (docs/rust.md "What counts as literature-verified") a frozen snapshot is
+// rule (docs/rust/README.md "What counts as literature-verified") a frozen snapshot is
 // explicitly NOT verification, because nothing re-runs an env/solver to reproduce
 // the numbers. The scenarios are therefore flagged literature_verified = false,
 // which this test now pins.

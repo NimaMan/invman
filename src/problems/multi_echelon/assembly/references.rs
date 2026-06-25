@@ -5,7 +5,7 @@
 //! ALGORITHMIC / HONESTY CONTRACT
 //! ------------------------------
 //! This file is the machine-checkable source of truth for what is and is NOT literature-verified
-//! in this family, per `docs/rust.md` ("What counts as literature-verified": a family is
+//! in this family, per `docs/rust/README.md` ("What counts as literature-verified": a family is
 //! literature-verified ONLY when an in-crate test re-runs the env/solver and asserts the freshly
 //! computed metric reproduces a number PRINTED IN A PAPER within a stated tolerance).
 //!
