@@ -1,73 +1,9 @@
-import math
+"""Shared policy descriptor normalization helpers.
 
-import numpy as np
-
-
-def _relu(x):
-    return np.maximum(np.asarray(x, dtype=np.float32), 0.0)
-
-
-def _selu(x):
-    x = np.asarray(x, dtype=np.float32)
-    alpha = np.float32(1.6732632)
-    scale = np.float32(1.050701)
-    return np.where(x > 0.0, scale * x, scale * (alpha * np.expm1(x)))
-
-
-def _gelu(x):
-    x = np.asarray(x, dtype=np.float32)
-    c = np.float32(math.sqrt(2.0 / math.pi))
-    return np.float32(0.5) * x * (np.float32(1.0) + np.tanh(c * (x + np.float32(0.044715) * np.power(x, 3))))
-
-
-def get_activation_function(activation="gelu"):
-    if activation == "selu":
-        return _selu
-    if activation == "gelu":
-        return _gelu
-    if activation == "relu":
-        return _relu
-    raise NotImplementedError(f"Unsupported activation: {activation}")
-
-
-def sigmoid(x):
-    x = np.asarray(x, dtype=np.float32)
-    positive = x >= 0.0
-    out = np.empty_like(x, dtype=np.float32)
-    out[positive] = np.float32(1.0) / (np.float32(1.0) + np.exp(-x[positive]))
-    exp_x = np.exp(x[~positive])
-    out[~positive] = exp_x / (np.float32(1.0) + exp_x)
-    return out
-
-
-def softplus(x):
-    x = np.asarray(x, dtype=np.float32)
-    return np.maximum(x, 0.0) + np.log1p(np.exp(-np.abs(x)))
-
-
-def round_nearest(x):
-    x = np.asarray(x, dtype=np.float32)
-    return np.where(x >= 0.0, np.floor(x + 0.5), np.ceil(x - 0.5))
-
-
-def init_linear_layer(in_features: int, out_features: int):
-    bound = 1.0 / math.sqrt(float(in_features))
-    weight = np.random.uniform(-bound, bound, size=(int(out_features), int(in_features))).astype(np.float32)
-    bias = np.random.uniform(-bound, bound, size=(int(out_features),)).astype(np.float32)
-    return weight, bias
-
-
-def as_float32_vector(value, *, name="state"):
-    if hasattr(value, "detach"):
-        value = value.detach()
-    if hasattr(value, "cpu"):
-        value = value.cpu()
-    if hasattr(value, "numpy"):
-        value = value.numpy()
-    vector = np.asarray(value, dtype=np.float32)
-    if vector.ndim != 1:
-        raise ValueError(f"{name} must be a single 1D vector")
-    return vector
+Python does not own learned-policy inference in the active Rust-first path. The
+helpers here normalize names and action bounds used to build `Policy`
+descriptors; Rust owns the forward pass and rollout.
+"""
 
 
 def normalize_state_normalizer(state_normalizer: str | None) -> str:
@@ -89,24 +25,6 @@ def normalize_state_normalizer(state_normalizer: str | None) -> str:
             f"Unknown state normalizer '{state_normalizer}'. Expected one of: {valid}"
         )
     return normalized
-
-
-def normalize_state_vector(
-    state,
-    *,
-    state_normalizer: str = "identity",
-    state_scale: float | None = None,
-):
-    vector = as_float32_vector(state)
-    normalized = normalize_state_normalizer(state_normalizer)
-    if normalized == "identity":
-        return vector
-    if state_scale is None:
-        raise ValueError("state_scale is required when state_normalizer divides by scale")
-    scale = float(state_scale)
-    if scale <= 0.0:
-        raise ValueError("state_scale must be positive")
-    return (vector / np.float32(scale)).astype(np.float32, copy=False)
 
 
 def normalize_policy_head(policy_head: str) -> str:
@@ -180,16 +98,6 @@ def normalize_tree_leaf_type(tree_leaf_type: str) -> str:
         valid = ", ".join(sorted(aliases))
         raise ValueError(f"Unknown tree leaf type '{tree_leaf_type}'. Expected one of: {valid}")
     return normalized
-
-
-def normalize_tree_action_adapter(tree_action_adapter: str) -> str:
-    from invman.dual_sourcing_policy_spec import normalize_action_adapter as _normalize_tree_action_adapter
-
-    return _normalize_tree_action_adapter(tree_action_adapter)
-
-
-def normalize_action_adapter(action_adapter: str) -> str:
-    return normalize_tree_action_adapter(action_adapter)
 
 
 def normalize_action_mode(action_mode: str) -> str:

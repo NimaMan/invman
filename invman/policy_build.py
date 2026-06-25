@@ -2,7 +2,7 @@
 
 OBJECTIVE
 ---------
-Replaces the old `policies.factory.build_policy` + per-problem `build_policy_context`.
+Replaces the old Python-forward policy factories and per-problem context builders.
 Given the resolved CLI `args` (after `apply_policy_name`), produce a single
 `invman.policy.Policy` that carries the architecture AND the action bounds the Rust
 rollout needs -- so "the bounds are part of the policy itself".
