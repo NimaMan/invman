@@ -10,6 +10,8 @@ The intended reader is a coding or research agent that needs to understand the
 project quickly, choose the right problem folder, and then continue in the
 detailed READMEs for that family.
 
+Public write-up: [Learning to Control Inventory Management Systems](https://nimamanaf.com/posts/learning-to-control-inventory-management-systems/).
+
 ## Where To Start
 
 - `src/problems/README.md`: canonical map of Rust-first benchmark families,

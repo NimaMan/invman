@@ -19,6 +19,10 @@ setup(
     name="invman",
     version="0.2.0",
     description="Inventory-management experiments with evolution strategies",
+    url="https://github.com/NimaMan/invman",
+    project_urls={
+        "Project write-up": "https://nimamanaf.com/posts/learning-to-control-inventory-management-systems/",
+    },
     long_description=(HERE / "README.md").read_text(encoding="utf-8"),
     long_description_content_type="text/markdown",
     packages=find_packages(exclude=("tests",)),
