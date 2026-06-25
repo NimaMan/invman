@@ -1,201 +1,293 @@
-# invman_rust
+# Rust Crate
 
-Rust extension module for high-throughput inventory-management rollouts.
+`invman_rust` is the Rust-first execution layer for `invman`.
 
-Current scope:
+Rust owns:
 
-- native rollout kernels for:
-  - lost sales
-  - fixed-order-cost heuristic search
-  - dual sourcing
-  - multi-echelon
-  - perishable inventory
-- batched soft-tree population evaluation for CMA-ES
-- soft-tree policy support for:
-  - `oblique` and `axis_aligned` split types
-  - `constant` and `linear` leaf outputs
+- environment transition logic
+- exact, bounded, or reduced dynamic programs
+- heuristic evaluators and search routines
+- learned-policy rollout kernels
+- high-throughput population rollouts used by CMA-ES
+- PyO3 bindings exposed through the `invman_rust` Python module
 
-## Source layout
+Python owns orchestration: policy descriptors, optimization loops, experiment
+scripts, report generation, and calls into the Rust bindings. Python should not
+duplicate environment dynamics or learned-policy inference when a Rust rollout
+exists.
 
-The crate mirrors the Python package structure:
+## Build Model
 
-- `src/core/`
-  - shared Rust-native runtime pieces
-  - `policies/` holds reusable backbone math such as dense networks and soft trees
-- `src/problems/<problem>/`
-  - problem-local environment transitions
-  - rollout kernels
-  - heuristic search
-  - problem-specific action mappings when needed
-- `src/case_studies/<case_study>/`
-  - source-backed real-world applications built on top of the problem layer
-  - scenario engines, reproducible datasets, and public-facing artifacts for a concrete system
-- `src/problems/core/`
-  - cross-problem FlowNet layer
-  - the fundamental questions every inventory problem should answer
-  - physical, stochastic, control, objective, and timing skeletons
-- `src/problems/<problem>/`
-  - canonical Rust-side home for reusable executable families and their human-readable artifacts
-- `src/case_studies/<case_study>/`
-  - canonical Rust-side home for concrete source-backed applications that use those families or the
-    FlowNet language directly
+The crate is rooted at `Cargo.toml` and `src/lib.rs`.
 
-Current problem modules:
+Important Cargo facts:
 
-- `src/problems/lost_sales/`
-- `src/problems/lost_sales/fixed_order_cost/`
-- `src/problems/dual_sourcing/`
-- `src/problems/multi_echelon/`
-- `src/problems/perishable_inventory/`
-- `src/problems/nonstationary_lot_sizing/`
-- `src/problems/random_yield_inventory/`
+- crate name: `invman_rust`
+- Rust edition: `2021`
+- library outputs: `rlib` and `cdylib`
+- default features: empty, for Rust-native development and tests
+- `python-extension`: enables PyO3 `extension-module` for maturin builds
+- `ppo`: optional Candle-backed reusable Rust PPO trainer
 
-Current case studies:
-
-- `src/case_studies/hormuz_strait/`
-
-## Standard Module Contract
-
-All new Rust problem families should use one canonical folder under `src/problems/`.
-
-Required files:
-
-```text
-src/problems/<problem>/
-  mod.rs
-  README.md
-  literature/
-  practical/
-    datasets/
-    reports/
-  experiments/
-  verification/
-  env.rs
-  heuristics/
-    mod.rs
-  rollout.rs
-  references.rs
-  bindings.rs
-  tests/
-    mod.rs
-    verification.rs
-```
-
-Optional files:
-
-- descriptive helper modules such as `demand.rs`, `supply.rs`, `allocation.rs`, `policies.rs`,
-  `finite_horizon_dp.rs`, `value_iteration_mdp.rs`, or `rolling_scarf_dp.rs` when the problem
-  structure requires them
-
-File responsibilities:
-
-- `env.rs`: state definition, transition logic, and period cost accounting
-- `heuristics/`: classical benchmark policies, split by policy family
-- `rollout.rs`: learned-policy rollout kernels used by training and evaluation
-- `references.rs`: literature instances, published values, repo canonical instance, and
-  `VERIFICATION_PROBLEM_INSTANCE`
-- `bindings.rs`: Python-facing entrypoints
-- `tests/verification.rs`: the exact correctness anchor for the problem dynamics and heuristics
-- `src/problems/<problem>/literature/`: the human-readable interpretation of the carried paper family
-- `src/problems/<problem>/practical/datasets/`: checked-in practical benchmark traces or descriptors
-- `src/problems/<problem>/practical/reports/`: checked-in canonical benchmark snapshots
-- `src/problems/<problem>/experiments/`: paper-facing experiment definitions for reported benchmark
-  studies
-- `src/problems/<problem>/verification/`: human-readable targets for what the tests assert
-- problem-specific exact or search-style helper modules should stay clearly named, such as
-  `finite_horizon_dp.rs`, `value_iteration_mdp.rs`, `policy_evaluation.rs`, or
-  `rolling_scarf_dp.rs`
-
-Rules for `references.rs`:
-
-- it is the source of truth for the literature instances we keep in the repo
-- it must contain every paper instance we want to benchmark later, not only the first one we test
-- it must define:
-  - `PRIMARY_REFERENCE_INSTANCE`
-  - `VERIFICATION_PROBLEM_INSTANCE`
-- it must distinguish:
-  - exact published values
-  - repo-native benchmark values
-  - deterministic worked-example values used only for correctness testing
-
-## What counts as "literature-verified"
-
-A family (or a reference instance's `literature_verified = true` flag) is **literature-verified
-only when an in-crate test RE-RUNS the env** — and at least one benchmark heuristic/solver — **and
-asserts the freshly computed cost / policy / action reproduces a number printed in a paper, within a
-stated tolerance.** "Our run reproduces the published number" is the bar.
-
-- A **frozen snapshot** test — one that only asserts a carried table of constants equals the same
-  published constants (`assert_eq!(CARRIED_TABLE, [the_published_literals])`) — is **NOT
-  verification**. It is at most a drift-guard, and must be paired with an executing reproduction
-  test that actually drives the env.
-- **Self-consistency** with our own DP/MDP, or **matching another code library** (e.g. `stockpyl`),
-  is a reference-implementation match, **not** literature verification — record it as `partial`.
-- Set `literature_verified = true` only when such an executing reproduction test passes. Otherwise
-  keep it `false` and state the honest status (reference-impl / figure-only / structurally
-  unreachable by this MDP / distinct MDP). It is correct and expected for some envs to stay
-  `false` with an honest characterization (negative) test instead.
-
-## Problem-Space Backbone
-
-`src/problems/core/` is the FlowNet layer above the executable problem modules.
-
-It does not replace `env.rs` or `rollout.rs`. Instead it defines the common modeling questions
-behind any problem family:
-
-- what inventory states exist
-- how material moves or transforms
-- what random events occur
-- what the controller can choose
-- what the controller can observe, and when
-- how performance is scored
-- what timing rules and constraints shape the system
-
-Those questions are then organized into five layers:
-
-- physical
-- stochastic
-- control
-- objective
-- timing
-
-The detailed design notes for that backbone live in `src/problems/core/README.md`, and the
-canonical problem-language types live in `src/problems/core/flownet/`.
-
-Rules for the first test:
-
-- every new family must ship with one verification test before policy training work starts
-- the verification test should prove both:
-  - environment mechanics are correct
-  - at least one benchmark heuristic produces the expected result on the verification instance
-- if exact tabular verification logic is needed, put it in a clearly named module such as
-  `finite_horizon_dp.rs` or `value_iteration_mdp.rs` rather than embedding it directly in
-  `tests/verification.rs`
-
-Build into the active project virtualenv with:
+Use the repo helper to build the Python extension into the active environment:
 
 ```bash
 python scripts/build_rust_extension.py
 ```
 
-The crate defaults to Rust-native builds so unit and integration tests link as ordinary Rust tests:
+Run Rust-native tests from the repo root:
 
 ```bash
 cargo test --manifest-path Cargo.toml -q
 ```
 
-The Python extension path is explicit. `scripts/build_rust_extension.py` enables Cargo feature
-`python-extension`, which turns on PyO3's `extension-module` feature for maturin builds. Use the
-helper after Rust binding changes, then run the relevant Python smoke or pytest checks against the
-installed `invman_rust` module.
+After changing `bindings.rs` or `src/lib.rs`, rebuild the extension before
+running Python tests that import `invman_rust`.
 
-## Current best native-backed tree result
+## Source Layout
 
-On the trusted vanilla lost-sales benchmark, the best tree architecture using this native path is:
+```text
+src/lib.rs                 PyO3 module registration
+src/core/                  shared Rust policy and PPO infrastructure
+src/problems/              reusable benchmark problem families
+src/problems/core/         FlowNet descriptive problem-language layer
+src/case_studies/          source-backed applications built on the problem layer
+```
 
-- oblique split structure
-- depth `2`
-- linear leaf outputs
-- mean cost `4.753725`
+`src/core/policies/` contains reusable policy math such as dense policies and
+soft trees. `src/core/ppo/` contains the optional reusable PPO trainer.
 
-This currently outperforms the heuristic baseline `Myopic-2 = 4.8204`.
+`src/problems/core/` is not another simulator. It is the cross-problem FlowNet
+language for physical, stochastic, control, objective, and timing structure. See
+`src/problems/core/README.md` and `src/problems/core/flownet/`.
+
+`src/case_studies/` is for concrete source-backed systems, such as
+`hormuz_strait`, not reusable benchmark families.
+
+## Registered Python Bindings
+
+`src/lib.rs` currently registers:
+
+- core policy helpers: `core::policies::bindings`
+- `ameliorating_inventory`
+- `decentralized_inventory_control`
+- `lost_sales::vanilla`
+- `lost_sales::fixed_order_cost`
+- `dual_sourcing`
+- `joint_replenishment`
+- `joint_pricing_inventory`
+- `multi_echelon`
+- `nonstationary_lot_sizing`
+- `one_warehouse_multi_retailer`
+- `perishable_inventory`
+- `procurement_removal_inventory`
+- `random_yield_inventory`
+- `spare_parts_inventory`
+- `vendor_managed_inventory`
+- case study: `hormuz_strait`
+
+If a Rust function should be callable from Python, add the `#[pyfunction]` in
+the problem's `bindings.rs`, register it in that module's `register_py`, then
+ensure the module is registered in `src/lib.rs`.
+
+## Problem Families
+
+Reusable executable families live under `src/problems/`.
+
+Current top-level families:
+
+- `ameliorating_inventory`
+- `decentralized_inventory_control`
+- `dual_sourcing`
+- `joint_pricing_inventory`
+- `joint_replenishment`
+- `lost_sales`
+- `multi_echelon`
+- `nonstationary_lot_sizing`
+- `one_warehouse_multi_retailer`
+- `perishable_inventory`
+- `procurement_removal_inventory`
+- `random_yield_inventory`
+- `spare_parts_inventory`
+- `vendor_managed_inventory`
+
+Important nested families:
+
+- `lost_sales/vanilla`
+- `lost_sales/fixed_order_cost`
+- `multi_echelon/serial`
+- `multi_echelon/assembly`
+- `multi_echelon/divergent_special_delivery`
+- `multi_echelon/general_backorder_fixed_cost`
+- `multi_echelon/production_assembly_distribution_network`
+
+Start with `src/problems/README.md` and the target problem's `README.md` before
+editing a family. Those files carry the current verification status and caveats.
+
+## Standard Problem Contract
+
+New mature Rust-first problem families should converge on this shape:
+
+```text
+src/problems/<problem>/
+  README.md
+  mod.rs
+  env.rs
+  rollout.rs
+  bindings.rs
+  instances/
+    README.md
+    <instance_id>.json
+  literature/
+    README.md
+    mod.rs
+    references.rs
+  practical/
+    README.md
+    datasets/
+    reports/
+  experiments/
+    README.md
+  verification/
+    README.md
+    mod.rs
+    tests.rs
+  heuristics/
+    mod.rs
+  tests/
+    mod.rs
+    verification.rs
+```
+
+Not every existing family has every folder, and umbrella families can put
+instance catalogs in subproblem folders such as
+`src/problems/multi_echelon/serial/instances/`.
+
+File responsibilities:
+
+- `env.rs`: state, transition, event timing, and cost/profit accounting
+- `rollout.rs`: learned-policy rollout kernels and population rollouts
+- `heuristics/`: classical policies and benchmark comparators
+- `bindings.rs`: Python-facing PyO3 entrypoints
+- `instances/`: machine-readable benchmark instances and provenance
+- `literature/`: paper interpretation and source-backed reference definitions
+- `verification/`: human-readable verification targets and executable tests
+- `experiments/`: paper-facing experiment definitions and report snapshots
+- `practical/`: practical traces, datasets, and practical benchmark reports
+
+Problem-specific solver modules should be named directly, for example
+`finite_horizon_dp.rs`, `value_iteration_mdp.rs`, `exact.rs`,
+`policy_evaluation.rs`, or `rolling_dp.rs`.
+
+## Instance Catalogs
+
+The active machine-readable instance convention is:
+
+```text
+src/problems/<problem-or-subproblem>/instances/
+  README.md
+  <instance_id>.json
+```
+
+Use `scripts/instances/validate_problem_instances.py` to check the cross-family
+schema:
+
+```bash
+python scripts/instances/validate_problem_instances.py
+```
+
+Do not add new `BENCHMARK.md` files. Keep instance provenance in
+`instances/README.md` and JSON files. Keep broader interpretation in the problem
+`README.md`, `literature/README.md`, and `verification/README.md`.
+
+Instance classification values are:
+
+- `strict_literature`
+- `companion_code`
+- `table_only`
+- `faithful_unverified`
+- `generated`
+
+Keep repo-generated numbers separate from published numbers. A value computed by
+this crate is a reproduction or verifier output, not a literature row.
+
+## Verification Rule
+
+A family or instance is literature-verified only when executable code reruns the
+environment or solver and reproduces a public number, action, policy, or table
+entry from the cited source within a stated tolerance.
+
+This does not count as strict literature verification:
+
+- freezing a table of constants and checking that it still equals itself
+- matching a repo-native exact solver with no public number
+- matching an adjacent library such as `stockpyl` without a public paper row
+- carrying a published DRL/PPO/A3C row that the repo does not implement
+- reproducing a related but structurally different model
+
+Those can still be useful, but label them honestly as `companion_code`,
+`table_only`, `faithful_unverified`, `generated`, or equivalent problem-local
+status.
+
+Every new problem family should have at least one executable verification test
+before learned-policy training starts. The test should cover both mechanics and
+at least one solver or heuristic comparator where possible.
+
+Good verification entry points:
+
+```bash
+cargo test --manifest-path Cargo.toml -q
+python scripts/instances/validate_problem_instances.py
+python -m pytest tests/test_problem_verification_files.py -q
+```
+
+Use narrower cargo filters for slow families, for example:
+
+```bash
+cargo test -q serial_rows_reproduced_by_exact_clark_scarf_solver
+cargo test general_backorder_fixed_cost --lib
+cargo test -p invman_rust --lib problems::ameliorating_inventory::tests::verification -- --nocapture
+```
+
+## Policy Rollout Boundary
+
+The active policy boundary is:
+
+- Python builds a `Policy` descriptor and flat parameter vector.
+- Rust validates the parameter layout, decodes actions, and runs the rollout.
+- Python CMA-ES calls Rust single-candidate or population rollouts.
+
+Shared Rust policy code lives under `src/core/policies/`. Python-side descriptor
+code lives in:
+
+- `invman/policy.py`
+- `invman/policy_registry.py`
+- `invman/policy_build.py`
+- `invman/rollout_fitness.py`
+
+Do not add a Python forward pass for a policy if the target problem has a Rust
+rollout. Add or extend the Rust rollout/binding instead.
+
+## Editing Checklist
+
+When editing Rust problem code:
+
+1. Read the problem `README.md` and `verification/README.md`.
+2. Check whether the target instance lives in `instances/`.
+3. Keep raw environment state in `env.rs`; put policy feature transforms in the
+   rollout or policy layer.
+4. Generate verifier outputs at test time instead of freezing repo-computed
+   costs as literature references.
+5. Rebuild `invman_rust` after binding changes.
+6. Run a targeted cargo test and any Python smoke test that imports the changed
+   binding.
+
+When adding a new family, make the Rust implementation usable first:
+
+- environment dynamics
+- baseline heuristic or exact comparator
+- rollout path
+- binding surface, if Python needs it
+- one verification test with stated tolerance
+- one `instances/README.md` plus at least one JSON instance, when benchmark
+  instances are part of the family
