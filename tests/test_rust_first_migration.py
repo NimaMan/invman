@@ -10,7 +10,6 @@ ACTIVE_SURFACES = (
     "setup.py",
     "Cargo.toml",
     "docs",
-    "bindings",
     "invman",
     "policy_search",
     "scripts",
@@ -48,7 +47,14 @@ def test_root_rust_crate_layout_is_current_source_of_truth():
     assert (PROJECT_ROOT / "Cargo.lock").is_file()
     assert (PROJECT_ROOT / "src" / "lib.rs").is_file()
     assert (PROJECT_ROOT / "src" / "problems" / "lost_sales").is_dir()
-    assert (PROJECT_ROOT / "bindings" / "python" / "invman_rust" / "pyproject.toml").is_file()
+    assert (PROJECT_ROOT / "setup.py").is_file()
+    assert not (PROJECT_ROOT / "bindings").exists()
+
+    root_pyproject = PROJECT_ROOT / "pyproject.toml"
+    if root_pyproject.exists():
+        root_pyproject_text = root_pyproject.read_text(encoding="utf-8")
+        assert 'build-backend = "maturin"' not in root_pyproject_text
+        assert 'name = "invman_rust"' not in root_pyproject_text
 
     assert not (PROJECT_ROOT / "rust" / "Cargo.toml").exists()
     assert not (PROJECT_ROOT / "rust" / "Cargo.lock").exists()
