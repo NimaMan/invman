@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "instance_id": "geevers2023_general_set3",
+  "problem_family": "multi_echelon/general_backorder_fixed_cost",
+  "classification": "table_only",
+  "source": {
+    "citation": "Geevers, van Hezewijk and Mes (2024), CEJOR 32(3):653-683",
+    "doi": "10.1007/s10100-023-00872-2",
+    "locator": "experiment set 3"
+  },
+  "network": {
+    "demand_mode": "fixed_poisson",
+    "paper_action_space": "order_per_edge_restricted_transition"
+  },
+  "parameters": {
+    "requires_model_extensions": ["gated_order_per_edge_transition"],
+    "benchmark_order_routing_mode": "unrecovered_from_local_env"
+  },
+  "reference_values": {
+    "published_benchmark_cost": 4797.0,
+    "published_ppo_best_cost": 3935.0,
+    "repo_current_cost_approx": 15306.0
+  },
+  "verification": {
+    "status": "known_unreproduced_table_only",
+    "suggested_command": "python scripts/general_backorder_fixed_cost/benchmark_general_backorder_fixed_cost.py",
+    "notes": "Guard this row as table_only until the gated transition is recovered."
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "instance_id": "pirhooshyaran2021_serial_case01",
+  "problem_family": "multi_echelon/serial",
+  "classification": "strict_literature",
+  "source": {
+    "citation": "Pirhooshyaran and Snyder (2021), serial benchmark table",
+    "locator": "serial case 1"
+  },
+  "parameters": {
+    "num_echelons": 2,
+    "demand": {"distribution": "normal", "mean": 3.0, "std": 0.5},
+    "local_holding_costs_upstream_to_downstream": [5.0, 8.2],
+    "lead_times_upstream_to_downstream": [1, 1],
+    "penalty": 25.5
+  },
+  "reference_values": {
+    "published_average_cost": 22.21,
+    "repo_exact_optimal_cost": 22.217409
+  },
+  "verification": {
+    "status": "strict_literature",
+    "suggested_command": "cargo test -q serial_rows_reproduced_by_exact_clark_scarf_solver",
+    "absolute_tolerance": 0.02
+  }
+}

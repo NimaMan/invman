@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "instance_id": "kunnumkal_topaloglu_divergent",
+  "problem_family": "multi_echelon/general_backorder_fixed_cost",
+  "classification": "strict_literature",
+  "source": {
+    "citation": "Kunnumkal and Topaloglu divergent-distribution benchmark carried by the repo",
+    "locator": "divergent benchmark row"
+  },
+  "network": {
+    "topology": "one_warehouse_three_retailers",
+    "demand_mode": "resampled_uniform_poisson"
+  },
+  "parameters": {
+    "benchmark_base_stock_levels": [124, 30, 30, 30],
+    "benchmark_periods": 100,
+    "benchmark_warm_up_periods": 50,
+    "benchmark_replications": 500
+  },
+  "reference_values": {
+    "published_benchmark_cost": 4059.0,
+    "published_drl_context_cost": 3724.0,
+    "repo_rerun_cost": 3933.3
+  },
+  "verification": {
+    "status": "strict_literature",
+    "suggested_command": "python scripts/general_backorder_fixed_cost/benchmark_general_backorder_fixed_cost.py",
+    "relative_tolerance": 0.05
+  }
+}

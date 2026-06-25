@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "instance_id": "reduced_exact_verification_instance",
+  "problem_family": "procurement_removal_inventory",
+  "classification": "faithful_unverified",
+  "source": {"kind": "repo_native_exact_verifier", "notes": "Reduced exact DP fixture."},
+  "parameters": {
+    "model_variant": "control_only_procurement_removal",
+    "periods": 5,
+    "discount_factor": 0.99,
+    "initial_inventory_level": 2,
+    "initial_returnable_inventory": 1,
+    "returnable_purchase_cap": 1,
+    "purchase_cost_per_unit": 5.0,
+    "return_value_per_unit": 3.0,
+    "liquidation_value_per_unit": 1.0,
+    "holding_cost_per_unit": 0.5,
+    "shortage_cost_per_unit": 7.0,
+    "demand": {"distribution": "finite_support", "support": [0, 1, 2, 3], "probabilities": [0.2, 0.3, 0.3, 0.2]},
+    "max_purchase_quantity": 4,
+    "max_removal_quantity": 4
+  },
+  "reference_values": {
+    "optimal_cost": 31.78026111369698,
+    "optimal_first_action": [0, 0],
+    "interval_cost": 34.16378859151237,
+    "interval_first_action": [1, 0],
+    "buffer_cost": 38.766489332683825,
+    "buffer_first_action": [2, 0]
+  },
+  "verification": {
+    "status": "repo_exact_self_consistency",
+    "suggested_command": "python -c \"import invman_rust as r; print(r.procurement_removal_inventory_exact_dp_summary())\""
+  }
+}

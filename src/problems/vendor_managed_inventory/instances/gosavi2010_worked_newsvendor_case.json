@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "instance_id": "gosavi2010_worked_newsvendor_case",
+  "problem_family": "vendor_managed_inventory",
+  "classification": "companion_code",
+  "source": {
+    "citation": "Gosavi, Case Study for Vendor-Managed Inventory, based on Sui, Gosavi and Lin (2010)",
+    "paper_doi": "10.1080/10429247.2010.11431878",
+    "handout_url": "https://web.mst.edu/_disabled/gosavia/vmi_case_study.pdf"
+  },
+  "parameters": {
+    "customer_arrival_rate": 0.25,
+    "demand_size": {"distribution": "uniform", "low": 1.0, "high": 2.0},
+    "holding_cost": 0.06,
+    "stockout_cost": 4.0,
+    "cycle_time_support": [30.0, 40.0, 50.0],
+    "cycle_time_probabilities": [0.25, 0.5, 0.25]
+  },
+  "reference_values": {
+    "mean_demand_rate": 0.375,
+    "demand_variance": 0.5833,
+    "cycle_mean": 40.0,
+    "cycle_variance": 50.0,
+    "cycle_demand_mean": 15.0,
+    "cycle_demand_variance": 30.36,
+    "mean_demand_heuristic_order_up_to": 15.0,
+    "six_sigma_order_up_to": 31.53,
+    "newsvendor_displayed": 26.96,
+    "repo_computed_newsvendor": 26.9905428333404
+  },
+  "verification": {
+    "status": "companion_handout_reproduced_not_peer_reviewed",
+    "suggested_command": "python -c \"import invman_rust as ir; print(ir.vendor_managed_inventory_newsvendor_worked_case_summary())\""
+  }
+}

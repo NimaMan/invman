@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "instance_id": "pirhooshyaran2021_serial_case1",
+  "problem_family": "multi_echelon/production_assembly_distribution_network",
+  "classification": "table_only",
+  "source": {
+    "citation": "Pirhooshyaran and Snyder (2021), serial benchmark table",
+    "url": "https://arxiv.org/abs/2006.05608",
+    "locator": "serial case 1 represented through PADN"
+  },
+  "parameters": {
+    "topology": {"kind": "serial", "num_echelons": 2},
+    "demand": {"distribution": "normal", "mean": 3.0, "std": 0.5},
+    "holding_costs": [5.0, 8.2],
+    "backlog_costs": [0.0, 25.5],
+    "lead_times": [1, 1]
+  },
+  "reference_values": {
+    "published_order_up_to_levels": [2.91, 3.64],
+    "published_average_cost": 22.21,
+    "strict_home": "src/problems/multi_echelon/serial/instances/pirhooshyaran2021_serial_case01.json"
+  },
+  "verification": {
+    "status": "table_only_in_padn",
+    "suggested_command": "cargo test -q serial_rows_reproduced_by_exact_clark_scarf_solver"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "instance_id": "dehaybe2024_backorder_lt2_b25_k320_seasonal_4",
+  "problem_family": "nonstationary_lot_sizing",
+  "classification": "companion_code",
+  "source": {"citation": "Dehaybe, Catanzaro and Chevalier (2024), EJOR 314(2):433-445 companion code", "doi": "10.1016/j.ejor.2023.09.025", "companion_repo": "https://github.com/HenriDeh/DRL_MMULS/tree/single-item"},
+  "parameters": {"periods": 104, "forecast_horizon": 32, "forecast": {"kind": "seasonal_sine", "baseline": 10.0, "amplitude": 5.0, "cycles_per_104_periods": 4}, "lead_time": 2, "holding_cost": 1.0, "shortage_cost": 25.0, "fixed_order_cost": 320.0, "procurement_cost": 0.0, "lost_sales": false, "initial_net_inventory": 20.0, "pipeline_orders": [0.0, 0.0], "demand": {"distribution": "cv_normal", "coefficient_of_variation": 0.2}, "companion_replications": 1000},
+  "reference_values": {"simple_ss": {"mean_cost": 9062.94025030236, "std": 221.9061242488496}, "rolling_dp": {"mean_cost": 8263.86229905511, "std": 207.33178797270534}},
+  "verification": {"status": "companion_code_simple_smoke_verified_dp_blocked", "suggested_command": "cargo test -p invman_rust nonstationary_lot_sizing"}
+}

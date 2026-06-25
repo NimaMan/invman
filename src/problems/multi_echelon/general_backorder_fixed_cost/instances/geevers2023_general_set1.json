@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "instance_id": "geevers2023_general_set1",
+  "problem_family": "multi_echelon/general_backorder_fixed_cost",
+  "classification": "strict_literature",
+  "source": {
+    "citation": "Geevers, van Hezewijk and Mes (2024), CEJOR 32(3):653-683",
+    "doi": "10.1007/s10100-023-00872-2",
+    "locator": "experiment set 1"
+  },
+  "network": {
+    "num_suppliers": 4,
+    "num_warehouses": 4,
+    "num_retailers": 5,
+    "demand_mode": "fixed_poisson",
+    "retailer_demand_mean": 15.0,
+    "paper_action_space": "order_per_stock_point"
+  },
+  "parameters": {
+    "benchmark_base_stock_levels": [82, 100, 64, 83, 35, 35, 35, 35, 35],
+    "benchmark_periods": 100,
+    "benchmark_warm_up_periods": 50,
+    "benchmark_replications": 500,
+    "benchmark_order_routing_mode": "random_single_connection_by_weight"
+  },
+  "reference_values": {
+    "published_benchmark_cost": 10467.0,
+    "published_ppo_best_cost": 8714.0,
+    "repo_rerun_cost_range": [10354.8, 10384.9]
+  },
+  "verification": {
+    "status": "strict_literature",
+    "suggested_command": "python scripts/general_backorder_fixed_cost/benchmark_general_backorder_fixed_cost.py",
+    "relative_tolerance": 0.05
+  }
+}

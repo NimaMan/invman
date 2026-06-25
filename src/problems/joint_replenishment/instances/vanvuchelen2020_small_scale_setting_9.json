@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "instance_id": "vanvuchelen2020_small_scale_setting_9",
+  "problem_family": "joint_replenishment",
+  "classification": "table_only",
+  "source": {"citation": "Vanvuchelen, Gijsbrechts and Boute (2020), Computers in Industry 119, 103239", "doi": "10.1016/j.compind.2020.103239", "locator": "Table 2 small-scale setting 9"},
+  "parameters": {"num_items": 2, "truck_capacity": 6, "major_order_cost": 75.0, "minor_order_costs": [10.0, 10.0], "holding_costs": [1.0, 1.0], "shortage_costs": [19.0, 19.0], "lead_times": [0, 0], "discount_factor": 0.99, "demand": {"distribution": "discrete_uniform_inclusive", "lows": [0, 0], "highs": [6, 2]}, "regime": "backorder"},
+  "reference_values": {"published_absolute_cost_available": false},
+  "verification": {"status": "table_only", "suggested_command": "cargo test joint_replenishment --quiet"}
+}

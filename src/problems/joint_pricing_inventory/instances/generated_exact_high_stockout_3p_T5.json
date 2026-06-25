@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "instance_id": "generated_exact_high_stockout_3p_T5",
+  "problem_family": "joint_pricing_inventory",
+  "classification": "generated",
+  "source": {"kind": "repo_generated", "notes": "Exact finite-support stress case."},
+  "parameters": {
+    "periods": 5,
+    "discount_factor": 0.99,
+    "price_levels": [7.0, 9.0, 12.0],
+    "demand": {"kind": "finite_support", "supports": [[1, 2, 3, 4], [0, 1, 2, 3], [0, 1, 2]], "probabilities": [[0.1, 0.2, 0.4, 0.3], [0.2, 0.3, 0.3, 0.2], [0.5, 0.3, 0.2]]},
+    "initial_inventory_level": 0,
+    "procurement_cost_per_unit": 4.0,
+    "holding_cost_per_unit": 0.2,
+    "stockout_cost_per_unit": 10.0,
+    "salvage_value_per_unit": 1.0,
+    "max_order_quantity": 5
+  },
+  "reference_values": {
+    "optimal_discounted_cost": -38.206526739690,
+    "optimal_first_action": [4, 0]
+  },
+  "verification": {
+    "status": "generated_exact",
+    "suggested_command": "python scripts/joint_pricing_inventory/verify_instances.py"
+  }
+}

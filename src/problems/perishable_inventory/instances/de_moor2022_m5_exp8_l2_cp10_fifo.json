@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "instance_id": "de_moor2022_m5_exp8_l2_cp10_fifo",
+  "problem_family": "perishable_inventory",
+  "classification": "table_only",
+  "source": [
+    {"kind": "paper", "citation": "De Moor, Gijsbrechts, Boute (2022), EJOR 301(2), Scenario A", "doi": "10.1016/j.ejor.2021.10.045"},
+    {"kind": "paper", "citation": "Farrington et al. (2025), Annals of Operations Research, Table 3", "doi": "10.1007/s10479-025-06551-6"}
+  ],
+  "model": {
+    "demand": {"distribution": "rounded_gamma", "mean": 4.0, "coefficient_of_variation": 0.5},
+    "shelf_life": 5,
+    "lead_time": 2,
+    "issuing_policy": "fifo",
+    "costs": {"procurement": 3.0, "holding": 1.0, "shortage": 5.0, "waste": 10.0},
+    "max_order_size": 10
+  },
+  "protocol": {"objective": "discounted_negated_cost", "gamma": 0.99, "horizon": 465, "warm_up_periods": 100, "eval_horizon": 365},
+  "reference_values": {
+    "value_iteration": {"mean_return": -1432, "return_std": 55},
+    "best_base_stock": {"mean_return": -1453, "return_std": 58},
+    "optimality_gap_pct": 1.44,
+    "state_count": 1771561
+  },
+  "verification": {
+    "status": "table_only",
+    "suggested_command": "cargo test perishable_inventory::tests::verification -- --nocapture",
+    "notes": "Large state count; not re-derived by normal in-repo exact tests."
+  }
+}

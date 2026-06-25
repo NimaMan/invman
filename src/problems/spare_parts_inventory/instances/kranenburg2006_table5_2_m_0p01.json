@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "instance_id": "kranenburg2006_table5_2_m_0p01",
+  "problem_family": "spare_parts_inventory",
+  "classification": "strict_literature",
+  "source": {"citation": "Kranenburg (2006), Spare parts inventory control under system availability constraints, TU/e PhD thesis", "doi": "10.6100/IR616052", "locator": "Table 5.2 demand-rate sensitivity"},
+  "parameters": {"model_family": "kranenburg_lateral_transshipment", "table": "5.2", "demand_rate_per_local_warehouse": 0.01, "num_local_warehouses": 10, "holding_cost": 10.0, "emergency_cost": 1000.0, "lateral_transshipment_cost": 500.0, "joint_warehouse_cost": 450.0, "waiting_time_target": 0.2, "emergency_time": 2.0, "lateral_transshipment_time": 0.5, "joint_warehouse_time": 0.45, "regular_replenishment_time": 10.0},
+  "reference_values": {"situation1_optimal_r": 9.90, "situation1_cost": 109.00, "situation3_optimal_r": 7.00, "situation3_cost": 90.01, "cost_ratio_situation1_over_situation3": 1.21},
+  "verification": {"status": "strict_literature", "suggested_command": "python scripts/spare_parts_inventory/validate_kranenburg_lateral_transshipment.py --instance_name kranenburg2006_table5_2_m_0p01"}
+}

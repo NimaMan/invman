@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "instance_id": "generated_gijs_setting2_high_penalty",
+  "problem_family": "multi_echelon/divergent_special_delivery",
+  "classification": "generated",
+  "source": {"kind": "repo_generated", "base_instance": "gijsbrechts2022_setting2"},
+  "parameters": {
+    "num_retailers": 10,
+    "lead_times": {"warehouse": 5, "retailer": 3},
+    "costs": {"warehouse_holding": 3.0, "retailer_holding": 3.0, "special_delivery": 0.0, "lost_sale": 120.0},
+    "probabilities": {"special_delivery_acceptance": 0.8},
+    "capacities": {"production": 100, "warehouse_inventory": 1000, "retailer_inventory": 100},
+    "demand": {"distribution": "normal_rounded_clipped", "mean": 0.0, "std": 20.0},
+    "inventory_dynamics_mode": "gijs_2022"
+  },
+  "reference_values": {"published_absolute_cost_available": false},
+  "verification": {
+    "status": "generated",
+    "suggested_command": "python scripts/instances/validate_problem_instances.py"
+  }
+}

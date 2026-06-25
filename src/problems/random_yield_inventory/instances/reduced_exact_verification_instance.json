@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "instance_id": "reduced_exact_verification_instance",
+  "problem_family": "random_yield_inventory",
+  "classification": "faithful_unverified",
+  "source": {"kind": "repo_native_exact_verifier", "notes": "Reduced all-or-nothing random-yield exact DP fixture."},
+  "parameters": {
+    "yield_model": "all_or_nothing",
+    "backlogging": true,
+    "periods": 5,
+    "lead_time": 2,
+    "success_probability": 0.75,
+    "costs": {"holding": 1.0, "shortage": 9.0, "procurement": 1.0},
+    "discount_factor": 0.99,
+    "initial_inventory_level": 4,
+    "initial_pipeline_orders": [3, 2],
+    "demand": {"distribution": "finite_support", "support": [0, 1, 2, 3, 4, 5], "probabilities": [0.05, 0.15, 0.30, 0.25, 0.15, 0.10]},
+    "max_order_quantity": 8
+  },
+  "reference_values": {
+    "optimal_discounted_cost": 40.05989760985441,
+    "optimal_first_action": 4,
+    "linear_inflation_cost": 47.71379457283354,
+    "linear_inflation_first_action": 4,
+    "weighted_newsvendor_cost": 60.3935751430189,
+    "weighted_newsvendor_first_action": 8
+  },
+  "verification": {
+    "status": "repo_exact_self_consistency",
+    "suggested_command": "python -c \"import invman_rust as ir; s=ir.random_yield_inventory_exact_dp_summary(); assert abs(s['optimal_discounted_cost']-40.05989760985441)<1e-9\""
+  }
+}

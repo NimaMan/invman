@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "instance_id": "federgruen_heching_1999_dress_base_table",
+  "problem_family": "joint_pricing_inventory",
+  "classification": "table_only",
+  "source": {
+    "citation": "Federgruen and Heching (1999), Operations Research, joint pricing and inventory control",
+    "url": "https://business.columbia.edu/sites/default/files-efs/pubfiles/4090/federgruen_pricing.pdf",
+    "locator": "dress base item tables"
+  },
+  "parameters": {
+    "model_variant": "additive_normal_backlog_continuous_price",
+    "demand": {"a": 174.0, "b": 3.0, "coefficient_of_variation": 1.0},
+    "procurement_cost": 22.15,
+    "holding_cost": 0.22,
+    "backlog_penalty": 21.78,
+    "salvage_value": 17.72,
+    "emergency_cost": 221.50,
+    "price_range": [25.0, 44.0],
+    "max_inventory": 400,
+    "fixed_price": 40.0
+  },
+  "reference_values": {
+    "normal_average_profit": 925.52,
+    "v10_zero": 8531.69,
+    "v21_zero": 18599.98
+  },
+  "verification": {
+    "status": "table_only_requires_model_extension",
+    "requires_model_extensions": ["backlog", "continuous_price", "fixed_cost_or_emergency_option"]
+  }
+}

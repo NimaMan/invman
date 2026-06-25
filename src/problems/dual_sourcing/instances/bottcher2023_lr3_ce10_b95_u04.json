@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "instance_id": "bottcher2023_lr3_ce10_b95_u04",
+  "problem_family": "dual_sourcing",
+  "classification": "companion_code",
+  "source": {
+    "citation": "Bottcher, Asikis, Fragkos (2023), INFORMS Journal on Computing, Table 1",
+    "doi": "10.1287/ijoc.2022.0136",
+    "companion_repo": "https://github.com/INFORMSJoC/2022.0136",
+    "companion_input": "code/sourcing_models/recursion_input_files/ds2_lr=3_b=95_h=5_u04.in"
+  },
+  "parameters": {
+    "regular_lead_time": 3,
+    "expedited_lead_time": 0,
+    "regular_order_cost": 0.0,
+    "expedited_order_cost": 10.0,
+    "holding_cost": 5.0,
+    "shortage_cost": 95.0,
+    "regular_max_order_size": 4,
+    "expedited_max_order_size": 8,
+    "demand": {"distribution": "discrete_uniform", "low": 0, "high": 4},
+    "lost_sales": false
+  },
+  "reference_values": {
+    "metric": "average_cost_per_period",
+    "dp_cost": 20.34,
+    "cdi_cost": 20.48,
+    "nnc_cost": 20.40,
+    "precision": "printed_2_decimals"
+  },
+  "verification": {
+    "status": "needs_loader",
+    "suggested_command": "python scripts/dual_sourcing/verify_instance_file.py src/problems/dual_sourcing/instances/bottcher2023_lr3_ce10_b95_u04.json",
+    "absolute_tolerance": 0.02
+  }
+}

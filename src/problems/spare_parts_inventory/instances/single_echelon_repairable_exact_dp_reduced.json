@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "instance_id": "single_echelon_repairable_exact_dp_reduced",
+  "problem_family": "spare_parts_inventory",
+  "classification": "faithful_unverified",
+  "source": {"kind": "repo_native_exact_verifier", "notes": "Periodic-review repairable spare-parts exact DP fixture."},
+  "parameters": {
+    "model_family": "single_echelon_repairable_periodic_review",
+    "periods": 4,
+    "discount_factor": 0.99,
+    "installed_base": 3,
+    "procurement_lead_time": 2,
+    "repair_lead_time": 2,
+    "initial_on_hand_inventory": 1,
+    "initial_backlog": 0,
+    "initial_procurement_pipeline": [0, 0],
+    "initial_repair_pipeline": [0, 0],
+    "failure_probability": 0.4,
+    "holding_cost": 0.5,
+    "downtime_cost": 6.0,
+    "procurement_cost": 2.0,
+    "max_order_quantity": 4,
+    "base_stock_level": 3,
+    "lead_time_mean_cover_safety_buffer": 1.0
+  },
+  "reference_values": {
+    "optimal_discounted_cost": 28.39366298236964,
+    "optimal_first_action": 2,
+    "base_stock_cost": 28.39366298236964,
+    "mean_cover_cost": 28.91224647176473
+  },
+  "verification": {
+    "status": "repo_exact_self_consistency",
+    "suggested_command": "python scripts/spare_parts_inventory/validate_against_exact_dp.py"
+  }
+}

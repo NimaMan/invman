@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "instance_id": "oroojlooy2022_c4_8_lit_case",
+  "problem_family": "decentralized_inventory_control",
+  "classification": "companion_code",
+  "source": {
+    "citation": "Oroojlooyjadid et al. DeepBeerInventory-RL companion code",
+    "companion_repo": "https://github.com/OptMLGroup/DeepBeerInventory-RL",
+    "license": "BSD-3-Clause"
+  },
+  "parameters": {
+    "model_family": "companion_beer_game",
+    "horizon": 100,
+    "demand": {"distribution": "classic_step", "path": "4 for 4 periods then 8"},
+    "action_delta_range": [-8, 8],
+    "holding_costs": [0.5, 0.5, 0.5, 0.5],
+    "backlog_costs": [1.0, 1.0, 1.0, 1.0],
+    "base_stock_levels": [32, 32, 32, 24],
+    "normalized_shipment_lead_times": [2, 2, 2, 3],
+    "normalized_order_lead_times": [0, 2, 2, 2],
+    "initial_inventory": [12, 12, 12, 12],
+    "initial_orders": [4, 4, 4, 4],
+    "initial_shipments": [4, 4, 4, 4]
+  },
+  "reference_values": {"published_or_companion_cost_available": false},
+  "verification": {
+    "status": "companion_code_structure_model_mismatch_expected",
+    "suggested_command": "python scripts/decentralized_inventory_control/measure_env_vs_closedform.py"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "instance_id": "gijsbrechts2022_table3_setting2_mu0_k10_partial_backorder",
+  "problem_family": "one_warehouse_multi_retailer",
+  "classification": "faithful_unverified",
+  "source": {
+    "citation": "Gijsbrechts et al. (2022), multi-retailer setting 2",
+    "doi": "10.1287/msom.2021.1064",
+    "notes": "Relative A3C savings reported; no absolute OWMR value carried for this repo model."
+  },
+  "parameters": {
+    "customer_behavior": "partial_backorder",
+    "num_retailers": 10,
+    "warehouse_lead_time": 5,
+    "retailer_lead_times": [3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
+    "demand": {"distribution": "rounded_normal", "mean": 0.0, "std": 20.0},
+    "holding_cost_warehouse": 3.0,
+    "holding_cost_retailers": [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
+    "penalty_costs_retailers": [60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0],
+    "emergency_shipment_probability": 0.8
+  },
+  "reference_values": {
+    "published_absolute_cost_available": false,
+    "literature_verified": false
+  },
+  "verification": {
+    "status": "faithful_unverified",
+    "suggested_command": "cargo test -q one_warehouse_multi_retailer::tests::verification -- --nocapture"
+  }
+}

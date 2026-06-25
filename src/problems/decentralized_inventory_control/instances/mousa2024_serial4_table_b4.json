@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "instance_id": "mousa2024_serial4_table_b4",
+  "problem_family": "decentralized_inventory_control",
+  "classification": "table_only",
+  "source": {
+    "citation": "Mousa et al. (2024), multi-agent serial inventory control",
+    "url": "https://arxiv.org/abs/2307.11432",
+    "locator": "Table 2 serial 4-stage case"
+  },
+  "parameters": {
+    "model_family": "serial_profit_inventory_with_capacity",
+    "stages": 4,
+    "horizon": 30,
+    "demand": {"distribution": "poisson", "lambda": 5.0},
+    "initial_inventory": [10, 10, 10, 10],
+    "sell_prices": [2, 3, 4, 5],
+    "replenishment_costs": [1, 2, 3, 4],
+    "holding_costs": [0.35, 0.30, 0.40, 0.20],
+    "backlog_costs": [0.50, 0.70, 0.60, 0.90],
+    "capacity": [30, 30, 30, 30],
+    "order_limits": [30, 30, 30, 30],
+    "lead_times": [1, 2, 3, 1]
+  },
+  "reference_values": {
+    "oracle_reward": 619.4,
+    "dshlp_reward": 416.8,
+    "single_agent_reward": 477.1,
+    "ippo_reward": 443.8,
+    "ippo_shared_reward": 439.4,
+    "mappo_reward": 463.0
+  },
+  "verification": {
+    "status": "table_only_requires_model_extensions",
+    "requires_model_extensions": ["sell_price", "replenishment_cost", "capacity", "profit_objective"]
+  }
+}

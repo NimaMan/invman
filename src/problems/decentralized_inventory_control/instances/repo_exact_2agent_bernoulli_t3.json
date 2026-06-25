@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "instance_id": "repo_exact_2agent_bernoulli_t3",
+  "problem_family": "decentralized_inventory_control",
+  "classification": "generated",
+  "source": {"kind": "repo_native_exact_verifier", "notes": "Reduced exact-DP fixture."},
+  "parameters": {
+    "periods": 3,
+    "discount_factor": 0.99,
+    "stages": 2,
+    "initial_on_hand": [2, 1],
+    "initial_backlog": [0, 0],
+    "shipment_pipelines": [[1], [0]],
+    "order_pipelines": [[], [1]],
+    "last_received_shipments": [1, 0],
+    "last_received_orders": [1, 1],
+    "forecast": [1.0, 1.0],
+    "last_actions": [1, 1],
+    "holding_costs": [0.5, 0.5],
+    "backlog_costs": [1.0, 1.0],
+    "demand": {"distribution": "bernoulli", "support": [0, 1], "probabilities": [0.5, 0.5]},
+    "max_orders": [4, 4],
+    "base_stock_levels": [3, 3],
+    "sterman_targets": [4, 4]
+  },
+  "reference_values": {"literature_verified": false},
+  "verification": {
+    "status": "generated_exact_dp",
+    "suggested_command": "cargo test decentralized_inventory_control::verification::tests::exact_dp_dominates_repo_heuristics -- --nocapture"
+  }
+}

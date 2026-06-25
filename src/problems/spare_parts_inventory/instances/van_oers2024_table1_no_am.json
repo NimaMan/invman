@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "instance_id": "van_oers2024_table1_no_am",
+  "problem_family": "spare_parts_inventory",
+  "classification": "table_only",
+  "source": {
+    "citation": "van Oers, Tanil and Basten (2024), two-echelon spare-parts benchmark",
+    "locator": "Table 1 no additive manufacturing"
+  },
+  "parameters": {
+    "model_family": "two_echelon_periodic_review_serial_spare_parts",
+    "echelons": 2,
+    "simulation_horizon_days": 1000,
+    "table_replications": 100,
+    "demand_rate_per_hour": 0.04,
+    "review_intervals_hours": [48.0, 96.0],
+    "transport_lead_times_hours": [24.0, 24.0],
+    "regular_sourcing_cost": 25.2,
+    "holding_costs_as_reported": [7200.0, 2400.0],
+    "downtime_cost_as_reported": 3.75,
+    "am_location": "none",
+    "am_lead_time_hours": null,
+    "am_sourcing_cost": null
+  },
+  "reference_values": {
+    "enumeration": {"base_stock_levels": [8, 4], "cost": 100.0, "cost_half_width": 1.14, "readiness_percent": 99.57, "readiness_half_width": 0.027},
+    "newsvendor": {"base_stock_levels": [5, 7], "cost": 117.0},
+    "echelon_separation": {"base_stock_levels": [6, 6], "cost": 105.9}
+  },
+  "verification": {
+    "status": "table_only_frozen_snapshot",
+    "suggested_command": "cargo test spare_parts_inventory::tests::verification -- --nocapture"
+  }
+}

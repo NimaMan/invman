@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "instance_id": "generated_dual_l2_ce110_b50_u08_catC",
+  "problem_family": "dual_sourcing",
+  "classification": "generated",
+  "source": {
+    "kind": "repo_generated",
+    "citation": "invman repo-native CDI optimality taxonomy, 2026-06-07",
+    "path": "docs/benchmarks/DUAL_SOURCING_INSTANCE_TAXONOMY_2026_06_07.md"
+  },
+  "parameters": {
+    "regular_lead_time": 2,
+    "expedited_lead_time": 0,
+    "regular_order_cost": 100.0,
+    "expedited_order_cost": 110.0,
+    "holding_cost": 5.0,
+    "shortage_cost": 50.0,
+    "regular_max_order_size": 12,
+    "expedited_max_order_size": 12,
+    "demand": {"distribution": "discrete_uniform", "low": 0, "high": 8},
+    "lost_sales": false
+  },
+  "reference_values": {
+    "bounded_dp_cost": 435.217,
+    "cdi_gap_pct_single_path": 0.305,
+    "cdi_gap_pct_out_of_sample": 0.160
+  },
+  "verification": {
+    "status": "repo_generated_not_literature",
+    "suggested_command": "python scripts/dual_sourcing/validate_reference_grid.py --with_optimal_dp",
+    "notes": "Stress case for reachable CDI gaps; exclude from literature leaderboards."
+  }
+}

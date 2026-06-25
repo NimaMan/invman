@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "instance_id": "generated_exact_lt2_p050_low_yield_short_horizon",
+  "problem_family": "random_yield_inventory",
+  "classification": "generated",
+  "source": {"kind": "repo_generated", "notes": "Generated exact-DP stress case."},
+  "parameters": {
+    "yield_model": "all_or_nothing",
+    "backlogging": true,
+    "periods": 5,
+    "lead_time": 2,
+    "success_probability": 0.50,
+    "costs": {"holding": 1.0, "shortage": 9.0, "procurement": 1.0},
+    "discount_factor": 0.99,
+    "initial_inventory_level": 4,
+    "initial_pipeline_orders": [2, 2],
+    "demand": {"distribution": "finite_support", "support": [0, 1, 2, 3, 4, 5], "probabilities": [0.08, 0.17, 0.28, 0.25, 0.14, 0.08]},
+    "max_order_quantity": 10
+  },
+  "reference_values": {
+    "optimal_discounted_cost": 63.5766930859472,
+    "optimal_first_action": 5,
+    "linear_inflation_cost": 81.99023828864074,
+    "linear_inflation_first_action": 10
+  },
+  "verification": {
+    "status": "generated_exact_needs_loader",
+    "suggested_command": "python scripts/random_yield_inventory/verify_instance_file.py src/problems/random_yield_inventory/instances/generated_exact_lt2_p050_low_yield_short_horizon.json"
+  }
+}

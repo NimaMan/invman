@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "instance_id": "edali2014_sterman_classic_36w_closedform",
+  "problem_family": "decentralized_inventory_control",
+  "classification": "companion_code",
+  "source": {
+    "citation": "Edali and Yasarcan (2014), JASSS Beer Game model port",
+    "url": "https://www.jasss.org/17/4/2.html",
+    "notes": "Closed-form Sterman anchor-and-adjust board-game reproduction, not the trainable env."
+  },
+  "parameters": {
+    "stages": 4,
+    "horizon": 36,
+    "demand_path": [4, 4, 4, 4, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8],
+    "shipment_lead_times": [2, 2, 2, 2],
+    "order_lead_times": [0, 1, 1, 1],
+    "initial_on_hand": [12, 12, 12, 12],
+    "initial_backlog": [0, 0, 0, 0],
+    "holding_costs": [0.5, 0.5, 0.5, 0.5],
+    "backlog_costs": [1.0, 1.0, 1.0, 1.0],
+    "sterman_targets": [28, 28, 28, 20],
+    "adjustment_rates": [1.0, 1.0, 1.0, 1.0],
+    "supply_line_weights": [1.0, 1.0, 1.0, 1.0],
+    "discount_factor": 1.0
+  },
+  "reference_values": {
+    "closed_form_per_stage_costs": [46, 50, 54, 54],
+    "closed_form_total_cost": 204,
+    "env_same_params_cost": 378,
+    "env_best_simple_base_stock_cost": 278
+  },
+  "verification": {
+    "status": "closed_form_companion_reproduced_env_mismatch_expected",
+    "suggested_command": "python scripts/decentralized_inventory_control/measure_env_vs_closedform.py"
+  }
+}

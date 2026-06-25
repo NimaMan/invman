@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "instance_id": "yan2026_style_lt2_p075_discounted",
+  "problem_family": "random_yield_inventory",
+  "classification": "faithful_unverified",
+  "source": {
+    "citation": "Yan et al. (2026), Computers and Operations Research 186, 107305",
+    "doi": "10.1016/j.cor.2025.107305",
+    "notes": "Repo-native instance shaped after the all-or-nothing finite-horizon model; no public per-instance table value."
+  },
+  "parameters": {
+    "yield_model": "all_or_nothing",
+    "backlogging": true,
+    "periods": 12,
+    "lead_time": 2,
+    "success_probability": 0.75,
+    "costs": {"holding": 1.0, "shortage": 9.0, "procurement": 1.0},
+    "discount_factor": 0.99,
+    "initial_inventory_level": 6,
+    "initial_pipeline_orders": [4, 3],
+    "demand": {"distribution": "poisson", "mean": 4.0}
+  },
+  "reference_values": {
+    "linear_inflation_params": [17.0, 1.3333333333333333],
+    "policy_eval_seed_range": [123, 2122],
+    "linear_inflation_mean_cost": 203.6193981760089,
+    "linear_inflation_std": 123.7689925901826,
+    "weighted_newsvendor_mean_cost": 222.43628323791543,
+    "weighted_newsvendor_std": 66.91809421933675
+  },
+  "verification": {
+    "status": "faithful_unverified_repo_mc",
+    "suggested_command": "python scripts/random_yield_inventory/benchmark_policies_vs_exact_and_heuristics.py"
+  }
+}

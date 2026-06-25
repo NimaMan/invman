@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "instance_id": "vmi_reduced_high_penalty",
+  "problem_family": "vendor_managed_inventory",
+  "classification": "generated",
+  "source": {"kind": "repo_generated", "base_instance": "sui_gosavi_lin_2010_reduced_single_retailer_primary"},
+  "parameters": {
+    "periods": 24,
+    "discount_factor": 0.99,
+    "demand": {"distribution": "poisson", "mean": 2.5},
+    "initial_dc_on_hand": 8,
+    "initial_retailer_on_hand": 2,
+    "initial_retailer_pipeline": 1,
+    "dc_replenishment_quantity": 3,
+    "dc_capacity": 10,
+    "shipment_cost_per_unit": 0.4,
+    "dc_holding_cost_per_unit": 0.25,
+    "retailer_holding_cost_per_unit": 0.6,
+    "stockout_cost_per_unit": 9.0,
+    "salvage_value_per_unit": 0.2,
+    "max_shipment_quantity": 5
+  },
+  "reference_values": {"full_run_best_heuristic_cost_approx": 124.34},
+  "verification": {
+    "status": "generated_repo_mc",
+    "suggested_command": "python scripts/vendor_managed_inventory/benchmark_reduced_single_retailer.py --quick"
+  }
+}

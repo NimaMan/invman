@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "instance_id": "pirhooshyaran2021_assembly1_case2",
+  "problem_family": "multi_echelon/production_assembly_distribution_network",
+  "classification": "table_only",
+  "source": {
+    "citation": "Pirhooshyaran and Snyder (2021), DNN-SMEIO paper/supplement",
+    "url": "https://arxiv.org/abs/2006.05608",
+    "locator": "assembly A1 case 2"
+  },
+  "parameters": {
+    "topology": {
+      "kind": "pure_assembly_A1",
+      "num_nodes": 7,
+      "source_nodes": [0, 1, 2, 3],
+      "assembly_nodes": [4, 5, 6],
+      "edges": [[0, 4], [1, 4], [2, 5], [3, 5], [4, 6], [5, 6]]
+    },
+    "holding_costs_by_level": [2.0, 4.0, 7.0],
+    "backlog_cost": 37.12,
+    "lead_times_by_level": [2, 1, 1],
+    "demand": {"distribution": "normal", "mean": 5.0, "std": 1.0}
+  },
+  "reference_values": {
+    "published_dnn_cost": 103.77,
+    "published_coordinate_descent_cost": 101.59,
+    "published_enumeration_cost": 101.47,
+    "published_dfo_cost": 482.63
+  },
+  "verification": {
+    "status": "table_only_not_rerun",
+    "suggested_command": "python scripts/production_assembly_distribution_network/validate_instance_files.py --instances src/problems/multi_echelon/production_assembly_distribution_network/instances/*.json --mode schema"
+  }
+}

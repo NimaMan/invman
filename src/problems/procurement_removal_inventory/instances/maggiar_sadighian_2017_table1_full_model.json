@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "instance_id": "maggiar_sadighian_2017_table1_full_model",
+  "problem_family": "procurement_removal_inventory",
+  "classification": "table_only",
+  "source": {
+    "citation": "Maggiar and Sadighian (2017), Joint Inventory and Revenue Management with Removal Decisions",
+    "url": "https://assets.amazon.science/7b/48/bc8c1c21450b9dac198e1f4ed13a/joint-inventory-and-revenue-management-with-removal-decisions.pdf",
+    "locator": "Table 1 and NPV surface figure"
+  },
+  "parameters": {
+    "model_variant": "faithful_pricing_backlog_gamma",
+    "base_price": 90.0,
+    "purchase_cost": 75.0,
+    "refund_value": 30.0,
+    "liquidation_value": 5.0,
+    "holding_cost": 2.0,
+    "backorder_supplement": 15.5,
+    "elasticity_at_base_price": -2.0,
+    "periods": 40,
+    "discount_factor": 0.9984,
+    "coefficient_of_variation": 1.0,
+    "num_demand_quantiles": 99,
+    "graphical_demand_profile": {"baseline_approx": 50.0, "peak_approx": 500.0, "peak_period_approx": 20}
+  },
+  "reference_values": {"npv_surface_peak_approx": 84000.0},
+  "verification": {
+    "status": "table_only_approximate_graphical_value",
+    "suggested_command": "cargo test -p invman_rust faithful_table1_dp_reproduces_npv_surface_magnitude"
+  }
+}

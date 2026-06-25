@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "instance_id": "zhou2022_style_price_ladder",
+  "problem_family": "joint_pricing_inventory",
+  "classification": "faithful_unverified",
+  "source": {
+    "citation": "Zhou et al. (2022), Expert Systems with Applications 199, 116564",
+    "doi": "10.1016/j.eswa.2022.116564",
+    "notes": "Repo-native price-ladder interpretation; reference-price state omitted."
+  },
+  "parameters": {
+    "periods": 18,
+    "discount_factor": 0.99,
+    "price_levels": [8.0, 10.0, 12.0],
+    "demand": {"kind": "poisson_by_price", "means": [4.0, 2.6, 1.6]},
+    "initial_inventory_level": 2,
+    "procurement_cost_per_unit": 4.0,
+    "holding_cost_per_unit": 0.5,
+    "stockout_cost_per_unit": 5.0,
+    "salvage_value_per_unit": 1.0,
+    "max_order_quantity": 6
+  },
+  "reference_values": {
+    "eval_replications": 4096,
+    "static_policy_cost": -172.63491236155866,
+    "inventory_sensitive_policy_cost": -171.51350942150083,
+    "saved_soft_tree_snapshot_cost": -216.05954313221906
+  },
+  "verification": {
+    "status": "faithful_unverified_repo_mc",
+    "suggested_command": "python scripts/joint_pricing_inventory/benchmark_policies_against_exact_and_learned.py"
+  }
+}

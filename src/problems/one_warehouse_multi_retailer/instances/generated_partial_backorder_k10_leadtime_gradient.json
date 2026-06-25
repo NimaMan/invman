@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "instance_id": "generated_partial_backorder_k10_leadtime_gradient",
+  "problem_family": "one_warehouse_multi_retailer",
+  "classification": "generated",
+  "source": {"kind": "repo_generated", "notes": "Synthetic partial-backorder stress case."},
+  "parameters": {
+    "customer_behavior": "partial_backorder",
+    "num_retailers": 10,
+    "warehouse_lead_time": 4,
+    "retailer_lead_times": [1, 1, 2, 2, 3, 3, 4, 4, 5, 5],
+    "demand": {"distribution": "poisson", "means": [3.0, 3.0, 4.0, 4.0, 5.0, 5.0, 6.0, 6.0, 7.0, 7.0]},
+    "holding_cost_warehouse": 2.0,
+    "holding_cost_retailers": [3.0, 3.0, 3.5, 3.5, 4.0, 4.0, 4.5, 4.5, 5.0, 5.0],
+    "penalty_costs_retailers": [40.0, 40.0, 45.0, 45.0, 50.0, 50.0, 55.0, 55.0, 60.0, 60.0],
+    "emergency_shipment_probability": 0.5
+  },
+  "reference_values": {"published_absolute_cost_available": false},
+  "verification": {
+    "status": "generated",
+    "suggested_command": "python scripts/instances/validate_problem_instances.py"
+  }
+}

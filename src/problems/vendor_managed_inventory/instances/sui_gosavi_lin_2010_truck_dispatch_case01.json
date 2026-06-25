@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "instance_id": "sui_gosavi_lin_2010_truck_dispatch_case01",
+  "problem_family": "vendor_managed_inventory",
+  "classification": "table_only",
+  "source": {
+    "citation": "Sui, Gosavi and Lin (2010), Engineering Management Journal 22(4):44-53",
+    "doi": "10.1080/10429247.2010.11431878",
+    "locator": "8-case truck dispatch table, case 1"
+  },
+  "parameters": {
+    "model_family": "truck_dispatch_consignment_vmi",
+    "num_retailers": 10,
+    "num_products": 2,
+    "truck_capacity": 100,
+    "transport_cost_per_truck_per_unit_time": 10.0,
+    "max_trucks": 2,
+    "initial_dc_inventory": [650, 650],
+    "factor_levels": {"retailer_penalty": -1, "retailer_holding": -1, "arrival_rate": -1},
+    "factor_semantics": {"arrival_rate_plus_multiplier": 1.5, "retailer_holding_plus_multiplier": 2.0, "retailer_penalty_plus_multiplier": 1.5}
+  },
+  "reference_values": {
+    "published_newsvendor_profit": 15.41,
+    "published_rl_profit": 16.31,
+    "published_improvement_pct": 5.84
+  },
+  "verification": {
+    "status": "table_only_not_reproduced",
+    "suggested_command": "cargo test -q vendor_managed_inventory::verification --lib"
+  }
+}

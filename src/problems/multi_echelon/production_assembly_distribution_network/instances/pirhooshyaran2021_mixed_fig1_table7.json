@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "instance_id": "pirhooshyaran2021_mixed_fig1_table7",
+  "problem_family": "multi_echelon/production_assembly_distribution_network",
+  "classification": "table_only",
+  "source": {
+    "citation": "Pirhooshyaran and Snyder (2021), DNN-SMEIO paper/supplement",
+    "url": "https://arxiv.org/abs/2006.05608",
+    "locator": "mixed distribution-and-assembly Figure 1 / table row"
+  },
+  "parameters": {
+    "topology": {"kind": "mixed_distribution_and_assembly", "relation_order": "internal_edges_then_external_suppliers"},
+    "holding_costs_by_relation": [2.0, 4.0, 4.0, 7.0, 7.0, 7.0, 7.0],
+    "backlog_costs_by_relation": [4.0, 12.0, 12.0, 37.12, 37.12, 37.12, 37.12],
+    "lead_times_by_relation": [2, 1, 1, 1, 1, 1, 1],
+    "demand_models": [
+      {"node": "customer_1", "distribution": "normal", "mean": 5.0, "std": 1.0},
+      {"node": "customer_2", "distribution": "normal", "mean": 5.0, "std": 1.0}
+    ]
+  },
+  "reference_values": {
+    "published_dnn_cost": 208.80,
+    "published_dfo_unrestricted_cost": 206.35,
+    "published_spearmint_unrestricted_cost": 206.36,
+    "repo_gate_cost": 297.688
+  },
+  "verification": {
+    "status": "table_only_not_rerun",
+    "suggested_command": "python scripts/production_assembly_distribution_network/validate_instance_files.py --instances src/problems/multi_echelon/production_assembly_distribution_network/instances/*.json --mode schema"
+  }
+}

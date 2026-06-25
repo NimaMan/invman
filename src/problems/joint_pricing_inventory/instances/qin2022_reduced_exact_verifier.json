@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "instance_id": "qin2022_reduced_exact_verifier",
+  "problem_family": "joint_pricing_inventory",
+  "classification": "faithful_unverified",
+  "source": {
+    "citation": "Qin, Simchi-Levi and Wang (2022), Management Science 68(11):8224-8244",
+    "doi": "10.1287/mnsc.2021.4212",
+    "notes": "Repo-native reduced exact verifier inspired by the formulation class; not a printed instance/value row."
+  },
+  "parameters": {
+    "periods": 5,
+    "discount_factor": 0.99,
+    "price_levels": [7.0, 9.0, 11.0],
+    "demand": {"kind": "finite_support", "supports": [[0, 1, 2, 3], [0, 1, 2, 3], [0, 1, 2, 3]], "probabilities": [[0.1, 0.2, 0.3, 0.4], [0.2, 0.3, 0.3, 0.2], [0.4, 0.3, 0.2, 0.1]]},
+    "initial_inventory_level": 1,
+    "procurement_cost_per_unit": 4.0,
+    "holding_cost_per_unit": 0.5,
+    "stockout_cost_per_unit": 5.0,
+    "salvage_value_per_unit": 1.0,
+    "max_order_quantity": 4
+  },
+  "reference_values": {
+    "optimal_discounted_cost": -33.178121049724,
+    "optimal_first_action": [2, 1],
+    "static_cost": -32.50820139235,
+    "inventory_sensitive_cost": -27.594377111812527
+  },
+  "verification": {
+    "status": "repo_exact_self_consistency",
+    "suggested_command": "python scripts/joint_pricing_inventory/validate_against_exact_dp.py"
+  }
+}

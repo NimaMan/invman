@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "instance_id": "generated_full_returnability_overstock",
+  "problem_family": "procurement_removal_inventory",
+  "classification": "generated",
+  "source": {"kind": "repo_generated", "notes": "Synthetic overstock/returnability stress case."},
+  "parameters": {
+    "model_variant": "control_only_procurement_removal",
+    "periods": 16,
+    "discount_factor": 0.99,
+    "demand": {"distribution": "poisson", "mean": 2.0},
+    "initial_inventory_level": 20,
+    "initial_returnable_inventory": 20,
+    "returnable_purchase_cap": 6,
+    "purchase_cost_per_unit": 6.0,
+    "return_value_per_unit": 5.0,
+    "liquidation_value_per_unit": 1.0,
+    "holding_cost_per_unit": 1.5,
+    "shortage_cost_per_unit": 9.0,
+    "max_purchase_quantity": 6,
+    "max_removal_quantity": 12
+  },
+  "reference_values": {
+    "best_interval": {"params": [2, 3], "mean_cost": 117.42599263647001, "std": 36.871182123585314},
+    "best_buffer": {"params": [2, 3, 0], "mean_cost": 117.42599263647001}
+  },
+  "verification": {
+    "status": "generated_repo_mc",
+    "suggested_command": "python scripts/procurement_removal_inventory/benchmark_procurement_removal.py"
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "instance_id": "van_roy1997_case2_calibrated_mu1_k10_partial_backorder",
+  "problem_family": "one_warehouse_multi_retailer",
+  "classification": "faithful_unverified",
+  "source": {
+    "citation": "Van Roy et al. (1997), retail inventory report case study 2",
+    "url": "https://www.stanford.edu/~bvr/pubs/retail.pdf",
+    "notes": "Calibrated sibling reproduction target; not a strict OWMR printed-cost row."
+  },
+  "parameters": {
+    "customer_behavior": "partial_backorder",
+    "num_retailers": 10,
+    "warehouse_lead_time": 5,
+    "retailer_lead_times": [3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
+    "demand": {"distribution": "rounded_normal", "mean": 1.0, "std": 20.0},
+    "holding_cost_warehouse": 3.0,
+    "holding_cost_retailers": [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0],
+    "penalty_costs_retailers": [60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0, 60.0],
+    "emergency_shipment_probability": 0.8
+  },
+  "reference_values": {
+    "target_constant_base_stock_cost_approx": 1449.0,
+    "literature_verified": false
+  },
+  "verification": {
+    "status": "calibrated_reproduction_target",
+    "suggested_command": "cargo test -q one_warehouse_multi_retailer::tests::verification -- --nocapture"
+  }
+}

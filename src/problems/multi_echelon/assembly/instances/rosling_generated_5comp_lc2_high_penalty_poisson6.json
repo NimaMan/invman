@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "instance_id": "rosling_generated_5comp_lc2_high_penalty_poisson6",
+  "problem_family": "multi_echelon/assembly",
+  "classification": "generated",
+  "source": {
+    "kind": "repo_generated",
+    "structural_reference": "Rosling (1989), Operations Research 37(4):565-579",
+    "doi": "10.1287/opre.37.4.565"
+  },
+  "parameters": {
+    "component_holding_costs": [0.8, 0.8, 0.8, 0.8, 0.8],
+    "component_lead_time": 2,
+    "finished_holding_cost": 9.0,
+    "finished_lead_time": 1,
+    "penalty": 60.0,
+    "demand": {"distribution": "poisson", "mean": 6.0}
+  },
+  "reference_values": {
+    "solver_derived_optimal_cost": 80.591265,
+    "echelon_base_stock_levels_downstream_to_upstream": [10, 24],
+    "literature_verified": false
+  },
+  "verification": {
+    "status": "generated_equivalence_check",
+    "suggested_command": "python scripts/assembly/verify_assembly_rosling_independent.py"
+  }
+}

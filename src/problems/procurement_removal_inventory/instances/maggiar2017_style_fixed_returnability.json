@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "instance_id": "maggiar2017_style_fixed_returnability",
+  "problem_family": "procurement_removal_inventory",
+  "classification": "faithful_unverified",
+  "source": {
+    "citation": "Maggiar and Sadighian (2017), Joint Inventory and Revenue Management with Removal Decisions",
+    "url": "https://assets.amazon.science/7b/48/bc8c1c21450b9dac198e1f4ed13a/joint-inventory-and-revenue-management-with-removal-decisions.pdf"
+  },
+  "parameters": {
+    "model_variant": "control_only_procurement_removal",
+    "periods": 16,
+    "discount_factor": 0.99,
+    "demand": {"distribution": "poisson", "mean": 4.0},
+    "initial_inventory_level": 5,
+    "initial_returnable_inventory": 3,
+    "returnable_purchase_cap": 2,
+    "purchase_cost_per_unit": 6.0,
+    "return_value_per_unit": 4.0,
+    "liquidation_value_per_unit": 1.0,
+    "holding_cost_per_unit": 0.5,
+    "shortage_cost_per_unit": 9.0,
+    "max_purchase_quantity": 6,
+    "max_removal_quantity": 6
+  },
+  "reference_values": {
+    "seed_protocol": "500000..504095",
+    "best_interval": {"params": [6, 6], "mean_cost": 358.1067286254911},
+    "best_buffer": {"params": [6, 6, 0], "mean_cost": 358.1067286254911},
+    "soft_tree_snapshot_cost": 358.2182905448917
+  },
+  "verification": {
+    "status": "faithful_unverified_repo_mc",
+    "suggested_command": "python scripts/procurement_removal_inventory/benchmark_procurement_removal.py"
+  }
+}

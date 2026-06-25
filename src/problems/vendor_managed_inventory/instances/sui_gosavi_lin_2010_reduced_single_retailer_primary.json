@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "instance_id": "sui_gosavi_lin_2010_reduced_single_retailer_primary",
+  "problem_family": "vendor_managed_inventory",
+  "classification": "faithful_unverified",
+  "source": {
+    "citation": "Sui, Gosavi and Lin (2010), Engineering Management Journal 22(4):44-53",
+    "doi": "10.1080/10429247.2010.11431878",
+    "notes": "Reduced repo-native single-retailer interpretation; no published value."
+  },
+  "parameters": {
+    "periods": 24,
+    "discount_factor": 0.99,
+    "demand": {"distribution": "poisson", "mean": 2.5},
+    "initial_dc_on_hand": 8,
+    "initial_retailer_on_hand": 2,
+    "initial_retailer_pipeline": 1,
+    "dc_replenishment_quantity": 3,
+    "dc_capacity": 10,
+    "shipment_cost_per_unit": 0.4,
+    "dc_holding_cost_per_unit": 0.25,
+    "retailer_holding_cost_per_unit": 0.6,
+    "stockout_cost_per_unit": 5.0,
+    "salvage_value_per_unit": 0.2,
+    "max_shipment_quantity": 5,
+    "benchmark_retailer_base_stock_level": 4,
+    "benchmark_dc_reserve_base_stock_level": 5,
+    "benchmark_dc_reserve_quantity": 2
+  },
+  "reference_values": {
+    "eval_replications": 500,
+    "seed": 1234,
+    "retailer_base_stock_cost": 160.0033,
+    "dc_reserve_base_stock_cost": 137.7781
+  },
+  "verification": {
+    "status": "faithful_unverified_repo_mc",
+    "suggested_command": "python scripts/vendor_managed_inventory/benchmark_reduced_single_retailer.py --quick"
+  }
+}

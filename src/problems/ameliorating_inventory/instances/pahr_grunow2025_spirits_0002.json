@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "instance_id": "pahr_grunow2025_spirits_0002",
+  "problem_family": "ameliorating_inventory",
+  "classification": "companion_code",
+  "source": {"citation": "Pahr and Grunow, The Value of Blending - Managing Ameliorating Inventory Using Deep Reinforcement Learning", "doi": "10.1177/10591478251387795", "companion_repo": "https://github.com/amelioratinginventory/ameliorating_inventory", "companion_path": "problem_configurations/spirits_0002"},
+  "parameters": {"dataset_file": "../practical/datasets/spirits_0002_perfect_information_lp.txt", "num_ages": 10, "num_products": 3, "target_ages": [2, 4, 6], "max_inventory": 50.0, "allow_blending": true, "evaporation": 0.03, "holding_cost": 2.5, "price_mean": 200.0, "price_std": 50.0, "price_truncation": 70.0},
+  "reference_values": {"metric": "perfect_information_lp_max_reward_average_profit_upper_bound", "published_max_reward": 1991.9344293376805, "published_purchasing": 24.619385477827734, "published_production": [5.862626807669432, 6.655000952561509, 5.8649954741820425]},
+  "verification": {"status": "verified_current_rust_python_binding_pending", "suggested_command": "cargo test -p invman_rust --lib problems::ameliorating_inventory::tests::verification -- --nocapture", "absolute_tolerance": 0.001}
+}

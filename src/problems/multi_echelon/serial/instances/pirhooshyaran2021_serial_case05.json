@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "instance_id": "pirhooshyaran2021_serial_case05",
+  "problem_family": "multi_echelon/serial",
+  "classification": "strict_literature",
+  "source": {
+    "citation": "Pirhooshyaran and Snyder (2021), serial benchmark table",
+    "locator": "serial case 5"
+  },
+  "parameters": {
+    "num_echelons": 3,
+    "demand": {"distribution": "normal", "mean": 100.0, "std": 5.0},
+    "local_holding_costs_upstream_to_downstream": [25.0, 25.0, 50.0],
+    "lead_times_upstream_to_downstream": [1, 2, 2],
+    "penalty": 100.0
+  },
+  "reference_values": {
+    "published_average_cost": 10568.23,
+    "repo_exact_optimal_cost": 10568.215524
+  },
+  "verification": {
+    "status": "strict_literature_exact_only",
+    "suggested_command": "cargo test -q serial_rows_reproduced_by_exact_clark_scarf_solver",
+    "absolute_tolerance": 0.05,
+    "notes": "Do not use for env-simulation verification until downstream lead-time handling is resolved."
+  }
+}
