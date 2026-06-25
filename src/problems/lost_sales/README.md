@@ -63,7 +63,11 @@ python -c "import invman_rust as ir; s=ir.lost_sales_heuristics_all('Poisson',5.
 
 ### Notes
 
-The vanilla optimum `4.73` is a carried Zipkin DP value, not recomputed in-repo. The Myopic-2 row is the verification target because it exercises the repo's environment plus heuristic evaluator against a peer-reviewed table value. The fixed-order-cost Bijvank Table 1 exact-DP check remains a useful secondary anchor in `BENCHMARK.md`.
+The vanilla optimum `4.73` is a carried Zipkin DP value, not recomputed in-repo.
+The Myopic-2 row is the verification target because it exercises the repo's
+environment plus heuristic evaluator against a peer-reviewed table value. The
+fixed-order-cost Bijvank Table 1 exact-DP check remains a useful secondary
+anchor in `fixed_order_cost/README.md` and `fixed_order_cost/verification/`.
 
-
-See `BENCHMARK.md` for the broader benchmark card and caveats.
+Use this README plus the `vanilla/` and `fixed_order_cost/` subfolder READMEs
+for broader benchmark caveats.

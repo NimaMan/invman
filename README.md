@@ -1,208 +1,257 @@
-# Inventory Management Experiments
+# invman
 
-This repository now keeps one active Rust-first code path:
+`invman` is an Inventory Management Learning Benchmark: an ImageNet-style problem
+suite for inventory-control research. The repository keeps a Rust-first core for
+problem dynamics, reference instances, heuristics, exact or bounded solvers, and
+high-throughput rollout kernels, with Python bindings and scripts for experiment
+orchestration, policy construction, and reporting.
 
-- a root-level Rust crate (`Cargo.toml`, `src/`) for problem dynamics, reference instances,
-  heuristic searches, exact solvers, and high-throughput rollout kernels
-- flattened Python support modules (`invman/policy.py`, `invman/policy_registry.py`,
-  `invman/policy_build.py`, `invman/rollout_fitness.py`) for policy descriptors, CMA-ES
-  optimization, and Rust binding orchestration
-- benchmark helper scripts under `scripts/<problem>/` for paper grids and autoresearch runs
-- one generic runner script at `scripts/run_experiment.py`
+The intended reader is a coding or research agent that needs to understand the
+project quickly, choose the right problem folder, and then continue in the
+detailed READMEs for that family.
 
-## Benchmark Reporting Principle
+## Where To Start
 
-Across all problem families, `literature_verified` applies only to repo exact algorithms and repo
-heuristic implementations.
+- `src/problems/README.md`: canonical map of Rust-first benchmark families,
+  verification rules, and cross-problem conventions.
+- `src/problems/<problem>/README.md`: the first stop before editing or running a
+  family-specific workflow.
+- `src/problems/<problem-or-subproblem>/instances/README.md`:
+  machine-readable instance catalog notes for that problem. Multi-echelon
+  variants usually own their own subproblem catalogs.
+- `AGENTS.md`: repo-local setup, sanity checks, and ready experiment-suite
+  commands.
+- `policy_search/README.md` and `policy_search/POLICY_DESIGN_GUIDELINES.md`:
+  learned-policy and decoder design workflow.
+- `presentation/index.html`: current deck framing for learned policies,
+  heuristics, action parameterizations, and reporting language.
+- `docs/benchmarks/`: historical benchmark audits and manifest-era notes. Use
+  `src/problems/**/instances/` and the problem READMEs for the active instance
+  catalog convention.
 
-That means:
+## Repository Layout
 
-- if a repo exact solver matches public literature benchmark numbers, that exact algorithm can be
-  marked `literature_verified`
-- if a repo heuristic implementation matches public literature benchmark numbers, that heuristic can
-  be marked `literature_verified`
-- references should carry literature rows and problem-instance definitions, not repo-generated exact
-  or heuristic outputs
-- repo-generated verification outputs should be produced by Rust verification code or written to
-  validation artifacts, not frozen into the reference catalog
-- published learned-policy rows from papers, such as PPO or A3C, are carried as published rows and
-  reported as such; they are not labeled as `literature_verified` repo algorithms
-- benchmark tables should separate published literature numbers from repo reproduced absolute costs
+```text
+Cargo.toml, src/                  Rust crate and problem implementations
+src/problems/                     canonical Rust-first benchmark families
+src/problems/<problem-or-subproblem>/instances/ per-problem JSON instance catalogs
+invman/                           Python policy, rollout, optimizer, and glue modules
+scripts/                          validation, benchmark, training, and reporting scripts
+numerical_experiments/            curated suite catalog and launcher
+policy_search/                    policy-structure search programs and studies
+docs/                             benchmark, literature, and Rust notes
+tests/                            Python regression and catalog tests
+outputs/                          generated experiment outputs, logs, models, reports
+```
 
-The current baseline problem is the single-item lost-sales setting with lead time, holding cost, shortage cost, and either Poisson or geometric demand. The runner can train either a linear policy or a small neural policy and compare the learned policy against the classic lost-sales heuristics already in the repo.
+Problem folders normally contain local `README.md`, `literature/`,
+`practical/`, `experiments/`, `verification/`, `heuristics/`, `env.rs`, and
+`rollout.rs` material. Treat those READMEs as routing documents; they explain
+which claims are literature-backed, repo-native, provisional, or only useful as
+context.
 
-## Current Findings
+## Problem Families
 
-Trusted vanilla benchmark:
+Current Rust-first families and important subfamilies include:
 
-- lost sales with `L=4`
-- shortage cost `p=4`
-- demand `~ Poisson(5)`
-- holding cost `h=1`
+- `lost_sales`: vanilla lost-sales inventory with lead times, holding and
+  lost-sales costs, Poisson/geometric/correlated demand support, plus
+  `lost_sales/fixed_order_cost`.
+- `dual_sourcing`: regular and expedited suppliers, dual-index/capped-dual-index
+  style baselines, and bounded-DP benchmark checks.
+- `multi_echelon`: serial systems, assembly, divergent special delivery, general
+  backorder fixed cost, and production-assembly-distribution-network variants.
+- `one_warehouse_multi_retailer`: OWMR / divergent allocation settings.
+- `perishable_inventory`: finite shelf-life inventory with FIFO/LIFO style
+  slices and practical traces.
+- `joint_replenishment`: multi-item joint ordering with shared fixed cost.
+- `nonstationary_lot_sizing`: time-varying demand lot-sizing instances.
+- `random_yield_inventory`: stochastic yield and reduced exact verifiers.
+- `procurement_removal_inventory`: procurement/removal and returnability slices.
+- `spare_parts_inventory`: repairable spare-parts benchmark instances.
+- `vendor_managed_inventory`: VMI and worked newsvendor/truck-dispatch anchors.
+- `decentralized_inventory_control`: beer-game and decentralized supply-chain
+  control settings.
+- `ameliorating_inventory`: inventory whose value/quality can improve over time.
+- `joint_pricing_inventory`: coupled pricing and inventory decisions.
 
-Current learned-policy reference points on that benchmark:
+See `src/problems/README.md` for the current verification status of each family.
+Unless a problem README explicitly says otherwise, do not assume a family is
+literature-verified.
 
-- linear policy: `4.8066`
-- earlier soft-tree benchmark: `4.7980`
-- current best learned policy: `4.753725`
+## Instance Catalogs
 
-Fresh post-refactor refresh runs on the same benchmark:
+Machine-readable benchmark instances should use this convention:
 
-- heuristic validator still matches the trusted reference numbers: Myopic-1 `5.0641`, Myopic-2
-  `4.8204`, SVBS `5.8349`
-- fresh Rust-backed soft-tree rerun: `4.7658`
-- fresh linear rerun: `5.0049`
-- fresh NN `8x8` smoke rerun: `5.2504`
+```text
+src/problems/<problem-or-subproblem>/instances/
+  README.md
+  <instance_id>.json
+```
 
-Interpretation:
+For top-level families this is usually `src/problems/<problem>/instances/`.
+For umbrella families such as `multi_echelon`, each formulation can own a
+subfolder catalog such as `src/problems/multi_echelon/serial/instances/`.
 
-- the Rust-backed soft-tree path remains healthy after the native/runtime refactor
-- the linear and NN backbones are still more seed- and budget-sensitive, so the locked historical
-  references above remain the stronger canonical baselines for those families
+Do not add new `BENCHMARK.md` files. Instance documentation belongs in
+`instances/README.md` and the problem `README.md`; executable checks belong in
+`verification/`, `scripts/`, or tests.
 
-The current best learned architecture is:
+The cross-family validator is intentionally lightweight:
 
-- soft tree
-- oblique splits
-- depth `2`
-- linear leaf outputs
+```bash
+python scripts/instances/validate_problem_instances.py
+```
 
-This is better than `Myopic-2 = 4.8204` and is close to the known optimal reference `4.73`.
+Each JSON instance must have `schema_version: 1`, an `instance_id` matching the
+filename, `problem_family`, `classification`, `source` or `provenance`,
+`parameters`/`model`/`network`, and a `verification` object.
 
-Trusted fixed-order-cost benchmark:
+Classification meanings:
 
-- lost sales with `L=4`
-- shortage cost `p=4`
-- fixed ordering cost `K=5`
-- demand `~ Poisson(5)`
-- holding cost `h=1`
+- `strict_literature`: parameters and benchmark numbers are reproduced directly
+  from public literature.
+- `companion_code`: derived from public companion code or data rather than only
+  the paper text.
+- `table_only`: transcribed from a public table, but with missing implementation
+  details or no executable reproduction path.
+- `faithful_unverified`: a faithful implementation of a published model where
+  public row-level numbers are insufficient for a strict check.
+- `generated`: repo-generated stress, practical, or verifier instance, not a
+  literature row.
 
-On this benchmark, the current best learned policy from the fixed-cost autoresearch loop is:
+Keep provenance honest. If a number is produced by this repo, label it as
+repo-generated or verification output; do not present it as a published
+literature benchmark.
 
-- soft tree
-- oblique splits
-- depth `1`
-- linear leaf outputs
-- `50k` eval: `8.77528`
-- `1M` eval: `8.76576`
+## Verification Expectations
 
-Current policy function approximator anchors on the same canonical instance:
+Benchmark claims require targeted reproduction before they are reported.
+Verification material can live in:
 
-- linear categorical quantity: `10.42369`
-- NN gated ordinal quantity: `9.51636`
-- transferred depth-2 soft tree: `8.81009`
-- autoresearch-refined depth-1 soft tree: `8.76576`
+- `src/problems/**/verification/`
+- family scripts under `scripts/**`
+- Rust tests under `cargo test`
+- Python tests under `tests/`
 
-Reference comparisons:
+Run the smallest targeted check that exercises the claim before claiming a
+benchmark number. Good starting commands are:
 
-- earlier transferred depth-2 tree, `1M` eval: `8.81009`
-- best heuristic on `1M` eval, modified `s,S,q`: `9.16537`
+```bash
+cargo test --manifest-path Cargo.toml -q
+python -m pytest tests/test_lost_sales_reference_grid.py tests/test_fixed_order_cost_reference_grid.py -q
+python -m pytest tests/test_dual_sourcing_problem.py tests/test_multi_echelon_problem.py -q
+python -m pytest tests/test_numerical_experiments_catalog.py tests/test_problem_verification_files.py -q
+python scripts/instances/validate_problem_instances.py
+```
 
-So the current best fixed-cost tree improves on the earlier tree by about `0.5%` and improves on
-the best heuristic by about `4.36%` on the canonical fixed-cost instance.
+Useful family-specific script entry points include:
 
-Dual-sourcing smoke benchmark on the hardest small-scale literature instance `lr=4`, `ce=110`:
+```bash
+python scripts/lost_sales/validate_reference_instance.py
+python scripts/lost_sales_fixed_order_cost/validate_known_optimum.py
+python scripts/dual_sourcing/validate_reference_grid.py
+python scripts/one_warehouse_multi_retailer/validate_reference_instance.py
+python scripts/joint_replenishment/validate_against_exact_dp.py
+python scripts/perishable_inventory/validate_against_papers.py
+```
 
-- learned oblique depth-2 soft tree with linear leaves: `249.84`
-- best benchmark heuristic in the repo baseline: capped dual-index at `220.73`
-- current interpretation: the dual-sourcing package is implemented and benchmarked, but tree policies are not yet competitive there under the first smoke budget
+Some verification is slow or bounded by truncation choices. Report that scope
+explicitly, especially for bounded DP, simulation tolerances, seed-robust runs,
+or table-only literature sources.
 
-Dual-sourcing full-budget baseline on the same primary instance:
+## Learned Policies
 
-- learned oblique depth-2 soft tree with linear leaves: `233.08375`
-- single-index: `226.816875`
-- dual-index: `222.4025`
-- capped dual-index: `221.61`
-- tailored base-surge: `222.7825`
+The benchmark compares learned policies against classical heuristics and exact
+or bounded references where available. A learned policy should not be described
+as `literature_verified`; published PPO/A3C rows from papers are context rows,
+while repo learned policies are repo-generated results.
 
-Current interpretation:
+The current policy-learning frame is:
 
-- the dual-sourcing training path is correct and reproducible;
-- more CMA-ES budget helped materially versus the smoke run;
-- but the current direct vector-action tree remains about `5.2%` worse than the best heuristic.
+- environment dynamics and raw state live in Rust problem modules;
+- Python builds policy descriptors and launches CMA-ES / evaluation workflows;
+- the policy owns any feature scaling, decoder, action parameterization, gates,
+  caps, thresholds, residuals, or order-up-to transforms;
+- heuristics provide strong coordinates and same-protocol gates;
+- policy-search programs document the trusted instance, heuristic gate,
+  editable surface, Rust binding, and known outcomes.
 
-The current working hypothesis is that dual sourcing needs a better action representation:
+Read `policy_search/POLICY_DESIGN_GUIDELINES.md` before designing a new decoder
+or policy surface. Read `policy_search/programs/program_<problem>.md` before
+running a family-specific policy search when that program exists. The deck in
+`presentation/index.html` shows the intended learned-policy versus heuristic
+framing: match optima, beat same-protocol heuristics when supported, and keep
+cross-protocol DRL numbers as context.
 
-- benchmark heuristics act on expedited and regular inventory positions, not directly on raw
-  `(q_regular, q_expedited)` quantities;
-- our current tree must learn both the inventory-position transform and the replenishment logic in one
-  vector output space;
-- the next likely-better family is a state-dependent target-position policy, for example a learned tree
-  that outputs target expedited and regular positions and then maps those deterministically to orders.
+Experiment and training scripts generally live in:
 
-Multi-echelon smoke benchmark on the larger Van Roy / Gijsbrechts setting:
+- `scripts/<problem>/`
+- `policy_search/programs/`
+- `policy_search/studies/`
+- `policy_search/agentic/`
+- `numerical_experiments/catalog.py`
 
-- learned oblique depth-2 soft tree with linear leaves: `3776.45`
-- best constant base-stock benchmark on the same evaluation: `3776.45`
-- current interpretation: the first tree smoke run matched the best constant base-stock benchmark on the setting-2 action grid
+## Setup And Common Commands
 
-## Quick Start
-
-Create an environment and install the package in editable mode:
+Create a Python environment and install the package:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
-pip install -r requirements.txt
-pip install -e .
+python -m pip install -r requirements.txt
+python -m pip install -e .
 python -m pip install maturin
 ```
 
-Build the optional Rust extension into the active virtualenv:
+Build the Rust Python extension into the active environment:
 
 ```bash
 python scripts/build_rust_extension.py
 ```
 
-Run Rust-native verification from the repo root:
+Run broad health checks:
 
 ```bash
 cargo test --manifest-path Cargo.toml -q
+python -m pytest tests -q
 ```
 
-For agent-driven runs on another machine, use the repo-local guide in `AGENTS.md`.
-
-Run a small experiment:
+List curated experiment suites:
 
 ```bash
-python3 scripts/run_experiment.py --training_episodes 20 --horizon 200 --eval_horizon 2000 --eval_seeds 5
+python numerical_experiments/run.py --list
+python numerical_experiments/run.py --list --status ready
 ```
 
-Outputs are written under `outputs/`:
+Dry-run or launch a curated suite:
 
-- `outputs/logs/`
-- `outputs/models/`
-- `outputs/results/`
+```bash
+python numerical_experiments/run.py --suite lost_sales_single_instance_check --dry-run
+python numerical_experiments/run.py --suite fixed_cost_single_instance_check
+```
 
-## Structure
+Run the generic small experiment path:
 
-- `invman/config.py`: CLI configuration
-- `invman/policy.py`: canonical learned-policy descriptor used by Rust rollouts
-- `invman/policy_registry.py`: policy-name parser and registry
-- `invman/policy_build.py`: converts CLI/config args into bounded `Policy` descriptors
-- `invman/rollout_fitness.py`: Rust-backed fitness dispatch for CMA-ES
-- `Cargo.toml`, `src/`: native problem dynamics, reference grids, heuristics, exact solvers, and
-  rollout kernels
-- `invman/cmaes.py`, `invman/es_mp.py`: evolution-strategy optimizers and training loop
-- `scripts/run_experiment.py`: single entry point for training and evaluation
-- `numerical_experiments/`: curated experiment catalog and launcher for Linux-scale benchmark runs
-- `scripts/lost_sales/benchmark_full_suite.py`: vanilla lost-sales reference/grid helper and suite runner
-- `scripts/lost_sales_fixed_order_cost/benchmark_full_suite.py`: fixed-cost reference/grid helper and suite runner
-- `scripts/lost_sales/autoresearch_tree_structures.py`: vanilla lost-sales tree-architecture comparison runner
-- `scripts/lost_sales_fixed_order_cost/autoresearch_fixed_order_cost.py`: fixed-cost autoresearch runner
-- `scripts/lost_sales_fixed_order_cost/autoresearch_fixed_order_tree_structures.py`: fixed-cost tree-architecture screening runner
-- `scripts/dual_sourcing/autoresearch_dual_sourcing.py`: dual-sourcing autoresearch runner
-- `scripts/multi_echelon/autoresearch_multi_echelon.py`: multi-echelon autoresearch runner
-- `autoresearch/`: autoresearch-style loop docs for vanilla and fixed-cost benchmarks
-- `docs/benchmarks/lost_sales_l4_refresh.md`: refreshed vanilla lost-sales benchmark note after
-  the Rust refactor
-- `docs/benchmarks/fixed_cost_l4_refresh.md`: canonical fixed-cost benchmark note
+```bash
+python scripts/run_experiment.py --training_episodes 20 --horizon 200 --eval_horizon 2000 --eval_seeds 5
+```
 
-## Fixed Ordering Cost Variant
+Outputs from ad hoc and benchmark runs are written under `outputs/`, especially
+`outputs/logs/`, `outputs/models/`, `outputs/results/`, and
+`outputs/benchmarks/`.
 
-The environment already supports an optional `fixed_order_cost` parameter. That gives a clean extension path toward the lost-sales problem with a setup cost on positive orders. The literature note for that variant is tracked in `docs/literature/fixed_order_cost_literature.md`.
+## Contributor And Agent Workflow
 
-The fixed-order-cost benchmark layer and heuristic baselines are in place, and the current best
-autoresearch-refined oblique depth-1 soft tree with linear leaves outperforms the benchmark
-heuristic policies on the canonical fixed-cost instance.
+1. Start with the relevant folder `README.md`; do not infer conventions from
+   filenames alone.
+2. Check `instances/README.md` and JSON provenance before using an instance in a
+   benchmark table or experiment claim.
+3. Run targeted verification before reporting benchmark numbers.
+4. Keep literature rows, repo-generated rows, learned-policy rows, and published
+   external learned-policy rows separate.
+5. Do not overwrite unrelated local work. This repo often has generated outputs
+   and concurrent edits in flight.
+6. Use READMEs as routing docs. Put detailed family-specific instructions in the
+   family folder, not in this root README.

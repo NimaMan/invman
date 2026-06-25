@@ -67,7 +67,10 @@ PY
 
 ### Notes
 
-Because `multi_echelon` is an umbrella, this file chooses one primary strict number for future-agent smoke verification. See the subfamily `BENCHMARK.md` files when validating claims specific to divergent, assembly, PADN, or general-backorder settings.
+Because `multi_echelon` is an umbrella, this file chooses one primary strict
+number for future-agent smoke verification. See each subfamily `README.md` and
+`instances/README.md` when validating claims specific to divergent, assembly,
+PADN, serial, or general-backorder settings.
 
 This folder contains multiple multi-echelon problem formulations that should stay separate because
 they do not share the same dynamics or benchmark contract.
