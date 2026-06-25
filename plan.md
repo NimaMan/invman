@@ -1,14 +1,16 @@
 # Plan
 
-Last checked: 2026-06-04.
+Last checked: 2026-06-25.
 
-Branch: `network-inventory-serial-clark-scarf-verification`
+Branch state: active development on `dev`; publish path is fast-forward `main`
+from `dev`.
 
-HEAD: `7fceebf` (serial + ameliorating autoresearch bindings & results committed)
+HEAD: see `git log --oneline`; this file is a planning snapshot, not the
+source of truth for commit identity.
 
-Working tree: still dirty with pre-existing post-migration churn (paper edits, CPU-limit
-scripts, docs). The serial + ameliorating Track-2 work is now committed; the remaining
-uncommitted paths are Tier-2 infrastructure, not Tier-1 problem results.
+Working tree note: the 2026-06-25 cleanup pass commits the pending paper,
+seed-robustness, presentation, and case-study artifacts that had accumulated
+locally; ignored bulk training outputs remain local unless explicitly promoted.
 
 ## Objective
 
@@ -25,6 +27,25 @@ The near-term objective is to stabilize the post Python-cleanup migration so the
 
 This is the headline workstream. For **every literature-verified problem** run one pipeline,
 in this order, and track each problem against it:
+
+### Tier-1 benchmark spine — toward an ImageNet for inventory management
+
+The field's second worry is reproducibility and comparability. A recurring complaint in this
+literature is that DRL inventory "wins" are hard to trust because cost conventions, demand
+processes, baselines, and evaluation horizons differ from paper to paper, and there is no
+ImageNet-style standard benchmark for inventory management (Boute et al., 2022; Alvo et al.,
+2023). Alvo et al.'s HDPO work makes the constructive point that inventory is unusually
+well-suited to reliable evaluation: in several problem classes a learned policy can be compared
+to the optimum itself, not merely to another learner.
+
+Tier 1 should therefore produce a reusable baseline ledger, not only a paper table. For every
+problem family, record the published instance specification, cost convention, demand process,
+lead-time/network structure, strongest related heuristic, exact optimum or bound where available,
+our trained-policy performance, standard error / paired-CRN protocol, and the honest verdict type
+(`true_optimum_match_only`, `heuristic_to_beat`, or `bound_gap`). This is the path toward the
+"ImageNet of invman": a benchmark suite of problem instances with their related heuristics and
+trained-policy results, where a future learner can be scored against a clear, versioned,
+like-for-like inventory-control baseline instead of a shifting leaderboard.
 
 1. **Train a policy that beats the literature heuristic.** A compact CMA-ES policy must beat
    the problem's literature heuristic on the literature instance, evaluated **like-for-like**
@@ -56,13 +77,13 @@ learned-vs-comparator comparisons, **not** literature verification. Every proble
 | 1 | lost_sales_vanilla | heuristic_to_beat | **beats** Myopic-2 (4.749 vs 4.817, −1.4%); 22/24 instances | ✓ | ✓ result | **CLOSED** |
 | 2 | lost_sales_fixed_order_cost | heuristic_to_beat | **beats** mod-(s,S,q) (8.733 vs 9.174, −4.8%); 47/48 | ✓ | ✓ result | **CLOSED** |
 | 3 | dual_sourcing | true_optimum_match_only | **matches** CDI on 6/6, beats on 2; beats A3C everywhere | ✓ | ✓ result | **CLOSED** |
-| 4 | perishable_inventory | heuristic_to_beat | **beats** base-stock gate (FIFO +1.16%, LIFO +0.82%); ≈VI-opt | ✓ | ✗ | **WRITE-UP** |
-| 5 | general_backorder_fixed_cost | heuristic_to_beat | **beats** Geevers benchmark −22%…−27%; below PPO 8,714 | ✓ | appendix only | **WRITE-UP** |
-| 6 | multi_echelon_serial | true_optimum_match_only | **matches** Clark-Scarf 47.65 (47.6554, 99.99%) | ✓ | appendix only | **WRITE-UP** |
+| 4 | perishable_inventory | heuristic_to_beat | **beats** base-stock gate (FIFO +1.16%, LIFO +0.82%); ≈VI-opt | ✓ | ✓ result | **CLOSED** |
+| 5 | general_backorder_fixed_cost | heuristic_to_beat | **beats** Geevers benchmark −22%…−27%; below PPO 8,714 | ✓ | ✓ result | **CLOSED** |
+| 6 | multi_echelon_serial | true_optimum_match_only | **matches** Clark-Scarf 47.65 (47.6554, 99.99%) | ✓ | ✓ result | **CLOSED** |
 | 7 | joint_replenishment | heuristic_to_beat | **beats** MOQ −13.8% (setting 5); +3.14% over VI-opt | ✓ | appendix only | **WRITE-UP** (regen artifacts) |
-| 8 | one_warehouse_multi_retailer | heuristic_to_beat | **ties** tuned base-stock (0.0%) on symmetric K=3 | ✓ | ✗ | **TRAIN** (asymmetric) |
-| 9 | ameliorating_inventory | bound_gap | **beats** order-up-to gate +79.8%; 95% below LP bound | ✓ | ✗ | **DECIDE** (action geometry) |
-| 10 | production_assembly_distribution_network | heuristic_to_beat (research) | **beats** own pairwise base-stock −4.96% | ✓ | appendix only | **DECIDE** (`literature_verified=false`) |
+| 8 | one_warehouse_multi_retailer | heuristic_to_beat | **beats** tuned same-protocol gate on Kaynov instance 12 by +4.6–5.0% seed-robust; PPO scalar straddled / not claimed | ✓ | ✓ result | **CLOSED** (PPO-gap open) |
+| 9 | ameliorating_inventory | bound_gap | **beats** order-up-to gate +79.8%; 95% below LP bound | ✓ | ✓ result | **CLOSED** (purchase-only scope; full-action follow-up) |
+| 10 | production_assembly_distribution_network | heuristic_to_beat (research) | serial **beats** own pairwise base-stock −4.96…−8.77%; pure assembly −2.98%; mixed row seed-noisy **gate-match** | ✓ | ✓ result | **CLOSED** as research (`literature_verified=false`) |
 
 ### Stage CLOSED — already written into the paper as a result (no Tier-1 action)
 
@@ -92,19 +113,18 @@ learned-vs-comparator comparisons, **not** literature verification. Every proble
   final_report.json`) is git-untracked; archive it so the paper table regenerates from a tracked
   source. Reconcile the 3-seed broad-grid run (+0.18–0.55%) as explicitly *not* the reported run.
 
-### Stage WRITE-UP — result clears the bar; only the paper section is missing
+### Stage CLOSED IN PAPER — result clears the bar and is written up
 
-#### 4. perishable_inventory  ← cleanest next paper add
+#### 4. perishable_inventory
 - **Comparator:** best base-stock gate, re-scored on the same MC estimator: −1475.08 (FIFO) /
   −1565.98 (LIFO). De Moor 2022 / Farrington 2025 VI optimum −1457 / −1553 is context.
 - **Result (committed 222d46f):** depth-2 oblique linear soft tree, validation-block selection
   — FIFO −1457.90 (**+1.16%** over gate, 9.5× SEM, ≈VI-opt), LIFO −1553.16 (**+0.82%**, 6.6× SEM).
 - **Instance:** `de_moor2022_m2_exp2_l1_cp7_fifo` (+ LIFO sibling) — the only two with an in-crate
   exact-MDP verifier.
-- **Next:** write a perishable results subsection (cite De Moor 2022 + Farrington 2025). Report
-  the **base-stock-gate beat** as the like-for-like win; frame VI-optimum proximity as context
-  only (estimator-mismatch caveat). Selection MUST stay on the disjoint validation block (eval-block
-  selection flips it to a −0.49% loss).
+- **Paper:** Section `sec:perishable` reports the base-stock-gate beat as the like-for-like win and
+  frames VI-optimum proximity as context only (estimator-mismatch caveat). Selection MUST stay on the
+  disjoint validation block (eval-block selection flips it to a −0.49% loss).
 
 #### 5. general_backorder_fixed_cost
 - **Comparator:** Geevers constant node-base-stock benchmark = 10,467 (repo reproduces 10,355,
@@ -115,8 +135,8 @@ learned-vs-comparator comparisons, **not** literature verification. Every proble
 - **Instance:** `geevers2023_general_set1` (the ONLY verified row; sets 2/3 are
   `literature_verified=false`, gated-journal transition spec — exclude). Note `PRIMARY_REFERENCE_INSTANCE`
   misleadingly points at set 3; train/verify on set 1.
-- **Next:** promote from the `tab:additional-env-validation` appendix row to a reported result.
-  Flag honestly: env name says "fixed_cost" but charges holding+backorder only; PPO comparison is
+- **Paper:** Section `sec:genbackorder` promotes this from validation to a reported result and flags
+  honestly: env name says "fixed_cost" but charges holding+backorder only; PPO comparison is
   cross-protocol (suggestive, not head-to-head).
 
 #### 6. multi_echelon_serial  (match-only)
@@ -125,10 +145,11 @@ learned-vs-comparator comparisons, **not** literature verification. Every proble
   +0.011%)** — ties the optimum within the env's +0.06% reproduction band. Beating is impossible.
 - **Instance:** Snyder & Shen Example 6.1 (downstream stage L=1, the only faithful regime; env
   under-counts when downstream L≥2).
-- **Next:** if promoting from the appendix fidelity row, frame strictly as *"reproduces the proven
-  Clark-Scarf optimum to within +0.06%"*, never "beats". Also: the dir `README.md` is **stale** —
-  it still says the Python binding is missing and the comparison is BLOCKED; update it (binding now
-  exists and ran).
+- **Paper:** Section `sec:serial` frames this strictly as *"reproduces the proven Clark-Scarf optimum
+  to within +0.06%"*, never "beats". Also: the dir `README.md` is **stale** — it still says the
+  Python binding is missing and the comparison is BLOCKED; update it (binding now exists and ran).
+
+### Stage WRITE-UP — result clears the bar; only the paper section is missing
 
 #### 7. joint_replenishment
 - **Comparator:** MOQ heuristic = 7,593.66 (setting 5); VI optimum 6,347.11 is the floor
@@ -142,24 +163,24 @@ learned-vs-comparator comparisons, **not** literature verification. Every proble
   not in `outputs/` — **regenerate in the main tree** before write-up. Then add a result row
   (honest framing: "closes 84% of MOQ's gap to the paper's own VI optimum").
 
-### Stage TRAIN — needs new training before it can enter the paper
+### Stage CLOSED / FOLLOW-UP — result is paper-ready; remaining work is improvement, not eligibility
 
 #### 8. one_warehouse_multi_retailer
 - **Comparator:** Kaynov 2024 tuned echelon base-stock + allocation gate (Table A.3). Published
   PPO beats base-stock by 12–22% on the partial-backorder instances.
-- **Result:** symmetric K=3 instances (1/6/7/11) all **tie** at 0.0% — CMA from warm-start finds
-  no profitable deviation because symmetric Poisson(3) base-stock is provably near-optimal. No win
-  is possible there.
-- **Plan:** pivot to the **asymmetric / high-CV partial-backorder instances** `kaynov2024_instance_12/13/14`
-  (Kaynov's own PPO beats base-stock 20–21% there → real exploitable structure). Switch the action
-  design from `symmetric_echelon_targets` to **`direct_orders` / `vector_quantity`** (per-retailer
-  orders) — the symmetric geometry cannot express asymmetric policies.
-- **Next:** run `autoresearch_one_warehouse_multi_retailer.py --budget full` on instances 12/13/14,
-  `{constant,linear}` leaves, `--warm_start_at_best_base_stock`, allocation `{proportional,min_shortage}`,
-  CPU-capped. Require a held-out flip beyond SEM to claim a win; otherwise report the honest
-  matched-and-dominated framing (learned ties a tuned heuristic that already ≤ published PPO).
+- **Closed paper result:** the asymmetric K=3 partial-backorder row (`kaynov2024_instance_12`) now has
+  a seed-robust same-protocol gate beat. Depth-2, fresh gate warm-start, σ=0.05, batch24,
+  pop32×800 gives **1116.01 ± 7.02** over 4 CMA seeds vs gate 1169.59 (**+4.58%**, every seed
+  positive). Depth-3 gives **1111.23 ± 7.06** (**+4.99%**) but the depth effect is inside seed noise.
+- **PPO framing:** do **not** claim a PPO beat. The K=3 seed block straddles the published PPO scalar
+  (and Kaynov's row is cross-protocol anyway); the high-CV K=10 best row is still single-seed; the
+  hardest heterogeneous K=10 ties the gate and remains below PPO.
+- **Current paper wording:** seed-robust gate beat on instance 12, single-seed frontier on instance
+  13 (+8.27% vs gate, still below PPO), gate-match on instance 14; no robust PPO claim.
+- **Follow-up:** if desired, run multi-seed blocks for instance 13 and a residual/structured action
+  search for instance 14. This is improvement work, not a blocker for the current honest paper row.
 
-### Stage DECIDE — result exists but a framing/scope decision blocks paper inclusion
+### Stage CLOSED IN PAPER — scoped result is written; remaining work is full-action improvement
 
 #### 9. ameliorating_inventory  (bound_gap)
 - **Comparator:** perfect-information LP **upper bound** 1991.93 (spirits_0001) / 2444.80
@@ -167,25 +188,30 @@ learned-vs-comparator comparisons, **not** literature verification. Every proble
 - **Result (committed 7fceebf):** price-reactive single-purchase soft tree = 100.54, **+79.8%**
   over the order-up-to gate, but **94.95% below the LP bound** — NOT comparable to the paper's
   ~3.5% DRL gap (the bound assumes full 3-part LP issuance; our policy controls only scalar purchase).
-- **Decision required:** either (a) **widen the action geometry** to the full 3-part action (add
-  production-target heads) to chase the ~3.5% gap, or (b) **scope the claim** to purchase-only and
-  publish the honest "beats order-up-to, gap-to-bound is loose" story.
-- **Next:** run `--budget full` on spirits_0001 + port_wine for committed numbers; add a Pahr &
-  Grunow 2025 entry to `references.bib` and a paper section **only after** the geometry/scope
-  decision (the current single-purchase gap is not paper-grade).
+- **Scope decision resolved:** the paper uses path (b), scoped to purchase-only, and publishes the
+  honest "beats order-up-to, gap-to-bound is loose" story. The full three-part action geometry
+  remains a follow-up if the goal is to chase the published ~3.5% DRL gap.
+- **Paper:** Section `sec:amelior` carries the result and the bound-gap caveat.
+
+### Stage CLOSED AS RESEARCH — faithful env, not a literature-number benchmark
 
 #### 10. production_assembly_distribution_network
 - **Comparator:** the case3 gate is the env's **own** best pairwise base-stock (60.24) — a research
   baseline, NOT a published optimum. The env is **`literature_verified=false`** (only the single-node
   newsvendor 127.11 row is verified; the serial 47.65 is structurally unreachable here — its home is
   problem #6).
-- **Result (committed f4f3dc3):** learned soft tree = 57.25, **−4.96%** vs the own-heuristic gate
-  (robust across seeds/depths).
-- **Decision required:** either (a) present honestly as a *research result on a faithful-but-not-
-  literature-anchored env* (learned vs env's own best base-stock), or (b) first make the env
-  literature-verified by recovering Pirhooshyaran's exact OUL→local-position protocol so it
-  reproduces a published cost, then re-baseline. Path (a) is shippable now; path (b) is open work.
-- **Next:** make the framing decision; do **not** dress this as "beats a literature benchmark".
+- **Result:** serial case3 learned soft tree beats the own-heuristic gate across audited configs:
+  57.25 (**−4.96%**), 54.96 (**−8.77%**), 57.85 (**−3.97%**) vs gate 60.24. Pure assembly beats its
+  own gate by **−2.98%**.
+- **Correction committed 5e2f58d:** the mixed distribution-and-assembly row is **not** a robust
+  beat. The earlier −0.99% was a best-of-three artifact; the paper's actual flow=10 config over
+  8 seeds gives **306.10 ± 22.89**, **+2.82%** vs gate 297.69, with 4/8 seeds below. Report as
+  seed-noisy parity / gate-match.
+- **Framing decision resolved:** present honestly as a *research result on a faithful-but-not-
+  literature-anchored env* (learned vs env's own best base-stock), and do **not** dress this as
+  "beats a literature benchmark".
+- **Follow-up:** a residual gate-backbone action head (`action = base_stock_gate + Δ_tree`) is the
+  principled fix for the mixed row's anchoring problem.
 
 ### Not yet eligible for Tier 1 (need a literature anchor / faithful env first)
 
@@ -208,6 +234,24 @@ depend on (build path, import migration, CPU caps, source-of-truth freeze). Reso
 highest-priority blocker (post-migration import fallout) before any Tier-1 *re-run*; the existing
 Tier-1 *committed results* do not depend on it.
 
+## Tier 3 — Defensibility stretch (in-protocol DRL baselines)
+
+Beyond paper-eligibility (Tier 1) and infrastructure (Tier 2): comparisons that strengthen the
+*defensibility* of a published claim but are not required for the honest current paper.
+
+- **In-protocol PPO baseline (one_warehouse_multi_retailer first, then others where an RL number
+  exists).** The published Kaynov PPO scalar is cross-protocol (a single number under an unverified
+  `N(mu,sigma)` demand convention), so the paper reports it only as context and does **not** claim a
+  PPO beat. To license a *defensible* like-for-like comparison, train PPO under our exact
+  env/convention/holdout CRN and score both policies identically. A first faithful, BC-warm-started
+  PPO is now in the repo (`scripts/one_warehouse_multi_retailer/ppo_baseline/`): on `instance_14`
+  our soft-tree (43801 ± 247) **beats** the in-protocol PPO (50475 ± 391) by ~13% (robust, no seed
+  overlap), and faithful PPO converges to ≈ the heuristic — i.e. the published 42835 is **not**
+  reproducible under our protocol. **Tier-3 to-do before this becomes a paper claim:** harden the
+  PPO baseline (a tuning sweep / a second reference implementation) so "beats a faithful in-protocol
+  PPO" survives review, then add it to the OWMR section *alongside* (not replacing) the
+  published-scalar-as-context wording.
+
 ## Current State
 
 - The project has moved beyond the original lost-sales-only scope into a cross-problem manuscript and benchmark repo covering lost sales, fixed-cost lost sales, dual sourcing, multi-echelon variants, and additional exploratory families.
@@ -217,8 +261,8 @@ Tier-1 *committed results* do not depend on it.
 - The installed `invman_rust` module in the active Python environment already exposes the newly added serial multi-echelon and ameliorating-inventory average-profit bindings.
 - `python numerical_experiments/run.py --list` works and lists the current ready/exploratory suite catalog, but the catalog should not be treated as proof that every listed script is runnable under the current API.
 - The `scripts/lost_sales/`, `scripts/lost_sales_fixed_order_cost/`, and stable dual-sourcing lanes no longer contain deleted top-level `invman.problems.*` or `invman.policies.*` imports.
-- The lightweight fixed-cost/lost-sales helper scripts have been migrated to the flattened Python API and Rust backend defaults: `autoresearch/fixed_cost_ordinal_stability/replay_exact_ordinal.py`, `scripts/raw_state_single_policy_probe.py`, and `scripts/evaluate_saved_policy.py`.
-- `autoresearch/fixed_cost_ordinal_stability/ablate_state_drift.py` is now explicitly archived because it depended on deleted Python env/model APIs and an old torch checkpoint format.
+- The lightweight fixed-cost/lost-sales helper scripts have been migrated to the flattened Python API and Rust backend defaults: `policy_search/studies/fixed_cost_ordinal_stability/replay_exact_ordinal.py`, `scripts/raw_state_single_policy_probe.py`, and `scripts/evaluate_saved_policy.py`.
+- `policy_search/studies/fixed_cost_ordinal_stability/ablate_state_drift.py` is now explicitly archived because it depended on deleted Python env/model APIs and an old torch checkpoint format.
 - The perishable, joint-pricing, random-yield, and procurement-removal common helpers now build current `invman.policy.Policy` soft-tree descriptors instead of importing the removed `invman.policies.soft_tree.SoftTreePolicy`.
 - README/agent/autoresearch active-surface docs now point at root Rust sources, flattened `invman/` support modules, and current benchmark helper scripts instead of deleted `invman.problems.*` / `invman.policies.*` packages.
 - Fixed-cost heuristic benchmark summaries now use `invman_rust.lost_sales_fixed_heuristics_all_detailed`, which exposes winning `(s,S)`, `(s,nQ)`, and modified `(s,S,q)` params plus top candidates while preserving the legacy cost-only binding.
@@ -292,9 +336,9 @@ Commands that currently pass:
   - full Python test suite: `python -m pytest tests -q` (`147 passed`; latest run 2026-06-04, 49.70s)
   - `python -m py_compile tests/test_lost_sales_reference_grid.py tests/test_fixed_order_cost_reference_grid.py tests/test_soft_tree_policy.py tests/test_multi_echelon_problem.py tests/test_reference_instance.py tests/test_policy_parameter_counts.py tests/test_lost_sales_demand.py tests/test_fixed_order_cost_heuristics.py tests/test_fixed_order_cost_search_backends.py tests/test_lost_sales_env.py tests/test_invman_rust_bridge.py tests/test_policy_factory.py tests/test_dual_sourcing_problem.py`
 - migrated helper-script checks:
-  - `python -m py_compile autoresearch/fixed_cost_ordinal_stability/replay_exact_ordinal.py autoresearch/fixed_cost_ordinal_stability/ablate_state_drift.py scripts/raw_state_single_policy_probe.py scripts/evaluate_saved_policy.py scripts/perishable_inventory/common.py scripts/joint_pricing_inventory/common.py`
+  - `python -m py_compile policy_search/studies/fixed_cost_ordinal_stability/replay_exact_ordinal.py policy_search/studies/fixed_cost_ordinal_stability/ablate_state_drift.py scripts/raw_state_single_policy_probe.py scripts/evaluate_saved_policy.py scripts/perishable_inventory/common.py scripts/joint_pricing_inventory/common.py`
   - `python -m py_compile scripts/random_yield_inventory/common.py scripts/procurement_removal_inventory/common.py scripts/random_yield_inventory/train_soft_tree_reference.py scripts/procurement_removal_inventory/train_soft_tree_reference.py`
-  - `python autoresearch/fixed_cost_ordinal_stability/replay_exact_ordinal.py --help`
+  - `python policy_search/studies/fixed_cost_ordinal_stability/replay_exact_ordinal.py --help`
   - `python scripts/raw_state_single_policy_probe.py --help`
   - `python scripts/evaluate_saved_policy.py --help`
   - `python scripts/random_yield_inventory/train_soft_tree_reference.py --help`
@@ -338,8 +382,8 @@ Commands that currently pass:
   - the CLI smoke emits learned-policy trace rows, searched modified `(s,S,q)` params/trace rows, and a non-empty coarse state-grid action histogram
   - the CLI smoke with `--output_json <tmp_json>` writes the same diagnostic trace payload that it prints to stdout
 - dual-sourcing autoresearch factor-screen import/help check:
-  - `python -m py_compile autoresearch/dual_sourcing_policy_search/run_factor_screen.py`
-  - `python autoresearch/dual_sourcing_policy_search/run_factor_screen.py --help`
+  - `python -m py_compile policy_search/studies/dual_sourcing_policy_search/run_factor_screen.py`
+  - `python policy_search/studies/dual_sourcing_policy_search/run_factor_screen.py --help`
 - broad live-import scan:
   - `rg '^(from|import) invman\\.(problems|policies)' -g '*.py'`
   - returns no matches after the helper migration/deprecation slice
@@ -394,7 +438,7 @@ Resolved items and remaining caveats:
 
 7. Reporting discipline is now a hard constraint. `literature_verified` should only be set when repo exact/heuristic code reproduces a published number. Published DRL/A3C/PPO rows are comparison rows, not repo-verified algorithms.
 
-8. Dual sourcing is still mainly policy-geometry limited. Current evidence favors factorized capped-delta / capped-dual-index coordinates, with row-conditioned geometry: axis-linear for `l_r = 2`, tighter axis-constant small-cap trees for `l_r in {3,4}`. `autoresearch/dual_sourcing_policy_search/run_factor_screen.py` has been migrated to current policy-registry and Rust-backed reference helpers; remaining work is final policy-screen evidence, not old-import repair.
+8. Dual sourcing is still mainly policy-geometry limited. Current evidence favors factorized capped-delta / capped-dual-index coordinates, with row-conditioned geometry: axis-linear for `l_r = 2`, tighter axis-constant small-cap trees for `l_r in {3,4}`. `policy_search/studies/dual_sourcing_policy_search/run_factor_screen.py` has been migrated to current policy-registry and Rust-backed reference helpers; remaining work is final policy-screen evidence, not old-import repair.
 
 9. Serial Clark-Scarf is match-only. The comparator is a true optimum, so the learned-policy result can tie the optimum within simulation error but should never be framed as beating it.
 
@@ -482,7 +526,7 @@ Stage 2: lost-sales canary
   - done: migrate the lost-sales Rust bridge tests to the current `Policy` descriptor plus `invman.rollout_fitness`
   - done: migrate the policy-factory tests to current `Policy` descriptor assertions and explicit unsupported dense dual-sourcing behavior
   - done: migrate dual-sourcing reference/grid/search/rollout tests to current Rust bindings and `scripts.dual_sourcing.dual_sourcing_benchmark_lib`
-  - done: migrate `autoresearch/dual_sourcing_policy_search/run_factor_screen.py` to the current policy registry and Rust-backed dual-sourcing reference/heuristic helpers
+  - done: migrate `policy_search/studies/dual_sourcing_policy_search/run_factor_screen.py` to the current policy registry and Rust-backed dual-sourcing reference/heuristic helpers
   - done: migrate fixed-cost/lost-sales helper probes and saved-policy evaluation to Rust-routed flattened APIs
   - done: migrate perishable and joint-pricing common soft-tree helpers from removed `SoftTreePolicy` imports to current `Policy`
   - done: migrate random-yield and procurement-removal common soft-tree helpers from removed `SoftTreePolicy` imports to current `Policy`

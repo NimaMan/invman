@@ -37,9 +37,13 @@ from __future__ import annotations
 import json
 import os
 import statistics
+import sys
 from pathlib import Path
 
 import invman_rust
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from invman import optimizer_seed_robustness_policy as srp  # noqa: E402
 
 REPO = Path(__file__).resolve().parents[1]
 OUT_DIR = REPO / "paper" / "generated"
@@ -408,7 +412,108 @@ def fixed_cost():
     return {"custom_latex": latex, "n_done": n_done, "n_total": len(grid)}
 
 
+def _dual_sourcing_seed_robust(report: dict):
+    """Render the dual-sourcing table from the seed-robust artifact.
+
+    Learned row = cross-optimizer-seed mean +/- sample std (the PRIMARY value per
+    the depth standard); gap row = mean +/- std of the per-seed paired gap vs CDI
+    (negative = learned cheaper), labelled by the shared verdict rule. CDI is
+    optimizer-seed-independent (gate_seed_std = 0 by construction), so its row is
+    a plain CRN mean.
+    """
+    refs = invman_rust.dual_sourcing_list_reference_instances()
+    refmap = {r["name"]: r for r in refs}
+    verdict_word = {
+        "PARITY": "match",
+        "ROBUST_BEAT_VS_GATE": "beat",
+        "BEAT_WITHIN_STD": "beat (within std)",
+        "ROBUST_LOSS_VS_GATE": "loss",
+    }
+
+    lead_times = (2, 3, 4)
+    expedited_costs = (105, 110)
+    cell_map = {}
+    for lead in lead_times:
+        for cost in expedited_costs:
+            inst = report["instances"][f"dual_l{lead}_ce{cost}"]
+            g = refmap[f"dual_l{lead}_ce{cost}"].get("published_optimality_gap_pct", {}).get("a3c")
+            gap_mean = -float(inst["savings_pct_seed_mean"])  # negative = learned cheaper
+            gap_std = float(inst["savings_pct_seed_std"])
+            word = verdict_word.get(inst["verdict_vs_same_protocol_gate"], "?")
+            cell_map[(lead, cost)] = {
+                "cdi": _fmt(float(inst["gate_seed_mean"])),
+                "learned": rf"${inst['learned_seed_mean']:.3f}\pm{inst['learned_seed_std']:.3f}$",
+                "gap": rf"${gap_mean:+.3f}\pm{gap_std:.3f}$ ({word})",
+                "a3c": f"{g:.2f}\\%" if g is not None else "",
+            }
+
+    crn = report.get("crn_protocol", {})
+    n_seeds = int(report.get("n_optimizer_seeds", 0))
+
+    def cells(key: str) -> list[str]:
+        return [cell_map[(lead, cost)][key] for lead in lead_times for cost in expedited_costs]
+
+    left_cols = 1
+    colspec = "l" + "c" * (len(lead_times) * len(expedited_costs))
+    lead_header = [""] + [
+        rf"\multicolumn{{{len(expedited_costs)}}}{{c}}{{Regular lead time $l_r={lead}$}}"
+        for lead in lead_times
+    ]
+    sub_header = ["Policy / metric"] + [rf"$c_e={cost}$" for _lead in lead_times for cost in expedited_costs]
+    cmidrules = [
+        rf"\cmidrule(lr){{{left_cols + 1 + i * len(expedited_costs)}-{left_cols + (i + 1) * len(expedited_costs)}}}"
+        for i, _lead in enumerate(lead_times)
+    ]
+    rows = [
+        ("CDI proxy", cells("cdi")),
+        (rf"Learned soft tree (mean$\pm$std, $N={n_seeds}$ seeds)", cells("learned")),
+        (r"Learned vs.\ CDI (\%)", cells("gap")),
+        ("Published A3C gap", cells("a3c")),
+    ]
+    lines = [
+        r"\begin{table}[!htbp]",
+        r"\centering",
+        r"\small",
+        rf"\caption{{Dual-sourcing: learned soft-tree policy vs.\ the capped dual-index "
+        rf"(CDI) optimal proxy. Learned cells are the mean $\pm$ sample standard deviation "
+        rf"across $N={n_seeds}$ independent CMA-ES optimizer seeds; every policy is scored "
+        rf"under paired common-random-number evaluation (${crn.get('n_eval_seeds', '?')}$ "
+        rf"demand-path seeds, horizon ${crn.get('horizon', '?')}$). $\Delta\%$ is the "
+        rf"per-seed paired gap to CDI (negative is better); the A3C row reports the "
+        rf"published optimality gap from \citet{{gijsbrechts2022drl}}.}}",
+        r"\label{tab:ds-results}",
+        r"\resizebox{\textwidth}{!}{%",
+        rf"\begin{{tabular}}{{{colspec}}}",
+        r"\toprule",
+        " & ".join(lead_header) + r" \\",
+        "".join(cmidrules),
+        " & ".join(sub_header) + r" \\",
+        r"\midrule",
+    ]
+    for row_label, row_cells in rows:
+        lines.append(" & ".join([row_label] + row_cells) + r" \\")
+    lines += [
+        r"\bottomrule",
+        r"\end{tabular}}",
+        r"\par\medskip\footnotesize CDI is itself a $\le0.11\%$ proxy for the bounded-DP "
+        r"optimum, so gaps inside that band are reported as matches, not beats or losses; "
+        r"the verdict labels come from the shared cross-seed rule (mean vs.\ std and the "
+        r"fraction of seeds below CDI).",
+        r"\end{table}",
+        r"\FloatBarrier",
+    ]
+    return {"custom_latex": "\n".join(lines), "n_done": len(cell_map),
+            "n_total": len(lead_times) * len(expedited_costs)}
+
+
 def dual_sourcing():
+    # Prefer the seed-robust artifact (>=5 CMA-ES optimizer seeds; mean +/- sample std
+    # as the PRIMARY learned value, per the Section-3.3 depth standard). Fall back
+    # to the legacy best-of-candidates final_report.json -- in which case the
+    # fail-loud gate at the end of main() rejects the run as not publishable.
+    seed_report_path = REPO / "outputs" / "dual_sourcing_policy_search" / "seed_robust_report.json"
+    if seed_report_path.exists():
+        return _dual_sourcing_seed_robust(json.loads(seed_report_path.read_text()))
     report_path = REPO / "outputs" / "dual_sourcing_policy_search" / "final_report.json"
     if not report_path.exists():
         raise FileNotFoundError(
@@ -503,9 +608,46 @@ def dual_sourcing():
     return {"custom_latex": "\n".join(lines), "n_done": len(cell_map), "n_total": len(refs)}
 
 
+def _seed_robustness_violations(table_status: dict[str, tuple[int, int]]) -> list[str]:
+    """Check every emitted table against the declared optimizer-seed policy.
+
+    Breadth-mode problems (the two lost-sales surfaces) must have their FULL
+    instance grid present -- the breadth robustness argument needs the whole
+    surface. Seeds-mode problems (dual sourcing here) must be backed by a
+    seed-robust artifact carrying >= the required number of independent CMA-ES
+    optimizer seeds; the best-of-candidates final_report.json alone is NOT
+    sufficient evidence. Returns human-readable violation strings (empty = pass).
+    """
+    violations: list[str] = []
+    for problem_id, (n_done, _n_total) in table_status.items():
+        if srp.is_breadth(problem_id):
+            try:
+                srp.assert_breadth_grid(problem_id, n_done, context="generate_results_tables")
+            except srp.SeedRobustnessError as exc:
+                violations.append(str(exc))
+    # Dual sourcing (seeds-mode): require a per-seed optimizer-seed artifact.
+    ds_seed_report = REPO / "outputs" / "dual_sourcing_policy_search" / "seed_robust_report.json"
+    if not ds_seed_report.exists():
+        violations.append(
+            f"dual_sourcing [generate_results_tables]: no seed-robust artifact at "
+            f"{ds_seed_report}; the table is backed by best-of-candidates "
+            f"final_report.json only. Run the dual-sourcing seed-robust runner "
+            f"(>= {srp.required_seed_count('dual_sourcing')} optimizer seeds) first."
+        )
+    else:
+        report = json.loads(ds_seed_report.read_text())
+        n = int(report.get("n_optimizer_seeds", len(report.get("per_seed", []))))
+        try:
+            srp.assert_seed_policy("dual_sourcing", n, context="generate_results_tables")
+        except srp.SeedRobustnessError as exc:
+            violations.append(str(exc))
+    return violations
+
+
 def main():
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     combined = []
+    table_status: dict[str, tuple[int, int]] = {}
     for name, cfg in (("vanilla_lost_sales", vanilla()),
                       ("fixed_cost_lost_sales", fixed_cost()),
                       ("dual_sourcing", dual_sourcing())):
@@ -513,6 +655,10 @@ def main():
             latex = cfg["custom_latex"]
             (OUT_DIR / f"results_{name}.tex").write_text(latex + "\n")
             combined.append(latex)
+            problem_id = {"vanilla_lost_sales": "lost_sales",
+                          "fixed_cost_lost_sales": "lost_sales_fixed_order_cost",
+                          "dual_sourcing": "dual_sourcing"}[name]
+            table_status[problem_id] = (cfg["n_done"], cfg["n_total"])
             print(f"  {name}: {cfg['n_done']}/{cfg['n_total']} instances -> generated/results_{name}.tex")
             continue
         extra = cfg.pop("extra_cols", None)
@@ -530,6 +676,18 @@ def main():
         print(f"  {name}: {n_done}/{n_total} instances -> generated/results_{name}.tex")
     (OUT_DIR / "all_results_tables.tex").write_text("\n\n".join(combined) + "\n")
     print(f"  combined -> {OUT_DIR / 'all_results_tables.tex'}")
+
+    # Fail-loud seed-robustness gate: tables are still written above (so partial
+    # progress is inspectable), but the run exits nonzero with an explicit list of
+    # violations whenever a table is not backed by its declared robustness
+    # mechanism (breadth grid completeness / >=5 optimizer seeds).
+    violations = _seed_robustness_violations(table_status)
+    if violations:
+        print("\nSEED-ROBUSTNESS VIOLATIONS (tables written, but NOT publishable):")
+        for v in violations:
+            print(f"  - {v}")
+        raise SystemExit(1)
+    print("  seed-robustness gate: PASS")
 
 
 if __name__ == "__main__":

@@ -55,6 +55,8 @@ configure_process_cpu_limits_from_argv(sys.argv[1:], default=2)
 
 import invman_rust  # noqa: F401,E402
 
+from invman import optimizer_seed_robustness_policy as _srp  # noqa: E402
+
 # Load the existing single-seed runner as a module and reuse its functions verbatim.
 _RUNNER = PACKAGE_ROOT / "scripts" / "multi_echelon" / "train_multi_echelon_policy.py"
 _spec = importlib.util.spec_from_file_location("train_multi_echelon_policy", _RUNNER)
@@ -138,22 +140,14 @@ def main():
               f"best learned {best['mean_cost']:.2f} ({best['best_design'] if False else best['design']} d{best['depth']})  "
               f"savings {savings:+.2f}%  ({per_seed[-1]['seconds']}s)")
 
-    learned = [s["best_learned_cost"] for s in per_seed]
-    gates = [s["gate_cost"] for s in per_seed]
-    sav = [s["savings_pct_vs_gate"] for s in per_seed]
-    n = len(per_seed)
-    sav_mean = statistics.mean(sav)
-    sav_std = statistics.stdev(sav) if n > 1 else 0.0
-    frac_pos = sum(1 for v in sav if v > 0)
-
-    if sav_mean > sav_std and frac_pos == n and sav_std >= 0:
-        verdict = "ROBUST_BEAT_VS_GATE"
-    elif abs(sav_mean) <= max(sav_std, 1e-9):
-        verdict = "PARITY"
-    elif sav_mean < 0:
-        verdict = "ROBUST_LOSS_VS_GATE"
-    else:
-        verdict = "BEAT_WITHIN_STD"
+    # Shared optimizer-seed aggregator (single source of truth for sample-std +
+    # verdict + >=5-seed enforcement). Replaces this script's former bespoke copy.
+    summary = _srp.build_seed_robust_summary(per_seed, problem_id="multi_echelon")
+    n = summary["n_optimizer_seeds"]
+    sav_mean = summary["savings_pct_seed_mean"]
+    sav_std = summary["savings_pct_seed_std"]
+    frac_pos = sum(1 for s in per_seed if s["savings_pct_vs_gate"] > 0)
+    verdict = summary["verdict_vs_same_protocol_gate"]
 
     out = {
         "reference": reference_name,
@@ -163,15 +157,10 @@ def main():
         "deploy_endpoint": parsed.deploy_endpoint,
         "floor_deviated_any_seed": any(s.get("floor_deviated_from_xbest") for s in per_seed),
         "per_seed": per_seed,
-        "learned_seed_mean": statistics.mean(learned),
-        "learned_seed_std": statistics.stdev(learned) if n > 1 else 0.0,
-        "gate_seed_mean": statistics.mean(gates),
-        "gate_seed_std": statistics.stdev(gates) if n > 1 else 0.0,
-        "savings_pct_seed_mean": sav_mean,
-        "savings_pct_seed_std": sav_std,
-        "frac_seeds_beating_gate": f"{frac_pos}/{n}",
         "published_a3c_savings_pct_CONTEXT_ONLY": a3c,
-        "verdict_vs_same_protocol_gate": verdict,
+        # standardized seed-robust summary keys (learned/gate/savings seed-mean+/-std,
+        # frac_seeds_beating_gate, verdict_vs_same_protocol_gate, n_optimizer_seeds).
+        **summary,
     }
     json_path = out_dir / f"seed_robust_{parsed.budget}.json"
     json_path.write_text(json.dumps(out, indent=2), encoding="utf-8")

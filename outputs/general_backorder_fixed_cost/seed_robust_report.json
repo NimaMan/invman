@@ -1,0 +1,97 @@
+{
+  "reference": "geevers2023_general_set1",
+  "budget": "full",
+  "smoke": false,
+  "structure": {
+    "depth": 2,
+    "leaf_type": "constant",
+    "split_type": "oblique",
+    "temperature": 0.25,
+    "action_mode": "vector_quantity",
+    "policy_action_mode": "node_base_stock_targets",
+    "policy_feature_mode": "compact_summary",
+    "input_dim": 14,
+    "param_dim": 81,
+    "sigma_init": 0.2,
+    "popsize": 24,
+    "max_generations": 80,
+    "n_train_seeds": 12,
+    "n_eval_seeds": 2000
+  },
+  "gate_semantics": "repo reproduction of the published constant node-base-stock benchmark via simulate_base_stock, 3 sim seeds x 500 replications (the autoresearch keep/discard gate); optimizer-seed independent => gate_seed_std == 0",
+  "published_benchmark_cost": 10467.0,
+  "published_ppo_best_cost_CONTEXT_ONLY": 8714.0,
+  "warm_start_heldout": {
+    "mean": 10378.5885,
+    "sem": 10.569115485457973
+  },
+  "seeds": [
+    9001,
+    9002,
+    9003,
+    9004,
+    9005
+  ],
+  "per_seed": [
+    {
+      "seed": 9001,
+      "gate_cost": 10354.822400000003,
+      "best_learned_cost": 8004.5803,
+      "learned_sem": 19.56645631795334,
+      "savings_pct_vs_gate": 22.697077836892717,
+      "best_train_cost": 7362.116666666668,
+      "generations": 80,
+      "seconds": 5.2
+    },
+    {
+      "seed": 9002,
+      "gate_cost": 10354.822400000003,
+      "best_learned_cost": 7790.7862000000005,
+      "learned_sem": 15.741141333779611,
+      "savings_pct_vs_gate": 24.761759313225898,
+      "best_train_cost": 7300.783333333333,
+      "generations": 80,
+      "seconds": 4.9
+    },
+    {
+      "seed": 9003,
+      "gate_cost": 10354.822400000003,
+      "best_learned_cost": 7748.5112,
+      "learned_sem": 16.883036475041706,
+      "savings_pct_vs_gate": 25.170023196148705,
+      "best_train_cost": 7531.283333333334,
+      "generations": 80,
+      "seconds": 5.0
+    },
+    {
+      "seed": 9004,
+      "gate_cost": 10354.822400000003,
+      "best_learned_cost": 7663.3501,
+      "learned_sem": 14.596458337658365,
+      "savings_pct_vs_gate": 25.992452560074835,
+      "best_train_cost": 7325.450000000001,
+      "generations": 80,
+      "seconds": 5.0
+    },
+    {
+      "seed": 9005,
+      "gate_cost": 10354.822400000003,
+      "best_learned_cost": 7653.2739,
+      "learned_sem": 19.53068782923265,
+      "savings_pct_vs_gate": 26.089761809917686,
+      "best_train_cost": 7051.833333333335,
+      "generations": 80,
+      "seconds": 4.9
+    }
+  ],
+  "problem_id": "general_backorder_fixed_cost",
+  "n_optimizer_seeds": 5,
+  "learned_seed_mean": 7772.10034,
+  "learned_seed_std": 142.21364055059195,
+  "gate_seed_mean": 10354.822400000003,
+  "gate_seed_std": 0.0,
+  "savings_pct_seed_mean": 24.94221494325197,
+  "savings_pct_seed_std": 1.3734049224310398,
+  "frac_seeds_beating_gate": "5/5",
+  "verdict_vs_same_protocol_gate": "ROBUST_BEAT_VS_GATE"
+}

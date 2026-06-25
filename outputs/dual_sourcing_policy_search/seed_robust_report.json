@@ -1,0 +1,595 @@
+{
+  "problem_id": "dual_sourcing",
+  "n_optimizer_seeds": 5,
+  "n_optimizer_seeds_semantics": "min over per-instance n_optimizer_seeds",
+  "seeds": [
+    9001,
+    9002,
+    9003,
+    9004,
+    9005
+  ],
+  "smoke": false,
+  "budget": "full",
+  "policy_protocol": {
+    "spec": "warm-start-at-CDI soft tree (final_report 'ws_smallcap_axisconst')",
+    "action_adapter": "capped_dual_index_delta_smallcap_targets",
+    "depth": 2,
+    "split_type": "axis_aligned",
+    "leaf_type": "constant",
+    "temperature": 0.25,
+    "sigma_init": 0.5,
+    "warm_start": "cma_x0 = encoded CDI (s_e, delta_r, cap_r) via build_warmstart.warmstart_x0",
+    "trainer": "invman.experiment_runner.run_experiment (CMA-ES)"
+  },
+  "crn_protocol": {
+    "n_eval_seeds": 80,
+    "horizon": 100000,
+    "seed_start": 3000,
+    "paired": true,
+    "evaluator": "invman_rust.dual_sourcing_soft_tree_rollout (warm-up 0.2)"
+  },
+  "gate": "capped_dual_index (CDI) encoded as a depth-1 constant tree, evaluated on the SAME CRN seeds (paired); optimizer-seed-independent within an instance",
+  "cross_instance_mean_summary": {
+    "problem_id": "dual_sourcing",
+    "n_optimizer_seeds": 5,
+    "learned_seed_mean": 218.62408299479168,
+    "learned_seed_std": 0.022794739689623138,
+    "gate_seed_mean": 218.5988177083333,
+    "gate_seed_std": 0.0,
+    "savings_pct_seed_mean": -0.011557833076695069,
+    "savings_pct_seed_std": 0.010427659183425753,
+    "frac_seeds_beating_gate": "0/5",
+    "verdict_vs_same_protocol_gate": "ROBUST_LOSS_VS_GATE"
+  },
+  "instances": {
+    "dual_l2_ce105": {
+      "seeds": [
+        9001,
+        9002,
+        9003,
+        9004,
+        9005
+      ],
+      "per_seed": [
+        {
+          "seed": 9001,
+          "gate_cost": 216.76941015625002,
+          "best_learned_cost": 216.82401171875,
+          "savings_pct_vs_gate": -0.025188776617800928,
+          "gap_pct_vs_cdi": 0.025188776617800928,
+          "paired_d_vs_cdi": 0.0546015624999967,
+          "paired_sem_vs_cdi": 0.0005038658098162867,
+          "suite_eval_cost": 216.12291666666667,
+          "model_dir": "/home/nima/code/ml/invman/outputs/dual_sourcing_policy_search/seed_robust_runs/models/sr_dual_l2_ce105_capped_dual_index_delta_smallcap_targets_d2_axis_cons_s9001_21_1500",
+          "reused_cached_run": false,
+          "seconds": 45.2
+        },
+        {
+          "seed": 9002,
+          "gate_cost": 216.76941015625002,
+          "best_learned_cost": 217.12903359374997,
+          "savings_pct_vs_gate": -0.16590137752403689,
+          "gap_pct_vs_cdi": 0.16590137752403689,
+          "paired_d_vs_cdi": 0.3596234374999995,
+          "paired_sem_vs_cdi": 0.0015803016677540544,
+          "suite_eval_cost": 216.87937499999998,
+          "model_dir": "/home/nima/code/ml/invman/outputs/dual_sourcing_policy_search/seed_robust_runs/models/sr_dual_l2_ce105_capped_dual_index_delta_smallcap_targets_d2_axis_cons_s9002_21_1500",
+          "reused_cached_run": false,
+          "seconds": 44.8
+        },
+        {
+          "seed": 9003,
+          "gate_cost": 216.76941015625002,
+          "best_learned_cost": 216.83419375000003,
+          "savings_pct_vs_gate": -0.029885948254096757,
+          "gap_pct_vs_cdi": 0.029885948254096757,
+          "paired_d_vs_cdi": 0.06478359374999983,
+          "paired_sem_vs_cdi": 0.001703316765620059,
+          "suite_eval_cost": 216.41166666666666,
+          "model_dir": "/home/nima/code/ml/invman/outputs/dual_sourcing_policy_search/seed_robust_runs/models/sr_dual_l2_ce105_capped_dual_index_delta_smallcap_targets_d2_axis_cons_s9003_21_1500",
+          "reused_cached_run": false,
+          "seconds": 48.5
+        },
+        {
+          "seed": 9004,
+          "gate_cost": 216.76941015625002,
+          "best_learned_cost": 216.85886796875002,
+          "savings_pct_vs_gate": -0.04126865152953024,
+          "gap_pct_vs_cdi": 0.04126865152953024,
+          "paired_d_vs_cdi": 0.08945781249999918,
+          "paired_sem_vs_cdi": 0.0017928395367074134,
+          "suite_eval_cost": 216.90291666666667,
+          "model_dir": "/home/nima/code/ml/invman/outputs/dual_sourcing_policy_search/seed_robust_runs/models/sr_dual_l2_ce105_capped_dual_index_delta_smallcap_targets_d2_axis_cons_s9004_21_1500",
+          "reused_cached_run": false,
+          "seconds": 46.8
+        },
+        {
+          "seed": 9005,
+          "gate_cost": 216.76941015625002,
+          "best_learned_cost": 216.76941015625002,
+          "savings_pct_vs_gate": 0.0,
+          "gap_pct_vs_cdi": 0.0,
+          "paired_d_vs_cdi": 0.0,
+          "paired_sem_vs_cdi": 0.0,
+          "suite_eval_cost": 216.68499999999997,
+          "model_dir": "/home/nima/code/ml/invman/outputs/dual_sourcing_policy_search/seed_robust_runs/models/sr_dual_l2_ce105_capped_dual_index_delta_smallcap_targets_d2_axis_cons_s9005_21_1500",
+          "reused_cached_run": false,
+          "seconds": 49.9
+        }
+      ],
+      "problem_id": "dual_sourcing",
+      "n_optimizer_seeds": 5,
+      "learned_seed_mean": 216.8831034375,
+      "learned_seed_std": 0.14131449912891622,
+      "gate_seed_mean": 216.76941015625002,
+      "gate_seed_std": 0.0,
+      "savings_pct_seed_mean": -0.052448950785092964,
+      "savings_pct_seed_std": 0.06519116282461396,
+      "frac_seeds_beating_gate": "0/5",
+      "verdict_vs_same_protocol_gate": "PARITY",
+      "cdi_params": {
+        "s_e": 4,
+        "s_r": 7,
+        "cap_r": 2
+      }
+    },
+    "dual_l2_ce110": {
+      "seeds": [
+        9001,
+        9002,
+        9003,
+        9004,
+        9005
+      ],
+      "per_seed": [
+        {
+          "seed": 9001,
+          "gate_cost": 219.7855265625,
+          "best_learned_cost": 219.7855265625,
+          "savings_pct_vs_gate": 0.0,
+          "gap_pct_vs_cdi": 0.0,
+          "paired_d_vs_cdi": 0.0,
+          "paired_sem_vs_cdi": 0.0,
+          "suite_eval_cost": 219.0935416666667,
+          "model_dir": "/home/nima/code/ml/invman/outputs/dual_sourcing_policy_search/seed_robust_runs/models/sr_dual_l2_ce110_capped_dual_index_delta_smallcap_targets_d2_axis_cons_s9001_21_1500",
+          "reused_cached_run": false,
+          "seconds": 46.3
+        },
+        {
+          "seed": 9002,
+          "gate_cost": 219.7855265625,
+          "best_learned_cost": 219.7855265625,
+          "savings_pct_vs_gate": 0.0,
+          "gap_pct_vs_cdi": 0.0,
+          "paired_d_vs_cdi": 0.0,
+          "paired_sem_vs_cdi": 0.0,
+          "suite_eval_cost": 219.54999999999998,
+          "model_dir": "/home/nima/code/ml/invman/outputs/dual_sourcing_policy_search/seed_robust_runs/models/sr_dual_l2_ce110_capped_dual_index_delta_smallcap_targets_d2_axis_cons_s9002_21_1500",
+          "reused_cached_run": false,
+          "seconds": 45.3
+        },
+        {
+          "seed": 9003,
+          "gate_cost": 219.7855265625,
+          "best_learned_cost": 219.7855265625,
+          "savings_pct_vs_gate": 0.0,
+          "gap_pct_vs_cdi": 0.0,
+          "paired_d_vs_cdi": 0.0,
+          "paired_sem_vs_cdi": 0.0,
+          "suite_eval_cost": 219.37395833333332,
+          "model_dir": "/home/nima/code/ml/invman/outputs/dual_sourcing_policy_search/seed_robust_runs/models/sr_dual_l2_ce110_capped_dual_index_delta_smallcap_targets_d2_axis_cons_s9003_21_1500",
+          "reused_cached_run": false,
+          "seconds": 44.7
+        },
+        {
+          "seed": 9004,
+          "gate_cost": 219.7855265625,
+          "best_learned_cost": 219.7855265625,
+          "savings_pct_vs_gate": 0.0,
+          "gap_pct_vs_cdi": 0.0,
+          "paired_d_vs_cdi": 0.0,
+          "paired_sem_vs_cdi": 0.0,
+          "suite_eval_cost": 219.8479166666667,
+          "model_dir": "/home/nima/code/ml/invman/outputs/dual_sourcing_policy_search/seed_robust_runs/models/sr_dual_l2_ce110_capped_dual_index_delta_smallcap_targets_d2_axis_cons_s9004_21_1500",
+          "reused_cached_run": false,
+          "seconds": 44.9
+        },
+        {
+          "seed": 9005,
+          "gate_cost": 219.7855265625,
+          "best_learned_cost": 219.7855265625,
+          "savings_pct_vs_gate": 0.0,
+          "gap_pct_vs_cdi": 0.0,
+          "paired_d_vs_cdi": 0.0,
+          "paired_sem_vs_cdi": 0.0,
+          "suite_eval_cost": 219.68604166666668,
+          "model_dir": "/home/nima/code/ml/invman/outputs/dual_sourcing_policy_search/seed_robust_runs/models/sr_dual_l2_ce110_capped_dual_index_delta_smallcap_targets_d2_axis_cons_s9005_21_1500",
+          "reused_cached_run": false,
+          "seconds": 45.3
+        }
+      ],
+      "problem_id": "dual_sourcing",
+      "n_optimizer_seeds": 5,
+      "learned_seed_mean": 219.7855265625,
+      "learned_seed_std": 0.0,
+      "gate_seed_mean": 219.7855265625,
+      "gate_seed_std": 0.0,
+      "savings_pct_seed_mean": 0.0,
+      "savings_pct_seed_std": 0.0,
+      "frac_seeds_beating_gate": "0/5",
+      "verdict_vs_same_protocol_gate": "PARITY",
+      "cdi_params": {
+        "s_e": 4,
+        "s_r": 8,
+        "cap_r": 2
+      }
+    },
+    "dual_l3_ce105": {
+      "seeds": [
+        9001,
+        9002,
+        9003,
+        9004,
+        9005
+      ],
+      "per_seed": [
+        {
+          "seed": 9001,
+          "gate_cost": 216.86432421874997,
+          "best_learned_cost": 216.86432421874997,
+          "savings_pct_vs_gate": 0.0,
+          "gap_pct_vs_cdi": 0.0,
+          "paired_d_vs_cdi": 0.0,
+          "paired_sem_vs_cdi": 0.0,
+          "suite_eval_cost": 216.176875,
+          "model_dir": "/home/nima/code/ml/invman/outputs/dual_sourcing_policy_search/seed_robust_runs/models/sr_dual_l3_ce105_capped_dual_index_delta_smallcap_targets_d2_axis_cons_s9001_24_1500",
+          "reused_cached_run": false,
+          "seconds": 45.1
+        },
+        {
+          "seed": 9002,
+          "gate_cost": 216.86432421874997,
+          "best_learned_cost": 216.88010234375002,
+          "savings_pct_vs_gate": -0.007275574282166677,
+          "gap_pct_vs_cdi": 0.007275574282166677,
+          "paired_d_vs_cdi": 0.015778125000001354,
+          "paired_sem_vs_cdi": 0.0004823333862077971,
+          "suite_eval_cost": 216.66229166666668,
+          "model_dir": "/home/nima/code/ml/invman/outputs/dual_sourcing_policy_search/seed_robust_runs/models/sr_dual_l3_ce105_capped_dual_index_delta_smallcap_targets_d2_axis_cons_s9002_24_1500",
+          "reused_cached_run": false,
+          "seconds": 44.8
+        },
+        {
+          "seed": 9003,
+          "gate_cost": 216.86432421874997,
+          "best_learned_cost": 216.9051046875,
+          "savings_pct_vs_gate": -0.01880460001751776,
+          "gap_pct_vs_cdi": 0.01880460001751776,
+          "paired_d_vs_cdi": 0.04078046874999899,
+          "paired_sem_vs_cdi": 0.00048196687748474666,
+          "suite_eval_cost": 216.48416666666665,
+          "model_dir": "/home/nima/code/ml/invman/outputs/dual_sourcing_policy_search/seed_robust_runs/models/sr_dual_l3_ce105_capped_dual_index_delta_smallcap_targets_d2_axis_cons_s9003_24_1500",
+          "reused_cached_run": false,
+          "seconds": 44.8
+        },
+        {
+          "seed": 9004,
+          "gate_cost": 216.86432421874997,
+          "best_learned_cost": 216.86482343749998,
+          "savings_pct_vs_gate": -0.00023019865153309086,
+          "gap_pct_vs_cdi": 0.00023019865153309086,
+          "paired_d_vs_cdi": 0.0004992187500004519,
+          "paired_sem_vs_cdi": 6.482516032921051e-05,
+          "suite_eval_cost": 216.91666666666666,
+          "model_dir": "/home/nima/code/ml/invman/outputs/dual_sourcing_policy_search/seed_robust_runs/models/sr_dual_l3_ce105_capped_dual_index_delta_smallcap_targets_d2_axis_cons_s9004_24_1500",
+          "reused_cached_run": false,
+          "seconds": 48.8
+        },
+        {
+          "seed": 9005,
+          "gate_cost": 216.86432421874997,
+          "best_learned_cost": 216.9051046875,
+          "savings_pct_vs_gate": -0.01880460001751776,
+          "gap_pct_vs_cdi": 0.01880460001751776,
+          "paired_d_vs_cdi": 0.04078046874999899,
+          "paired_sem_vs_cdi": 0.00048196687748474666,
+          "suite_eval_cost": 216.80291666666668,
+          "model_dir": "/home/nima/code/ml/invman/outputs/dual_sourcing_policy_search/seed_robust_runs/models/sr_dual_l3_ce105_capped_dual_index_delta_smallcap_targets_d2_axis_cons_s9005_24_1500",
+          "reused_cached_run": false,
+          "seconds": 46.2
+        }
+      ],
+      "problem_id": "dual_sourcing",
+      "n_optimizer_seeds": 5,
+      "learned_seed_mean": 216.883891875,
+      "learned_seed_std": 0.020376615612181192,
+      "gate_seed_mean": 216.86432421874997,
+      "gate_seed_std": 0.0,
+      "savings_pct_seed_mean": -0.009022994593747058,
+      "savings_pct_seed_std": 0.009396020154807666,
+      "frac_seeds_beating_gate": "0/5",
+      "verdict_vs_same_protocol_gate": "PARITY",
+      "cdi_params": {
+        "s_e": 4,
+        "s_r": 9,
+        "cap_r": 1
+      }
+    },
+    "dual_l3_ce110": {
+      "seeds": [
+        9001,
+        9002,
+        9003,
+        9004,
+        9005
+      ],
+      "per_seed": [
+        {
+          "seed": 9001,
+          "gate_cost": 220.4486078125,
+          "best_learned_cost": 220.4486078125,
+          "savings_pct_vs_gate": 0.0,
+          "gap_pct_vs_cdi": 0.0,
+          "paired_d_vs_cdi": 0.0,
+          "paired_sem_vs_cdi": 0.0,
+          "suite_eval_cost": 219.79541666666668,
+          "model_dir": "/home/nima/code/ml/invman/outputs/dual_sourcing_policy_search/seed_robust_runs/models/sr_dual_l3_ce110_capped_dual_index_delta_smallcap_targets_d2_axis_cons_s9001_24_1500",
+          "reused_cached_run": false,
+          "seconds": 49.6
+        },
+        {
+          "seed": 9002,
+          "gate_cost": 220.4486078125,
+          "best_learned_cost": 220.4486078125,
+          "savings_pct_vs_gate": 0.0,
+          "gap_pct_vs_cdi": 0.0,
+          "paired_d_vs_cdi": 0.0,
+          "paired_sem_vs_cdi": 0.0,
+          "suite_eval_cost": 220.27833333333334,
+          "model_dir": "/home/nima/code/ml/invman/outputs/dual_sourcing_policy_search/seed_robust_runs/models/sr_dual_l3_ce110_capped_dual_index_delta_smallcap_targets_d2_axis_cons_s9002_24_1500",
+          "reused_cached_run": false,
+          "seconds": 46.3
+        },
+        {
+          "seed": 9003,
+          "gate_cost": 220.4486078125,
+          "best_learned_cost": 220.4486078125,
+          "savings_pct_vs_gate": 0.0,
+          "gap_pct_vs_cdi": 0.0,
+          "paired_d_vs_cdi": 0.0,
+          "paired_sem_vs_cdi": 0.0,
+          "suite_eval_cost": 220.13937499999997,
+          "model_dir": "/home/nima/code/ml/invman/outputs/dual_sourcing_policy_search/seed_robust_runs/models/sr_dual_l3_ce110_capped_dual_index_delta_smallcap_targets_d2_axis_cons_s9003_24_1500",
+          "reused_cached_run": false,
+          "seconds": 45.7
+        },
+        {
+          "seed": 9004,
+          "gate_cost": 220.4486078125,
+          "best_learned_cost": 220.4486078125,
+          "savings_pct_vs_gate": 0.0,
+          "gap_pct_vs_cdi": 0.0,
+          "paired_d_vs_cdi": 0.0,
+          "paired_sem_vs_cdi": 0.0,
+          "suite_eval_cost": 220.55291666666668,
+          "model_dir": "/home/nima/code/ml/invman/outputs/dual_sourcing_policy_search/seed_robust_runs/models/sr_dual_l3_ce110_capped_dual_index_delta_smallcap_targets_d2_axis_cons_s9004_24_1500",
+          "reused_cached_run": false,
+          "seconds": 45.4
+        },
+        {
+          "seed": 9005,
+          "gate_cost": 220.4486078125,
+          "best_learned_cost": 220.4486078125,
+          "savings_pct_vs_gate": 0.0,
+          "gap_pct_vs_cdi": 0.0,
+          "paired_d_vs_cdi": 0.0,
+          "paired_sem_vs_cdi": 0.0,
+          "suite_eval_cost": 220.32416666666666,
+          "model_dir": "/home/nima/code/ml/invman/outputs/dual_sourcing_policy_search/seed_robust_runs/models/sr_dual_l3_ce110_capped_dual_index_delta_smallcap_targets_d2_axis_cons_s9005_24_1500",
+          "reused_cached_run": false,
+          "seconds": 45.6
+        }
+      ],
+      "problem_id": "dual_sourcing",
+      "n_optimizer_seeds": 5,
+      "learned_seed_mean": 220.4486078125,
+      "learned_seed_std": 0.0,
+      "gate_seed_mean": 220.4486078125,
+      "gate_seed_std": 0.0,
+      "savings_pct_seed_mean": 0.0,
+      "savings_pct_seed_std": 0.0,
+      "frac_seeds_beating_gate": "0/5",
+      "verdict_vs_same_protocol_gate": "PARITY",
+      "cdi_params": {
+        "s_e": 4,
+        "s_r": 10,
+        "cap_r": 2
+      }
+    },
+    "dual_l4_ce105": {
+      "seeds": [
+        9001,
+        9002,
+        9003,
+        9004,
+        9005
+      ],
+      "per_seed": [
+        {
+          "seed": 9001,
+          "gate_cost": 216.879334375,
+          "best_learned_cost": 216.9354796875,
+          "savings_pct_vs_gate": -0.025887811147049803,
+          "gap_pct_vs_cdi": 0.025887811147049803,
+          "paired_d_vs_cdi": 0.05614531250000212,
+          "paired_sem_vs_cdi": 0.0006056914338864204,
+          "suite_eval_cost": 216.2402083333333,
+          "model_dir": "/home/nima/code/ml/invman/outputs/dual_sourcing_policy_search/seed_robust_runs/models/sr_dual_l4_ce105_capped_dual_index_delta_smallcap_targets_d2_axis_cons_s9001_27_1500",
+          "reused_cached_run": false,
+          "seconds": 45.4
+        },
+        {
+          "seed": 9002,
+          "gate_cost": 216.879334375,
+          "best_learned_cost": 216.88381875,
+          "savings_pct_vs_gate": -0.0020676820190815705,
+          "gap_pct_vs_cdi": 0.0020676820190815705,
+          "paired_d_vs_cdi": 0.004484375000000896,
+          "paired_sem_vs_cdi": 0.00020330140830469834,
+          "suite_eval_cost": 216.666875,
+          "model_dir": "/home/nima/code/ml/invman/outputs/dual_sourcing_policy_search/seed_robust_runs/models/sr_dual_l4_ce105_capped_dual_index_delta_smallcap_targets_d2_axis_cons_s9002_27_1500",
+          "reused_cached_run": false,
+          "seconds": 49.3
+        },
+        {
+          "seed": 9003,
+          "gate_cost": 216.879334375,
+          "best_learned_cost": 216.88381875,
+          "savings_pct_vs_gate": -0.0020676820190815705,
+          "gap_pct_vs_cdi": 0.0020676820190815705,
+          "paired_d_vs_cdi": 0.004484375000000896,
+          "paired_sem_vs_cdi": 0.00020330140830469834,
+          "suite_eval_cost": 216.45562499999997,
+          "model_dir": "/home/nima/code/ml/invman/outputs/dual_sourcing_policy_search/seed_robust_runs/models/sr_dual_l4_ce105_capped_dual_index_delta_smallcap_targets_d2_axis_cons_s9003_27_1500",
+          "reused_cached_run": false,
+          "seconds": 47.1
+        },
+        {
+          "seed": 9004,
+          "gate_cost": 216.879334375,
+          "best_learned_cost": 216.88924296875,
+          "savings_pct_vs_gate": -0.0045687127261582194,
+          "gap_pct_vs_cdi": 0.0045687127261582194,
+          "paired_d_vs_cdi": 0.00990859375000106,
+          "paired_sem_vs_cdi": 0.0003976262508581576,
+          "suite_eval_cost": 216.92791666666665,
+          "model_dir": "/home/nima/code/ml/invman/outputs/dual_sourcing_policy_search/seed_robust_runs/models/sr_dual_l4_ce105_capped_dual_index_delta_smallcap_targets_d2_axis_cons_s9004_27_1500",
+          "reused_cached_run": false,
+          "seconds": 51.1
+        },
+        {
+          "seed": 9005,
+          "gate_cost": 216.879334375,
+          "best_learned_cost": 216.8843453125,
+          "savings_pct_vs_gate": -0.0023104725558179143,
+          "gap_pct_vs_cdi": 0.0023104725558179143,
+          "paired_d_vs_cdi": 0.005010937500002299,
+          "paired_sem_vs_cdi": 0.00022150942370969802,
+          "suite_eval_cost": 216.77354166666666,
+          "model_dir": "/home/nima/code/ml/invman/outputs/dual_sourcing_policy_search/seed_robust_runs/models/sr_dual_l4_ce105_capped_dual_index_delta_smallcap_targets_d2_axis_cons_s9005_27_1500",
+          "reused_cached_run": false,
+          "seconds": 47.2
+        }
+      ],
+      "problem_id": "dual_sourcing",
+      "n_optimizer_seeds": 5,
+      "learned_seed_mean": 216.89534109375,
+      "learned_seed_std": 0.022553989963126977,
+      "gate_seed_mean": 216.879334375,
+      "gate_seed_std": 0.0,
+      "savings_pct_seed_mean": -0.0073804720934378155,
+      "savings_pct_seed_std": 0.010399326440263553,
+      "frac_seeds_beating_gate": "0/5",
+      "verdict_vs_same_protocol_gate": "PARITY",
+      "cdi_params": {
+        "s_e": 4,
+        "s_r": 11,
+        "cap_r": 1
+      }
+    },
+    "dual_l4_ce110": {
+      "seeds": [
+        9001,
+        9002,
+        9003,
+        9004,
+        9005
+      ],
+      "per_seed": [
+        {
+          "seed": 9001,
+          "gate_cost": 220.845703125,
+          "best_learned_cost": 220.845703125,
+          "savings_pct_vs_gate": 0.0,
+          "gap_pct_vs_cdi": 0.0,
+          "paired_d_vs_cdi": 0.0,
+          "paired_sem_vs_cdi": 0.0,
+          "suite_eval_cost": 220.149375,
+          "model_dir": "/home/nima/code/ml/invman/outputs/dual_sourcing_policy_search/seed_robust_runs/models/sr_dual_l4_ce110_capped_dual_index_delta_smallcap_targets_d2_axis_cons_s9001_27_1500",
+          "reused_cached_run": false,
+          "seconds": 45.7
+        },
+        {
+          "seed": 9002,
+          "gate_cost": 220.845703125,
+          "best_learned_cost": 220.8573234375,
+          "savings_pct_vs_gate": -0.005261733570354722,
+          "gap_pct_vs_cdi": 0.005261733570354722,
+          "paired_d_vs_cdi": 0.011620312500000906,
+          "paired_sem_vs_cdi": 0.0007725206735165873,
+          "suite_eval_cost": 220.68895833333332,
+          "model_dir": "/home/nima/code/ml/invman/outputs/dual_sourcing_policy_search/seed_robust_runs/models/sr_dual_l4_ce110_capped_dual_index_delta_smallcap_targets_d2_axis_cons_s9002_27_1500",
+          "reused_cached_run": false,
+          "seconds": 45.8
+        },
+        {
+          "seed": 9003,
+          "gate_cost": 220.845703125,
+          "best_learned_cost": 220.845703125,
+          "savings_pct_vs_gate": 0.0,
+          "gap_pct_vs_cdi": 0.0,
+          "paired_d_vs_cdi": 0.0,
+          "paired_sem_vs_cdi": 0.0,
+          "suite_eval_cost": 220.516875,
+          "model_dir": "/home/nima/code/ml/invman/outputs/dual_sourcing_policy_search/seed_robust_runs/models/sr_dual_l4_ce110_capped_dual_index_delta_smallcap_targets_d2_axis_cons_s9003_27_1500",
+          "reused_cached_run": false,
+          "seconds": 45.6
+        },
+        {
+          "seed": 9004,
+          "gate_cost": 220.845703125,
+          "best_learned_cost": 220.845703125,
+          "savings_pct_vs_gate": 0.0,
+          "gap_pct_vs_cdi": 0.0,
+          "paired_d_vs_cdi": 0.0,
+          "paired_sem_vs_cdi": 0.0,
+          "suite_eval_cost": 220.92416666666668,
+          "model_dir": "/home/nima/code/ml/invman/outputs/dual_sourcing_policy_search/seed_robust_runs/models/sr_dual_l4_ce110_capped_dual_index_delta_smallcap_targets_d2_axis_cons_s9004_27_1500",
+          "reused_cached_run": false,
+          "seconds": 45.6
+        },
+        {
+          "seed": 9005,
+          "gate_cost": 220.845703125,
+          "best_learned_cost": 220.845703125,
+          "savings_pct_vs_gate": 0.0,
+          "gap_pct_vs_cdi": 0.0,
+          "paired_d_vs_cdi": 0.0,
+          "paired_sem_vs_cdi": 0.0,
+          "suite_eval_cost": 220.705,
+          "model_dir": "/home/nima/code/ml/invman/outputs/dual_sourcing_policy_search/seed_robust_runs/models/sr_dual_l4_ce110_capped_dual_index_delta_smallcap_targets_d2_axis_cons_s9005_27_1500",
+          "reused_cached_run": false,
+          "seconds": 46.2
+        }
+      ],
+      "problem_id": "dual_sourcing",
+      "n_optimizer_seeds": 5,
+      "learned_seed_mean": 220.8480271875,
+      "learned_seed_std": 0.0051967617339643895,
+      "gate_seed_mean": 220.845703125,
+      "gate_seed_std": 0.0,
+      "savings_pct_seed_mean": -0.0010523467140709443,
+      "savings_pct_seed_std": 0.002353118788561166,
+      "frac_seeds_beating_gate": "0/5",
+      "verdict_vs_same_protocol_gate": "PARITY",
+      "cdi_params": {
+        "s_e": 4,
+        "s_r": 11,
+        "cap_r": 2
+      }
+    }
+  },
+  "generated_by": "scripts/dual_sourcing/seed_robust_warmstart_soft_tree_vs_cdi_paired_crn.py",
+  "total_seconds": 1402.0
+}

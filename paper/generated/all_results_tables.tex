@@ -12,9 +12,9 @@
 Shortage $p$ & Policy & Pois & Geom & MMPP2$+$ & Pois & Geom & MMPP2$+$ & Pois & Geom & MMPP2$+$ & Pois & Geom & MMPP2$+$ \\
 \midrule
 $4$ & Optimal & 4.730 & 10.610 &  &  &  &  &  &  &  &  &  &  \\
- & M1 & 5.065 & 11.217 & 9.823 & 5.422 & 11.650 & 11.189 & 5.698 & 11.924 & 12.256 & 5.890 & 12.075 & 13.136 \\
- & M2 & 4.819 & 10.800 & 9.452 & 5.051 & 11.080 & 10.591 & 5.199 & 11.270 & 11.460 & 5.310 & 11.400 & 12.155 \\
- & SVBS & 5.836 & 13.728 & 10.312 & 6.781 & 15.738 & 12.271 & 7.694 & 17.632 & 13.995 & 8.038 & 19.421 & 15.190 \\
+ & M1 & 5.060 & 11.217 & 9.823 & 5.414 & 11.650 & 11.189 & 5.698 & 11.924 & 12.256 & 5.890 & 12.075 & 13.136 \\
+ & M2 & 4.820 & 10.800 & 9.452 & 5.045 & 11.080 & 10.591 & 5.199 & 11.270 & 11.460 & 5.310 & 11.400 & 12.155 \\
+ & SVBS & 5.830 & 13.728 & 10.312 & 6.773 & 15.738 & 12.271 & 7.694 & 17.632 & 13.995 & 8.038 & 19.421 & 15.190 \\
  & L-SGD & 4.750 & 10.645 & 8.571 & 4.897 & 10.790 & 9.171 & \textbf{4.974} & \textbf{10.850} & 9.445 & 5.048 & 10.921 & 9.563 \\
  & NN-SGD & 4.774 & 10.687 & 8.565 & 4.900 & 10.791 & 9.643 & 5.033 & 10.983 & 9.674 & 5.066 & 10.993 & 9.697 \\
  & L-SGO & 4.768 & 10.647 & \textbf{8.549} & \textbf{4.893} & 10.823 & \textbf{9.109} & $\dagger$ & 10.884 & \textbf{9.443} & 16.978 & 10.991 & 9.725 \\
@@ -99,7 +99,7 @@ $25$ & $19$ & $(s,S)$ & 21.104 & 32.726 &  & 22.073 & 35.015 &  & 25.969 & 38.85
 \begin{table}[!htbp]
 \centering
 \small
-\caption{Dual-sourcing: best learned soft-tree policy vs.\ the capped dual-index (CDI) optimal proxy, common-random-number evaluation ($70$ seeds, horizon $6\times10^4$). $\Delta\%$ is the learned policy's cost relative to CDI (negative is better); the A3C row reports the published optimality gap from \citet{gijsbrechts2022drl}.}
+\caption{Dual-sourcing: learned soft-tree policy vs.\ the capped dual-index (CDI) optimal proxy. Learned cells are the mean $\pm$ sample standard deviation across $N=5$ independent CMA-ES optimizer seeds; every policy is scored under paired common-random-number evaluation ($80$ demand-path seeds, horizon $100000$). $\Delta\%$ is the per-seed paired gap to CDI (negative is better); the A3C row reports the published optimality gap from \citet{gijsbrechts2022drl}.}
 \label{tab:ds-results}
 \resizebox{\textwidth}{!}{%
 \begin{tabular}{lcccccc}
@@ -108,12 +108,12 @@ $25$ & $19$ & $(s,S)$ & 21.104 & 32.726 &  & 22.073 & 35.015 &  & 25.969 & 38.85
 \cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
 Policy / metric & $c_e=105$ & $c_e=110$ & $c_e=105$ & $c_e=110$ & $c_e=105$ & $c_e=110$ \\
 \midrule
-CDI proxy & 216.806 & 219.821 & 216.900 & 220.483 & 216.914 & 220.879 \\
-Learned soft tree & 216.806 & 219.800 & 216.906 & 220.483 & 216.918 & 220.789 \\
-Learned vs.\ CDI (\%) & $+0.000$ (match) & $-0.009$ (match) & $+0.003$ (match) & $+0.000$ (match) & $+0.002$ (match) & $-0.041$ (match) \\
+CDI proxy & 216.769 & 219.786 & 216.864 & 220.449 & 216.879 & 220.846 \\
+Learned soft tree (mean$\pm$std, $N=5$ seeds) & $216.883\pm0.141$ & $219.786\pm0.000$ & $216.884\pm0.020$ & $220.449\pm0.000$ & $216.895\pm0.023$ & $220.848\pm0.005$ \\
+Learned vs.\ CDI (\%) & $+0.052\pm0.065$ (match) & $-0.000\pm0.000$ (match) & $+0.009\pm0.009$ (match) & $-0.000\pm0.000$ (match) & $+0.007\pm0.010$ (match) & $+0.001\pm0.002$ (match) \\
 Published A3C gap & 0.52\% & 0.80\% & 0.82\% & 0.51\% & 1.85\% & 1.33\% \\
 \bottomrule
 \end{tabular}}
-\par\medskip\footnotesize All six instances match CDI to within its own published optimality band ($\le0.11\%$): four are at or within the discrete-grid rounding floor ($\le+0.003\%$) and two are negligibly below CDI ($-0.009\%$, $-0.041\%$) under the paired CRN comparison. We report these as matches, not improvements.
+\par\medskip\footnotesize CDI is itself a $\le0.11\%$ proxy for the bounded-DP optimum, so gaps inside that band are reported as matches, not beats or losses; the verdict labels come from the shared cross-seed rule (mean vs.\ std and the fraction of seeds below CDI).
 \end{table}
 \FloatBarrier

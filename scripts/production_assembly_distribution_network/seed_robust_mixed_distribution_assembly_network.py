@@ -53,24 +53,46 @@ ALGORITHM (full description)
        so seeds stay near the gate-flow anchor instead of scattering into the 360-440
        basin the flat flow=5 + sigma-0.8 baseline lands in.
 
-3. Robustness reporting. The runner trains N independent seeds in ONE invocation, scores
-   each on the SAME held-out CRN block (HOLDOUT_SEED, holdout_paths -- identical protocol
-   to the autoresearch runner so 297.69 is comparable), records per-seed deployed cost,
-   and prints the seed-MEAN +/- sample-STD, the per-seed table, the fraction of seeds
-   below the gate, and a verdict: ROBUST BEAT only if (gate - seed_mean) exceeds the
-   cross-seed std; otherwise PARITY (or, with the floor, ROBUST GATE-MATCH if the floor
-   pins seeds at the gate and the search adds ~nothing). NEVER best-of-N as the headline.
+3. Robustness reporting (CENTRALIZED, migrated 2026-06-12). The runner trains N independent
+   seeds in ONE invocation, scores each on the SAME held-out CRN block (HOLDOUT_SEED,
+   holdout_paths -- identical protocol to the autoresearch runner so 297.69 is comparable),
+   records per-seed deployed cost, then aggregates through the SINGLE SOURCE OF TRUTH
+   invman/optimizer_seed_robustness_policy.py (srp.build_seed_robust_summary): the output
+   JSON carries the standardized keys n_optimizer_seeds, learned_seed_mean/std,
+   gate_seed_mean/std, savings_pct_seed_mean/std, frac_seeds_beating_gate,
+   verdict_vs_same_protocol_gate (shared rule: ROBUST_BEAT_VS_GATE / BEAT_WITHIN_STD /
+   PARITY / ROBUST_LOSS_VS_GATE), plus per_seed records. NEVER best-of-N as the headline.
+   - Std convention: srp uses SAMPLE (n-1) std; this script already used statistics.stdev
+     (also n-1), so the migration is numerically a no-op -- the standardization is
+     intentional per the central policy.
+   - The legacy bespoke "ROBUST_GATE_MATCH_ONLY" label (honest floor pins every seed at the
+     gate) maps to srp verdict PARITY with the auxiliary flag gate_pinned_all_seeds=true.
+   - Default seeds are the canonical srp list (9001..9005). The historical mixed run used
+     --seeds 11 22 33 44 55; pass that explicitly to reproduce it.
+
+ARTIFACTS
+---------
+REAL run (no --smoke, --budget full):
+    outputs/production_assembly_distribution_network/seed_robust_report_mixed.json
+REAL run at a non-full budget gets a budget-suffixed name (so screening can never clobber
+the audited full artifact). --smoke ALWAYS writes under
+    outputs/production_assembly_distribution_network/smoke_seed_robust/
+and never touches the real path.
 
 CPU CAP / USAGE
 ---------------
-CPU is capped before NumPy/Rust import (default 2 rayon/omp threads). Run seeds serially
-inside one process (each CMA-ES population rollout is already rayon-parallel); to fan out
-over cores, launch several invocations with disjoint --seeds and aggregate the JSONs.
-USAGE:
+CPU is capped before NumPy/Rust import via --mp_num_processors (default 2 rayon/omp
+threads; --smoke forces 1). Run seeds serially inside one process (each CMA-ES population
+rollout is already rayon-parallel); to fan out over cores, launch several invocations with
+disjoint --seeds and aggregate the JSONs.
+USAGE (full audit):
   RAYON_NUM_THREADS=2 OMP_NUM_THREADS=2 \
   python scripts/production_assembly_distribution_network/seed_robust_mixed_distribution_assembly_network.py \
-      --budget full --depth 2 --sigma_init 0.2 --seeds 11 22 33 44 55 \
-      --warm_start --honest_floor --description "gate-flow warmstart + floor, sigma0.2"
+      --budget full --depth 2 --sigma_init 0.2 --seeds 9001 9002 9003 9004 9005 \
+      --mp_num_processors 2 --description "gate-flow warmstart + floor, sigma0.2"
+USAGE (smoke, tiny budget, separate artifact):
+  python scripts/production_assembly_distribution_network/seed_robust_mixed_distribution_assembly_network.py \
+      --smoke --mp_num_processors 1 --description "smoke"
 """
 
 from __future__ import annotations
@@ -78,7 +100,6 @@ from __future__ import annotations
 import argparse
 import json
 import math
-import statistics
 import sys
 import time
 from pathlib import Path
@@ -87,12 +108,13 @@ PACKAGE_ROOT = Path(__file__).resolve().parents[2]
 if str(PACKAGE_ROOT) not in sys.path:
     sys.path.insert(0, str(PACKAGE_ROOT))
 
-from invman.cpu_limits import configure_process_cpu_limits_from_argv
+from invman.cpu_limits import configure_process_cpu_limits, configure_process_cpu_limits_from_argv
 
 configure_process_cpu_limits_from_argv(sys.argv[1:], default=2)
 
 import numpy as np  # noqa: E402
 
+from invman import optimizer_seed_robustness_policy as srp  # noqa: E402
 from invman.cmaes import CMAES  # noqa: E402
 
 import invman_rust as ir  # noqa: E402
@@ -104,6 +126,8 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 import autoresearch_mixed_distribution_assembly_network as base  # noqa: E402
+
+PROBLEM_ID = "production_assembly_distribution_network"
 
 
 def _gate_flow_warm_start(depth: int, leaf_type: str, gate_oul) -> np.ndarray:
@@ -217,6 +241,12 @@ def run(parsed) -> dict:
         deployed_policy, deployed_cost, deployed_se = min(candidates, key=lambda c: c[1])
         per_seed.append({
             "seed": seed,
+            # Standardized keys consumed by srp.build_seed_robust_summary: the learned
+            # cost is the DEPLOYED (floored) held-out cost; the gate is paired per seed
+            # (deterministic CRN here, so it is identical across seeds).
+            "gate_cost": gate_cost,
+            "best_learned_cost": deployed_cost,
+            "savings_pct_vs_gate": 100.0 * (gate_cost - deployed_cost) / gate_cost,
             "trained_holdout_mean": res["trained_holdout_mean"],
             "trained_holdout_se": res["trained_holdout_se"],
             "gen0_holdout_mean": res["gen0_holdout_mean"],
@@ -228,30 +258,18 @@ def run(parsed) -> dict:
             "train_seconds": res["train_seconds"],
         })
 
-    deployed = [s["deployed_cost"] for s in per_seed]
+    # CENTRALIZED aggregation (single source of truth): sample (n-1) std, shared verdict
+    # rule, >=5-seed enforcement. Replaces this script's former bespoke statistics block.
+    summary = srp.build_seed_robust_summary(per_seed, problem_id=PROBLEM_ID)
+    n_seeds = summary["n_optimizer_seeds"]
     trained_only = [s["trained_holdout_mean"] for s in per_seed]
-    n_seeds = len(deployed)
-    dep_mean = statistics.mean(deployed)
-    dep_std = statistics.stdev(deployed) if n_seeds > 1 else 0.0
-    tr_mean = statistics.mean(trained_only)
-    tr_std = statistics.stdev(trained_only) if n_seeds > 1 else 0.0
-    frac_below = sum(1 for v in deployed if v < gate_cost)
+    trained_s = srp.summarize_values(trained_only)
     frac_below_trained = sum(1 for v in trained_only if v < gate_cost)
 
-    # Verdict on the DEPLOYED (floored) policy seed-mean.
-    margin = gate_cost - dep_mean
-    if margin > dep_std and frac_below == n_seeds and dep_std > 0:
-        verdict = "ROBUST_BEAT"
-    elif abs(margin) <= max(dep_std, 1e-9):
-        verdict = "PARITY"
-    elif margin < 0:
-        verdict = "ROBUST_LOSS"
-    else:
-        verdict = "MARGINAL_BEAT_WITHIN_STD"
-    # If the floor pins (almost) every seed exactly at the gate, label it gate-match.
+    # Auxiliary annotation: did the honest floor pin every seed at the gate itself?
+    # (the legacy bespoke label ROBUST_GATE_MATCH_ONLY; srp reports it as PARITY).
     pinned = sum(1 for s in per_seed if s["deployed_policy"] == "gate")
-    if parsed.honest_floor and pinned == n_seeds:
-        verdict = "ROBUST_GATE_MATCH_ONLY"
+    gate_pinned_all_seeds = bool(parsed.honest_floor and pinned == n_seeds)
 
     return {
         "reference": "pirhooshyaran2021_mixed_scn_fig1_table5",
@@ -273,15 +291,22 @@ def run(parsed) -> dict:
         "holdout_paths": budget["holdout_paths"],
         "per_seed": per_seed,
         "n_seeds": n_seeds,
-        "deployed_seed_mean": dep_mean,
-        "deployed_seed_std": dep_std,
-        "deployed_gap_pct": (dep_mean / gate_cost - 1.0) * 100.0,
-        "trained_seed_mean": tr_mean,
-        "trained_seed_std": tr_std,
-        "trained_gap_pct": (tr_mean / gate_cost - 1.0) * 100.0,
-        "frac_seeds_below_gate_deployed": f"{frac_below}/{n_seeds}",
+        # Legacy-named aliases (kept so older readers of this artifact keep working);
+        # the standardized srp keys below are the canonical ones.
+        "deployed_seed_mean": summary["learned_seed_mean"],
+        "deployed_seed_std": summary["learned_seed_std"],
+        "deployed_gap_pct": (summary["learned_seed_mean"] / gate_cost - 1.0) * 100.0,
+        "trained_seed_mean": trained_s["seed_mean"],
+        "trained_seed_std": trained_s["seed_std"],
+        "trained_gap_pct": (trained_s["seed_mean"] / gate_cost - 1.0) * 100.0,
+        "frac_seeds_below_gate_deployed": summary["frac_seeds_beating_gate"],
         "frac_seeds_below_gate_trained": f"{frac_below_trained}/{n_seeds}",
-        "verdict": verdict,
+        "gate_pinned_all_seeds": gate_pinned_all_seeds,
+        "n_seeds_deployed_gate": pinned,
+        # Standardized seed-robust summary keys (n_optimizer_seeds, learned/gate seed
+        # mean+/-std, savings_pct_seed_mean/std, frac_seeds_beating_gate,
+        # verdict_vs_same_protocol_gate) from invman/optimizer_seed_robustness_policy.py.
+        **summary,
     }
 
 
@@ -289,7 +314,12 @@ def parse_args():
     p = argparse.ArgumentParser(description="Seed-robust learned-vs-gate for the mixed SCN.")
     p.add_argument("--run_tag", default="mixed_distribution_assembly_network_seed_robust")
     p.add_argument("--budget", choices=sorted(base.BUDGETS), default="full")
-    p.add_argument("--description", required=True)
+    p.add_argument("--smoke", action="store_true",
+                   help="Tiny end-to-end validation: forces --budget smoke, caps CPU at 1 worker, "
+                        "and writes ONLY under outputs/.../smoke_seed_robust/ (never the real artifact).")
+    p.add_argument("--mp_num_processors", type=int, default=2,
+                   help="Rayon/BLAS worker cap (read pre-import by invman.cpu_limits).")
+    p.add_argument("--description", default="seed-robust mixed SCN audit (srp-standardized)")
     p.add_argument("--depth", type=int, default=2)
     p.add_argument("--temperature", type=float, default=base.TEMPERATURE_DEFAULT)
     p.add_argument("--split_type", choices=["oblique", "axis_aligned"], default="oblique")
@@ -307,23 +337,43 @@ def parse_args():
     p.add_argument("--sigma_init", type=float, default=0.2)
     p.add_argument("--train_batch", type=int, default=None,
                    help="Override the budget's per-candidate training batch (larger = less ranking noise).")
-    p.add_argument("--seeds", type=int, nargs="+", default=[11, 22, 33, 44, 55])
+    p.add_argument("--seeds", type=int, nargs="+",
+                   default=list(srp.seeds_for(PROBLEM_ID)),
+                   help="Optimizer seeds (default = canonical srp list 9001..9005; the "
+                        "historical mixed run used 11 22 33 44 55).")
     return p.parse_args()
+
+
+def _artifact_path(parsed) -> Path:
+    """Real artifact = outputs/production_assembly_distribution_network/seed_robust_report_mixed.json
+    (budget-suffixed when budget != full so screening can never clobber the audited file).
+    --smoke ALWAYS writes under .../smoke_seed_robust/ and never the real path."""
+    out_dir = PACKAGE_ROOT / "outputs" / "production_assembly_distribution_network"
+    if parsed.smoke:
+        out_dir = out_dir / "smoke_seed_robust"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    suffix = "" if (parsed.smoke or parsed.budget == "full") else f"_{parsed.budget}"
+    return out_dir / f"seed_robust_report_mixed{suffix}.json"
 
 
 def main():
     parsed = parse_args()
+    if parsed.smoke:
+        parsed.budget = "smoke"
+        configure_process_cpu_limits(1)  # before the first rollout initializes rayon
     out = run(parsed)
-    root = PACKAGE_ROOT / "outputs" / "autoresearch" / parsed.run_tag
-    root.mkdir(parents=True, exist_ok=True)
     commit = base._git_short_commit(PACKAGE_ROOT)
-    batch_tag = parsed.train_batch if parsed.train_batch else base.BUDGETS[parsed.budget]["train_batch"]
-    tag = (f"{parsed.budget}_d{parsed.depth}_{parsed.split_type}_{parsed.leaf_type}"
-           f"_t{parsed.temperature:g}_b{batch_tag}"
-           f"_sig{parsed.sigma_init}_warm{int(parsed.warm_start)}_floor{int(parsed.honest_floor)}")
-    json_path = root / f"seedrobust_{tag}_{commit}.json"
+    json_path = _artifact_path(parsed)
+    payload = {
+        "description": parsed.description,
+        "commit": commit,
+        "budget": parsed.budget,
+        "smoke": bool(parsed.smoke),
+        "seeds": list(parsed.seeds),
+        **out,
+    }
     with json_path.open("w", encoding="utf-8") as h:
-        json.dump({"description": parsed.description, "commit": commit, "detail": out}, h, indent=2)
+        json.dump(payload, h, indent=2)
 
     g = out["gate"]["holdout_mean_cost"]
     print("=" * 78)
@@ -339,9 +389,12 @@ def main():
     print("-" * 78)
     print(f"TRAINED (no floor)  seed-mean {out['trained_seed_mean']:.3f} +/- {out['trained_seed_std']:.3f}"
           f"  gap {out['trained_gap_pct']:+.2f}%  below-gate {out['frac_seeds_below_gate_trained']}")
-    print(f"DEPLOYED (floored)  seed-mean {out['deployed_seed_mean']:.3f} +/- {out['deployed_seed_std']:.3f}"
-          f"  gap {out['deployed_gap_pct']:+.2f}%  below-gate {out['frac_seeds_below_gate_deployed']}")
-    print(f"VERDICT: {out['verdict']}")
+    print(f"DEPLOYED (floored)  seed-mean {out['learned_seed_mean']:.3f} +/- {out['learned_seed_std']:.3f}"
+          f"  gap {out['deployed_gap_pct']:+.2f}%  below-gate {out['frac_seeds_beating_gate']}")
+    print(f"SAVINGS vs gate     {out['savings_pct_seed_mean']:+.2f}% +/- {out['savings_pct_seed_std']:.2f}%"
+          f"  over n={out['n_optimizer_seeds']} optimizer seeds")
+    pin_note = "  [honest floor pinned ALL seeds at the gate -> gate-match only]" if out["gate_pinned_all_seeds"] else ""
+    print(f"VERDICT (srp, vs same-protocol gate): {out['verdict_vs_same_protocol_gate']}{pin_note}")
     print(f"WROTE_JSON: {json_path}")
 
 

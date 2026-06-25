@@ -18,11 +18,18 @@ def build_model(args):
 
 
 def summarize_costs(costs):
+    # NB: these seeds are EVALUATION (demand-path) seeds for a fixed trained
+    # policy -- NOT CMA-ES optimizer seeds. Optimizer-seed robustness is a level
+    # up (invman.optimizer_seed_robustness_policy). `num_seeds` is retained as a
+    # backward-compatible alias for `num_evaluation_seeds` to avoid the historical
+    # conflation flagged in review (a result reading "num_seeds: 10" was 10 eval
+    # seeds on 1 optimizer seed).
     return {
         "mean_cost": float(np.mean(costs)),
         "std_cost": float(np.std(costs)),
         "min_cost": float(np.min(costs)),
         "max_cost": float(np.max(costs)),
+        "num_evaluation_seeds": int(len(costs)),
         "num_seeds": int(len(costs)),
     }
 

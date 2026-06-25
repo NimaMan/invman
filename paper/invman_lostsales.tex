@@ -1,0 +1,899 @@
+%%
+%% Copyright 2007-2020 Elsevier Ltd
+%%
+%% This file is part of the 'Elsarticle Bundle'.
+%% ---------------------------------------------
+%%
+%% It may be distributed under the conditions of the LaTeX Project Public
+%% License, either version 1.2 of this license or (at your option) any
+%% later version.  The latest version of this license is in
+%%    http://www.latex-project.org/lppl.txt
+%% and version 1.2 or later is part of all distributions of LaTeX
+%% version 1999/12/01 or later.
+%%
+%% The list of all files belonging to the 'Elsarticle Bundle' is
+%% given in the file `manifest.txt'.
+%%
+%% Template article for Elsevier's document class `elsarticle'
+%% with harvard style bibliographic references
+
+%\documentclass[preprint,12pt,authoryear]{elsarticle}
+
+%% Use the option review to obtain double line spacing
+\documentclass[authoryear,11pt]{elsarticle}
+
+%% Use the options 1p,twocolumn; 3p; 3p,twocolumn; 5p; or 5p,twocolumn
+%% for a journal layout:
+%% \documentclass[final,1p,times,authoryear]{elsarticle}
+%% \documentclass[final,1p,times,twocolumn,authoryear]{elsarticle}
+%% \documentclass[final,3p,times,authoryear]{elsarticle}
+%% \documentclass[final,3p,times,twocolumn,authoryear]{elsarticle}
+%% \documentclass[final,5p,times,authoryear]{elsarticle}
+%% \documentclass[final,5p,times,twocolumn,authoryear]{elsarticle}
+
+%% For including figures, graphicx.sty has been loaded in
+%% elsarticle.cls. If you prefer to use the old commands
+%% please give \usepackage{epsfig}
+
+%% The amssymb package provides various useful mathematical symbols
+
+\usepackage[margin=1in]{geometry}
+\usepackage{setspace}\linespread{1.4}%
+
+\usepackage{amssymb}
+\usepackage{multirow}
+\usepackage{amsmath}
+\usepackage{dsfont}
+\usepackage{afterpage}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{tabularx}
+\usepackage{pdflscape}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\renewcommand{\algorithmicrequire}{\textbf{Input:}}
+\renewcommand{\algorithmicensure}{\textbf{Output:}}
+\newcommand{\btheta}{\boldsymbol{\theta}}
+\newcommand{\bmu}{\boldsymbol{\mu}}
+\newcommand{\bSigma}{\boldsymbol{\Sigma}}
+\newcommand{\bpsi}{\boldsymbol{\psi}}
+\newcommand{\bepsilon}{\boldsymbol{\epsilon}}
+\DeclareMathOperator*{\argmax}{arg\,max}
+
+%% The amsthm package provides extended theorem environments
+%% \usepackage{amsthm}
+
+%% The lineno packages adds line numbers. Start line numbering with
+%% \begin{linenumbers}, end it with \end{linenumbers}. Or switch it on
+%% for the whole article with \linenumbers.
+%% \usepackage{lineno}
+
+
+\newcommand{\hl}{blue}
+\begin{document}
+\begin{frontmatter}
+
+%% Title, authors and addresses
+
+%% use the tnoteref command within \title for footnotes;
+%% use the tnotetext command for theassociated footnote;
+%% use the fnref command within \author or \affiliation for footnotes;
+%% use the fntext command for theassociated footnote;
+%% use the corref command within \author for corresponding author footnotes;
+%% use the cortext command for theassociated footnote;
+%% use the ead command for the email address,
+%% and the form \ead[url] for the home page:
+%% \title{Title\tnoteref{label1}}
+%% \tnotetext[label1]{}
+%% \author{Name\corref{cor1}\fnref{label2}}
+%% \ead{email address}
+%% \ead[url]{home page}
+%% \fntext[label2]{}
+%% \cortext[cor1]{}
+%% \affiliation{organization={},
+%%            addressline={},
+%%            city={},
+%%            postcode={},
+%%            state={},
+%%            country={}}
+%% \fntext[label3]{}
+
+\title{Solving Inventory Management problems using Evolution Strategies}
+
+%% use optional labels to link authors explicitly to addresses:
+%% \author[label1,label2]{}
+%% \affiliation[label1]{organization={},
+%%             addressline={},
+%%             city={},
+%%             postcode={},
+%%             state={},
+%%             country={}}
+%%
+%% \affiliation[label2]{organization={},
+%%             addressline={},
+%%             city={},
+%%             postcode={},
+%%             state={},
+%%             country={}}
+
+
+
+
+\author{Nima Manaf}
+\author{Willem van Jaarsveld}
+\author{Rob Basten}
+\affiliation{organization={School of Industrial Engineering},%Department and Organization
+            addressline={Eindhoven University of Technology},
+            city={Eindhoven},
+            postcode={5600 MB},
+            country={The Netherlands}}
+
+%\author{Nima Manaf}
+%\affiliation{organization={School of Industrial %Engineering},%Department and Organization
+%addressline={Eindhoven University of Technology},
+%city={Eindhoven},
+%postcode={5611BM},
+%country={The Netherlands}}
+
+%\author{Willem van Jaarsveld}
+%\affiliation{organization={School of Industrial %Engineering},%Department and Organization
+%addressline={Eindhoven University of Technology},
+%city={Eindhoven},
+%postcode={5600 MB},
+%country={The Netherlands}}
+
+%\author{Rob Basten}
+%\affiliation{organization={School of Industrial %Engineering},%Department and Organization
+%addressline={Eindhoven University of Technology},
+%city={Eindhoven},
+%postcode={5600 MB},
+%country={The Netherlands}}
+
+
+\begin{abstract}
+This paper investigates the use of Covariance Matrix Adaptation Evolution Strategies (CMA-ES) for solving the lost sales inventory problem, a critical challenge in inventory management. Traditional approaches, such as heuristics and Deep Reinforcement Learning (DRL), often struggle with large-scale problems or require extensive hyperparameter tuning. We propose CMA-ES as an alternative to conventional DRL methods for optimizing neural network-based inventory policies. Unlike typical DRL approaches, our method emphasizes optimizing overall policy performance rather than focusing on individual action-value estimation, simplifying the optimization process and effectively managing the exploration-exploitation trade-off.
+
+Our results show that CMA-ES can efficiently discover high-performing policies with significantly fewer parameters, reducing the need for complex tuning and enhancing interpretability. We find that CMA-ES not only competes with traditional heuristics and leading DRL algorithms but also performs particularly well in settings characterized by lower shortage costs and longer lead times. Additionally, we show that CMA-ES can train competitive policies using simple linear models, further highlighting its efficiency and practicality. This research offers a new, effective, and interpretable approach to tackling complex inventory management problems, with potential applications across a wide range of decision-making challenges in operations management.
+\end{abstract}
+
+\begin{keyword}
+%% keywords here, in the form: keyword \sep keyword
+
+%% PACS codes here, in the form: \PACS code \sep code
+
+%% MSC codes here, in the form: \MSC code \sep code
+%% or \MSC[2008] code \sep code (2000 is the default)
+
+Inventory Management \sep Deep Reinforcement Learning \sep Evolution Strategies \sep Optimal Control \sep Policy Optimization
+\end{keyword}
+
+\end{frontmatter}
+%% \linenumbers
+
+
+\section{Introduction}\label{sec:introduction}
+Inventory management is a fundamental challenge in the field of operations management. Inventory problems involve sequential decision making on when and how much inventory to order to meet customer demand, while minimizing the costs associated with inventory underage and overage. Many inventory problems can be formulated as Markov Decision Processes (MDPs), and while exact algorithms solve small problem instances efficiently, they fail in solving larger instances in a reasonable amount of time due to the curse of dimensionality. Hence, researchers have designed heuristics to solve larger-scale problems, typically making use of the structural properties of the problem. Examples include base-stock policies, $(s,Q)$ policies, and $(s,S)$ policies. Designing heuristics requires significant specialized knowledge about the problem. In addition, researchers usually make simplifying assumptions about the problem to come up with these heuristics, which limits their applicability in practice. In this paper, we assess inventory policies obtained using machine learning approaches that are readily applicable to a wide range of inventory problems, also for problems for which no heuristics are available. In order to gain reliable insights into this approach, the focal problem in this study is a quintessential, difficult inventory problem for which very effective heuristics are available: the lost sales problem \citep{morton1971near,Zipkin2008OldSystems,Bijvank2011Lost-salesReview}.
+
+Recently, Deep Reinforcement Learning (DRL) has achieved remarkable success in solving complex problems, particularly in the domain of games, as demonstrated by breakthroughs such as AlphaGo \citep{Silver2016MasteringSearch, Silver2017MasteringKnowledge}. These successes have spurred interest in applying DRL to other fields, including inventory management. For instance, \cite{Gijsbrechts2022CanProblems} show that it is possible to train a DRL agent to effectively address inventory control problems like the lost sales problem. In the DRL framework, ordering policies are represented as neural networks with tunable parameters, and the primary objective is to optimize these parameters to develop a high-performing policy \citep[see][]{boute2022deep}. Despite its potential, the application of DRL in inventory management faces significant challenges. Training DRL models often requires considerable computational resources and extensive hyperparameter tuning—fine-tuning the settings of the learning algorithm itself—to achieve good performance \citep[see][]{Gijsbrechts2022CanProblems}. Moreover, the neural networks employed typically contain thousands of parameters, making the resulting policies difficult to interpret and apply in practice.
+
+In this paper, we propose to adopt an alternative optimization method for learning the parameters of neural network inventory policies, namely Covariance Matrix Adaptation Evolution Strategies (CMA-ES). CMA-ES is an Evolution Strategy that performs a structured exploration of the parameter space of the policy function using its covariance matrix \citep{Salimans2017EvolutionLearning}. With CMA-ES, we take a very different approach to policy optimization compared to typical DRL algorithms such as A3C and PPO \citep{mnih2016asynchronous,schulman2017proximal}: Instead of explicitly recording individual actions taken in simulation trajectories, CMA-ES only concerns itself with overall performance over the entire trajectory. CMA-ES inherently incorporates an exploration mechanism. This is in contrast to DRL, where devising an effective exploration strategy often requires careful design and adjustment. This automatic exploration significantly simplifies the optimization process, as it inherently navigates through the parameter space, efficiently balancing the exploration-exploitation trade-off without the need for explicit strategy formulation.
+
+As a key contribution of this paper, we demonstrate how CMA-ES can be used to train well-performing neural network policies for the lost sales inventory problem. We find that CMA-ES can relatively quickly identify well-performing policies without the need for extensive hyperparameter tuning. These policies quite consistently outperform base-stock policies. Moreover, CMA-ES can achieve $3-4\%$ lower average costs compared to the best performing traditional heuristics such as the Myopic-2 and Capped Base-Stock policies for problems with a low penalty cost and long lead times. CMA-ES has similar performance for problems with a low penalty cost and short lead time. %, but it is outperformed in cases with a high penalty cost.
+Finally, without any hyperparameter optimization, the CMA-ES method tends to deliver better performing policies than those obtained with well-known state-of-the-art model-free DRL algorithms such as those reported in literature for A3C \citep{Gijsbrechts2022CanProblems}. Linear and neural network policy function approximators trained using CMA-ES perform better than the policies trained in \citep{Gijsbrechts2022CanProblems}, and are orders of magnitude smaller. Since our proposed methodology is quite generic, it can be applied to other inventory management problems with similar decision-making structures.
+
+Perhaps equally importantly, we contribute by finding that CMA-ES can identify competitive neural network policies even while the neural network has very few parameters/weights. In particular, whereas the policy function approximator in typical DRL applications in inventory control involves several hidden layers and tens of thousands of parameters/weights \citep{Gijsbrechts2022CanProblems,kaynov2024deep,wang2024deep, dehaybe2024deep}, we find that CMA-ES can train competitive policies based on a much simpler design without hidden layers, and with less than one hundred parameters/weights: A \emph{linear policy function}. To understand how such a policy selects an action, suppose that a vector $\mathbf{s}$ represents the dynamic state of the lost sales inventory system: $\mathbf{s}$ contains the information on the on-hand inventory and the inventory pipeline. Then, the \emph{score} for a specific order quantity $q$ is computed as $\mathbf{w}_q \cdot \mathbf{s} + b_q$, where $\textbf{w}_q$ and $b_q$ for $q\in \{0,1,\ldots,\bar{q}\}$ are parameters that will be learned with CMA-ES, and $\bar{q}$ represents a provable upper bound on the optimal order quantity \citep[see e.g.][]{Zipkin2008OldSystems}. When placing an order, we compute the score for each possible order quantity, and select the quantity with the highest score. While being more involved than heuristics such as base-stock policies, the resulting linear order policy is arguably more interpretable than a neural network with one or several hidden layers. Apart from interpretability, we believe it is theoretically interesting that such a small network can represent policies as good as a neural network.
+
+Furthermore, we propose a visualization technique that provides insights into the decision-making process of the linear policy function approximator. By examining the relationship between the current inventory level and the sum of previously ordered products, as well as the individual dimensions of the state space, we uncover clear patterns in the policy's behavior. The visualizations reveal how the policy adapts its order quantities based on the current state of the system and the expected future supply, effectively balancing the need for replenishment with the risk of overstocking. This interpretability aspect of the linear policy function approximator is crucial for operational settings where understanding the rationale behind decisions is as important as the decisions themselves.
+
+%\textbf{Simplicity:} CMA-ES, as a black-box optimization algorithm, simplifies the policy optimization process. It is more accessible to practitioners and researchers, especially those with limited knowledge about RL. The population-based approach of ES facilitates easier parallelization than RL methods and allows for efficient scaling with the number of CPUs. \footnote{did we research this?}
+
+%\textbf{Computational Efficiency and Robustness:} CMA-ES is computationally more efficient than RL in optimizing policy networks for problems like lost sales inventory management. It is a model-free method that requires only policy evaluation on sample sets, as opposed to the extensive trial-and-error training in RL. Our experiments show that CMA-ES can outperform the best heuristics for the lost sales problem even with noisy reward signals over short time horizons.
+
+%\textbf{Stochastic and Global Optimization:} As a global optimization method, CMA-ES can search the entire parameter space for optimal solutions. It adapts exploration in the policy approximator's parameter space using the covariance matrix and step-size, aiding in finding solutions that might not be immediately apparent.
+
+%Our contributions in this paper are multifaceted. We introduce the use of evolutionary methods, particularly CMA-ES (Covariance Matrix Adaptation Evolution Strategy), to simplify policy optimization in inventory management problems, making it more accessible to a wider range of practitioners and researchers with limited knowledge of Reinforcement Learning and Optimization algorithms. We demonstrate the capability of CMA-ES to find policy function approximators that are on par with the best existing heuristics for the lost sales problem, like Myopic-2 and Capped Base-Stock policies. Importantly, our experiments reveal that CMA-ES can achieve this with significantly smaller neural networks than those reported in the literature. Additionally, we show that linear policy function approximators, whose parameters are optimized using CMA-ES, perform as effectively as neural networks in these scenarios. We also show that CMA-ES can efficiently identify near-optimal policy networks using noisy reward signals from short-term simulations of lost sales problem, drastically reducing the time horizon required for finding near-optimal policies.
+
+%Our contributions can be summarized as follows:\begin{itemize}
+%\item  We introduce the use of evolutionary methods, specifically CMA-ES, for solving inventory management problems. This method simplifies the policy optimization process, making it more accessible to practitioners and researchers from diverse fields with limited knowledge of RL.
+%\item We demonstrate that CMA-ES can find policy function approximators that perform as well as the best heuristics for solving the lost sales problem, such as Myopic-2 and Capped Base-Stock policies. %, outperforming them by 4\% to 5\% for some problems as the lead time of the problem increases.
+
+%\item Our experiments show that CMA-ES can do so with significantly smaller neural networks than those reported in the literature.
+%\item We show that linear policy function approximators, whose parameters are found using CMA-ES, can perform as well as neural networks in solving the problem.
+%\item We demonstrate that CMA-ES can find near-optimal policy networks using noisy reward (cost) signals calculated from simulating lost sales for a short time horizon in the order of thousands of periods rather than several hundred thousands of periods.
+%\item We open-source our code to facilitate replicability by the community and encourage further research in this area.
+%\end{itemize}
+
+
+%Our paper contributes to the field of lost sales inventory management by showing the advantages of using CMA-ES for policy optimization over Reinforcement Learning. We highlight the simplicity, computational efficiency, robustness, and global optimization capabilities of CMA-ES. We show that CMA-ES can learn policy function approximators that outperform the best heuristics for solving the lost sales problem using a reward signal from applying the policy to the problem with a relatively short time horizon. Our experiments show that CMA-ES can achieve near optimal solutions with smaller neural networks compared to neural network architectures reported in the literature. Moreover, we emphasize that linear policy function approximators found using CMA-ES can result in similar or better performance compared to neural networks.
+
+The structure of this paper is as follows. First, we present a review of the related literature in Section \ref{lit}. Next, in Section \ref{lost_sales}, we provide an overview of the lost sales inventory management problem and explain how policy approximation can be used to solve it. Section \ref{policy_optimization} details the optimization of the parameters of the policy function approximators, which determine the quantity of products to be ordered at each stage of the lost sales inventory management problem. In Section \ref{performance}, we assess the effectiveness of trained policy approximators in solving the lost sales problem. Additionally, we take a closer look at the performance and parameters of the linear policy function approximators. Finally, in Section \ref{conclusions}, we conclude the paper and suggest potential avenues for future research.
+
+
+
+\section{Literature}
+\label{lit}
+
+In this paper, we learn linear and neural network ordering policies for inventory problems using a form of machine learning: Covariance Matrix Adaptation Evolution Strategy (CMA-ES). We first discuss the relatively recent adoption of neural network inventory policies, and DRL algorithms for training those policies. Then we discuss other machine learning methods for training neural network policies, including CMA-ES.
+
+Many classical inventory problems can be trivially modelled as a MDP, but those MDPs are often computationally intractable because of the curse of dimensionality. There are several approaches for arriving at satisfactory solutions for such intractable MDPs, such as problem-specific analytical \emph{heuristics}, e.g. $(S,Q)$ policies. To overcome limitations of such heuristics, recent research has proposed to adopt DRL for inventory control. A key idea in DRL is the use of neural networks to represent policies and/or value functions \citep{boute2022deep}. Because neural networks can represent a very wide range of functions, their adoption potentially eliminates the need for defining appropriate problem specific strategies: To represent an inventory policy as a neural network, states of the MDP are interpreted as vectors that will be used as input to the neural network, while the output will be interpreted as a distribution over the possible actions, e.g. order sizes, see \cite{boute2022deep} for a detailed discussion.
+
+DRL is regarded as a promising research direction for inventory applications, and a range of Reinforcement Learning algorithms has been successfully applied to a variety of problems. Deep Q Networks (DQN) is amongst the earliest DRL algorithms, and is successfully applied to the beer game \citep{oroojlooyjadid2022deep} and to perishable inventory control \citep{demoor2022reward}. The flexibility of DRL algorithms to adapt to different problems was convincingly demonstrated with the application of A3C to dual sourcing, lost sales, and one-warehouse multi-retailer problems \citep{Gijsbrechts2022CanProblems}. Recent work is increasingly adopting proximal policy optimization (PPO), for example for the joint ordering problem \citep{vanvuchelen2020use}, the asymmetric one-warehouse multi-retailer problem \citep{kaynov2024deep}, stochastic capacitated lot sizing \citep{vanhezewijk2023using}, and inventory control for non-stationary stochastic demand \citep{dehaybe2024deep}. \cite{temizoz2025deep} propose a different algorithm that is specifically designed for highly stochastic models, viz. Deep Controlled Learning (DCL), and demonstrate superior results for several classical inventory models \citep[see also][]{van2025scalable}. DQN, A3C, PPO, and DCL, although differing in their specific mechanisms, all utilize state-action-reward sequences as the foundational structure for learning and optimizing policies in Reinforcement Learning environments. That is, these algorithms involve the attribution of rewards obtained over some simulation trajectory to individual actions taken in that trajectory, and subsequently the tuning of neural network parameters to promote the use of actions that are deemed to output favorable actions.
+
+CMA-ES is a global optimization method that has been successfully used for a wide range of contexts \citep{Hansen1996AdaptingAdaptation,Hansen2001CompletelyStrategies.,Hansen2006TheReview}. CMA-ES was not originally proposed as a method for learning neural network policies, but recent work demonstrated its applicability for this purpose \citep{Salimans2017EvolutionLearning}. CMA-ES has fewer hyperparameters and its design inherently encourages exploration, making it potentially easier to tune and more robust. Unlike DRL algorithms, which rely on gradient information and backpropagation, CMA-ES belongs to the broader class of evolutionary algorithms that are population-based and gradient-free, mimicking natural selection through iterative sampling and adaptation. Its ability to adapt the full covariance matrix distinguishes it from simpler Evolution Strategies, enabling more efficient search in complex, high-dimensional spaces, such as the one considered in this paper.
+
+Within the inventory context, CMA-ES and other evolutionary algorithms have been adopted to optimize the parameters of problem-specific heuristics, e.g. $(S,Q)$ policies \citep{Bosman2007InventoryOptimization}. However, we are not aware of applications of evolutionary algorithms to learn generic ordering policies. In fact, the vast majority of machine learning algorithms applied to optimize generic ordering policies have adopted classical DRL algorithms focusing on state-action-reward signals, such as PPO and A3C. We next discuss some salient exceptions.
+
+To optimize inventory control for a large market-place, \cite{madeka2022deep} propose to apply a form of supervised learning. In particular, they directly apply back propagation to a simulation model of an inventory system, based on real-world estimated demand data. \cite{vanderhaar2023supervised} similarly model an inventory problem as a supervised learning problem, but rather than attempting to model the entire problem as a differential simulator, they propose a method to assign costs to each individual decision, extending the applicability of data-driven methods \citep{ban2019big} to cases where it is difficult to find a simple closed-form policy. Finally, \cite{amiri2023adaptive} adopt multi-armed bandit methods and change-point detection for data-driven policy optimization.
+
+Our paper similarly diverges from the standard methods for training generic (neural network) policies, and is, to our knowledge, the first to adopt evolutionary algorithms for the purpose. The learning of generic ordering policies for inventory systems is a nascent field, and as such it benefits from experimentation with a range of methods, to gain a good overview of strengths and limitations of various method, both in terms of performance and in terms of interpretability.
+
+
+\section{Solving lost sales inventory management problem using policy optimization}
+\label{lost_sales}
+
+\subsection{Lost sales inventory management problem}
+
+The lost sales problem is one of the fundamental problems in the inventory management literature \citep{Zipkin2008OldSystems, Bijvank2011Lost-salesReview}. We consider the single-item, periodic review lost sales inventory management problem. The demand and order quantities are assumed to be integer. The objective of the problem is to minimize the long-run average cost of the system, which consists of the lost-sales and inventory holding costs. At the beginning of each period $ t \in \{1, 2, \dots, T \}$, the inventory manager has to decide on the number of products to be ordered $q_t$. (We are mainly interested in the limit $T \rightarrow \infty$, to be discussed in detail below.) The ordered products arrive after $L \geq 1$ periods, i.e., at the start of period $t+L$.
+
+Right before making the ordering decision, $q_{t-L}$ products ordered in period $t-L$ arrive; we let $I_t$ denote the inventory on hand in period $t$ after adding the order placed in period $t-L$, but before the arrival of demand. The realized demand in period $t$, denoted by $d_t$, follows the distribution $D_t$. We assume that the demand distribution is the same across all periods, i.e., $D_t \sim D$ for all $t$. In other words, the demand process is stationary.
+The inventory on hand is utilized to meet the arriving demand $d_t$. If not all demand can be fulfilled immediately by inventory on hand, we have lost sales. Consequently, $I_t$ can be expressed as follows:
+\begin{equation*}
+    I_{t}=\left(I_{t-1}-d_{t-1}\right)^+ + q_{t-L},
+\end{equation*}
+where $x^+ = \max(0, x)$.
+
+The holding cost for keeping one unit of inventory on hand is denoted by $h$, while the penalty cost for each unit of lost sales is denoted by $p$. We assume that there are no fixed costs associated with placing orders. The total cost incurred in period $t$, denoted by $c_t$, for a given realized demand $d_t$ are thus:
+\begin{equation}
+    \label{lost_sales_cost}
+    c_t = h\left(I_{t}  - d_t\right)^+ + p\left(d_t - I_{t}\right)^+,
+    %C_t = h\left(I_{t-1} + q_{t-L} - d_t\right)^+ + p\left(d_t - I_{t-1} - q_{t-L}\right)^+.
+\end{equation}
+while the expected total cost for period $t$ are:
+\begin{equation}
+    \label{lost_sales_average_cost}
+    \mathbb{E}[c_t] = h \cdot \mathbb{E}[\left(I_{t}  - D_t\right)^+] + p \cdot \mathbb{E}[\left(D_t - I_{t}\right)^+],
+\end{equation}
+where $\mathbb{E}[\cdot]$ denotes the expectation over the demand $D_t$. Denote the average expected costs over a horizon of $T$ periods by $\bar{C}_T(\btheta) = \frac{1}{T}\sum_{t=1}^{T} \mathbb{E}[c_t]$, where the expectation is taken under policy $\pi_{\btheta}$. The objective of the inventory management problem is to minimize the long-run average expected cost, which is formulated as the limit of $\bar{C}_T(\btheta)$ as the time horizon $T$ approaches infinity:
+\begin{equation*}
+    \bar{C}(\btheta) = \lim_{T \to \infty} \bar{C}_T(\btheta).
+\end{equation*}
+%\textcolor{\hl}{It represents the theoretical objective we aim to minimize. We estimate this quantity using finite-horizon simulations, which we later denote as $C(\btheta)$ for a policy parametrized by $\btheta$. }
+Note that since demand is stationary, the entire problem is stationary, and hence our objective is to minimize the average expected costs in this inventory system.
+
+We consider periods $t \in \{1, 2, \dots, T\}$ in our formulation, where the infinite horizon average cost criterion that arises as $T \to \infty$ is the focus of this paper. However, note that we propose simulation-based approaches for optimizing linear and neural network policies, and for those purposes, we also evaluate performance over finite horizons. In particular, for training policies, we use smaller horizons for computational efficiency. For evaluating policy performance, we use longer horizons with a warm-up period to approximate infinite-horizon behavior, an approach aligning with the standards in inventory literature.
+
+Our decision variable in this problem is $q_t$, the number of products to be ordered at the beginning of period $t$, for $t \in \{1, 2, \dots, T\}$. In order to find the optimal policy for setting $q_t$, one may formulate the problem as an MDP. Since $q_{t-L}$ products arrive at the beginning of period $t$, one can represent the system state after arrival of this order as:
+\begin{equation*}
+    \mathbf{S}_t = \left( I_t,q_{t-L+1} \dots, q_{t-1} \right).
+    %\left( \left(I_{t-1}-d_{t-1}\right)^+ + q_{t-L}, \dots, q_{t-1} \right),
+\end{equation*}
+This means we have an $L$-dimensional state-space, while the cost in period $t$ is a function of the first dimension of $\mathbf{S}_t$ only. Notice that while the form of the cost function \eqref{lost_sales_average_cost} appears simple, the starting inventory $I_t$ cannot be controlled directly, but arises as a complex function of the ordering policy, i.e., the method to decide on $q_t$ based on the system state $\mathbf{S}_t$. Moreover, solving the problem as an MDP via policy or value iteration is intractable because the state space grows exponentially in the lead time. Therefore, the lost sales inventory problem is considered to be a difficult optimization problem \citep{Bijvank2011Lost-salesReview}.
+
+%We denote the expected costs in period $t$ as $c_t(\mathbf{S}_t)$, where we make the dependence on $\mathbf{S}_t$ explicit. Let $V^*_t(\mathbf{S}_t)$ be the expected costs of an optimal policy from time $t$ onward starting in state $\mathbf{S}_t$. The Bellman optimality equation \citep{Bellman1954TheProgramming} of the lost-sales problem can be written as
+%\begin{equation*}
+%    V^*_{t}(\mathbf{S}_t) = \min_{q_t} \left\{ \mathbb{E}[c_t(\mathbf{S}_t)] + \mathbb{E}[V^*_{t+1}(\mathbf{S}_{t+1})]\right\}.
+%\end{equation*}
+
+%{\color{\hl} For our stationary infinite-horizon problem, i.e., in the limit $T\rightarrow \infty$, we make the following observations:
+%\begin{itemize}
+%    \item State transitions and rewards remain constant across time periods;
+ %   \item There exist optimal policies that are stationary (time-invariant).
+%\end{itemize}
+%Even with these observations, optimally solving the optimality equation becomes computationally intractable as lead time increases, due to the curse of dimensionality. As an alternative, we propose adopting flexible policy function approximations, determining the performance of those policies via simulation, and optimizing parameters using CMA-ES.}
+
+
+\subsection{Policy function approximators}
+\label{policy_function_app}
+
+There exist several iterative methods for solving an MDP exactly, such as value iteration and policy iteration. However, the exact methods can only be used to solve small-scale problems due to the curse-of-dimensionality. Hence, researchers have relied on approximate methods to solve large-scale MDPs. A popular subclass of approximate approaches is value and policy function approximation using function approximators. Value function approximation methods directly estimate the value of being in a certain state. On the other hand, policy approximation directly parametrizes the behavior of the agent in different situations. It acts as the brain of the agent and describes which action to take in different states of the problem. In this paper, we consider solving the inventory management problem using policy approximation.
+
+Throughout this paper, we use a consistent state-action representation where the state vector $\mathbf{S}_t = (s_{t1}, \dots, s_{tL}) =(s_{1}, \dots, s_{L})$ captures inventory position and pipeline inventory at time $t$, where the dependence on $t$ is sometimes suppressed to avoid  notational overload. Actions correspond directly to order quantities. For each possible state vector $\mathbf{S}_t$, our policy generates \emph{scores} for each possible action; we then select the action which has the highest corresponding score. Note that since our problem is stationary, we are seeking to identify a well-performing stationary policy.
+
+Several policy function approximators exist in the machine learning literature, such as the linear combination of the state features', neural networks, decision trees, and nearest-neighbors. We consider the linear combinations of features and neural network policy approximators. Typical policy function approximators used in Deep Reinforcement Learning \citep{boute2022deep} map the current state of the problem onto the probability of taking the actions in the action-space of the problem; note that we instead use a deterministic policy where each state is mapped to the action with the highest score. Note that we do not need to adopt probabilistic policies, because CMA-ES inherently ensures sufficient exploration.
+
+The action-space of the lost sales problem consists of a set of discrete action in $\{0, 1, \dots, \bar{q}\}$ representing the number of products to be ordered, where $\bar{q}$ is the maximum number of products that can be ordered. The choice of \(\bar{q}\) can be informed by theoretical upper bounds specific to the problem, as suggested by \cite{Zipkin2008OldSystems} for the lost sales problem, or it can be set based on some loose upper bound, such as the 99th percentile of the demand distribution.
+\begin{figure}[t]
+    \centering
+    \caption{Linear policy function approximator architecture showing how state vector components $(s_1, \dots, s_L)$ are mapped to action scores for each possible order size (0 to $\bar{q}$); the action with the highest score is subsequently selected.}    \includegraphics[ page=4]{figures/arch.pdf}
+    \label{linear_policy}
+\end{figure}
+Consider a policy function approximator $\pi$ parametrized by $\btheta$ denoted by $\pi_
+{\btheta}$, where $\btheta$ is a vector of real numbers for the linear and neural network policy function approximators. A linear policy function approximator determines the so-called \emph{score} (see below) of action $q$ in the action-space by using the dot product of the current state of the system and a set of weights $w_{1, q}, w_{2, q},\dots, w_{L, q}$, plus a bias weight $b_q$ using Equation (\ref{linear_policy_eq}).
+\begin{equation}
+    \label{linear_policy_eq}
+    y_q = s_1 w_{q,1} + s_2w_{q,2} + \ldots + s_Lw_{q,L} + b_q.
+\end{equation}
+The \emph{score}, \( y_q \), in the context of policy function approximators and particularly for a linear policy function approximator, %refers to a computed value that quantifies the desirability or suitability of a particular action \( q \) given the current state of the system.
+%This score is a crucial element in the decision-making process of the policy function approximator.
+%The score, \( y_q \), essentially
+represents the output of the neural network associated with choosing action \( q \) in the %given state.
+current state of the system.
+Figure \ref{linear_policy} shows how to determine the score of each action $q$. We subsequently select the action corresponding to the highest score:
+\begin{equation}
+\pi_{\btheta}(\mathbf{S}) = \argmax_{q \in \{0, 1, \ldots, \bar{q}\}} y_q, \label{eq:policydef}
+\end{equation}
+(We break tied scores by selecting the highest action. )
+
+\begin{figure}[p]
+    \centering
+    \caption{Neural network architecture with state vector $(s_1, \dots, s_L)$ as input and action scores as output. The input layer represents the state components, and the output layer nodes (labeled 0 to $\bar{q}$) represent scores for selecting each possible order size; the action with the highest score is selected. }
+    \includegraphics[ page=1]{figures/arch.pdf}
+    \label{nn_policy}
+\end{figure}
+For concreteness in the following example, we set $L=2$ and $\bar{q}=3$, so the action-space is $\{0, 1, 2, 3\}$ and the state is represented as $\mathbf{S}=(s_1, s_2)$. The scores of each action in the action-space can be calculated as:
+\begin{equation}
+      \begin{pmatrix}
+        y_{0} \\[0.3em]
+        y_{1} \\
+        y_2 \\
+        y_{3}
+      \end{pmatrix} =
+      \begin{pmatrix}
+        w_{0,1} & w_{0,2} \\
+        w_{1,1} & w_{1,2} \\
+        w_{2,1} & w_{2,2}  \\
+        w_{3,1} & w_{3,2}
+      \end{pmatrix}
+      \begin{pmatrix}
+        s_{1} \\[0.3em]
+        s_{2}
+      \end{pmatrix}
+      +
+      \begin{pmatrix}
+        b_{0} \\[0.3em]
+        b_{1} \\
+        b_2 \\
+        b_{3}
+      \end{pmatrix}.
+\end{equation}
+These scores are then used to select an action by choosing the one with the highest score, according to the argmax rule: $\pi_{\btheta}(\mathbf{S}) = \argmax_{q \in \{0, 1, \ldots, 3\}} y_q$. Concatenating the weights and biases of this function approximator into a one dimensional vector results in a vector of size $4\times2 + 4 = 12$, representing $\btheta$. In general, the parameters of the linear policy function approximator consist of a vector of real numbers of size ${(\bar{q}+1)}\times L + \bar{q}+1 =(\bar{q}+1)\times (L+1) $.
+
+A neural network policy approximator projects the state of the problem into nonlinear hidden layers which then determine the scores of each action. For instance, consider the neural network presented in Figure \ref{nn_policy}. The current state of the problem is first projected into an $H$ dimensional space, which is used to determine the action. Figure \ref{nn_policy_detail} shows how the value $a_i^{(j)}$ of neuron $i$ in hidden layer $j$ of the neural network is calculated. Neural networks use a nonlinear activation function, denoted by $\nu$, which determines the importance of each neuron in determining the score of a certain action. In our numerical experiments, we employ the ``Scaled Exponential Linear Units`` (SELU) activation function, as proposed by \citep{Klambauer2017Self-NormalizingNetworks}. We opted for SELU due to its self-normalizing properties, which help maintain a stable mean and variance of the network's activations. This attribute leads to improved training dynamics and convergence properties compared to traditional activation functions. Preliminary experiments have demonstrated that SELU achieves slightly better results than alternatives such as the Rectified Linear Unit (ReLU). It is defined as:
+    \begin{equation*}
+\operatorname{\nu}(x)=\lambda\left\{\begin{array}{ll}
+x & \text { if } x>0, \\
+\beta e^{x}-\beta & \text { if } x \leqslant 0,
+\end{array}\right.
+\end{equation*}
+where $\beta \approx 1.6733$ and $\lambda \approx 1.0507$. In a similar fashion to the linear function approximator, the parameters of the neural network are concatenated into a vector to represent $\btheta$. For instance, consider a two-layer neural network with a hidden layer of size $H$ presented in Figure \ref{nn_policy}. $\btheta$ is equivalent to a vector of real numbers of length $L\times H + H + H\times{(\bar{q}+1)} + {\bar{q}+1}$ for this neural network: $L\times H$ weights connecting the input and the hidden layer, $H$ biases for the hidden layer, $H\times (\bar{q}+1)$ weights connecting the hidden and the output layer, and $\bar{q}+1$ biases for the output layer.
+\begin{figure}
+        \centering
+        \caption{Calculating neuron values in a neural network with nonlinear activation function $\nu$.}
+        \includegraphics[page=2]{figures/arch.pdf}
+        \label{nn_policy_detail}
+\end{figure}
+
+\subsection{Solving the lost sales problem using policy function approximators}
+Let $\mathbf{S}_1$ demonstrate the initial state of the lost sales problem. We initialize $\mathbf{S}_1$ by ordering a random number of products (less than the maximum order size) for $L$ periods. Then, in period $t$, we use $\pi_{\btheta} (\mathbf{S}_t)$ as defined in \eqref{eq:policydef} to determine the order size $q$, for $t \in \{1, 2, \dots, T\}$. The empirical average cost per period of the problem using policy $\pi_{\btheta}$ over a horizon of length $T$ is then calculated as:
+\begin{equation*}
+    \hat{C}_T(\btheta) = \frac{1}{T} \sum_{t=1}^{T} c_t.
+\end{equation*}
+$\bar{C}_T(\btheta)$ determines the expected performance of parameter vector $\btheta$ in controlling the lost sales problem, and our long-run objective is $\bar{C}(\btheta) = \lim_{T\to\infty} \bar{C}_T(\btheta)$. As it is intractable to evaluate the limit of $T\rightarrow \infty$ for any given $\btheta$, our algorithms estimate $\bar{C}_T(\btheta)$ using simulation samples $\hat{C}_T(\btheta)$, and we effectively optimize $\btheta$ to minimize:
+    \begin{equation}\label{c_theta_objective_finite}
+        \min_{\btheta} \mathop{\mathbb{E}}\left[ \hat{C}_T(\btheta)\right].
+    \end{equation}
+
+We might wonder about the structure of the optimization problem represented by \eqref{c_theta_objective_finite}, i.e. how do expected costs change as a function of the policy parameters $\btheta$. Since costs \eqref{lost_sales_cost} are a convex function of the starting inventories $I_t$, perhaps they are also well-behaved as a function of $\btheta$. It appears that as a function of $\btheta$, costs are highly non-convex with many local optima (see \ref{appendix:non_convexity_}), calling for advanced optimization methods that shall be explored in the next section.
+% example:For instance, consider a linear policy function approximator. Let $|S|$ be the dimension of the state-space of the problem. A linear policy function approximator with a single output
+
+\section{How to find the parameters of the policy function approximator?}\label{policy_optimization}
+There are two primary methods for optimizing the parameters of a policy function approximator: Policy Gradient and derivative-free methods. Policy gradient methods are a category of RL techniques that optimize the parameter vector $\btheta$ of the policy function approximator using gradient descent. On the other hand, derivative-free methods update the parameter vector $\btheta$ using an evolutionary framework. There are various derivative-free methods available in the literature, and in this paper, we adopt Evolution Strategies (ES), which is a population-based stochastic optimization methodology. ES belongs to the family of evolutionary algorithms such as the Genetic Algorithm. Although it has traditionally been used for optimizing low-dimensional continuous optimization problems, recent studies have shown that it can also be scaled to optimize neural networks with several million parameters \citep{Salimans2017EvolutionLearning}.
+
+
+In general, the evolutionary optimization framework for policy optimization operates as follows. We assume that the parameter vector $\btheta$ of the policy function approximator follows a certain distribution, usually a multivariate Gaussian distribution. At each iteration of the optimization, a population of policy function approximators is sampled from this distribution. Next, the performance of each policy function approximator in solving the problem is evaluated.  Finally, the underlying distribution of $\btheta$, represented by $\psi$, is updated based on the performance of each policy function approximator within the population.
+\begin{algorithm}
+\caption{Evolutionary optimization framework}
+\label{es_framework}
+  \begin{algorithmic}[1]
+     \STATE \textbf{Input:} population size $N$, parameter distribution $\psi$:
+      \FOR{iteration $i=1,2,\ldots$}
+       \STATE Sample a population of parameters $\btheta^{(n)}_i$ for $ n  =  1, 2,  \dots, N$ from distribution $\mathds{P}_\psi(\btheta)$
+        \STATE Compute the average cost $\bar{C}_T\left(\btheta^{(n)}_i\right)$ of the problem for $ n  =  1, 2,  \dots, N$
+        \STATE Update the parameters of the underlying distribution denoted by $\psi$ based on the computed costs
+      \ENDFOR
+  \end{algorithmic}
+\end{algorithm}
+
+To better illustrate the evolutionary optimization framework, let us consider an example using the 12-dimensional linear function approximator introduced in Section \ref{policy_function_app}. In this case, assume that $\btheta$ follows a multivariate Gaussian distribution with a mean vector $\bmu$ of size 12 and a fixed covariance matrix of $\sigma^2 \mathbb{I}$, where $\mathbb{I}$ is the $12 \times 12$ identity matrix. We set the population size of Evolution Strategies (ES) to $N=50$.
+
+At the first iteration of ES, we randomly sample 50 different 12-dimensional vectors from the distribution $\mathcal{N}(\bmu, \sigma^2 \mathbb{I})$, which we denote as $\btheta^{(n)}_1$ for $n \in \{1, 2, \dots, 50\}$. This results in 50 distinct policy function approximators. We then evaluate the performance of each policy function approximator in solving the lost sales problem, using their respective average-cost-per-period values denoted by $\bar{C}_T\left(\btheta^{(n)}_1\right)$ for some appropriate value of $T$. Finally, we update the mean vector $\bmu$ of the underlying Gaussian distribution based on these costs. This process is repeated until a stopping criterion, such as a fixed number of iterations, is met.
+
+
+There are various ES techniques available in literature that differ in how they represent the distribution of $\btheta$ and update its parameters. In this section, we first introduce a variant presented in \cite{Salimans2017EvolutionLearning} for the sake of simplicity. This method is a straightforward approach used to optimize neural networks with millions of parameters for solving Atari games and MuJoCo physics simulators. It models the population distribution as a Gaussian distribution with a fixed diagonal covariance matrix. Then, we introduce CMA-ES, which is one of the most advanced ES variants and the one we adopt in our numerical experiments. CMA-ES models the underlying distribution of $\btheta$ using a multivariate Gaussian distribution with a full covariance matrix, as described in \citep{Hansen2001CompletelyStrategies.}.
+
+\subsection{Simple Gaussian Evolution Strategies}
+In this section, we introduce the Simple Gaussian Evolution Strategies (ES), which differs from other evolutionary methods, such as the Cross Entropy method and genetic algorithm, by using the entire population to estimate a gradient signal for updating the population distribution. This variant assumes that the underlying distribution of the population follows a $D$-dimensional isotropic Gaussian distribution, denoted as $\mathds{P}_\psi(\btheta)$, where $D$ is the length of $\btheta$, and $\psi$ represents the mean $\bmu$ of the Gaussian distribution.
+
+Specifically, the distribution is given by:
+
+\begin{equation}
+\mathds{P}_\psi(\btheta) \sim \mathcal{N}(\bmu, \sigma^2 \mathbb{I}) = \bmu + \sigma \mathcal{N}(0, \mathbb{I}),
+\end{equation}
+
+where $\sigma$ is the standard deviation of the distribution, which can be either fixed or treated as an additional parameter.
+
+The input to ES includes the initial mean of the distribution ($\bmu_1 = \mathbf{0}$), the standard deviation of the distribution ($\sigma$), and the learning rate $\alpha\in [0,1]$ for updating the mean. At each iteration of the algorithm, we first sample perturbations to the parameters of the policy network, calculate the cost of each perturbation, and then update the mean of the distribution. We use the update procedure described in Algorithm \ref{nes} \citep{Salimans2017EvolutionLearning}.
+ \begin{algorithm}
+\caption{Simple Gaussian evolution strategies framework}
+\label{nes}
+  \begin{algorithmic}[1]
+    \STATE \textbf{Input:} Initial policy parameters $\bmu_1$, noise standard deviation $\sigma$, learning rate $\alpha$
+    \STATE \textbf{Output:} Gaussian distribution parameters $\psi$
+      \FOR{iteration $i = 1, 2, 3, \dots$}
+        \STATE Sample $\bepsilon^1, \dots, \bepsilon^N$ from $\mathcal{N}(0,\,\mathbb{I})\,$
+        \STATE Compute costs $C^n=\bar{C}_T\left(\btheta^{(n)}_i\right)$ for $\btheta^n_i = \bmu_i + \sigma\bepsilon^n$ for $n = 1, \dots, N$
+        \STATE Set $\bmu_{i+1} \leftarrow \bmu_i + \alpha\frac{1}{N\sigma}\sum\limits_{n=1}^NC^n\bepsilon^n$
+      \ENDFOR
+  \end{algorithmic}
+\end{algorithm}
+
+\subsection{Covariance Matrix Adaptation Evolution Strategies}
+
+CMA-ES is a method that models the population distribution as a multivariate Gaussian distribution with mean $\bmu$, covariance matrix $\bSigma$, and standard deviation $\sigma$. This is expressed mathematically as:
+\begin{equation}\label{cma_gaussian_dist}
+        \mathds{P}_\psi(\btheta) \sim \mathcal{N}(\bmu, \sigma^2 \bSigma) = \bmu + \sigma \mathcal{N}(0, \bSigma).
+\end{equation}
+The main difference between CMA-ES and simpler variants of evolutionary strategies (ES) is in how the mean, standard deviation, and covariance matrix of the distribution are updated. To update the mean of the population distribution in CMA-ES, a weighted average of $N^\prime$ selected individuals is used. The equation for this update is given as follows:
+\begin{equation}
+\begin{aligned}
+  \bmu_{i+1} = \sum\limits_{n^\prime=1}^{N^\prime} w^{n^\prime}\btheta^{n^\prime}_{i+1} &, \\
+  \sum\limits_{n^\prime=1}^{N^\prime} w^{n^\prime} = 1 &,
+\end{aligned}
+\end{equation}
+where $w^{n^\prime}$ is the weight associated with the individual with the $n^\prime$-th best reward or cost. Typically, $N^\prime$ is set to half of the population, and $w^{n^\prime} = N^\prime - n^\prime + 1$ is used as a simple heuristic for setting the weights. These weights are then normalized to ensure they sum to one. For more advanced discussions on setting and normalizing weights, readers are referred to \cite{Hansen2016TheTutorial}.
+
+It is important to note that the current mean of the population is updated using samples from the population distribution in the previous iteration. However, this update procedure may not be suitable for problems with noisy rewards. To address this, a learning rate $\alpha_\mu$ can be added to the update procedure, as shown in Equation (\ref{cma_alpha_mean}):
+\begin{equation}\label{cma_alpha_mean}
+  \bmu_{i+1} = \bmu_i + \alpha_\mu\sum\limits_{n^\prime=1}^{N^\prime} w^{n^\prime}\left(\btheta^{n^\prime}_{i+1} - \bmu_i\right).
+\end{equation}
+
+In CMA-ES, the covariance matrix is also updated using the $N^\prime$ best individuals in the population, similar to the mean update. The covariance matrix update equation is shown in Equation (\ref{cma_cov}).
+\begin{equation}\label{cma_cov}
+  \bSigma_{i+1} = \frac{1}{\sigma^2_i}\sum\limits_{n^\prime=1}^{N^\prime} w^{n^\prime}\left(\btheta^{n^\prime}_{i+1} - \bmu_i\right)\left(\btheta^{n^\prime}_{i+1} - \bmu_i\right)^\intercal.
+\end{equation}
+Letting $\bepsilon^n_i = \frac{1}{\sigma_i}\btheta^{n}_{i+1} - \bmu_i$,  we can rewrite the covariance matrix update equation as a function of $\bepsilon^n_i$ given in Equation (\ref{cma_cov_2}).
+\begin{equation}\label{cma_cov_2}
+  \bSigma_{i+1} = \sum\limits_{n^\prime=1}^{N^\prime} w^{n^\prime}\bepsilon_i^{n^\prime} (\bepsilon_i^{n^\prime})^\intercal.
+\end{equation}
+It is important to note that $\bepsilon$ follows a Gaussian distribution with a mean of 0 and a covariance matrix of $\bSigma$. In order to calculate the parameters of the policy network, we sample the population from this distribution using Equation (\ref{cma_gaussian_dist}). However, it is worth mentioning that updating the covariance matrix using Equation (\ref{cma_cov_2}) may not always work effectively for a CMA-ES with a small population size. Therefore, \cite{Hansen2016TheTutorial} proposes more advanced methods for updating the covariance matrix, which are implemented in \cite{Hansen2019CMA-ES/pycmaGithub} and used in our optimization procedure.
+
+In particular, this CMA-ES implementation employs several advanced techniques for adapting the covariance matrix over iterations. In particular, it uses a rank-one update based on an evolution path—an accumulated direction of successive successful steps—to preserve directional memory and avoid premature loss of variance in important directions. This update is combined with a rank-$\mu$ update, which uses the weighted sum of the top-performing individuals to adjust the covariance matrix toward more promising regions of the search space. Both updates are applied using exponential smoothing to balance exploration and exploitation.
+
+Additionally, the CMA-ES algorithm includes a mechanism for step-size adaptation using the cumulative step-length adaptation (CSA) rule. This approach maintains a separate evolution path for the step size and adjusts it depending on whether recent steps align with the expected path length. If steps are consistently longer than expected, the algorithm increases the step size to promote global search; otherwise, it decreases the step size to fine-tune local search. These mechanisms are crucial for enabling CMA-ES to remain effective in high-dimensional, noisy, and ill-conditioned optimization landscapes.
+
+%\subsection{Advantages of using CMA-ES for policy optimization}
+%CMA-ES and RL are both methods used for optimizing parameters of policy function approximators. However, we observe several advantages in using CMA-ES, instead of Reinforcement Learning, in solving the lost sales inventory management problem.
+%\subsubsection{Simplicity}
+%CMA-ES is a black-box optimization algorithm that simplifies the policy optimization process, making it more accessible to both practitioners and researchers with limited knowledge about RL. Additionally, ES's population-based approach makes parallelization easier than RL methods, allowing for efficient scaling with the number of CPUs. Recent studies demonstrate that ES can produce high-quality policy optimization results using a large number of CPUs in a shorter time than RL \citep{Salimans2017EvolutionLearning}. With only a few hyperparameters, ES can alleviate the burden of hyperparameter tuning in solving inventory management problems \citep{Gijsbrechts2022CanProblems}. Finally, the gradient-free nature of ES enables direct optimization of the objective function of the problem.
+%\subsubsection{Computational Efficiency and Robustness}
+%Our numerical analysis indicates that CMA-ES is computationally more efficient than Reinforcement Learning in optimizing policy networks for solving lost sales problem. CMA-ES is a model-free optimization method that only requires evaluating the policy on a set of samples. In contrast, RL requires the policy to be trained on a large number of samples through trial-and-error, which can be computationally expensive for problems with long time horizons such as lost sales inventory management. Our experiments show that CMA-ES can learn policy function approximators that can outperform the best heuristics for solving the lost sales problem using a noisy reward (cost) signal from applying the policy to the problem with very short time-horizon in the scale of thousands, rather than several hundred thousands. This is because CMA-ES searches for optimal parameters based on the cumulative rewards obtained from the policy, rather than relying on the quality of feedback from the environment, making it a more suitable alternative for finding robust policy function approximators in environments where actions have long-lasting effects.
+%Furthermore, CMA-ES is more robust than RL to noisy or incomplete feedback from the environment, particularly when the reward signal is sparse or delayed. This is because CMA-ES searches for optimal parameters based on the cumulative rewards obtained from the policy, rather than relying on the quality of feedback from the environment.
+%\subsubsection{Stochastic and Global Optimization}
+%CMA-ES is a global optimization method, meaning it can search the entire parameter space for the optimal set of parameters. CMA-ES adapts the exploration in the parameter space of the policy approximator using the covariance matrix and the step-size (standard deviation). This stochasticity can help CMA-ES to find better solutions that are not immediately apparent from the feedback.
+%It has been empirically shown that CMA-ES demonstrates descent performance in optimizing functions with several thousands of parameters \citep{Hansen2001CompletelyStrategies.} Policy function approximators with several thousands of parameters are suitable function approximators for problems that exist in the Operations Management literature. Our experiments show that CMA-ES can achieve near optimal solutions with significantly smaller neural networks in comparison to the neural network architectures reported in the literature. In addition, we show that linear policy function approximators, whose parameters are found using CMA-ES, can results in similar or better performing policies in comparison to Neural Networks.
+
+
+
+
+
+
+
+
+
+\section{Performance of CMA-ES in solving lost sales inventory management problem}\label{performance}
+In our study, we evaluate the performance of the CMA-ES in finding linear and neural network policy function approximators that minimize the long-run average-cost of the lost sales problem. The 20 problem instances we consider are presented by \cite{Xin2020TechnicalModels}, who extend the set of problem instances presented by \citet{Zipkin2008OldSystems} by considering lead times $L \in \{2, 4, 6, 8, 10 \}$ (instead of only $L \in \{2, 4 \}$). The holding cost is normalized at $h=1$ and the penalty cost is $p \in \{4, 19\}$. We consider the Poisson and Geometric demand distributions, both with a mean of 5.
+
+To evaluate our results, we compare the performance of the policy function approximators found by CMA-ES to two of the best performing heuristics. The first is the capped base-stock (CBS) policy presented in \cite{Xin2020TechnicalModels}, while the second is the myopic-2 (M2) policy, which is a two-period horizon version of the myopic policy and is shown to be one of the best performing heuristics for solving the lost sales problem \citep{Zipkin2008OldSystems}.
+
+To optimize policies using CMA-ES, we use a population size of $N=50$, which is relatively low compared to typical evolutionary methods. We use an initial global step-size of $\sigma=5$; CMA-ES adapts $\sigma$ online during optimization. We do not use a separate mean learning rate for CMA-ES. For the neural network policy function approximators, we set the hidden layer size to $H=50$ with an activation function of Scaled Exponential Linear Unit (SELU). We consider two different maximum order sizes $\bar{q}\in\{8, 20\}$, where 8 is based on the upper bounds from the Standard-Vector Base-Stock heuristic presented in \cite{Zipkin2008OldSystems}, and 20 is based on the maximum order size considered in \cite{Gijsbrechts2022CanProblems}.
+\begin{table}[]
+\centering
+\caption{Hyper-parameters used in finding policy function approximators for solving the lost sales problem}
+\label{hyper-parameters}
+\resizebox{\textwidth}{!}{%
+
+\begin{tabular}{|c|c|c|c|l|l|}
+\hline
+CMA-ES      &    & Policy function &              & Lost Sales       &           \\ \hline
+Population size ($N$) & 50 & Hidden layer ($H$)   & 50 & Training Horizon ($T$) & 2000      \\ \hline
+Initial step-size ($\sigma$)   & 5  & Activation ($\nu$)     & SELU & Max order size ($\bar{q}$)   & \{8, 20\} \\ \hline
+\end{tabular}
+}
+\end{table}
+
+\noindent\textit{Clarification.} The learning rate $\alpha$ shown in Algorithm~\ref{nes} is specific to the illustrative Simple Gaussian ES update. Our experiments use CMA-ES, which updates the mean via weighted recombination and adapts the step-size $\sigma$ online; therefore, we only report the step-size and do not specify a separate mean learning rate.
+
+
+During training, we set the time horizon of the lost sales problem to $T=2{,}000$ periods, except for problems with a lead time of two where we use $T=5{,}000$, to demonstrate the ability of CMA-ES to find close-to-optimal policies in this setting, when given sufficient computational resources. The lost sales problem is still warming up during such a relatively small time horizon, resulting in a noisy reward (cost) signals for CMA-ES. Interestingly, our experiments show that CMA-ES can still find policies that perform as good as the best heuristics for this problem, even with such noisy signals. The list of hyperparameters used in our experiments is provided in Table \ref{hyper-parameters}.  The initial vector $\boldsymbol{\mu}$ is generated from a standard normal distribution.
+
+\begin{table}
+\caption{Average cost of policy function approximators in controlling a lost sales problem with lead times in $\{2, 4\}$}
+\label{perf24}
+\centering
+\begin{tabular}{|l|l|c|c || c| c| }
+\hline
+ & & \multicolumn{2}{c||}{Lead Time = 2} & \multicolumn{2}{c|}{Lead Time = 4} \\
+
+Shortage & Policy & Geometric & Poisson & Geometric & Poisson \\
+Cost&               &           &     &  &    \\ \hline
+4   & Optimal & 10.24    & 4.40  & 10.61    & 4.73  \\
+    & Capped Base-stock & 10.320    & 4.413   & 10.700    & 4.800\\
+    & Base-stock      & 10.70    & 4.64  & 11.44    & 5.20  \\
+    & Myopic-2                  & 10.290    & 4.41  & 10.79    & 4.82  \\
+              & Linear-20           & 10.341    & 4.448 & 10.666    & 4.841   \\
+              & Linear-8            & 10.301    & 4.423  & 10.771    & 4.777   \\
+              & Neural network-20   & 10.318    & 4.443  & 10.675    & 4.758  \\
+              & Neural network-8    & 10.307    & 4.417   & 10.654    & 4.752  \\ \hline
+            19  & Optimal                  & 20.89    & 7.66    & 22.95    & 8.89 \\
+          & Capped Base-stock  & 21.060    & 7.719    & 23.290    & 8.950 \\
+            & Base-stock      & 21.31    & 7.84  & 23.85    & 9.23  \\
+            & Myopic-2                  & 20.95    & 7.672    & 23.28    & 8.953 \\
+              & Linear-20           & 21.193    & 7.794   & 23.547    & 9.076  \\
+              & Linear-8            & 21.388    & 7.838    & 23.498    & 9.024  \\
+              & Neural network-20   & 21.220    & 7.895   & 23.409    & 9.047 \\
+              & Neural network-8    & 21.296    & 7.838  & 23.247    & 9.073 \\ \hline
+\end{tabular}
+\end{table}
+We evaluate the performance of trained policy approximators on 10 different seeds (demand sequences) and a time horizon of $T=1{,}000{,}000$, and report the mean of the long-run average cost of the problem, after a warm-up period of $200{,}000$, of the 10 evaluations for each policy function approximator. The standard deviation of the long-run average cost across the 10 evaluations is approximately 0.005, indicating the robustness and consistency of the policies' performance. Tables \ref{perf24} and \ref{perf6810} show the long-run average-cost of four different policy function approximators, myopic-2 policy, and capped base-stock policies. The long-run average-cost of the optimal policy is also given for problems with lead time $L\in\{2, 4\}$.
+%\begin{table}
+%\caption{Performance of policy function approximators in controlling a Lost Sales Problems with Lead time in $\{6, 8, 10\}$}
+%\label{perf6810}
+%\centering
+%\begin{tabular}{|l|l|c|c|| c| c|| c| c|}
+%\hline
+% & & \multicolumn{2}{c||}{Lead Time = 6} & \multicolumn{2}{c||}{Lead Time = 8} & \multicolumn{2}{c|}{Lead Time = 10}\\
+%Shortage& Policy & Geometric & Poisson & Geometric & Poisson & Geometric & Poisson \\
+% Cost &               &           &   & & & &      \\ \hline
+%    4      & Capped Base-stock   & 10.910    & 5.039   & 10.960    & 5.192   & 10.980    & 5.270 \\
+%            & Base-stock  & 11.86    & 5.51  & 12.12    & 5.72    & 12.31    & 5.86   \\
+%            & Myopic-2   & 11.080    & 5.045  & 11.270    & 5.199    & 11.400    & 5.310   \\
+%              & Linear-20 & 10.974    & 4.903   & 10.917    & 5.056   & 10.998    & 5.281\\
+%              & Linear-8   & 10.798    & 4.943 & 10.898    & 4.987  & 10.976    & 5.059   \\
+%              & Neural network-20   & 10.855    & 4.912   & 10.990    & 5.007 & 11.002    & 5.018\\
+%              & Neural network-8    & 10.818    & 4.947  & 10.897    & 4.992  & 10.918    & 5.020  \\ \hline
+%19            & Capped Base-stock   & 24.490    & 9.800   & 25.380    & 10.333 & 25.980    & 10.660 \\
+%            & Base-stock  & 25.54    & 10.20  & 26.81    & 10.90    & 27.82    & 11.48   \\
+%              & Myopic-2  & 24.930    & 9.831    & 26.210    & 10.511& 27.270    & 11.090 \\
+%              & Linear-20 & 24.479    & 10.122   & 25.401    & 10.435 & 26.176 & 10.787 \\
+%              & Linear-8  & 24.675    & 9.926    & 25.639    & 10.511 & 25.997 & 10.728\\
+%              & Neural network-20 & 24.600 & 9.818   & 25.532    & 10.429 & 26.526 & 10.770 \\
+%              & Neural network-8 & 24.619 & 9.955   & 25.438    & 10.436  & 26.064 & 10.811\\ \hline
+%\end{tabular}
+%\end{table}
+
+
+\begin{table}
+\caption{Average cost of policy function approximators in controlling a lost sales problems with Lead time in $\{6, 8, 10\}$. Policies are abbreviated as follows: Capped Base-stock (CBS), Base-stock (BS), Myopic-2 (M-2), Linear-20 (L-20), Linear-8 (L-8), Neural network-20 (NN-20), and Neural network-8 (NN-8).}
+\label{perf6810}
+\resizebox{\textwidth}{!}{%
+
+\centering
+\begin{tabular}{|l|l|c|c|| c| c|| c| c|}
+\hline
+ & & \multicolumn{2}{c||}{Lead Time = 6} & \multicolumn{2}{c||}{Lead Time = 8} & \multicolumn{2}{c|}{Lead Time = 10}\\
+Shortage& Policy & Geometric & Poisson & Geometric & Poisson & Geometric & Poisson \\
+ Cost &               &           &   & & & &      \\ \hline
+    4      & CBS   & 10.910    & 5.039   & 10.960    & 5.192   & 10.980    & 5.270 \\
+            & BS  & 11.86    & 5.51  & 12.12    & 5.72    & 12.31    & 5.86   \\
+            & M-2   & 11.080    & 5.045  & 11.270    & 5.199    & 11.400    & 5.310   \\
+              & L-20 & 10.974    & 4.903   & 10.917    & 5.056   & 10.998    & 5.281\\
+              & L-8   & 10.798    & 4.943 & 10.898    & 4.987  & 10.976    & 5.059   \\
+              & NN-20   & 10.855    & 4.912   & 10.990    & 5.007 & 11.002    & 5.018\\
+              & NN-8    & 10.818    & 4.947  & 10.897    & 4.992  & 10.918    & 5.020  \\ \hline
+19            & CBS   & 24.490    & 9.800   & 25.380    & 10.333 & 25.980    & 10.660 \\
+            & BS  & 25.54    & 10.20  & 26.81    & 10.90    & 27.82    & 11.48   \\
+              & M-2  & 24.930    & 9.831    & 26.210    & 10.511& 27.270    & 11.090 \\
+              & L-20 & 24.479    & 10.122   & 25.401    & 10.435 & 26.176 & 10.787 \\
+              & L-8  & 24.675    & 9.926    & 25.639    & 10.511 & 25.997 & 10.728\\
+              & NN-20 & 24.600 & 9.818   & 25.532    & 10.429 & 26.526 & 10.770 \\
+              & NN-8 & 24.619 & 9.955   & 25.438    & 10.436  & 26.064 & 10.811\\ \hline
+\end{tabular}}
+\end{table}
+We present a summary of the performance of the policy function approximators relative to the capped base-stock (CBS) policy for problems with Poisson distribution in Figure \ref{ls_poisson}. The y-axis of the plots represents the relative performance to CBS and is calculated as
+\begin{equation}
+    \left(\frac{\text{mean of the average-cost-per-period of 10 evaluations of $\pi_{\btheta}$}}{\text{CBS average-cost-per-period}} -1\right)\times 100,
+\end{equation}
+whereas the x-axis displays the lead time of the problems.
+\begin{landscape}
+\begin{figure}%
+    \centering
+    \includegraphics[scale=.54]{figures/Poisson_performance.jpeg}
+    \caption{Average cost of linear and neural network policy function approximators with maximum order size $(\bar{q}) \in \{8, 20 \}$ in managing inventory in lost sales problems with Poisson demand distribution}%
+    \label{ls_poisson}%
+\end{figure}
+\end{landscape}
+
+Our results indicate that policy function approximators trained using CMA-ES can significantly outperform CBS as the lead time of the problem increases for problems with a shortage cost of 4. Specifically, both linear and neural network policy function approximators lead to an average cost per period that is approximately 4\% to 5\% lower for problems with lead times of 8 or 10. However, CBS performs around 1\% to 1.5\% better than most policy function approximators for problems with a shortage cost of 19.
+%\begin{figure}%
+%    \centering
+%    \includegraphics[scale=.4]{figures/Geometric_performance.jpeg}
+%    \caption{Performance of linear and neural network policy function approximators with maximum order size $(\bar{q}) \in \{8, 20 \}$ in managing the inventory in a lost sales problems with Geometric demand distribution}%
+%    \label{ls_geo}%
+%\end{figure}
+\begin{landscape}
+\begin{figure}%
+    \centering
+    % Adjust the scale or use width=\linewidth to make the figure fit well
+    \includegraphics[scale=0.55]{figures/Geometric_performance.jpeg}
+    \caption{Average cost of linear and neural network policy function approximators with maximum order size $(\bar{q}) \in \{8, 20 \}$ in managing inventory in lost sales problems with Geometric demand distribution}%
+    \label{ls_geo}%
+\end{figure}
+\end{landscape}
+The results for problems with a Geometric demand distribution and a shortage cost of 4, presented in Figure \ref{ls_geo}, exhibit a similar trend. The policy function approximators demonstrate comparable or superior performance to the CBS policy, but the improvement in performance is generally less than 1\%. The CBS policy performs better than most of the policy function approximators for most problems with a shortage cost of 19.
+
+We would like to note that we have not observed a significant difference in the performance between linear and neural network policy function approximators, nor did the maximum order size have a noticeable impact on the performance of the policy function approximators. This could be attributed to the fact that increasing the maximum order size, while increasing the options for the model, simultaneously leads to a significant increase in the number of parameters of the policy function approximators, resulting in a more challenging optimization problem for CMA-ES. Table \ref{num_params} shows the number of parameters of the policy function approximators used in our analysis.
+\begin{table}[]
+\caption{Number of parameters of the policy function approximators used in our analysis}
+\centering
+\begin{tabular}{|l|ccccc|}
+\hline
+Lead Time         & 2    & 4    & 6    & 8    & 10   \\ \hline
+Linear-8          & 24   & 40   & 56   & 72   & 88   \\
+Linear-20         & 60   & 100  & 140  & 180  & 220  \\
+Neural network-8  & 558  & 658  & 758  & 858  & 958  \\
+Neural network-20 & 1170 & 1270 & 1370 & 1470 & 1570\\ \hline
+\end{tabular}
+\label{num_params}
+\end{table}
+
+
+\subsection{A closer look at the Linear policy function approximator}
+In this section, we take a closer look at the actions taken using a linear model for a lost sales problem with a lead time of 4, shortage cost of 4, a Poisson demand distribution with rate 5, and maximum order size of 8. The adoption of a linear policy function approximator, as opposed to more complex models like neural networks, offers several benefits in our context. Firstly, it ensures a level of transparency and ease of interpretation that complex models often lack. This transparency is vital for operational settings where understanding the rationale behind decisions can be as important as the decisions themselves. Secondly, linear models are computationally less intensive, making them more suitable for scenarios where computational resources are a constraint. To best of our knowledge, this study is the first to show that it is possible to control the lost sales policy using linear policy function approximators. The optimized parameters for this approximator, obtained from the CMA-ES optimization process, are a testament to the efficacy of evolutionary strategies in deriving efficient solutions for complex operational problems.\footnote{Interested readers can run the linear model presented in our analysis through the provided Google Colab notebook at: \url{https://colab.research.google.com/drive/1tZ_DaDR-2AFkPjsxK1mpJntHJkykyJS1\#scrollTo=bJbEgoM6mDmh}.}
+
+
+
+
+
+\begin{equation*}\label{W4}
+\mathbf{W} = \begin{bmatrix}
+-70.14183 & -207.82674 & 97.73192 & 66.91508 \\
+-242.07372 & 28.248281 & -127.43666 & 268.88116 \\
+33.847168 & -47.26428 & 229.40189 & -86.31005 \\
+84.36681 & 32.52729 & -92.84339 & -31.391745 \\
+-12.849427 & 144.81728 & 244.57162 & 185.4023 \\
+-120.49882 & 22.90534 & 117.27879 & -196.45128 \\
+50.50665 & 33.161415 & 77.119385 & -229.04742 \\
+-7.4967017 & -205.77094 & 177.86736 & -12.165197
+\end{bmatrix},
+\end{equation*}
+
+\begin{equation}\label{b4}
+\mathbf{b} = \begin{bmatrix}
+43.60881 \\
+36.356777 \\
+-72.54737 \\
+-26.943106 \\
+-212.65535 \\
+224.36417 \\
+-127.932335 \\
+-106.74176
+\end{bmatrix}.
+\end{equation}
+
+The weights matrix \( W \) in equation \eqref{b4} represents the strength and direction of the relationship between each state feature and the action choices. Each row in this matrix corresponds to a specific action in our inventory management system, while each column is associated with a different feature of the system's state. The values in the matrix indicate how a change in a particular state feature affects the decision to take a certain action. For instance, a positive weight suggests that an increase in the feature value will make the corresponding action more favorable, whereas a negative weight implies the opposite. On the other hand, the bias vector \( \mathbf{b} \), represented as a column vector, plays a crucial role in our model by adding a constant term to the decision-making process. This term adjusts the threshold at which certain actions are taken, independent of the state features.
+
+
+By utilizing a linear function approximator, we embrace a balance between complexity and interpretability. This balance is crucial, especially in scenarios where explainability and operational simplicity are as important as the accuracy of the decision-making process. To gain a deeper understanding of how the linear policy function approximator makes decisions, we examine the relationship between the current inventory level ($s_1$) and the sum of the previously ordered products ($s_2$, $s_3$, and $s_4$). Figure \ref{fig:s1_vs_sum_s234} presents a plot that illustrates this relationship, where the x-axis of the plot represents the current inventory level ($s_1$), while the y-axis represents the sum of the previously ordered products ($s_2$, $s_3$, and $s_4$). In this visualization, the areas shaded or marked differently illustrate where each action is typically taken.
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/inventory_order_sum_state_action.png}
+\caption{Relationship between the current inventory level ($s_1$) and the sum of previously ordered products ($s_2$, $s_3$, and $s_4$) with the corresponding actions (order) taken by the linear policy function approximator.}
+\label{fig:s1_vs_sum_s234}
+\end{figure}
+
+From the plot, we can observe a clear pattern in the decision-making process of the linear policy function approximator. When the current inventory level is low, the policy tends to place higher order quantities (actions 4 and 5) to replenish the stock and avoid potential stockouts. As the current inventory level increases, the policy gradually shifts towards lower order quantities (actions 2 and 3) to maintain a balanced inventory and prevent overstocking.
+
+Moreover, the sum of the previously ordered products also plays a crucial role in the policy's decision-making. When the sum of $s_2$, $s_3$, and $s_4$ is low, indicating a lower number of products in the pipeline, the policy is more likely to place higher order quantities to ensure a sufficient supply of products in the future. Conversely, when the sum of the previously ordered products is high, the policy tends to place lower order quantities to avoid excess inventory. This demonstrates the ability of the linear policy to adapt its actions based on the current state of the system and the expected future supply.
+
+Delving deeper into the four-dimensional state space of the system, Figure \ref{fig:state_action} provides a parallel coordinates plot that visualizes the relationship between the four state dimensions ($s_1$, $s_2$, $s_3$, and $s_4$) and the corresponding actions taken by the linear policy function approximator.
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/state_action.png}
+\caption{Visualization of State-Action relationships of the linear policy function approximator.}
+\label{fig:state_action}
+\end{figure}
+
+In this plot, each horizontal axis represents a specific dimension of the system's state, and the lines connecting these axes represent individual state paths. The color of each line indicates states with equal values in the second and third dimension of the state, whilst each sub-figure corresponds to a given order quantity.
+
+By analyzing the patterns and clusters in this plot, we can gain insights into how the linear policy function approximator makes decisions based on the different dimensions of the state space. For example, we can observe that when $s_1$ is low and $s_2$, $s_3$, and $s_4$ are in the range of 1 to 5, the policy tends to choose higher order quantities (actions 4 and 5) to replenish the inventory. As $s_1$ increases and the values of $s_2$, $s_3$, and $s_4$ vary, the policy adjusts its actions accordingly to maintain a stable inventory level and avoid overstocking.
+
+%Figure \ref{fig:state_action} illustrates the dynamics between a four-dimensional state of the system and the actions taken by the linear policy function approximator through a parallel coordinates plot. The axes labeled from $s_1$ to $s_4$ represent each dimension of the system's state $S= (s_1, s_2, s_3, s_4)$. The lines connecting these axes encode individual state paths, delineating the policy's action for specific state configurations. Each sub-figure of the Figure \ref{fig:state_action} corresponds to a given order quantity ordered by the policy, varying within $\{2, 3, 4, 5\}$.
+The parallel coordinates plot reveals the complex interactions between the different dimensions of the state space and how they individually influence the policy's decision-making process. This plot serves as an analytical tool to unravel the decision-making heuristic embedded in the linear policy function approximator, offering a detailed breakdown of the policy's response across the spectrum of possible states in the inventory management system. The convergence of similarly colored lines at specific points shows systematically chosen actions under specific state conditions. For instance, a cluster of dark blue lines, representing $(s_1, s_2, s_3, s_4)=(s_1, 3, 2, s_4)$, seen in sub-figure related to order quantity and 5 shows the policy is compensating for the lower order amount in the previous time steps. The policy takes each action based on different ranges for each dimension of the state.
+
+\textbf{Order quantity 5} is selected when $s_1$ has a range from approximately 2 to 12, suggesting that the policy orders as much as the mean demand when inventory levels are low, potentially to replenish stock and avoid stockouts. The subsequent states $s_2$, $s_3$, and $s_4$ appear to have values in the range of 1 to 5, indicating that the policy prioritizes replenishment when the inventory levels are low and the expected arriving orders are relatively small.
+
+The choice of \textbf{Order quantity 4} seems to occur when $s_1$ increases in comparison to Order quantity 5. This action is used when the inventory situation is not as critical, and the previous order, shown in $s_4$, is 4 or 5. \textbf{Order quantity 3} is consistently chosen across a higher range of $s_1$ values, indicating a more flexible response by the policy to higher inventory situations. It is likely a middle-ground action that balances the risk of overstocking against the need to replenish inventory. We see a common range of 2 to 5 for $s_2$, $s_3$, and $s_4$, indicating that this action is part of a strategy to maintain a steady state of inventory across time. \textbf{Order quantity 2} is taken when $s_2 \in \{2, 3\}$, $s_3=5$, and the inventory level ($s_1$) is relatively modest.
+
+The policy appears to have a nuanced approach to ordering based on information from the current inventory level ($s_1$) and the expected arriving orders ($s_2$ to $s_4$), balancing the need for replenishment with the risk of overstocking. The visualizations presented in this section provide insights into the inner workings of the linear policy and highlight its ability to adapt to different states of the system to minimize costs and maintain a stable inventory level.
+
+% Higher orders are placed when the inventory level is at the lower end, and more conservative orders are made as the immediate inventory level increases. The subsequent state values suggest an intention to maintain a stable inventory level following an order, regardless of the order size, with a tendency towards keeping the inventory within a narrow, moderate range. The linear policy function approximator demonstrates a sophisticated approach to decision-making in the lost sales inventory management problem.
+
+
+\subsection{Computational time and average cost progress}
+In this subsection, we discuss the computational time required for training the linear policy function approximator and examine the progress of its average cost at inference with a horizon length of 1 million periods as a function of both the number of training episodes and the computation time. Figure \ref{fig:fitness_progress} shows the average cost achieved by the linear policy function approximator during the training process, plotted against the number of training episodes (top) and the computation time in minutes (bottom).
+\afterpage{
+    \begin{figure}[!htbp]
+        \centering
+        \includegraphics[width=\linewidth]{figures/fitness_progress.png}
+        \caption{Fitness progress of the linear policy function approximator as a function of the number of training episodes (top) and computation time in minutes (bottom) for a lost sales problem with lead time 4, shortage cost 4, and Poisson demand distribution with rate 5.}
+        \label{fig:fitness_progress}
+    \end{figure}
+    \thispagestyle{empty} % This will apply to the page where the figure ends up if it is on its own page
+    \clearpage % Ensure that the effect of \thispagestyle{empty} is contained to just this page
+}
+
+The results presented in Figure \ref{fig:fitness_progress} are obtained using the same linear policy function approximator described in the previous subsection, which is trained for a lost sales problem with a lead time of 4, shortage cost of 4, a Poisson demand distribution with rate 5, and a maximum order size of 8. The training is performed using the CMA-ES algorithm with the hyperparameters specified in Table \ref{hyper-parameters}. It is important to note that the code for our experiments is written in Python. The computation times reported here are measured using an Apple M1 Pro processor using 4 processors for parallel processing, utilizing the multiprocessing package in Python.
+
+As shown in the Figure \ref{fig:fitness_progress}, the average cost of the linear policy function approximator decreases as the number of training episodes increases, eventually converging to a value close to the optimal average cost. The policy reaches an average cost lower than the Capped Base-stock and Myopic-2 policies in approximately 15 minutes of computation time (600 training episodes). The total training time for 3000 episodes is around one hour. This demonstrates the effectiveness of the CMA-ES algorithm in finding a well-performing linear policy function approximator for the lost sales problem.
+
+While the results presented here are specific to the linear policy function approximator, it is important to emphasize that the choice of policy does not significantly affect the computational time. The main factors determining the computation time are the simulation horizon length and the number of episodes used for training. Figure \ref{fig:computation_time} shows the computation time in seconds as a function of the lost sales problem's horizon length. As the horizon length increases, the computation time required to evaluate the policies grows linearly. This is expected, as the majority of the computation time is spent on simulating the lost sales problem to evaluate the performance of the policies. The linear relationship between the horizon length and computation time highlights the importance of efficient simulation and parallel processing techniques when solving inventory management problems with long horizons.
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=\linewidth]{figures/computation_time_vs_horizon.png}
+\caption{Computation time (seconds) as a function of the lost sales problem's horizon length. }
+\label{fig:computation_time}
+\end{figure}
+
+
+The computational times reported here are representative of the performance that can be expected when using the multiprocessing package for parallel processing in Python. It is important to note that the computation time can vary depending on the hardware specifications and the number of processors used for parallel processing. Moreover, the choice of parallelization package (e.g., multiprocessing or joblib) can also impact the computation time. The results presented here are specific to the setup used in our experiments and may differ in other computational environments. However, the overall trends and insights gained from our experiments are expected to hold across different computational setups.
+Beyond computational time, our approach demonstrates important efficiency advantages compared to conventional DRL methods:
+\begin{itemize}
+\item \textbf{Parameter Efficiency}: While general-purpose DRL implementations typically use neural networks with thousands to millions of parameters, our policies are much more compact, with tens to several hundred parameters for linear policies, and about 1000--2000 parameters for our neural network policies.
+\item \textbf{Sample Efficiency}: Our proposed CMA-ES approach evaluates all candidate policies for an episode using a single demand sequence, providing a fair comparison between policies. We obtain a good policy after ~1000 training episodes of 2000 periods/data points each; our total requirement is about 2 million data points. This is substantial, and in line with results reported for general-purpose DRL algorithms: \cite{Gijsbrechts2022CanProblems} report good results after 200-500 episodes of 100,000 data points each for a total of ~20-50 million data points.
+\item \textbf{Hyperparameters}: General-purpose DRL methods are associated with extensive hyperparameter tuning  \citep[250 settings in][]{Gijsbrechts2022CanProblems}, each requiring a separate training run of many episodes, which stands in contrast with our approach where we could obtain good results without hyperparameter tuning.
+\end{itemize}
+
+While CMA-ES needs fewer data points for training then general-purpose DRL algorithms such as A3C, its data-hungriness still limits its applicability in data-driven settings. Recent works addressing the training of DRL agents in settings with limited historical data include \cite{dehaybe2024deep} and \cite{temizoz2024zero}; perhaps the benefits of CMA-ES over DRL extend to these settings.
+
+
+\subsection{Managerial Insights and Practical Implementation}
+\label{managerial_insights}
+Beyond the performance metrics, our study yields managerial insights with direct practical implications. First, simple linear policies can be sufficient to solve complex inventory problems. This challenges the idea that inventory optimization necessarily requires either elaborate problem‑specific heuristics or large, black‑box neural networks. In particular, linear policies optimized with CMA‑ES achieve near‑optimal performance even in challenging scenarios with long lead times.
+
+Second, linear policies offer concrete implementation advantages. They can be deployed in standard spreadsheet software or simple ERP system modules without specialized programming knowledge or heavy libraries. At run time, a linear policy reduces to a single small‑scale matrix multiplication, which makes deployment straightforward on virtually any computing platform. The mapping from state variables to order decisions is also transparent, which helps explainability for non‑technical stakeholders and supports adoption in practice.
+
+Third, training requirements are modest. Linear policies contain far fewer parameters—typically tens to a few hundreds—than common deep neural network approaches, and training can be performed on standard desktop hardware. This lowers both the computational and organizational barriers to experimentation and deployment.
+
+Taken together, these observations indicate that, with strong optimization methods such as CMA‑ES, practitioners can attain excellent performance using simple, transparent, and practical policy structures.
+
+
+\section{Conclusions}
+\label{conclusions}
+
+Recently, there has been significant attention towards training Reinforcement Learning agents for inventory management problems. However, RL has some drawbacks that need to be resolved for successful applications, such as the need for extensive hyperparameter optimization. This paper proposes using an alternative policy optimization method, namely CMA-ES to address this problem. Specifically, we demonstrate how to train linear and neural network policy function approximators for the lost sales problem using CMA-ES. Compared to RL, CMA-ES has fewer hyperparameters, requires less hyperparameter optimization, and can train agents that outperform heuristics such as Myopic-2 and Capped Base-Stock policy for problems with a shortage cost of 4, and result in comparable performance overall. Both linear and neural network policy function approximators can be used with CMA-ES.
+
+%Training Reinforcement Learning agents for solving inventory management problems has absorbed significant attention recently. While solving the sequential decision making problems using RL seems promising, it has some drawbacks that need to be resolved for their successful applications. One such drawback is the need for extensive hyper-parameter optimization. In this paper, we tackle this problem by using Covariance Matrix Adaptation Evolution Strategies (CMA-ES). In particular, we show how to train linear and neural network policy function approximators that order new products for the lost sales problem based on the current state of the system. CMA-ES has several advantages over the Reinforcement Learning methods in learning agents for solving the lost sales problem. CMA-ES has fewer hyper-parameters. Hence, it does not require as much hyper-parameter optimization. CMA-ES can train agents that can significantly outperform bes performing heuristics for the these problem such as the Myopic-2 and Capped Base-Stock policy for problems with a shortage cost of 4, and result in a comparable performance for problems with a shortage cost of 19. CMA-ES can do so using linear and neural network policy function approximators.
+
+CMA-ES offers several other advantages over DRL. The neural networks trained using CMA-ES are significantly smaller than those presented in the literature for solving inventory management problems. CMA-ES also performs structured exploration in the parameter-space of the policy function approximators and can optimize the objective function of the problem directly without the need for reward shaping or defining different loss functions. Overall, CMA-ES seems to be a promising approach for optimizing policy function approximators in the operations management field.
+
+
+
+%CMA-ES shows several advantages in comparison to RL. The neural networks trained by CMA-ES are significantly smaller than the neural networks presented in the literature for solving inventory management problems. In addition, CMA-ES preforms structured exploration in the parameter-space of the policy function approximators. The gradient-free nature of the CMA-ES enables us to optimize the objective function of the problem directly. Hence, there is no need for reward-shaping and defining different loss functions using CMA-ES. Finally, CMA-ES has been shown empirically to perform well in optimizing policy function approximators with several hundreds to several thousands of parameters. Such function approximators maybe suitable for problems in the operations management literature. Hence, CMA-ES seems like a plausible option for optimizing the policy function approximators in the Operations Management literature.
+
+
+\bibliographystyle{elsarticle-harv} % Or another style suited to your needs
+\bibliography{references} % No need to include the .bib extension
+
+\appendix
+
+
+\section{On the Cost as a Function of the Policy Network Parameters}
+\label{appendix:non_convexity_}
+
+In this paper, we study neural network policies for the lost sales inventory problem, and in particular we propose the linear policy: A special case of a neural network policy that does not have any hidden layers. One may wonder about the structure of the costs as a function of the parameters of our linear policy. In this appendix, we demonstrate that costs are a complex function of the network parameters, with no apparent structure such as convexity.
+
+In particular, we identify a counter-example to convexity that simultaneously demonstrates the complex behavior of costs as a function of the network parameters. This non-convexity helps explain why gradient-free methods like CMA-ES are more appropriate for this optimization problem than gradient-based methods that might get trapped in local optima.
+
+\subsection{A Counter-Example to Convexity}
+
+To conclusively demonstrate the non-convexity of the lost-sales inventory problem in the policy parameter space, we provide a concrete counter-example using the linear policy approximator. If the cost function were convex, then for any two points in the parameter space, the cost of any convex combination of these points should be no greater than the convex combination of their costs.
+
+We examine three specific points in the parameter space:
+
+\begin{itemize}
+\item Point A: Near-optimal policy with a cost = 4.78
+\begin{itemize}
+\item Weights:
+\begin{equation*}
+   \mathbf{W} = \begin{bmatrix}
+    -70.142 & -207.827 &  97.732 &  66.915 \\
+    -242.074 &  28.248 & -127.437 & 268.881 \\
+     33.847 & -47.264 & 229.402 & -86.310 \\
+     84.367 &  32.527 & -92.843 & -31.392 \\
+    -12.849 & 144.817 & 244.572 & 185.402 \\
+    -120.499 &  22.905 & 117.279 & -196.451 \\
+     50.507 &  33.161 &  77.119 & -229.047 \\
+     -7.497 & -205.771 & 177.867 & -12.165
+   \end{bmatrix}
+\end{equation*}
+\item Bias:
+\begin{equation*}
+\mathbf{b} = \begin{bmatrix}
+    43.609 & 36.357 & -72.547 & -26.943 & -212.655 & 224.364 & -127.932 & -106.742
+\end{bmatrix}
+\end{equation*}
+\end{itemize}
+
+\item Point B: A random perturbation of the weights of the near-optimal policy with a cost = 8.49
+\begin{itemize}
+\item Weights:
+\begin{equation*}
+   \mathbf{W} = \begin{bmatrix}
+       -54.719 & -203.891 & 115.886 & 100.904 \\
+       -239.873 & 30.450 & -92.432 & 289.201 \\
+       31.791 & -31.012 & 227.456 & -88.298 \\
+       95.181 & 4.353 & -117.610 & -35.127 \\
+       -24.735 & 156.939 & 234.582 & 166.291 \\
+       -87.548 & 25.258 & 124.937 & -215.788 \\
+       47.096 & 41.605 & 62.735 & -215.814 \\
+       -11.925 & -204.611 & 173.419 & 27.779
+   \end{bmatrix}
+   \end{equation*}
+\item Bias:
+\begin{equation*}
+   \mathbf{b} = \begin{bmatrix}
+       13.053 & -13.088 & -87.979 & -79.339 & -239.188 & 158.602 & -182.270 & -133.492
+   \end{bmatrix}
+   \end{equation*}
+\end{itemize}
+
+\item Point C: Weighted combination (0.2A + 0.8B) with cost = 17.50
+\begin{itemize}
+\item Weights:
+\begin{equation*}
+   \mathbf{W} = \begin{bmatrix}
+       -24.972 & -82.344 & 42.723 & 33.564 \\
+       -96.389 & 11.740 & -43.974 & 111.616 \\
+       13.128 & -15.655 & 91.371 & -34.922 \\
+       35.910 & 7.376 & -42.091 & -13.304 \\
+       -7.517 & 60.351 & 95.831 & 70.339 \\
+       -41.609 & 9.633 & 48.443 & -82.448 \\
+       19.520 & 14.953 & 27.971 & -88.972 \\
+       -3.884 & -82.076 & 70.257 & 3.123
+   \end{bmatrix}
+   \end{equation*}
+\item Bias:
+\begin{equation*}
+   \mathbf{b} = \begin{bmatrix}
+       45.330 & 18.615 & -128.421 & -85.026 & -361.475 & 306.373 & -248.162 & -192.187
+   \end{bmatrix}
+   \end{equation*}
+\end{itemize}
+\end{itemize}
+
+\subsection{Analysis of Non-Convexity}
+
+This counter-example demonstrates clear violation of convexity:
+
+\begin{itemize}
+\item Point A achieves a near-optimal average cost of 4.78
+\item Point B, a random perturbation, maintains a reasonable cost of 8.49
+\item Point C, a weighted linear combination (0.2A + 0.8B), performs significantly worse with an average cost of 17.50
+\end{itemize}
+
+If the cost function were convex, the cost at point C should be at most $0.2 \times 4.78 + 0.8 \times 8.49 = 7.75$. However, the actual cost at C is 17.50, which is 2.26 times higher.
+
+Even more tellingly, point C's performance is close to what one would expect from a policy with completely random parameters, demonstrating that even small movements in the parameter space can lead to dramatic performance deterioration. This empirical evidence reveals a highly non-convex optimization landscape with multiple local optima and complex behavior.
+
+\subsection{Implications for Optimization}
+
+This non-convexity explains why gradient-free methods like CMA-ES are well-suited for this problem:
+
+\begin{itemize}
+\item Gradient-based methods can easily get trapped in local optima in such a landscape
+\item The policy parameter space contains local minima and maxima that make gradient-based exploration challenging
+\item Population-based methods like CMA-ES can more effectively explore this complex parameter space
+\item The adaptive nature of CMA-ES helps navigate the irregular optimization landscape
+\end{itemize}
+
+Furthermore, these results highlight the mathematical complexity of the lost-sales inventory problem, even when using relatively simple linear policy structures. The non-convexity arises from the inherent dynamics of the lost-sales setting, where the truncation of demand and the interaction with pipeline inventory create complex state transitions that manifest as an irregular cost landscape in the policy parameter space.
+
+
+
+
+\end{document}
+
+\endinput
+%%
+%% End of file `elsarticle-template-harv.tex'.

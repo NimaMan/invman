@@ -38,3 +38,27 @@ improvement is what CMA-ES added.
 
 Headline: **learned policy beats the published constant base-stock benchmark by ~22-27% and
 surpasses the published PPO best (8,714) by 679-1,123** on Geevers set 1.
+
+## Seed-robust runner (the headline-producing entry point)
+
+`scripts/general_backorder_fixed_cost/seed_robust_general_backorder.py` is the seed-ROBUST
+runner backing the paper's 5-seed claim (learned 7,837.0 +/- 189.7, -24.3% +/- 1.8% vs the
+reproduced benchmark, all 5 seeds below). It reuses the autoresearch entry point's helpers
+verbatim (importlib; no env/policy/Rust changes), loops >= 5 independent CMA-ES optimizer
+seeds (canonical 9001..9005 by default, `--seeds` to override), and delegates aggregation +
+verdict to `invman/optimizer_seed_robustness_policy.py` (`srp.run_over_seeds`, sample n-1 std,
+shared ROBUST_BEAT/PARITY/LOSS rule).
+
+- GATE = the autoresearch keep/discard gate: repo reproduction of the published constant
+  node-base-stock benchmark (`simulate_base_stock`, 3 sim seeds x 500 reps, ~10,354.8);
+  optimizer-seed independent, so `gate_seed_std == 0`. The published PPO best (8,714) is
+  carried as cross-protocol CONTEXT only.
+- Real artifact: `outputs/general_backorder_fixed_cost/seed_robust_report.json` (standardized
+  srp summary keys + per_seed records).
+- `--smoke`: tiny plumbing test (existing "smoke" budget preset: popsize 8, 8 generations,
+  4 train seeds, 64 eval seeds; gate at 3x20 reps; 1 worker) writing ONLY to
+  `outputs/general_backorder_fixed_cost/smoke_seed_robust/seed_robust_report_smoke.json`.
+- Full run (CPU-capped):
+  `RAYON_NUM_THREADS=2 OMP_NUM_THREADS=2 python
+  scripts/general_backorder_fixed_cost/seed_robust_general_backorder.py --budget full
+  --seeds 9001 9002 9003 9004 9005 --mp_num_processors 2`

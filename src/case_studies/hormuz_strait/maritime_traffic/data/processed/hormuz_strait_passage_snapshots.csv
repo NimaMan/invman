@@ -1,0 +1,15 @@
+snapshot_id,observation_date,phase,metric_scope,metric_name,value,units,source_id,notes
+mid_june_2025_avg_total_transits,2025-06-15,pre_2026_war,strait_of_hormuz,total_ship_transits_avg_daily,144,ships_per_day,unctad_rmt2025_ch2_pdf,UNCTAD cites Clarksons data and reports an average of 144 ship transits a day by mid-June 2025.
+historical_average_2026_reference,2026-03-15,wartime_reference,strait_of_hormuz,historical_average_daily_transits,138,ships_per_day,mscio_jmic_update_016_2026_03_16_pdf,JMIC historical reference for all ships in the strait during the March 2026 crisis period.
+pre_hostilities_cargo_total,2026-02-28,pre_hostilities,strait_of_hormuz,cargo_vessel_transits_total,98,ais_vessels_per_day,mscio_jmic_update_006_2026_03_06_pdf,AIS-derived cargo-carrying vessels 1000 GT and above.
+pre_hostilities_tanker_total,2026-02-28,pre_hostilities,strait_of_hormuz,tanker_transits_total,50,ais_vessels_per_day,mscio_jmic_update_006_2026_03_06_pdf,AIS-derived all-tanker transits.
+pre_hostilities_bam_cargo_total,2026-02-28,pre_hostilities,bab_el_mandeb,cargo_vessel_transits_total,16,ais_vessels_per_day,mscio_jmic_update_006_2026_03_06_pdf,Regional comparison metric only.
+pre_hostilities_bam_tanker_total,2026-02-28,pre_hostilities,bab_el_mandeb,tanker_transits_total,11,ais_vessels_per_day,mscio_jmic_update_006_2026_03_06_pdf,Regional comparison metric only.
+crisis_collapse_cargo_total,2026-03-04,acute_disruption,strait_of_hormuz,cargo_vessel_transits_total,2,ais_vessels_per_day,mscio_jmic_update_006_2026_03_06_pdf,Observed cargo traffic nearly collapsed within days of the conflict start.
+crisis_collapse_tanker_total,2026-03-04,acute_disruption,strait_of_hormuz,tanker_transits_total,0,ais_vessels_per_day,mscio_jmic_update_006_2026_03_06_pdf,Observed AIS tanker traffic at zero on this day.
+early_crisis_cargo_total,2026-03-06,acute_disruption,strait_of_hormuz,cargo_vessel_transits_total,4,ais_vessels_per_day,mscio_jmic_update_006_2026_03_06_pdf,Still far below the pre-hostilities snapshot.
+early_crisis_tanker_total,2026-03-06,acute_disruption,strait_of_hormuz,tanker_transits_total,2,ais_vessels_per_day,mscio_jmic_update_006_2026_03_06_pdf,Still far below the pre-hostilities snapshot.
+mid_march_cargo_total,2026-03-15,prolonged_disruption,strait_of_hormuz,cargo_vessel_transits_total,3,ais_vessels_per_day,mscio_jmic_update_016_2026_03_16_pdf,JMIC reports only three confirmed commercial cargo transits in the past 24 hours.
+mid_march_tanker_total,2026-03-15,prolonged_disruption,strait_of_hormuz,tanker_transits_total,0,ais_vessels_per_day,mscio_jmic_update_016_2026_03_16_pdf,Observed AIS tanker transits remained at zero on this day.
+late_march_cargo_total,2026-03-17,prolonged_disruption,strait_of_hormuz,cargo_vessel_transits_total,4,ais_vessels_per_day,mscio_jmic_update_018_2026_03_18_pdf,JMIC reports four confirmed commercial vessel transits in the past 24 hours by 18 March.
+late_march_tanker_total,2026-03-17,prolonged_disruption,strait_of_hormuz,tanker_transits_total,0,ais_vessels_per_day,mscio_jmic_update_018_2026_03_18_pdf,Observed AIS tanker transits remained at zero on this day.
