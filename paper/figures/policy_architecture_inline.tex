@@ -125,99 +125,137 @@
 }
 
 \newcommand{\SoftGatedDirectDecoderFigure}{%
-\resizebox{0.92\linewidth}{!}{%
-\begin{tikzpicture}[x=1cm,y=1cm]
-  \node[invmiddle,minimum width=25mm,minimum height=14mm] (latent) at (0,0)
-    {latent\\outputs\\$\mathbf u$};
-  \node[invdecoder,minimum width=29mm,minimum height=13mm,font=\small] (gate) at (3.25,0.95)
-    {order switch\\$a=\sigma(g(\mathbf x))$};
-  \node[invdecoder,minimum width=34mm,minimum height=13mm,font=\small] (amount) at (3.25,-0.95)
-    {continuous amount\\$b=\mathrm{softplus}(r(\mathbf x))\ge0$};
-  \node[invmiddle,minimum width=31mm,minimum height=16mm,font=\small] (continuous) at (7.0,0)
-    {nonnegative\\continuous order\\$y=a\,b\ge0$};
-  \node[invstage,draw=black!35,fill=black!3,minimum width=46mm,minimum height=15mm,font=\small] (numberline) at (10.95,0)
-    {integer action set\\$0\quad 1\quad 2\quad 3\quad \cdots$};
-  \node[invoutput,minimum width=29mm,minimum height=15mm,font=\small] (out) at (14.45,0)
-    {round/project\\$q_t\in\mathbb Z_{\ge0}$};
+\resizebox{0.94\linewidth}{!}{%
+\begin{tikzpicture}[x=1cm,y=1cm,
+  smallnote/.style={font=\footnotesize,align=center},
+  panel/.style={rounded corners=4pt,draw=black!18,fill=black!2,inner sep=5pt}
+]
+  \node[invmiddle,minimum width=25mm,minimum height=13mm] (u) at (0,0)
+    {backbone\\outputs};
+  \node[invdecoder,minimum width=20mm,minimum height=13mm] (scores) at (2.65,0)
+    {$g,\ r$};
 
-  \draw[invflow] (latent.east) -- (gate.west);
-  \draw[invflow] (latent.east) -- (amount.west);
-  \draw[invflow] (gate.east) -- (continuous.north west);
-  \draw[invflow] (amount.east) -- (continuous.south west);
-  \draw[invflow] (continuous.east) -- node[invlabel,above] {$\lfloor y\rceil_{\ge0}$} (numberline.west);
-  \draw[invflow] (numberline.east) -- (out.west);
-  \node[invgray,font=\footnotesize,align=center] at (7.0,-1.85)
-    {This head predicts a quantity on the nonnegative real line, then converts it to a feasible integer order.};
+  \node[panel,minimum width=36mm,minimum height=30mm] (heads) at (5.6,0) {};
+  \node[smallnote,invgreen!70!black] at (5.6,1.15) {gate};
+  \draw[line width=4pt,line cap=round,black!20] (4.55,0.72) -- (6.65,0.72);
+  \draw[line width=4pt,line cap=round,invgreen!70!black] (4.55,0.72) -- (5.85,0.72);
+  \filldraw[fill=white,draw=invgreen!70!black,thick] (5.85,0.72) circle (0.12);
+  \node[smallnote,invblue] at (5.6,-0.08) {size};
+  \draw[draw=invblue!65,fill=invblue!8,rounded corners=2pt] (4.55,-0.68) rectangle (6.65,-0.28);
+  \fill[invblue!45] (4.55,-0.68) rectangle (6.05,-0.28);
+  \node[smallnote,invgray] at (5.6,-1.02) {$b\ge0$};
+
+  \node[circle,draw=invorange!80!black,fill=invorange!10,thick,minimum size=9mm] (mult) at (8.0,0)
+    {$\times$};
+  \node[panel,minimum width=28mm,minimum height=22mm] (real) at (10.4,0) {};
+  \draw[-{Latex[length=2.8mm,width=2.0mm]},thick,invblue] (9.25,-0.15) -- (11.55,-0.15);
+  \foreach \x/\lab in {9.35/0,9.85/1,10.35/2,10.85/3}{
+    \draw[black!45] (\x,-0.27) -- (\x,-0.03);
+    \node[font=\scriptsize] at (\x,-0.52) {$\lab$};
+  }
+  \filldraw[fill=invorange!75!black,draw=white,thick] (10.63,-0.15) circle (0.10);
+  \node[smallnote,invblue] at (10.4,0.62) {real proposal};
+
+  \node[panel,minimum width=32mm,minimum height=22mm] (integer) at (13.7,0) {};
+  \foreach \x/\lab in {12.65/0,13.15/1,13.65/2,14.15/3,14.65/4}{
+    \draw[black!45] (\x,-0.25) -- (\x,0.30);
+    \node[font=\scriptsize] at (\x,-0.52) {$\lab$};
+  }
+  \draw[invred,very thick,rounded corners=2pt] (13.47,-0.42) rectangle (13.83,0.47);
+  \node[smallnote,invred] at (13.7,0.78) {integer order};
+  \node[smallnote,invred] at (13.7,-0.95) {$q_t\in\mathbb Z_{\ge0}$};
+
+  \draw[invflow] (u.east) -- (scores.west);
+  \draw[invflow] (scores.east) -- (heads.west);
+  \draw[invflow] (heads.east) -- node[invlabel,above] {$a b$} (mult.west);
+  \draw[invflow] (mult.east) -- (real.west);
+  \draw[invflow] (real.east) -- node[invlabel,above] {round} (integer.west);
 \end{tikzpicture}}%
 }
 
 \newcommand{\SoftGatedOrdinalDecoderFigure}{%
-\resizebox{0.92\linewidth}{!}{%
-\begin{tikzpicture}[x=1cm,y=1cm]
-  \node[invmiddle,minimum width=25mm,minimum height=14mm] (latent) at (0,0)
-    {latent\\outputs\\$\mathbf u$};
-  \node[invdecoder,minimum width=29mm,minimum height=13mm,font=\small] (gate) at (3.2,1.05)
-    {order switch\\$\sigma(g(\mathbf x))$};
-  \node[invdecoder,minimum width=14mm,minimum height=11mm,font=\scriptsize] (u1) at (2.05,-0.9)
-    {unit 1\\$\sigma(o_1)$};
-  \node[invdecoder,minimum width=14mm,minimum height=11mm,font=\scriptsize] (u2) at (3.45,-0.9)
-    {unit 2\\$\sigma(o_2)$};
-  \node[invdecoder,minimum width=11mm,minimum height=11mm,font=\scriptsize] (dots) at (4.65,-0.9)
-    {$\cdots$};
-  \node[invdecoder,minimum width=14mm,minimum height=11mm,font=\scriptsize] (uM) at (5.9,-0.9)
-    {unit $M$\\$\sigma(o_M)$};
-  \node[invmiddle,minimum width=28mm,minimum height=15mm,font=\small] (count) at (7.75,-0.9)
-    {soft count\\$s=\sum_k\sigma(o_k)$};
-  \node[invmiddle,minimum width=31mm,minimum height=16mm,font=\small] (continuous) at (10.6,0)
-    {gated count\\$y=\sigma(g)s$};
-  \node[invoutput,minimum width=36mm,minimum height=16mm,font=\small] (out) at (14.15,0)
-    {round/project\\$q_t=\lfloor y\rceil_{\ge0}$};
+\resizebox{0.94\linewidth}{!}{%
+\begin{tikzpicture}[x=1cm,y=1cm,
+  smallnote/.style={font=\footnotesize,align=center},
+  panel/.style={rounded corners=4pt,draw=black!18,fill=black!2,inner sep=5pt}
+]
+  \node[invmiddle,minimum width=25mm,minimum height=13mm] (u) at (0,0)
+    {backbone\\outputs};
 
-  \draw[invflow] (latent.east) -- (gate.west);
-  \draw[invflow] (latent.east) -- (u1.west);
-  \draw[invflow] (u1.east) -- (u2.west);
-  \draw[invflow] (u2.east) -- (dots.west);
-  \draw[invflow] (dots.east) -- (uM.west);
-  \draw[invflow] (uM.east) -- (count.west);
-  \draw[invflow] (gate.east) -- (continuous.north west);
-  \draw[invflow] (count.east) -- (continuous.south west);
-  \draw[invflow] (continuous.east) -- (out.west);
-  \node[invgray,font=\footnotesize,align=center] at (7.7,-1.85)
-    {Each threshold contributes a fractional unit; their sum behaves like a soft order count.};
+  \node[panel,minimum width=35mm,minimum height=30mm] (bank) at (3.65,0) {};
+  \node[smallnote,invblue] at (3.65,1.13) {ordinal unit bank};
+  \foreach \x/\h/\lab in {2.35/0.55/1,2.85/0.85/2,3.35/0.35/3,3.85/0.72/4,4.35/0.48/M}{
+    \draw[draw=invorange!70!black,fill=invorange!10,rounded corners=1pt] (\x,-0.68) rectangle +(0.28,1.20);
+    \fill[invorange!65] (\x,-0.68) rectangle +(0.28,\h);
+    \node[font=\scriptsize] at (\x+0.14,-0.95) {$\lab$};
+  }
+
+  \node[panel,minimum width=24mm,minimum height=24mm] (gate) at (6.6,0) {};
+  \node[smallnote,invgreen!70!black] at (6.6,0.75) {gate};
+  \draw[line width=4pt,line cap=round,black!20] (5.85,0.15) -- (7.35,0.15);
+  \draw[line width=4pt,line cap=round,invgreen!70!black] (5.85,0.15) -- (6.75,0.15);
+  \filldraw[fill=white,draw=invgreen!70!black,thick] (6.75,0.15) circle (0.12);
+
+  \node[circle,draw=invorange!80!black,fill=invorange!10,thick,minimum size=9mm] (sum) at (8.55,0)
+    {$\Sigma$};
+  \node[panel,minimum width=28mm,minimum height=22mm] (count) at (10.6,0) {};
+  \foreach \x/\lab in {9.55/0,10.05/1,10.55/2,11.05/3,11.55/4}{
+    \draw[black!45] (\x,-0.28) -- (\x,0.28);
+    \node[font=\scriptsize] at (\x,-0.55) {$\lab$};
+  }
+  \filldraw[fill=invorange!75!black,draw=white,thick] (10.95,0) circle (0.10);
+  \node[smallnote,invblue] at (10.55,0.72) {soft count};
+
+  \node[invoutput,minimum width=31mm,minimum height=17mm,font=\small] (out) at (13.8,0)
+    {round to\\$q_t\in\mathbb Z_{\ge0}$};
+
+  \draw[invflow] (u.east) -- (bank.west);
+  \draw[invflow] (u.east) -- (gate.west);
+  \draw[invflow] (bank.east) -- node[invlabel,above] {sum} (sum.west);
+  \draw[invflow] (gate.east) -- node[invlabel,above] {scale} (sum.north west);
+  \draw[invflow] (sum.east) -- (count.west);
+  \draw[invflow] (count.east) -- (out.west);
 \end{tikzpicture}}%
 }
 
 \newcommand{\CategoricalDecoderFigure}{%
-\resizebox{0.88\linewidth}{!}{%
-\begin{tikzpicture}[x=1cm,y=1cm]
-  \node[invmiddle,minimum width=25mm,minimum height=14mm] (latent) at (0,-0.75)
-    {latent\\outputs\\$\mathbf u$};
-  \node[invstage,draw=black!45,fill=black!4,minimum width=16mm,minimum height=15mm,font=\small] (q0) at (3.0,0.75)
-    {$q=0$\\score $y_0$};
-  \node[invstage,draw=black!45,fill=black!4,minimum width=16mm,minimum height=15mm,font=\small] (q1) at (4.9,0.75)
-    {$q=1$\\score $y_1$};
-  \node[invstage,draw=invorange!80!black,fill=invorange!12,minimum width=16mm,minimum height=15mm,font=\small] (q2) at (6.8,0.75)
-    {$q=2$\\score $y_2$};
-  \node[invstage,draw=black!45,fill=black!4,minimum width=16mm,minimum height=15mm,font=\small] (q3) at (8.7,0.75)
-    {$q=3$\\score $y_3$};
-  \node[invstage,draw=black!45,fill=black!4,minimum width=16mm,minimum height=15mm,font=\small] (qbar) at (10.6,0.75)
-    {$q=\bar q$\\score $y_{\bar q}$};
-  \node[invstage,draw=black!35,fill=black!3,minimum width=78mm,minimum height=9mm,font=\small] (menu) at (6.8,-0.75)
-    {finite menu of feasible order sizes};
-  \node[invoutput,minimum width=34mm,minimum height=15mm,font=\small] (out) at (13.05,-0.75)
-    {choose highest\\$q_t=\argmax_q y_q$};
+\resizebox{0.90\linewidth}{!}{%
+\begin{tikzpicture}[x=1cm,y=1cm,
+  smallnote/.style={font=\footnotesize,align=center},
+  card/.style={rounded corners=4pt,draw=black!35,fill=black!3,minimum width=16mm,minimum height=23mm}
+]
+  \node[invmiddle,minimum width=25mm,minimum height=13mm] (u) at (0,0)
+    {backbone\\outputs};
+  \node[smallnote,invblue] at (6.55,1.65) {score each feasible order};
 
-  \draw[black!55,-{Latex[length=3.0mm,width=2.0mm]},thick] (latent.east) -- node[invlabel,above] {score all} (menu.west);
-  \draw[black!35,thin] (q0.south) -- (menu.north);
-  \draw[black!35,thin] (q1.south) -- (menu.north);
-  \draw[black!35,thin] (q2.south) -- (menu.north);
-  \draw[black!35,thin] (q3.south) -- (menu.north);
-  \draw[black!35,thin] (qbar.south) -- (menu.north);
-  \draw[black!55,-{Latex[length=3.0mm,width=2.0mm]},thick] (menu.east) -- (out.west);
-  \node[invorange,font=\footnotesize,align=center] at (6.8,1.75)
-    {one score per possible order};
-  \node[invgray,font=\footnotesize,align=center] at (6.8,-1.45)
-    {The policy does not predict a quantity directly; it selects one option from the menu.};
+  \node[card] (c0) at (2.65,0) {};
+  \node[card] (c1) at (4.35,0) {};
+  \node[card,draw=invorange!85!black,fill=invorange!10,very thick] (c2) at (6.05,0) {};
+  \node[card] (c3) at (7.75,0) {};
+  \node[card] (cM) at (9.45,0) {};
+  \node[font=\small,yshift=-7pt] at (c0.north) {$q=0$};
+  \node[font=\small,yshift=-7pt] at (c1.north) {$q=1$};
+  \node[font=\small,yshift=-7pt] at (c2.north) {$q=2$};
+  \node[font=\small,yshift=-7pt] at (c3.north) {$q=3$};
+  \node[font=\small,yshift=-7pt] at (cM.north) {$q=\bar q$};
+  \foreach \x in {2.48,4.18,5.88,7.58,9.28}{
+    \draw[black!20,line width=4pt,line cap=round] (\x,-0.72) -- (\x,0.16);
+  }
+  \draw[invorange!70!black,line width=4pt,line cap=round] (2.48,-0.72) -- (2.48,-0.34);
+  \draw[invorange!70!black,line width=4pt,line cap=round] (4.18,-0.72) -- (4.18,-0.08);
+  \draw[invorange!70!black,line width=4pt,line cap=round] (5.88,-0.72) -- (5.88,0.22);
+  \draw[invorange!70!black,line width=4pt,line cap=round] (7.58,-0.72) -- (7.58,-0.22);
+  \draw[invorange!70!black,line width=4pt,line cap=round] (9.28,-0.72) -- (9.28,-0.47);
+  \node[font=\footnotesize,invorange!80!black] at (6.05,-1.45) {selected};
+  \node[invoutput,minimum width=32mm,minimum height=15mm,font=\small] (out) at (12.1,0)
+    {$q_t=\argmax_q y_q$};
+
+  \draw[black!55,-{Latex[length=3.0mm,width=2.0mm]},thick] (u.east) -- (c0.west);
+  \draw[black!35,thin] (c0.east) -- (c1.west);
+  \draw[black!35,thin] (c1.east) -- (c2.west);
+  \draw[black!35,thin] (c2.east) -- (c3.west);
+  \draw[black!35,thin] (c3.east) -- (cM.west);
+  \draw[black!55,-{Latex[length=3.0mm,width=2.0mm]},thick] (cM.east) -- node[invlabel,above] {max score} (out.west);
 \end{tikzpicture}}%
 }
 
