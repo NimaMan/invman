@@ -24,23 +24,39 @@
                   minimum size=9mm,inner sep=0pt},
   invleaf/.style={invstage,draw=invgreen!65!black,fill=invgreen!8,
                   minimum width=19mm},
-  invbox/.style={draw=invblue!55,dashed,rounded corners=4pt,inner sep=8pt}
+  invbox/.style={draw=invblue!55,dashed,rounded corners=4pt,inner sep=8pt},
+  invevsource/.style={invstage,draw=invgreen!70!black,fill=invgreen!10,
+                      minimum width=27mm,minimum height=13mm,font=\small},
+  invevstock/.style={invstage,draw=invblue!70!black,fill=invblue!8,
+                     minimum width=29mm,minimum height=13mm,font=\small},
+  invevdemand/.style={invstage,draw=invorange!80!black,fill=invorange!10,
+                      minimum width=28mm,minimum height=13mm,font=\small},
+  invevlost/.style={invstage,draw=invred!70!black,fill=invred!8,
+                    minimum width=28mm,minimum height=13mm,font=\small},
+  invmaterial/.style={-{Latex[length=3.4mm,width=2.4mm]},very thick,invblue},
+  invrequest/.style={-{Latex[length=3.1mm,width=2.2mm]},semithick,dashed,invgreen!70!black},
+  invdemandflow/.style={-{Latex[length=3.4mm,width=2.4mm]},very thick,invorange!85!black},
+  invlostflow/.style={-{Latex[length=3.4mm,width=2.4mm]},very thick,dashed,invred},
+  invlabel/.style={font=\footnotesize,align=center,fill=white,inner sep=1.5pt},
+  invcost/.style={font=\footnotesize,align=center}
 }
 
 \newcommand{\PolicyPipelineFigure}{%
-\resizebox{\linewidth}{!}{%
-\begin{tikzpicture}[x=1cm,y=1cm]
-  \path[use as bounding box] (-1.45,-1.45) rectangle (15.1,1.05);
-  \node[invinput,minimum width=27mm] (state) at (0,0)
-    {\textbf{observed state}\\$\mathbf S_t$\\[-1pt]$\in\mathbb Z_{\ge0}^{L}$};
-  \node[invmiddle,minimum width=31mm] (norm) at (3.35,0)
-    {normalize\\$\mathbf x=\mathbf S_t/\kappa$};
-  \node[invmiddle,minimum width=36mm] (backbone) at (7.05,0)
-    {backbone\\linear, NN, or tree};
-  \node[invdecoder,minimum width=34mm] (decoder) at (10.75,0)
-    {decoder\\direct, ordinal, or tree};
-  \node[invoutput,minimum width=28mm] (action) at (14.05,0)
-    {\textbf{feasible order}\\$q_t$\\[-1pt]$\in\mathbb Z_{\ge0}$};
+\resizebox{0.96\linewidth}{!}{%
+\begin{tikzpicture}[
+  x=1cm,y=1cm,
+  stagebox/.style={minimum width=28mm,minimum height=14mm,font=\small}
+]
+  \node[invinput,stagebox] (state) at (0,0)
+    {\textbf{State}\\[1pt]$\mathbf S_t$};
+  \node[invmiddle,stagebox] (norm) at (3.45,0)
+    {\textbf{Normalize}\\[1pt]$\mathbf x=\mathbf S_t/\kappa$};
+  \node[invmiddle,stagebox] (backbone) at (6.95,0)
+    {\textbf{Backbone}\\[1pt]\footnotesize linear, NN, tree};
+  \node[invdecoder,stagebox] (decoder) at (10.45,0)
+    {\textbf{Decoder}\\[1pt]\footnotesize direct, ordinal, tree};
+  \node[invoutput,stagebox] (action) at (13.9,0)
+    {\textbf{Order}\\[1pt]$q_t$};
 
   \draw[invflow] (state) -- (norm);
   \draw[invflow] (norm) -- (backbone);
@@ -48,10 +64,63 @@
   \draw[invflow] (decoder) -- (action);
 
   \begin{scope}[on background layer]
-    \node[invbox,fit=(norm)(backbone)(decoder)] (policy) {};
+    \node[invbox,fit=(norm)(backbone)(decoder),inner sep=7pt] (policy) {};
   \end{scope}
-  \node[invblue,fill=white,inner sep=1.5pt,below=4pt of policy.south]
-    {\footnotesize learned policy $\pi_{\btheta}$; parameters $\btheta$ optimized by CMA-ES};
+  \node[invblue,fill=white,inner sep=1.5pt,below=5pt of policy.south]
+    {\footnotesize learned policy $\pi_{\btheta}$, optimized by CMA-ES};
+\end{tikzpicture}}%
+}
+
+\newcommand{\LinearPolicyFigure}{%
+\resizebox{0.78\linewidth}{!}{%
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \node[invinput,minimum width=28mm,minimum height=17mm,font=\small] (x) at (0,0)
+    {normalized state\\$\mathbf x$};
+  \node[invmiddle,minimum width=34mm,minimum height=17mm,font=\small] (affine) at (4.0,0)
+    {affine map\\$W\mathbf x+b$};
+  \node[invoutput,minimum width=28mm,minimum height=17mm,font=\small] (u) at (8.0,0)
+    {latent outputs\\$\mathbf u$};
+
+  \draw[invflow] (x) -- (affine);
+  \draw[invflow] (affine) -- (u);
+  \node[invblue,below=4pt of affine.south,font=\footnotesize,align=center]
+    {linear backbone: no hidden layer};
+\end{tikzpicture}}%
+}
+
+\newcommand{\NeuralPolicyFigure}{%
+\resizebox{0.88\linewidth}{!}{%
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \node[invinput,circle,minimum size=8mm,inner sep=0pt,font=\footnotesize] (x1) at (0,1.1) {$x_1$};
+  \node[invinput,circle,minimum size=8mm,inner sep=0pt,font=\footnotesize] (x2) at (0,0.25) {$x_2$};
+  \node[font=\small,invgray] (xdots) at (0,-0.55) {$\vdots$};
+  \node[invinput,circle,minimum size=8mm,inner sep=0pt,font=\footnotesize] (xL) at (0,-1.35) {$x_L$};
+
+  \node[invmiddle,circle,minimum size=8mm,inner sep=0pt,font=\footnotesize] (h1) at (3.2,1.55) {$h_1$};
+  \node[invmiddle,circle,minimum size=8mm,inner sep=0pt,font=\footnotesize] (h2) at (3.2,0.65) {$h_2$};
+  \node[font=\small,invgray] (hdots) at (3.2,-0.2) {$\vdots$};
+  \node[invmiddle,circle,minimum size=8mm,inner sep=0pt,font=\footnotesize] (hH) at (3.2,-1.15) {$h_8$};
+
+  \node[invoutput,circle,minimum size=8mm,inner sep=0pt,font=\footnotesize] (u1) at (6.4,0.95) {$u_1$};
+  \node[font=\small,invgray] (udots) at (6.4,0.05) {$\vdots$};
+  \node[invoutput,circle,minimum size=8mm,inner sep=0pt,font=\footnotesize] (uM) at (6.4,-0.95) {$u_m$};
+
+  \foreach \i in {x1,x2,xL}{
+    \foreach \j in {h1,h2,hH}{
+      \draw[invblue!35,thin] (\i) -- (\j);
+    }
+  }
+  \foreach \i in {h1,h2,hH}{
+    \foreach \j in {u1,uM}{
+      \draw[invblue!35,thin] (\i) -- (\j);
+    }
+  }
+
+  \node[invgreen,above=2pt of x1.north,font=\footnotesize] {input $\mathbf x$};
+  \node[invblue,above=2pt of h1.north,font=\footnotesize] {hidden layer};
+  \node[invred,above=2pt of u1.north,font=\footnotesize] {latent $\mathbf u$};
+  \node[invblue,below=5pt of hH.south,font=\footnotesize,align=center]
+    {$\mathbf u=V\phi(U\mathbf x+c)+e$, with $H=8$};
 \end{tikzpicture}}%
 }
 
@@ -141,5 +210,58 @@
   \node[invorange,above=2pt of eval.north] {\footnotesize simulator call};
   \node[invblue] at (7.4,-1.45)
     {\footnotesize next generation: use cost ranking, not policy gradients};
+\end{tikzpicture}}%
+}
+
+\newcommand{\LostSalesEventFigure}{%
+\resizebox{0.98\linewidth}{!}{%
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \node[invevsource] (sup) at (0,0) {external\\supplier};
+  \node[invevstock] (stk) at (5.0,0) {on-hand\\stock $I_t$};
+  \node[invevdemand] (dem) at (10.0,0) {demand\\$D_t$};
+  \node[invevlost] (lost) at (10.0,-2.7) {lost\\demand};
+
+  \draw[invrequest] (stk.north) to[bend right=36] node[invlabel,above] {$q_t$ request} (sup.north);
+  \draw[invmaterial] (sup.south) to[bend right=36] node[invlabel,below] {$q_{t-L}$ arrives} (stk.south);
+  \draw[invdemandflow] (stk) -- node[invlabel,above] {serve $\min(I_t,D_t)$} (dem);
+  \draw[invlostflow] (dem) -- node[invlabel,right] {unmet} (lost);
+
+  \node[invcost,invblue] at (5.0,-2.7) {holding\\$h(I_t-D_t)^+$};
+  \node[invcost,invred,right=2pt of lost.east] {penalty\\$p(D_t-I_t)^+$};
+
+  \begin{scope}[on background layer]
+    \node[invbox,fit=(sup)(stk)(dem)(lost),inner sep=10pt] (box) {};
+  \end{scope}
+  \node[invblue,font=\small\bfseries,above=2pt of box.north]
+    {Vanilla lost-sales event sequence};
+  \node[invgray,below=4pt of box.south,align=center,font=\footnotesize]
+    {arrival $\rightarrow$ observe state $\mathbf S_t$ $\rightarrow$ order request $\rightarrow$ demand realization $\rightarrow$ holding and lost-sales cost};
+\end{tikzpicture}}%
+}
+
+\newcommand{\FixedCostLostSalesEventFigure}{%
+\resizebox{0.98\linewidth}{!}{%
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \node[invevsource] (sup) at (0,0) {external\\supplier};
+  \node[invevstock] (stk) at (5.0,0) {on-hand\\stock $I_t$};
+  \node[invevdemand] (dem) at (10.0,0) {demand\\$D_t$};
+  \node[invevlost] (lost) at (10.0,-2.7) {lost\\demand};
+
+  \draw[invrequest] (stk.north) to[bend right=36] node[invlabel,above] {$q_t$ request} (sup.north);
+  \draw[invmaterial] (sup.south) to[bend right=36] node[invlabel,below] {$q_{t-L}$ arrives} (stk.south);
+  \draw[invdemandflow] (stk) -- node[invlabel,above] {serve $\min(I_t,D_t)$} (dem);
+  \draw[invlostflow] (dem) -- node[invlabel,right] {unmet} (lost);
+
+  \node[invcost,invblue] at (5.0,-2.7) {holding\\$h(I_t-D_t)^+$};
+  \node[invcost,invred,right=2pt of lost.east] {penalty\\$p(D_t-I_t)^+$};
+  \node[invcost,invgray,left=2pt of sup.west] {setup\\$K\mathbf{1}\{q_t>0\}$};
+
+  \begin{scope}[on background layer]
+    \node[invbox,fit=(sup)(stk)(dem)(lost),inner sep=10pt] (box) {};
+  \end{scope}
+  \node[invblue,font=\small\bfseries,above=2pt of box.north]
+    {Fixed-cost lost-sales event sequence};
+  \node[invgray,below=4pt of box.south,align=center,font=\footnotesize]
+    {same physical sequence as vanilla lost sales, with a setup charge whenever the requested order is positive};
 \end{tikzpicture}}%
 }
