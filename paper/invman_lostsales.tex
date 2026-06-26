@@ -43,12 +43,14 @@
 \usepackage{setspace}\linespread{1.4}%
 
 \usepackage{amssymb}
+\usepackage{graphicx}
 \usepackage{multirow}
 \usepackage{amsmath}
 \usepackage{dsfont}
 \usepackage{afterpage}
 \usepackage{hyperref}
 \usepackage{xcolor}
+\usepackage{tikz}
 \usepackage{tabularx}
 \usepackage{pdflscape}
 \usepackage{algorithm}
@@ -63,6 +65,8 @@
 \newcommand{\bpsi}{\boldsymbol{\psi}}
 \newcommand{\bepsilon}{\boldsymbol{\epsilon}}
 \DeclareMathOperator*{\argmax}{arg\,max}
+\usetikzlibrary{arrows.meta,positioning,fit,backgrounds}
+\input{figures/policy_architecture_inline}
 
 %% The amsthm package provides extended theorem environments
 %% \usepackage{amsthm}
@@ -124,11 +128,11 @@ We study a different learning recipe for lost-sales inventory control: optimize 
 
 The paper focuses on two closely related problems. The first is the classical single-item lost-sales problem without fixed ordering costs. The second adds a setup charge whenever a positive order is placed. This fixed-cost variant is not a minor numerical extension: it changes the decision geometry because a good policy must learn an order/no-order boundary. Ordering a little every period can be attractive in the vanilla problem, but is often poor when each positive order triggers a setup cost.
 
-This observation motivates the main methodological change relative to the earlier version of this paper. We treat the action parameterization as part of the policy. A learned policy first normalizes the inventory state, then applies a compact backbone, and finally uses a decoder that maps latent outputs to a valid integer order. We compare soft-gated direct quantity decoders, soft-gated ordinal quantity decoders, and soft decision trees with linear leaves. The gated decoders explicitly factor the decision into whether to order and how much to order, which is precisely the structural issue introduced by fixed ordering costs.
+This observation motivates our main methodological choice: the action parameterization is part of the policy. A learned policy first normalizes the inventory state, then applies a compact backbone, and finally uses a decoder that maps latent outputs to a valid integer order. We compare soft-gated direct quantity decoders, soft-gated ordinal quantity decoders, and soft decision trees with linear leaves. The gated decoders explicitly factor the decision into whether to order and how much to order, which is precisely the structural issue introduced by fixed ordering costs.
 
 Our contributions are as follows. First, we provide a focused CMA-ES study for both vanilla and fixed-cost lost-sales inventory control. Second, we show that compact learned policies are competitive with strong lost-sales heuristics on broad benchmark surfaces: learned policies are best in 22 of 24 vanilla instances and in 47 of 48 fixed-cost instances among the available comparators. Third, we show that the decoder matters more than raw network size. Soft trees and linear ordinal decoders are sufficient for many vanilla instances, while gated neural ordinal decoders dominate the fixed-cost setting. Fourth, we retain the practical advantages of compact policies: the learned controllers carry tens to a few hundred parameters and can be evaluated by simple arithmetic at run time.
 
-The remainder of the paper is organized as follows. Section~\ref{sec:literature} reviews learned inventory policies, evolution strategies, and lost-sales heuristics. Section~\ref{sec:policy_representation} describes the policy interface and CMA-ES optimization loop. Section~\ref{sec:lost_sales} formulates the vanilla and fixed-cost lost-sales problems. Section~\ref{sec:experiments} reports the benchmark setup and results. Section~\ref{sec:managerial_insights} discusses practical implications, and Section~\ref{sec:conclusions} concludes. Appendix~\ref{app:validation} records the validation anchors for the vanilla and fixed-cost simulators.
+The remainder of the paper is organized as follows. Section~\ref{sec:literature} reviews learned inventory policies, evolution strategies, and lost-sales heuristics. Section~\ref{sec:policy_representation} describes the policy interface and CMA-ES optimization loop. Section~\ref{sec:lost_sales} formulates the vanilla and fixed-cost lost-sales problems. Section~\ref{sec:experiments} reports the benchmark setup and results. Section~\ref{sec:managerial_insights} discusses practical implications, and Section~\ref{sec:conclusions} concludes. The appendix records the validation anchors for the vanilla and fixed-cost simulators.
 
 \section{Literature}
 \label{sec:literature}
@@ -150,7 +154,7 @@ A policy is a deterministic map $\pi_{\btheta}$ from the observed state $\mathbf
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[page=1,width=\linewidth]{figures/policy_architecture.pdf}
+\PolicyPipelineFigure
 \caption{Policy interface used in the fixed-cost lost-sales experiments. The policy owns the normalization, backbone, decoder, and projection to a valid action; CMA-ES learns the corresponding parameter vector.}
 \label{fig:policy_pipeline}
 \end{figure}
@@ -163,26 +167,26 @@ The decoder is the main policy-design choice. Figure~\ref{fig:decoder_heads} sum
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[page=3,width=\linewidth]{figures/policy_architecture.pdf}
+\DecoderHeadsFigure
 \caption{Decoder heads used for lost-sales order quantities. The categorical head is the prior score-per-order representation; the reported new results use soft-gated direct quantities, soft-gated ordinal quantities, and soft trees with linear leaves.}
 \label{fig:decoder_heads}
 \end{figure}
 
-\paragraph{Soft-gated direct quantity (L-SGD, NN-SGD).}
+\paragraph{Soft-gated direct quantity (L-SGD, NN-SGD)}
 The backbone emits a gate score $g(\mathbf x)$ and a quantity score $r(\mathbf x)$. The decoder returns
 \[
 q_t=\left\lfloor \sigma(g(\mathbf x))\,\mathrm{softplus}(r(\mathbf x)) \right\rceil_{\ge0},
 \]
 where $\sigma$ is the logistic function and $\lfloor\cdot\rceil_{\ge0}$ rounds to the nearest nonnegative integer. The gate controls whether to order; the softplus head controls how much to order.
 
-\paragraph{Soft-gated ordinal quantity (L-SGO, NN-SGO).}
+\paragraph{Soft-gated ordinal quantity (L-SGO, NN-SGO)}
 The backbone emits a gate score $g(\mathbf x)$ and $M=20$ ordinal threshold scores $o_1(\mathbf x),\dots,o_M(\mathbf x)$. The decoder returns
 \[
 q_t=\left\lfloor \sigma(g(\mathbf x))\sum_{k=1}^{M}\sigma(o_k(\mathbf x)) \right\rceil_{\ge0}.
 \]
 The threshold sum acts as a soft count of units to order. This representation is useful when the policy should batch orders into a few discrete levels.
 
-\paragraph{Soft trees with linear leaves (Tree-1, Tree-2).}
+\paragraph{Soft trees with linear leaves (Tree-1, Tree-2)}
 The soft-tree policies use depth-1 or depth-2 oblique splits. Each leaf $\ell$ emits a local softplus-affine quantity $q_\ell(\mathbf x)=\mathrm{softplus}(\alpha_\ell^\top\mathbf x+\beta_\ell)$, and the decoder returns
 \[
 q_t=\left\lfloor \sum_\ell \pi_\ell(\mathbf x)q_\ell(\mathbf x) \right\rceil_{\ge0},
@@ -191,7 +195,7 @@ where $\pi_\ell(\mathbf x)$ is the routing path probability. Figure~\ref{fig:sof
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[page=5,width=.78\linewidth]{figures/policy_architecture.pdf}
+\SoftTreeFigure
 \caption{Depth-2 soft decision tree. The action is the rounded mixture of leaf quantities, weighted by soft routing probabilities.}
 \label{fig:soft_tree}
 \end{figure}
@@ -200,15 +204,15 @@ For an $L=4$ lost-sales state, the direct linear policy has 10 trainable paramet
 
 \subsection{CMA-ES optimization}
 
-CMA-ES models the population distribution over policy parameters as a multivariate Gaussian,
+CMA-ES samples policy parameters from a multivariate Gaussian search distribution,
 \[
-\mathds{P}_\psi(\btheta)\sim \mathcal{N}(\bmu,\sigma^2\bSigma),
+\btheta\sim \mathcal{N}(\bmu,\sigma^2\bSigma),
 \]
 and iterates between sampling candidate policies, evaluating each candidate by simulation, ranking candidates by cost, and updating the mean, step size, and covariance matrix of the search distribution. We use the reference \texttt{pycma} implementation \citep{Hansen2019pycma}. Figure~\ref{fig:cma_loop} shows the loop.
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[page=4,width=\linewidth]{figures/policy_architecture.pdf}
+\CMAESLoopFigure
 \caption{CMA-ES training loop. Candidate policy parameters are sampled, decoded into policies, evaluated by short rollouts, ranked by simulated cost, and used to update the search distribution.}
 \label{fig:cma_loop}
 \end{figure}
@@ -360,7 +364,7 @@ Table~\ref{tab:results-fixed-cost-lost-sales} reports the fixed-cost results. Le
 \centering
 \scriptsize
 \setlength{\tabcolsep}{3pt}
-\caption{Fixed-order-cost lost-sales benchmark: average cost by policy, setup cost, shortage cost, lead time, and demand family across the reported 48-instance surface.}
+\caption{Fixed-ordering-cost lost-sales benchmark: average cost by policy, setup cost, shortage cost, lead time, and demand family across the reported 48-instance surface.}
 \label{tab:results-fixed-cost-lost-sales}
 \resizebox{\textwidth}{!}{%
 \begin{tabular}{lllrrrrrrrrrrrr}

@@ -1,0 +1,146 @@
+% Inline TikZ versions of the policy-architecture figures used by
+% invman_lostsales.tex. These macros intentionally avoid pre-rendered PDFs.
+
+\colorlet{invblue}{blue!70!black}
+\colorlet{invgreen}{green!45!black}
+\colorlet{invorange}{orange!75!black}
+\colorlet{invred}{red!75!black}
+\colorlet{invgray}{black!55}
+
+\tikzset{
+  invstage/.style={
+    rounded corners=3pt,
+    thick,
+    align=center,
+    inner sep=5pt,
+    minimum height=11mm
+  },
+  invinput/.style={invstage,draw=invgreen!70!black,fill=invgreen!10},
+  invmiddle/.style={invstage,draw=invblue!70!black,fill=invblue!8},
+  invdecoder/.style={invstage,draw=invorange!80!black,fill=invorange!10},
+  invoutput/.style={invstage,draw=invred!70!black,fill=invred!10},
+  invflow/.style={-{Latex[length=3.2mm,width=2.2mm]},thick,invblue},
+  invsoft/.style={circle,draw=invblue!70!black,fill=invblue!10,thick,
+                  minimum size=9mm,inner sep=0pt},
+  invleaf/.style={invstage,draw=invgreen!65!black,fill=invgreen!8,
+                  minimum width=19mm},
+  invbox/.style={draw=invblue!55,dashed,rounded corners=4pt,inner sep=8pt}
+}
+
+\newcommand{\PolicyPipelineFigure}{%
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \node[invinput,minimum width=24mm] (state) at (0,0)
+    {\textbf{state}\\$\mathbf S_t\in\mathbb Z_{\ge0}^{L}$};
+  \node[invmiddle,minimum width=31mm] (norm) at (3.0,0)
+    {normalize\\$\mathbf x=\mathbf S_t/\kappa$};
+  \node[invmiddle,minimum width=36mm] (backbone) at (6.8,0)
+    {backbone\\linear, NN, or tree};
+  \node[invdecoder,minimum width=34mm] (decoder) at (10.4,0)
+    {decoder\\direct, ordinal, or tree};
+  \node[invoutput,minimum width=25mm] (action) at (13.7,0)
+    {\textbf{order}\\$q_t\in\mathbb Z_{\ge0}$};
+
+  \draw[invflow] (state) -- (norm);
+  \draw[invflow] (norm) -- (backbone);
+  \draw[invflow] (backbone) -- (decoder);
+  \draw[invflow] (decoder) -- (action);
+
+  \begin{scope}[on background layer]
+    \node[invbox,fit=(norm)(backbone)(decoder)] (policy) {};
+  \end{scope}
+  \node[invblue,below=2pt of policy.south]
+    {\footnotesize policy $\pi_{\btheta}$, with parameters $\btheta$ optimized by CMA-ES};
+  \node[invgreen,above=2pt of state.north] {\footnotesize observed};
+  \node[invred,above=2pt of action.north] {\footnotesize feasible action};
+\end{tikzpicture}}%
+}
+
+\newcommand{\DecoderHeadsFigure}{%
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \node[invmiddle,minimum width=24mm,minimum height=19mm] (latent) at (0,-2.7)
+    {latent\\outputs\\$\mathbf u$};
+
+  \node[invdecoder,anchor=west,text width=73mm] (direct) at (2.4,0)
+    {\textbf{soft-gated direct}\\
+     $q_t=\left\lfloor\sigma(g(\mathbf x))\,\mathrm{softplus}(r(\mathbf x))\right\rceil_{\ge0}$};
+  \node[invdecoder,anchor=west,text width=73mm] (ordinal) at (2.4,-1.8)
+    {\textbf{soft-gated ordinal}\\
+     $q_t=\left\lfloor\sigma(g(\mathbf x))\sum_{k=1}^{M}\sigma(o_k(\mathbf x))\right\rceil_{\ge0}$};
+  \node[invdecoder,anchor=west,text width=73mm] (tree) at (2.4,-3.6)
+    {\textbf{soft tree with linear leaves}\\
+     $q_t=\left\lfloor\sum_{\ell}\pi_{\ell}(\mathbf x)\,q_{\ell}(\mathbf x)\right\rceil_{\ge0}$};
+  \node[invdecoder,anchor=west,text width=73mm] (categorical) at (2.4,-5.4)
+    {\textbf{categorical baseline}\\
+     $q_t=\argmax_{q\in\{0,\ldots,\bar q\}} y_q$};
+
+  \node[invoutput,minimum width=24mm,minimum height=19mm] (order) at (12.9,-2.7)
+    {\textbf{integer}\\\textbf{order}\\$q_t$};
+
+  \foreach \head in {direct,ordinal,tree,categorical}{
+    \draw[invflow] (latent.east) -- (\head.west);
+    \draw[invflow] (\head.east) -- (order.west);
+  }
+  \node[invgray,below=3mm of categorical.south,align=center]
+    {\footnotesize The reported new experiments use the direct, ordinal, and tree decoders; the categorical head is the earlier score-per-order representation.};
+\end{tikzpicture}}%
+}
+
+\newcommand{\SoftTreeFigure}{%
+\resizebox{0.82\linewidth}{!}{%
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \node[invinput,minimum width=34mm] (x) at (0,2.0)
+    {normalized state\\$\mathbf x=\mathbf S_t/\kappa$};
+  \node[invsoft] (root) at (0,0) {$n_0$};
+  \node[invsoft] (left) at (-2.4,-1.8) {$n_1$};
+  \node[invsoft] (right) at (2.4,-1.8) {$n_2$};
+  \node[invleaf] (l1) at (-3.6,-3.7) {$q_1(\mathbf x)$};
+  \node[invleaf] (l2) at (-1.2,-3.7) {$q_2(\mathbf x)$};
+  \node[invleaf] (l3) at (1.2,-3.7) {$q_3(\mathbf x)$};
+  \node[invleaf] (l4) at (3.6,-3.7) {$q_4(\mathbf x)$};
+  \node[invoutput,minimum width=45mm] (out) at (0,-5.8)
+    {$q_t=\left\lfloor\sum_{\ell}\pi_{\ell}(\mathbf x)q_{\ell}(\mathbf x)\right\rceil_{\ge0}$};
+
+  \draw[invflow] (x) -- (root);
+  \draw[invflow] (root) -- node[above left,font=\footnotesize] {$1-\sigma(\cdot)$} (left);
+  \draw[invflow] (root) -- node[above right,font=\footnotesize] {$\sigma(\cdot)$} (right);
+  \draw[invflow] (left) -- (l1);
+  \draw[invflow] (left) -- (l2);
+  \draw[invflow] (right) -- (l3);
+  \draw[invflow] (right) -- (l4);
+
+  \begin{scope}[on background layer]
+    \node[invbox,fit=(l1)(l2)(l3)(l4)] (leaves) {};
+  \end{scope}
+  \draw[invflow] (leaves.south) -- (out.north);
+  \node[invgray,below=2pt of out.south,align=center]
+    {\footnotesize Path probabilities $\pi_{\ell}(\mathbf x)$ weight the leaf quantities before rounding.};
+\end{tikzpicture}}%
+}
+
+\newcommand{\CMAESLoopFigure}{%
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \node[invmiddle,minimum width=31mm] (dist) at (0,0)
+    {search distribution\\$\mathcal N(\bmu_i,\sigma_i^2\bSigma_i)$};
+  \node[invinput,minimum width=30mm] (sample) at (3.9,0)
+    {sample\\$\btheta_i^{(1)},\ldots,\btheta_i^{(N)}$};
+  \node[invdecoder,minimum width=34mm] (eval) at (7.9,0)
+    {simulate policies\\estimate $\hat C_T(\btheta)$};
+  \node[invmiddle,minimum width=26mm] (rank) at (11.5,0)
+    {rank\\by cost};
+  \node[invoutput,minimum width=31mm] (update) at (14.8,0)
+    {update\\$\bmu,\sigma,\bSigma$};
+
+  \draw[invflow] (dist) -- (sample);
+  \draw[invflow] (sample) -- (eval);
+  \draw[invflow] (eval) -- (rank);
+  \draw[invflow] (rank) -- (update);
+  \draw[invflow] (update.south) -- ++(0,-1.1) -| (dist.south);
+
+  \node[invorange,above=2pt of eval.north] {\footnotesize simulator call};
+  \node[invblue] at (7.4,-1.45)
+    {\footnotesize next generation: use cost ranking, not policy gradients};
+\end{tikzpicture}}%
+}
