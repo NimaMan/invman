@@ -181,38 +181,42 @@
   \node[invmiddle,minimum width=25mm,minimum height=13mm] (u) at (0,0)
     {backbone\\outputs};
 
-  \node[panel,minimum width=35mm,minimum height=30mm] (bank) at (3.65,0) {};
-  \node[smallnote,invblue] at (3.65,1.13) {ordinal unit bank};
-  \foreach \x/\h/\lab in {2.35/0.55/1,2.85/0.85/2,3.35/0.35/3,3.85/0.72/4,4.35/0.48/M}{
-    \draw[draw=invorange!70!black,fill=invorange!10,rounded corners=1pt] (\x,-0.68) rectangle +(0.28,1.20);
-    \fill[invorange!65] (\x,-0.68) rectangle +(0.28,\h);
-    \node[font=\scriptsize] at (\x+0.14,-0.95) {$\lab$};
+  \node[panel,minimum width=38mm,minimum height=25mm] (bank) at (3.35,0.62) {};
+  \node[smallnote,invblue] at (3.35,1.38) {ordinal units};
+  \foreach \x/\h/\lab in {2.15/0.44/1,2.75/0.72/2,3.35/0.32/3,3.95/0.60/4,4.55/0.40/M}{
+    \draw[draw=invorange!70!black,fill=invorange!10,rounded corners=1pt] (\x,0.02) rectangle +(0.30,0.95);
+    \fill[invorange!65] (\x,0.02) rectangle +(0.30,\h);
+    \node[font=\scriptsize] at (\x+0.15,-0.25) {$\lab$};
   }
-
-  \node[panel,minimum width=24mm,minimum height=24mm] (gate) at (6.6,0) {};
-  \node[smallnote,invgreen!70!black] at (6.6,0.75) {gate};
-  \draw[line width=4pt,line cap=round,black!20] (5.85,0.15) -- (7.35,0.15);
-  \draw[line width=4pt,line cap=round,invgreen!70!black] (5.85,0.15) -- (6.75,0.15);
-  \filldraw[fill=white,draw=invgreen!70!black,thick] (6.75,0.15) circle (0.12);
-
-  \node[circle,draw=invorange!80!black,fill=invorange!10,thick,minimum size=9mm] (sum) at (8.55,0)
+  \node[circle,draw=invorange!80!black,fill=invorange!10,thick,minimum size=8mm] (sum) at (6.05,0.62)
     {$\Sigma$};
-  \node[panel,minimum width=30mm,minimum height=24mm] (count) at (10.65,0) {};
-  \foreach \x/\lab in {9.55/0,10.05/1,10.55/2,11.05/3,11.55/4}{
-    \draw[black!45] (\x,-0.34) -- (\x,0.20);
-    \node[font=\scriptsize] at (\x,-0.66) {$\lab$};
-  }
-  \filldraw[fill=invorange!75!black,draw=white,thick] (10.95,0) circle (0.10);
-  \node[smallnote,invblue] at (10.65,0.82) {soft count};
 
-  \node[invoutput,minimum width=31mm,minimum height=17mm,font=\small] (out) at (13.95,0)
+  \node[panel,minimum width=33mm,minimum height=18mm] (gate) at (3.35,-1.05) {};
+  \node[smallnote,invgreen!70!black] at (2.55,-1.05) {gate};
+  \draw[line width=4pt,line cap=round,black!20] (3.05,-1.05) -- (4.45,-1.05);
+  \draw[line width=4pt,line cap=round,invgreen!70!black] (3.05,-1.05) -- (3.90,-1.05);
+  \filldraw[fill=white,draw=invgreen!70!black,thick] (3.90,-1.05) circle (0.12);
+
+  \node[circle,draw=invgreen!70!black,fill=invgreen!10,thick,minimum size=8mm] (mult) at (7.55,0)
+    {$\times$};
+  \node[panel,minimum width=31mm,minimum height=25mm] (count) at (10.0,0) {};
+  \foreach \x/\lab in {8.95/0,9.45/1,9.95/2,10.45/3,10.95/4}{
+    \draw[black!45] (\x,-0.42) -- (\x,0.16);
+    \node[font=\scriptsize] at (\x,-0.73) {$\lab$};
+  }
+  \draw[-{Latex[length=2.8mm,width=2.0mm]},thick,invblue] (8.85,-0.16) -- (11.10,-0.16);
+  \filldraw[fill=invorange!75!black,draw=white,thick] (10.35,-0.16) circle (0.10);
+  \node[smallnote,invblue] at (10.0,0.82) {gated count};
+
+  \node[invoutput,minimum width=31mm,minimum height=17mm,font=\small] (out) at (13.25,0)
     {integer\\order};
 
   \draw[invflow] (u.east) -- (bank.west);
   \draw[invflow] (u.east) -- (gate.west);
   \draw[invflow] (bank.east) -- (sum.west);
-  \draw[invflow] (gate.east) -- (sum.north west);
-  \draw[invflow] (sum.east) -- (count.west);
+  \draw[invflow] (sum.east) -- (mult.north west);
+  \draw[invflow] (gate.east) -- (mult.south west);
+  \draw[invflow] (mult.east) -- (count.west);
   \draw[invflow] (count.east) -- (out.west);
 \end{tikzpicture}}%
 }
