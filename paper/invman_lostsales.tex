@@ -185,7 +185,21 @@ We use two backbone classes and one tree mechanism. A linear backbone is a singl
 
 \subsection{Decoder heads}
 
-The decoder is the main policy-design choice. We use three decoder families in the reported new results: soft-gated direct quantities, soft-gated ordinal quantities, and soft trees with linear leaves. We also record the earlier categorical score-per-order representation as a baseline action parameterization.
+The decoder is the main policy-design choice. We first record the earlier categorical score-per-order representation because it is the easiest action parameterization to visualize: the policy scores a finite menu of order sizes and selects one. We then use three decoder families in the reported new results: soft-gated direct quantities, soft-gated ordinal quantities, and soft trees with linear leaves.
+
+\paragraph{Categorical score-per-order baseline}
+The earlier score-per-order representation emits one score $y_q$ for each feasible order $q\in\{0,\ldots,\bar q\}$ and chooses the largest score:
+\[
+q_t=\argmax_{q\in\{0,\ldots,\bar q\}} y_q.
+\]
+This decoder fixes the action grid in the output layer rather than learning an order/no-order gate.
+
+\begin{figure}[H]
+\centering
+\CategoricalDecoderFigure
+\caption{Categorical score-per-order baseline. The policy treats feasible order sizes as a finite menu, assigns one score to each option, and selects the highest-scoring order.}
+\label{fig:decoder-categorical}
+\end{figure}
 
 \paragraph{Soft-gated direct quantity (L-SGD, NN-SGD)}
 The backbone emits a gate score $g(\mathbf x)$ and a quantity score $r(\mathbf x)$. The decoder returns
@@ -227,20 +241,6 @@ where $\pi_\ell(\mathbf x)$ is the routing path probability. Figure~\ref{fig:dec
 \SoftTreeFigure
 \caption{Soft-tree decoder with depth 2. The action is the rounded mixture of local leaf quantities, weighted by soft routing probabilities.}
 \label{fig:decoder-tree}
-\end{figure}
-
-\paragraph{Categorical score-per-order baseline}
-The earlier score-per-order representation emits one score $y_q$ for each feasible order $q\in\{0,\ldots,\bar q\}$ and chooses the largest score:
-\[
-q_t=\argmax_{q\in\{0,\ldots,\bar q\}} y_q.
-\]
-This decoder fixes the action grid in the output layer rather than learning an order/no-order gate.
-
-\begin{figure}[H]
-\centering
-\CategoricalDecoderFigure
-\caption{Categorical score-per-order baseline. The policy treats feasible order sizes as a finite menu, assigns one score to each option, and selects the highest-scoring order.}
-\label{fig:decoder-categorical}
 \end{figure}
 
 For an $L=4$ lost-sales state, the direct linear policy has 10 trainable parameters, the direct neural policy has 58, Tree-1 has 15, Tree-2 has 35, L-SGO has 105, and NN-SGO has 229. These policies are much smaller than typical DRL controllers for inventory problems, which often use thousands or more parameters \citep{gijsbrechts2022drl,kaynov2024owmr}.
