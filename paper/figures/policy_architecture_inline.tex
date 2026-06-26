@@ -30,16 +30,17 @@
 \newcommand{\PolicyPipelineFigure}{%
 \resizebox{\linewidth}{!}{%
 \begin{tikzpicture}[x=1cm,y=1cm]
-  \node[invinput,minimum width=24mm] (state) at (0,0)
-    {\textbf{state}\\$\mathbf S_t\in\mathbb Z_{\ge0}^{L}$};
-  \node[invmiddle,minimum width=31mm] (norm) at (3.0,0)
+  \path[use as bounding box] (-1.45,-1.45) rectangle (15.1,1.05);
+  \node[invinput,minimum width=27mm] (state) at (0,0)
+    {\textbf{observed state}\\$\mathbf S_t$\\[-1pt]$\in\mathbb Z_{\ge0}^{L}$};
+  \node[invmiddle,minimum width=31mm] (norm) at (3.35,0)
     {normalize\\$\mathbf x=\mathbf S_t/\kappa$};
-  \node[invmiddle,minimum width=36mm] (backbone) at (6.8,0)
+  \node[invmiddle,minimum width=36mm] (backbone) at (7.05,0)
     {backbone\\linear, NN, or tree};
-  \node[invdecoder,minimum width=34mm] (decoder) at (10.4,0)
+  \node[invdecoder,minimum width=34mm] (decoder) at (10.75,0)
     {decoder\\direct, ordinal, or tree};
-  \node[invoutput,minimum width=25mm] (action) at (13.7,0)
-    {\textbf{order}\\$q_t\in\mathbb Z_{\ge0}$};
+  \node[invoutput,minimum width=28mm] (action) at (14.05,0)
+    {\textbf{feasible order}\\$q_t$\\[-1pt]$\in\mathbb Z_{\ge0}$};
 
   \draw[invflow] (state) -- (norm);
   \draw[invflow] (norm) -- (backbone);
@@ -49,10 +50,8 @@
   \begin{scope}[on background layer]
     \node[invbox,fit=(norm)(backbone)(decoder)] (policy) {};
   \end{scope}
-  \node[invblue,below=2pt of policy.south]
-    {\footnotesize policy $\pi_{\btheta}$, with parameters $\btheta$ optimized by CMA-ES};
-  \node[invgreen,above=2pt of state.north] {\footnotesize observed};
-  \node[invred,above=2pt of action.north] {\footnotesize feasible action};
+  \node[invblue,fill=white,inner sep=1.5pt,below=4pt of policy.south]
+    {\footnotesize learned policy $\pi_{\btheta}$; parameters $\btheta$ optimized by CMA-ES};
 \end{tikzpicture}}%
 }
 

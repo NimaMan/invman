@@ -53,6 +53,7 @@
 \usepackage{tikz}
 \usepackage{tabularx}
 \usepackage{pdflscape}
+\usepackage{float}
 \usepackage{algorithm}
 \usepackage{algorithmic}
 \renewcommand{\algorithmicrequire}{\textbf{Input:}}
@@ -152,7 +153,7 @@ This paper also connects to work on action representations. A neural or linear b
 
 A policy is a deterministic map $\pi_{\btheta}$ from the observed state $\mathbf S_t$ to a valid integer order $q_t$. We decompose this map into four steps. First, the raw state is normalized by a fixed scale $\kappa$, giving $\mathbf x=\mathbf S_t/\kappa$. Second, a compact backbone maps $\mathbf x$ to latent outputs $\mathbf u$. Third, a decoder maps those latent outputs to a candidate order quantity. Fourth, the candidate is rounded and projected onto the valid nonnegative integer action set. Figure~\ref{fig:policy_pipeline} shows this interface.
 
-\begin{figure}[!htbp]
+\begin{figure}[H]
 \centering
 \PolicyPipelineFigure
 \caption{Policy interface used in the fixed-cost lost-sales experiments. The policy owns the normalization, backbone, decoder, and projection to a valid action; CMA-ES learns the corresponding parameter vector.}
@@ -165,7 +166,7 @@ We use two backbone classes and one tree mechanism. A linear backbone is a singl
 
 The decoder is the main policy-design choice. Figure~\ref{fig:decoder_heads} summarizes the decoder family.
 
-\begin{figure}[!htbp]
+\begin{figure}[H]
 \centering
 \DecoderHeadsFigure
 \caption{Decoder heads used for lost-sales order quantities. The categorical head is the prior score-per-order representation; the reported new results use soft-gated direct quantities, soft-gated ordinal quantities, and soft trees with linear leaves.}
@@ -193,7 +194,7 @@ q_t=\left\lfloor \sum_\ell \pi_\ell(\mathbf x)q_\ell(\mathbf x) \right\rceil_{\g
 \]
 where $\pi_\ell(\mathbf x)$ is the routing path probability. Figure~\ref{fig:soft_tree} illustrates the depth-2 case.
 
-\begin{figure}[!htbp]
+\begin{figure}[H]
 \centering
 \SoftTreeFigure
 \caption{Depth-2 soft decision tree. The action is the rounded mixture of leaf quantities, weighted by soft routing probabilities.}
@@ -210,7 +211,7 @@ CMA-ES samples policy parameters from a multivariate Gaussian search distributio
 \]
 and iterates between sampling candidate policies, evaluating each candidate by simulation, ranking candidates by cost, and updating the mean, step size, and covariance matrix of the search distribution. We use the reference \texttt{pycma} implementation \citep{Hansen2019pycma}. Figure~\ref{fig:cma_loop} shows the loop.
 
-\begin{figure}[!htbp]
+\begin{figure}[H]
 \centering
 \CMAESLoopFigure
 \caption{CMA-ES training loop. Candidate policy parameters are sampled, decoded into policies, evaluated by short rollouts, ranked by simulated cost, and used to update the search distribution.}
