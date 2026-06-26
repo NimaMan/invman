@@ -196,7 +196,7 @@ where $\sigma$ is the logistic function and $\lfloor\cdot\rceil_{\ge0}$ rounds t
 \begin{figure}[H]
 \centering
 \SoftGatedDirectDecoderFigure
-\caption{Soft-gated direct decoder. The latent outputs are split into an order gate and a positive quantity head, then multiplied and rounded to produce the integer order.}
+\caption{Soft-gated direct decoder. The latent outputs define an order switch and a nonnegative continuous quantity; their product is rounded and projected onto the feasible integer action set.}
 \label{fig:decoder-direct}
 \end{figure}
 
@@ -210,7 +210,7 @@ The threshold sum acts as a soft count of units to order. This representation is
 \begin{figure}[H]
 \centering
 \SoftGatedOrdinalDecoderFigure
-\caption{Soft-gated ordinal decoder. The gate controls whether to order, while the ordinal threshold probabilities sum to a soft count of units.}
+\caption{Soft-gated ordinal decoder. Ordinal threshold probabilities act like fractional unit indicators; their sum is gated and rounded to obtain the integer order.}
 \label{fig:decoder-ordinal}
 \end{figure}
 
@@ -224,7 +224,7 @@ where $\pi_\ell(\mathbf x)$ is the routing path probability. Figure~\ref{fig:dec
 \begin{figure}[H]
 \centering
 \SoftTreeFigure
-\caption{Soft-tree decoder with depth 2. The action is the rounded mixture of local leaf quantities, weighted by soft routing probabilities.}
+\caption{Soft-tree decoder with depth 2. Each leaf proposes a quantity, the soft path probabilities form a weighted vote, and the resulting continuous order is rounded.}
 \label{fig:decoder-tree}
 \end{figure}
 
@@ -238,7 +238,7 @@ This decoder fixes the action grid in the output layer rather than learning an o
 \begin{figure}[H]
 \centering
 \CategoricalDecoderFigure
-\caption{Categorical score-per-order baseline. The latent outputs score each feasible order size directly, and the policy selects the order with the largest score.}
+\caption{Categorical score-per-order baseline. The policy treats feasible order sizes as a finite menu, assigns one score to each option, and selects the highest-scoring order.}
 \label{fig:decoder-categorical}
 \end{figure}
 

@@ -129,25 +129,25 @@
 \begin{tikzpicture}[x=1cm,y=1cm]
   \node[invmiddle,minimum width=25mm,minimum height=14mm] (latent) at (0,0)
     {latent\\outputs\\$\mathbf u$};
-  \node[invdecoder,minimum width=30mm,minimum height=14mm] (scores) at (3.2,0)
-    {two scores\\$g(\mathbf x),\,r(\mathbf x)$};
-  \node[invdecoder,minimum width=35mm,minimum height=13mm,font=\small] (gate) at (6.8,0.9)
-    {order gate\\$\sigma(g(\mathbf x))$};
-  \node[invdecoder,minimum width=35mm,minimum height=13mm,font=\small] (qty) at (6.8,-0.9)
-    {positive quantity\\$\mathrm{softplus}(r(\mathbf x))$};
-  \node[invmiddle,minimum width=25mm,minimum height=14mm,font=\small] (multiply) at (10.1,0)
-    {multiply\\and round};
-  \node[invoutput,minimum width=43mm,minimum height=14mm,font=\small] (out) at (13.8,0)
-    {$q_t=\left\lfloor\sigma(g(\mathbf x))\mathrm{softplus}(r(\mathbf x))\right\rceil_{\ge0}$};
+  \node[invdecoder,minimum width=29mm,minimum height=13mm,font=\small] (gate) at (3.25,0.95)
+    {order switch\\$a=\sigma(g(\mathbf x))$};
+  \node[invdecoder,minimum width=34mm,minimum height=13mm,font=\small] (amount) at (3.25,-0.95)
+    {continuous amount\\$b=\mathrm{softplus}(r(\mathbf x))\ge0$};
+  \node[invmiddle,minimum width=31mm,minimum height=16mm,font=\small] (continuous) at (7.0,0)
+    {nonnegative\\continuous order\\$y=a\,b\ge0$};
+  \node[invstage,draw=black!35,fill=black!3,minimum width=46mm,minimum height=15mm,font=\small] (numberline) at (10.95,0)
+    {integer action set\\$0\quad 1\quad 2\quad 3\quad \cdots$};
+  \node[invoutput,minimum width=29mm,minimum height=15mm,font=\small] (out) at (14.45,0)
+    {round/project\\$q_t\in\mathbb Z_{\ge0}$};
 
-  \draw[invflow] (latent.east) -- (scores.west);
-  \draw[invflow] (scores.east) -- (gate.west);
-  \draw[invflow] (scores.east) -- (qty.west);
-  \draw[invflow] (gate.east) -- (multiply.north west);
-  \draw[invflow] (qty.east) -- (multiply.south west);
-  \draw[invflow] (multiply.east) -- (out.west);
-  \node[invgray,font=\footnotesize,align=center] at (6.8,-1.85)
-    {The gate controls order/no-order; the quantity head controls order size.};
+  \draw[invflow] (latent.east) -- (gate.west);
+  \draw[invflow] (latent.east) -- (amount.west);
+  \draw[invflow] (gate.east) -- (continuous.north west);
+  \draw[invflow] (amount.east) -- (continuous.south west);
+  \draw[invflow] (continuous.east) -- node[invlabel,above] {$\lfloor y\rceil_{\ge0}$} (numberline.west);
+  \draw[invflow] (numberline.east) -- (out.west);
+  \node[invgray,font=\footnotesize,align=center] at (7.0,-1.85)
+    {This head predicts a quantity on the nonnegative real line, then converts it to a feasible integer order.};
 \end{tikzpicture}}%
 }
 
@@ -156,77 +156,107 @@
 \begin{tikzpicture}[x=1cm,y=1cm]
   \node[invmiddle,minimum width=25mm,minimum height=14mm] (latent) at (0,0)
     {latent\\outputs\\$\mathbf u$};
-  \node[invdecoder,minimum width=32mm,minimum height=14mm] (scores) at (3.3,0)
-    {gate and thresholds\\$g,o_1,\ldots,o_M$};
-  \node[invdecoder,minimum width=33mm,minimum height=13mm,font=\small] (gate) at (6.9,0.9)
-    {order gate\\$\sigma(g(\mathbf x))$};
-  \node[invdecoder,minimum width=37mm,minimum height=13mm,font=\small] (count) at (6.9,-0.9)
-    {soft unit count\\$\sum_{k=1}^M\sigma(o_k(\mathbf x))$};
-  \node[invmiddle,minimum width=25mm,minimum height=14mm,font=\small] (multiply) at (10.3,0)
-    {multiply\\and round};
-  \node[invoutput,minimum width=45mm,minimum height=14mm,font=\small] (out) at (14.1,0)
-    {$q_t=\left\lfloor\sigma(g(\mathbf x))\sum_{k=1}^{M}\sigma(o_k(\mathbf x))\right\rceil_{\ge0}$};
+  \node[invdecoder,minimum width=29mm,minimum height=13mm,font=\small] (gate) at (3.2,1.05)
+    {order switch\\$\sigma(g(\mathbf x))$};
+  \node[invdecoder,minimum width=14mm,minimum height=11mm,font=\scriptsize] (u1) at (2.05,-0.9)
+    {unit 1\\$\sigma(o_1)$};
+  \node[invdecoder,minimum width=14mm,minimum height=11mm,font=\scriptsize] (u2) at (3.45,-0.9)
+    {unit 2\\$\sigma(o_2)$};
+  \node[invdecoder,minimum width=11mm,minimum height=11mm,font=\scriptsize] (dots) at (4.65,-0.9)
+    {$\cdots$};
+  \node[invdecoder,minimum width=14mm,minimum height=11mm,font=\scriptsize] (uM) at (5.9,-0.9)
+    {unit $M$\\$\sigma(o_M)$};
+  \node[invmiddle,minimum width=28mm,minimum height=15mm,font=\small] (count) at (7.75,-0.9)
+    {soft count\\$s=\sum_k\sigma(o_k)$};
+  \node[invmiddle,minimum width=31mm,minimum height=16mm,font=\small] (continuous) at (10.6,0)
+    {gated count\\$y=\sigma(g)s$};
+  \node[invoutput,minimum width=36mm,minimum height=16mm,font=\small] (out) at (14.15,0)
+    {round/project\\$q_t=\lfloor y\rceil_{\ge0}$};
 
-  \draw[invflow] (latent.east) -- (scores.west);
-  \draw[invflow] (scores.east) -- (gate.west);
-  \draw[invflow] (scores.east) -- (count.west);
-  \draw[invflow] (gate.east) -- (multiply.north west);
-  \draw[invflow] (count.east) -- (multiply.south west);
-  \draw[invflow] (multiply.east) -- (out.west);
-  \node[invgray,font=\footnotesize,align=center] at (6.9,-1.85)
-    {Threshold probabilities are summed into a soft integer-like order count.};
+  \draw[invflow] (latent.east) -- (gate.west);
+  \draw[invflow] (latent.east) -- (u1.west);
+  \draw[invflow] (u1.east) -- (u2.west);
+  \draw[invflow] (u2.east) -- (dots.west);
+  \draw[invflow] (dots.east) -- (uM.west);
+  \draw[invflow] (uM.east) -- (count.west);
+  \draw[invflow] (gate.east) -- (continuous.north west);
+  \draw[invflow] (count.east) -- (continuous.south west);
+  \draw[invflow] (continuous.east) -- (out.west);
+  \node[invgray,font=\footnotesize,align=center] at (7.7,-1.85)
+    {Each threshold contributes a fractional unit; their sum behaves like a soft order count.};
 \end{tikzpicture}}%
 }
 
 \newcommand{\CategoricalDecoderFigure}{%
-\resizebox{0.78\linewidth}{!}{%
+\resizebox{0.88\linewidth}{!}{%
 \begin{tikzpicture}[x=1cm,y=1cm]
-  \node[invmiddle,minimum width=25mm,minimum height=14mm] (latent) at (0,0)
+  \node[invmiddle,minimum width=25mm,minimum height=14mm] (latent) at (0,-0.75)
     {latent\\outputs\\$\mathbf u$};
-  \node[invstage,draw=black!45,fill=black!4,minimum width=35mm,minimum height=14mm] (scores) at (3.8,0)
-    {order-size scores\\$y_0,\ldots,y_{\bar q}$};
-  \node[invstage,draw=black!45,fill=black!4,minimum width=27mm,minimum height=14mm] (choose) at (7.4,0)
-    {choose\\$\argmax_q y_q$};
-  \node[invoutput,minimum width=39mm,minimum height=14mm] (out) at (11.2,0)
-    {$q_t=\argmax_{q\in\{0,\ldots,\bar q\}} y_q$};
+  \node[invstage,draw=black!45,fill=black!4,minimum width=16mm,minimum height=15mm,font=\small] (q0) at (3.0,0.75)
+    {$q=0$\\score $y_0$};
+  \node[invstage,draw=black!45,fill=black!4,minimum width=16mm,minimum height=15mm,font=\small] (q1) at (4.9,0.75)
+    {$q=1$\\score $y_1$};
+  \node[invstage,draw=invorange!80!black,fill=invorange!12,minimum width=16mm,minimum height=15mm,font=\small] (q2) at (6.8,0.75)
+    {$q=2$\\score $y_2$};
+  \node[invstage,draw=black!45,fill=black!4,minimum width=16mm,minimum height=15mm,font=\small] (q3) at (8.7,0.75)
+    {$q=3$\\score $y_3$};
+  \node[invstage,draw=black!45,fill=black!4,minimum width=16mm,minimum height=15mm,font=\small] (qbar) at (10.6,0.75)
+    {$q=\bar q$\\score $y_{\bar q}$};
+  \node[invstage,draw=black!35,fill=black!3,minimum width=78mm,minimum height=9mm,font=\small] (menu) at (6.8,-0.75)
+    {finite menu of feasible order sizes};
+  \node[invoutput,minimum width=34mm,minimum height=15mm,font=\small] (out) at (13.05,-0.75)
+    {choose highest\\$q_t=\argmax_q y_q$};
 
-  \draw[black!55,-{Latex[length=3.0mm,width=2.0mm]},thick] (latent.east) -- (scores.west);
-  \draw[black!55,-{Latex[length=3.0mm,width=2.0mm]},thick] (scores.east) -- (choose.west);
-  \draw[black!55,-{Latex[length=3.0mm,width=2.0mm]},thick] (choose.east) -- (out.west);
-  \node[invgray,font=\footnotesize,align=center] at (5.8,-1.05)
-    {This is the earlier score-per-order representation, not the reported fixed-cost decoder.};
+  \draw[black!55,-{Latex[length=3.0mm,width=2.0mm]},thick] (latent.east) -- node[invlabel,above] {score all} (menu.west);
+  \draw[black!35,thin] (q0.south) -- (menu.north);
+  \draw[black!35,thin] (q1.south) -- (menu.north);
+  \draw[black!35,thin] (q2.south) -- (menu.north);
+  \draw[black!35,thin] (q3.south) -- (menu.north);
+  \draw[black!35,thin] (qbar.south) -- (menu.north);
+  \draw[black!55,-{Latex[length=3.0mm,width=2.0mm]},thick] (menu.east) -- (out.west);
+  \node[invorange,font=\footnotesize,align=center] at (6.8,1.75)
+    {one score per possible order};
+  \node[invgray,font=\footnotesize,align=center] at (6.8,-1.45)
+    {The policy does not predict a quantity directly; it selects one option from the menu.};
 \end{tikzpicture}}%
 }
 
 \newcommand{\SoftTreeFigure}{%
-\resizebox{0.82\linewidth}{!}{%
+\resizebox{0.88\linewidth}{!}{%
 \begin{tikzpicture}[x=1cm,y=1cm]
-  \node[invinput,minimum width=34mm] (x) at (0,2.0)
+  \node[invinput,minimum width=34mm] (x) at (0,2.15)
     {normalized state\\$\mathbf x=\mathbf S_t/\kappa$};
-  \node[invsoft] (root) at (0,0) {$n_0$};
-  \node[invsoft] (left) at (-2.4,-1.8) {$n_1$};
-  \node[invsoft] (right) at (2.4,-1.8) {$n_2$};
-  \node[invleaf] (l1) at (-3.6,-3.7) {$q_1(\mathbf x)$};
-  \node[invleaf] (l2) at (-1.2,-3.7) {$q_2(\mathbf x)$};
-  \node[invleaf] (l3) at (1.2,-3.7) {$q_3(\mathbf x)$};
-  \node[invleaf] (l4) at (3.6,-3.7) {$q_4(\mathbf x)$};
-  \node[invoutput,minimum width=45mm] (out) at (0,-5.8)
-    {$q_t=\left\lfloor\sum_{\ell}\pi_{\ell}(\mathbf x)q_{\ell}(\mathbf x)\right\rceil_{\ge0}$};
+  \node[invsoft] (root) at (0,0.35) {$n_0$};
+  \node[invsoft] (left) at (-2.4,-1.25) {$n_1$};
+  \node[invsoft] (right) at (2.4,-1.25) {$n_2$};
+  \node[invleaf,minimum width=24mm,font=\small] (l1) at (-4.0,-3.05)
+    {leaf 1\\quantity $q_1$};
+  \node[invleaf,minimum width=24mm,font=\small] (l2) at (-1.35,-3.05)
+    {leaf 2\\quantity $q_2$};
+  \node[invleaf,minimum width=24mm,font=\small] (l3) at (1.35,-3.05)
+    {leaf 3\\quantity $q_3$};
+  \node[invleaf,minimum width=24mm,font=\small] (l4) at (4.0,-3.05)
+    {leaf 4\\quantity $q_4$};
+  \node[invmiddle,minimum width=40mm,minimum height=14mm,font=\small] (mix) at (0,-4.85)
+    {soft weighted vote\\$y=\sum_{\ell}\pi_{\ell}(\mathbf x)q_{\ell}(\mathbf x)$};
+  \node[invoutput,minimum width=36mm,minimum height=14mm,font=\small] (out) at (0,-6.45)
+    {round/project\\$q_t=\lfloor y\rceil_{\ge0}$};
 
   \draw[invflow] (x) -- (root);
-  \draw[invflow] (root) -- node[above left,font=\footnotesize] {$1-\sigma(\cdot)$} (left);
-  \draw[invflow] (root) -- node[above right,font=\footnotesize] {$\sigma(\cdot)$} (right);
-  \draw[invflow] (left) -- (l1);
-  \draw[invflow] (left) -- (l2);
-  \draw[invflow] (right) -- (l3);
-  \draw[invflow] (right) -- (l4);
+  \draw[invflow] (root) -- node[above left,font=\footnotesize] {soft split} (left);
+  \draw[invflow] (root) -- node[above right,font=\footnotesize] {soft split} (right);
+  \draw[invflow] (left) -- node[left,font=\footnotesize] {$\pi_1$} (l1);
+  \draw[invflow] (left) -- node[right,font=\footnotesize] {$\pi_2$} (l2);
+  \draw[invflow] (right) -- node[left,font=\footnotesize] {$\pi_3$} (l3);
+  \draw[invflow] (right) -- node[right,font=\footnotesize] {$\pi_4$} (l4);
 
-  \begin{scope}[on background layer]
-    \node[invbox,fit=(l1)(l2)(l3)(l4)] (leaves) {};
-  \end{scope}
-  \draw[invflow] (leaves.south) -- (out.north);
+  \draw[invflow] (l1.south) -- (mix.north);
+  \draw[invflow] (l2.south) -- (mix.north);
+  \draw[invflow] (l3.south) -- (mix.north);
+  \draw[invflow] (l4.south) -- (mix.north);
+  \draw[invflow] (mix.south) -- (out.north);
   \node[invgray,below=2pt of out.south,align=center]
-    {\footnotesize Path probabilities $\pi_{\ell}(\mathbf x)$ weight the leaf quantities before rounding.};
+    {\footnotesize The state is not sent to one leaf only; all leaves vote with soft path probabilities.};
 \end{tikzpicture}}%
 }
 
