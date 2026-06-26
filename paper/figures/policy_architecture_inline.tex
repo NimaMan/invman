@@ -259,34 +259,48 @@
 }
 
 \newcommand{\SoftTreeFigure}{%
-\resizebox{0.82\linewidth}{!}{%
-\begin{tikzpicture}[x=1cm,y=1cm]
-  \node[invinput,minimum width=34mm] (x) at (0,2.0)
-    {normalized state\\$\mathbf x=\mathbf S_t/\kappa$};
-  \node[invsoft] (root) at (0,0) {$n_0$};
-  \node[invsoft] (left) at (-2.4,-1.8) {$n_1$};
-  \node[invsoft] (right) at (2.4,-1.8) {$n_2$};
-  \node[invleaf] (l1) at (-3.6,-3.7) {$q_1(\mathbf x)$};
-  \node[invleaf] (l2) at (-1.2,-3.7) {$q_2(\mathbf x)$};
-  \node[invleaf] (l3) at (1.2,-3.7) {$q_3(\mathbf x)$};
-  \node[invleaf] (l4) at (3.6,-3.7) {$q_4(\mathbf x)$};
-  \node[invoutput,minimum width=45mm] (out) at (0,-5.8)
+\resizebox{0.90\linewidth}{!}{%
+\begin{tikzpicture}[x=1cm,y=1cm,
+  smallnote/.style={font=\footnotesize,align=center},
+  leafcard/.style={rounded corners=4pt,draw=invgreen!65!black,fill=invgreen!8,
+                   minimum width=19mm,minimum height=21mm,align=center}
+]
+  \node[invinput,minimum width=30mm,minimum height=13mm] (x) at (0,2.2)
+    {state\\$\mathbf x$};
+  \node[invsoft] (root) at (0,0.75) {$n_0$};
+  \node[invsoft] (left) at (-2.0,-0.75) {$n_1$};
+  \node[invsoft] (right) at (2.0,-0.75) {$n_2$};
+
+  \node[leafcard] (l1) at (-3.75,-2.55) {leaf 1\\$q_1$};
+  \node[leafcard] (l2) at (-1.25,-2.55) {leaf 2\\$q_2$};
+  \node[leafcard] (l3) at (1.25,-2.55) {leaf 3\\$q_3$};
+  \node[leafcard] (l4) at (3.75,-2.55) {leaf 4\\$q_4$};
+
+  \foreach \xpos/\height in {-4.15/0.46,-1.65/0.78,0.85/0.58,3.35/0.34}{
+    \draw[black!20,line width=4pt,line cap=round] (\xpos,-3.12) -- (\xpos,-2.30);
+    \draw[invgreen!65!black,line width=4pt,line cap=round] (\xpos,-3.12) -- ++(0,\height);
+  }
+
+  \node[invmiddle,minimum width=35mm,minimum height=14mm,font=\small] (mix) at (0,-4.35)
+    {soft weighted\\mixture};
+  \node[invoutput,minimum width=32mm,minimum height=14mm,font=\small] (out) at (0,-5.95)
+    {integer\\order};
+
+  \draw[invflow] (x.south) -- (root.north);
+  \draw[invflow] (root) -- node[smallnote,above left] {$1-\sigma$} (left);
+  \draw[invflow] (root) -- node[smallnote,above right] {$\sigma$} (right);
+  \draw[invflow] (left) -- node[smallnote,left] {$\pi_1$} (l1.north);
+  \draw[invflow] (left) -- node[smallnote,right] {$\pi_2$} (l2.north);
+  \draw[invflow] (right) -- node[smallnote,left] {$\pi_3$} (l3.north);
+  \draw[invflow] (right) -- node[smallnote,right] {$\pi_4$} (l4.north);
+
+  \draw[black!35,thin] (l1.south) -- (mix.north);
+  \draw[black!35,thin] (l2.south) -- (mix.north);
+  \draw[black!35,thin] (l3.south) -- (mix.north);
+  \draw[black!35,thin] (l4.south) -- (mix.north);
+  \draw[invflow] (mix.south) -- (out.north);
+  \node[smallnote,invgray] at (0,-6.85)
     {$q_t=\left\lfloor\sum_{\ell}\pi_{\ell}(\mathbf x)q_{\ell}(\mathbf x)\right\rceil_{\ge0}$};
-
-  \draw[invflow] (x) -- (root);
-  \draw[invflow] (root) -- node[above left,font=\footnotesize] {$1-\sigma(\cdot)$} (left);
-  \draw[invflow] (root) -- node[above right,font=\footnotesize] {$\sigma(\cdot)$} (right);
-  \draw[invflow] (left) -- (l1);
-  \draw[invflow] (left) -- (l2);
-  \draw[invflow] (right) -- (l3);
-  \draw[invflow] (right) -- (l4);
-
-  \begin{scope}[on background layer]
-    \node[invbox,fit=(l1)(l2)(l3)(l4)] (leaves) {};
-  \end{scope}
-  \draw[invflow] (leaves.south) -- (out.north);
-  \node[invgray,below=2pt of out.south,align=center]
-    {\footnotesize Path probabilities $\pi_{\ell}(\mathbf x)$ weight the leaf quantities before rounding.};
 \end{tikzpicture}}%
 }
 
