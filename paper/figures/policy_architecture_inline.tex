@@ -127,31 +127,58 @@
 \newcommand{\DecoderHeadsFigure}{%
 \resizebox{\linewidth}{!}{%
 \begin{tikzpicture}[x=1cm,y=1cm]
-  \node[invmiddle,minimum width=24mm,minimum height=19mm] (latent) at (0,-2.7)
+  \node[invmiddle,minimum width=24mm,minimum height=50mm] (latent) at (0,-2.25)
     {latent\\outputs\\$\mathbf u$};
 
-  \node[invdecoder,anchor=west,text width=73mm] (direct) at (2.4,0)
-    {\textbf{soft-gated direct}\\
-     $q_t=\left\lfloor\sigma(g(\mathbf x))\,\mathrm{softplus}(r(\mathbf x))\right\rceil_{\ge0}$};
-  \node[invdecoder,anchor=west,text width=73mm] (ordinal) at (2.4,-1.8)
-    {\textbf{soft-gated ordinal}\\
-     $q_t=\left\lfloor\sigma(g(\mathbf x))\sum_{k=1}^{M}\sigma(o_k(\mathbf x))\right\rceil_{\ge0}$};
-  \node[invdecoder,anchor=west,text width=73mm] (tree) at (2.4,-3.6)
-    {\textbf{soft tree with linear leaves}\\
-     $q_t=\left\lfloor\sum_{\ell}\pi_{\ell}(\mathbf x)\,q_{\ell}(\mathbf x)\right\rceil_{\ge0}$};
-  \node[invdecoder,anchor=west,text width=73mm] (categorical) at (2.4,-5.4)
-    {\textbf{categorical baseline}\\
-     $q_t=\argmax_{q\in\{0,\ldots,\bar q\}} y_q$};
+  \node[invdecoder,minimum width=24mm,minimum height=11mm,font=\small] (gate1) at (2.7,0)
+    {gate\\$\sigma(g)$};
+  \node[invdecoder,minimum width=31mm,minimum height=11mm,font=\small] (qty1) at (5.8,0)
+    {quantity\\$\mathrm{softplus}(r)$};
+  \node[invoutput,minimum width=38mm,minimum height=11mm,font=\small] (out1) at (9.6,0)
+    {$\left\lfloor\sigma(g)\mathrm{softplus}(r)\right\rceil_{\ge0}$};
 
-  \node[invoutput,minimum width=24mm,minimum height=19mm] (order) at (12.9,-2.7)
-    {\textbf{integer}\\\textbf{order}\\$q_t$};
+  \node[invdecoder,minimum width=24mm,minimum height=11mm,font=\small] (gate2) at (2.7,-1.55)
+    {gate\\$\sigma(g)$};
+  \node[invdecoder,minimum width=31mm,minimum height=11mm,font=\small] (qty2) at (5.8,-1.55)
+    {soft thresholds\\$\sum_k\sigma(o_k)$};
+  \node[invoutput,minimum width=38mm,minimum height=11mm,font=\small] (out2) at (9.6,-1.55)
+    {$\left\lfloor\sigma(g)\sum_k\sigma(o_k)\right\rceil_{\ge0}$};
 
-  \foreach \head in {direct,ordinal,tree,categorical}{
-    \draw[invflow] (latent.east) -- (\head.west);
-    \draw[invflow] (\head.east) -- (order.west);
-  }
-  \node[invgray,below=3mm of categorical.south,align=center]
-    {\footnotesize The reported new experiments use the direct, ordinal, and tree decoders; the categorical head is the earlier score-per-order representation.};
+  \node[invdecoder,minimum width=24mm,minimum height=11mm,font=\small] (route) at (2.7,-3.1)
+    {soft routing\\$\pi_\ell(\mathbf x)$};
+  \node[invdecoder,minimum width=31mm,minimum height=11mm,font=\small] (leaves) at (5.8,-3.1)
+    {leaf quantities\\$q_\ell(\mathbf x)$};
+  \node[invoutput,minimum width=38mm,minimum height=11mm,font=\small] (out3) at (9.6,-3.1)
+    {$\left\lfloor\sum_\ell\pi_\ell q_\ell\right\rceil_{\ge0}$};
+
+  \node[invstage,draw=black!45,fill=black!4,minimum width=24mm,minimum height=11mm,font=\small] (scores) at (2.7,-4.75)
+    {scores\\$y_0,\ldots,y_{\bar q}$};
+  \node[invstage,draw=black!45,fill=black!4,minimum width=31mm,minimum height=11mm,font=\small] (argmax) at (5.8,-4.75)
+    {choose\\$\argmax_q y_q$};
+  \node[invstage,draw=black!45,fill=black!4,minimum width=38mm,minimum height=11mm,font=\small] (out4) at (9.6,-4.75)
+    {categorical baseline\\$q_t=\argmax_q y_q$};
+
+  \draw[invflow] (latent.east) -- (gate1.west);
+  \draw[invflow] (gate1) -- (qty1);
+  \draw[invflow] (qty1) -- (out1);
+  \node[invblue,font=\footnotesize,above=1pt of qty1.north] {soft-gated direct};
+
+  \draw[invflow] (latent.east) -- (gate2.west);
+  \draw[invflow] (gate2) -- (qty2);
+  \draw[invflow] (qty2) -- (out2);
+  \node[invblue,font=\footnotesize,above=1pt of qty2.north] {soft-gated ordinal};
+
+  \draw[invflow] (latent.east) -- (route.west);
+  \draw[invflow] (route) -- (leaves);
+  \draw[invflow] (leaves) -- (out3);
+  \node[invblue,font=\footnotesize,above=1pt of leaves.north] {soft tree};
+
+  \draw[black!55,-{Latex[length=3.0mm,width=2.0mm]},thick] (latent.east) -- (scores.west);
+  \draw[black!55,-{Latex[length=3.0mm,width=2.0mm]},thick] (scores) -- (argmax);
+  \draw[black!55,-{Latex[length=3.0mm,width=2.0mm]},thick] (argmax) -- (out4);
+
+  \node[invgray,below=3mm of out4.south,align=center,font=\footnotesize]
+    {The reported fixed-cost results use the direct, ordinal, and tree decoders; the gray path is the earlier score-per-order baseline.};
 \end{tikzpicture}}%
 }
 
@@ -216,52 +243,29 @@
 \newcommand{\LostSalesEventFigure}{%
 \resizebox{0.98\linewidth}{!}{%
 \begin{tikzpicture}[x=1cm,y=1cm]
-  \node[invevsource] (sup) at (0,0) {external\\supplier};
-  \node[invevstock] (stk) at (5.0,0) {on-hand\\stock $I_t$};
-  \node[invevdemand] (dem) at (10.0,0) {demand\\$D_t$};
-  \node[invevlost] (lost) at (10.0,-2.7) {lost\\demand};
+  \coordinate (panelNW) at (-1.25,1.85);
+  \coordinate (panelSE) at (11.25,-4.05);
+  \begin{scope}[on background layer]
+    \node[invbox,fit=(panelNW)(panelSE),inner sep=0pt] (box) {};
+  \end{scope}
+
+  \node[invblue,font=\small\bfseries] at (5.0,1.55)
+    {Lost-sales event sequence};
+  \node[invevsource] (sup) at (0,0.25) {external\\supplier};
+  \node[invevstock] (stk) at (5.0,0.25) {on-hand\\stock $I_t$};
+  \node[invevdemand] (dem) at (10.0,0.25) {demand\\$D_t$};
+  \node[invevlost] (lost) at (10.0,-1.8) {lost\\demand};
 
   \draw[invrequest] (stk.north) to[bend right=36] node[invlabel,above] {$q_t$ request} (sup.north);
   \draw[invmaterial] (sup.south) to[bend right=36] node[invlabel,below] {$q_{t-L}$ arrives} (stk.south);
   \draw[invdemandflow] (stk) -- node[invlabel,above] {serve $\min(I_t,D_t)$} (dem);
   \draw[invlostflow] (dem) -- node[invlabel,right] {unmet} (lost);
 
-  \node[invcost,invblue] at (5.0,-2.7) {holding\\$h(I_t-D_t)^+$};
-  \node[invcost,invred,right=2pt of lost.east] {penalty\\$p(D_t-I_t)^+$};
-
-  \begin{scope}[on background layer]
-    \node[invbox,fit=(sup)(stk)(dem)(lost),inner sep=10pt] (box) {};
-  \end{scope}
-  \node[invblue,font=\small\bfseries,above=2pt of box.north]
-    {Vanilla lost-sales event sequence};
-  \node[invgray,below=4pt of box.south,align=center,font=\footnotesize]
-    {arrival $\rightarrow$ observe state $\mathbf S_t$ $\rightarrow$ order request $\rightarrow$ demand realization $\rightarrow$ holding and lost-sales cost};
-\end{tikzpicture}}%
-}
-
-\newcommand{\FixedCostLostSalesEventFigure}{%
-\resizebox{0.98\linewidth}{!}{%
-\begin{tikzpicture}[x=1cm,y=1cm]
-  \node[invevsource] (sup) at (0,0) {external\\supplier};
-  \node[invevstock] (stk) at (5.0,0) {on-hand\\stock $I_t$};
-  \node[invevdemand] (dem) at (10.0,0) {demand\\$D_t$};
-  \node[invevlost] (lost) at (10.0,-2.7) {lost\\demand};
-
-  \draw[invrequest] (stk.north) to[bend right=36] node[invlabel,above] {$q_t$ request} (sup.north);
-  \draw[invmaterial] (sup.south) to[bend right=36] node[invlabel,below] {$q_{t-L}$ arrives} (stk.south);
-  \draw[invdemandflow] (stk) -- node[invlabel,above] {serve $\min(I_t,D_t)$} (dem);
-  \draw[invlostflow] (dem) -- node[invlabel,right] {unmet} (lost);
-
-  \node[invcost,invblue] at (5.0,-2.7) {holding\\$h(I_t-D_t)^+$};
-  \node[invcost,invred,right=2pt of lost.east] {penalty\\$p(D_t-I_t)^+$};
-  \node[invcost,invgray,left=2pt of sup.west] {setup\\$K\mathbf{1}\{q_t>0\}$};
-
-  \begin{scope}[on background layer]
-    \node[invbox,fit=(sup)(stk)(dem)(lost),inner sep=10pt] (box) {};
-  \end{scope}
-  \node[invblue,font=\small\bfseries,above=2pt of box.north]
-    {Fixed-cost lost-sales event sequence};
-  \node[invgray,below=4pt of box.south,align=center,font=\footnotesize]
-    {same physical sequence as vanilla lost sales, with a setup charge whenever the requested order is positive};
+  \node[invcost,invblue] at (4.7,-1.95) {holding\\$h(I_t-D_t)^+$};
+  \node[invcost,invred] at (9.1,-3.0) {penalty\\$p(D_t-I_t)^+$};
+  \node[invcost,invgray] at (0.0,-1.45) {setup\\$K\mathbf{1}\{q_t>0\}$\\vanilla: $K=0$};
+  \node[invgray,align=center,font=\footnotesize,text width=105mm] at (5.0,-3.65)
+    {arrival $\rightarrow$ observe $\mathbf S_t$ $\rightarrow$ request $q_t$
+     $\rightarrow$ demand $D_t$ $\rightarrow$ holding and lost-sales cost};
 \end{tikzpicture}}%
 }

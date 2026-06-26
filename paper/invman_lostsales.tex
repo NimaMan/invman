@@ -259,20 +259,13 @@ and iterates between sampling candidate policies, evaluating each candidate by s
 
 We study a single-item, periodic-review lost-sales system. Demand and order quantities are integer, demand is stationary, and the controller seeks a stationary policy minimizing long-run average cost. In period $t$, an order placed $L$ periods earlier arrives, the controller observes the post-arrival state, chooses an order $q_t$, demand $D_t$ is realized, and unmet demand is lost.
 
-Figures~\ref{fig:env-lostsales} and~\ref{fig:env-fixedcost} depict the vanilla and fixed-ordering-cost variants as event-based interactions. Both systems share the same physical flow of order requests, lead-time arrivals, demand, and lost demand; the fixed-cost variant additionally charges a setup cost whenever the order request is positive.
+Figure~\ref{fig:env-lostsales} depicts the vanilla and fixed-ordering-cost variants as one event-based interaction. Both systems share the same physical flow of order requests, lead-time arrivals, demand, and lost demand; the fixed-cost variant additionally charges a setup cost whenever the order request is positive, while the vanilla case is recovered by setting $K=0$.
 
 \begin{figure}[H]
 \centering
 \LostSalesEventFigure
-\caption{Vanilla lost-sales environment as an event-based interaction. A dashed arrow represents the order request sent to the supplier; a solid arrow represents the lead-time shipment arriving from a previous request.}
+\caption{Lost-sales environment as an event-based interaction for the vanilla and fixed-ordering-cost settings. A dashed green arrow represents the order request sent to the supplier; a solid blue arrow represents the lead-time shipment arriving from a previous request. The setup term is zero in the vanilla case and active when $K>0$ and $q_t>0$.}
 \label{fig:env-lostsales}
-\end{figure}
-
-\begin{figure}[H]
-\centering
-\FixedCostLostSalesEventFigure
-\caption{Fixed-ordering-cost lost-sales environment as an event-based interaction. The physical event sequence is unchanged relative to Figure~\ref{fig:env-lostsales}; the setup cost is charged when $q_t>0$.}
-\label{fig:env-fixedcost}
 \end{figure}
 
 Let $I_t$ be the on-hand inventory immediately after the period-$t$ arrival. The post-arrival state is
