@@ -124,61 +124,77 @@
 \end{tikzpicture}}%
 }
 
-\newcommand{\DecoderHeadsFigure}{%
-\resizebox{\linewidth}{!}{%
+\newcommand{\SoftGatedDirectDecoderFigure}{%
+\resizebox{0.92\linewidth}{!}{%
 \begin{tikzpicture}[x=1cm,y=1cm]
-  \node[invmiddle,minimum width=24mm,minimum height=50mm] (latent) at (0,-2.25)
+  \node[invmiddle,minimum width=25mm,minimum height=14mm] (latent) at (0,0)
     {latent\\outputs\\$\mathbf u$};
+  \node[invdecoder,minimum width=30mm,minimum height=14mm] (scores) at (3.2,0)
+    {two scores\\$g(\mathbf x),\,r(\mathbf x)$};
+  \node[invdecoder,minimum width=35mm,minimum height=13mm,font=\small] (gate) at (6.8,0.9)
+    {order gate\\$\sigma(g(\mathbf x))$};
+  \node[invdecoder,minimum width=35mm,minimum height=13mm,font=\small] (qty) at (6.8,-0.9)
+    {positive quantity\\$\mathrm{softplus}(r(\mathbf x))$};
+  \node[invmiddle,minimum width=25mm,minimum height=14mm,font=\small] (multiply) at (10.1,0)
+    {multiply\\and round};
+  \node[invoutput,minimum width=43mm,minimum height=14mm,font=\small] (out) at (13.8,0)
+    {$q_t=\left\lfloor\sigma(g(\mathbf x))\mathrm{softplus}(r(\mathbf x))\right\rceil_{\ge0}$};
 
-  \node[invdecoder,minimum width=24mm,minimum height=11mm,font=\small] (gate1) at (2.7,0)
-    {gate\\$\sigma(g)$};
-  \node[invdecoder,minimum width=31mm,minimum height=11mm,font=\small] (qty1) at (5.8,0)
-    {quantity\\$\mathrm{softplus}(r)$};
-  \node[invoutput,minimum width=38mm,minimum height=11mm,font=\small] (out1) at (9.6,0)
-    {$\left\lfloor\sigma(g)\mathrm{softplus}(r)\right\rceil_{\ge0}$};
+  \draw[invflow] (latent.east) -- (scores.west);
+  \draw[invflow] (scores.east) -- (gate.west);
+  \draw[invflow] (scores.east) -- (qty.west);
+  \draw[invflow] (gate.east) -- (multiply.north west);
+  \draw[invflow] (qty.east) -- (multiply.south west);
+  \draw[invflow] (multiply.east) -- (out.west);
+  \node[invgray,font=\footnotesize,align=center] at (6.8,-1.85)
+    {The gate controls order/no-order; the quantity head controls order size.};
+\end{tikzpicture}}%
+}
 
-  \node[invdecoder,minimum width=24mm,minimum height=11mm,font=\small] (gate2) at (2.7,-1.55)
-    {gate\\$\sigma(g)$};
-  \node[invdecoder,minimum width=31mm,minimum height=11mm,font=\small] (qty2) at (5.8,-1.55)
-    {soft thresholds\\$\sum_k\sigma(o_k)$};
-  \node[invoutput,minimum width=38mm,minimum height=11mm,font=\small] (out2) at (9.6,-1.55)
-    {$\left\lfloor\sigma(g)\sum_k\sigma(o_k)\right\rceil_{\ge0}$};
+\newcommand{\SoftGatedOrdinalDecoderFigure}{%
+\resizebox{0.92\linewidth}{!}{%
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \node[invmiddle,minimum width=25mm,minimum height=14mm] (latent) at (0,0)
+    {latent\\outputs\\$\mathbf u$};
+  \node[invdecoder,minimum width=32mm,minimum height=14mm] (scores) at (3.3,0)
+    {gate and thresholds\\$g,o_1,\ldots,o_M$};
+  \node[invdecoder,minimum width=33mm,minimum height=13mm,font=\small] (gate) at (6.9,0.9)
+    {order gate\\$\sigma(g(\mathbf x))$};
+  \node[invdecoder,minimum width=37mm,minimum height=13mm,font=\small] (count) at (6.9,-0.9)
+    {soft unit count\\$\sum_{k=1}^M\sigma(o_k(\mathbf x))$};
+  \node[invmiddle,minimum width=25mm,minimum height=14mm,font=\small] (multiply) at (10.3,0)
+    {multiply\\and round};
+  \node[invoutput,minimum width=45mm,minimum height=14mm,font=\small] (out) at (14.1,0)
+    {$q_t=\left\lfloor\sigma(g(\mathbf x))\sum_{k=1}^{M}\sigma(o_k(\mathbf x))\right\rceil_{\ge0}$};
 
-  \node[invdecoder,minimum width=24mm,minimum height=11mm,font=\small] (route) at (2.7,-3.1)
-    {soft routing\\$\pi_\ell(\mathbf x)$};
-  \node[invdecoder,minimum width=31mm,minimum height=11mm,font=\small] (leaves) at (5.8,-3.1)
-    {leaf quantities\\$q_\ell(\mathbf x)$};
-  \node[invoutput,minimum width=38mm,minimum height=11mm,font=\small] (out3) at (9.6,-3.1)
-    {$\left\lfloor\sum_\ell\pi_\ell q_\ell\right\rceil_{\ge0}$};
+  \draw[invflow] (latent.east) -- (scores.west);
+  \draw[invflow] (scores.east) -- (gate.west);
+  \draw[invflow] (scores.east) -- (count.west);
+  \draw[invflow] (gate.east) -- (multiply.north west);
+  \draw[invflow] (count.east) -- (multiply.south west);
+  \draw[invflow] (multiply.east) -- (out.west);
+  \node[invgray,font=\footnotesize,align=center] at (6.9,-1.85)
+    {Threshold probabilities are summed into a soft integer-like order count.};
+\end{tikzpicture}}%
+}
 
-  \node[invstage,draw=black!45,fill=black!4,minimum width=24mm,minimum height=11mm,font=\small] (scores) at (2.7,-4.75)
-    {scores\\$y_0,\ldots,y_{\bar q}$};
-  \node[invstage,draw=black!45,fill=black!4,minimum width=31mm,minimum height=11mm,font=\small] (argmax) at (5.8,-4.75)
+\newcommand{\CategoricalDecoderFigure}{%
+\resizebox{0.78\linewidth}{!}{%
+\begin{tikzpicture}[x=1cm,y=1cm]
+  \node[invmiddle,minimum width=25mm,minimum height=14mm] (latent) at (0,0)
+    {latent\\outputs\\$\mathbf u$};
+  \node[invstage,draw=black!45,fill=black!4,minimum width=35mm,minimum height=14mm] (scores) at (3.8,0)
+    {order-size scores\\$y_0,\ldots,y_{\bar q}$};
+  \node[invstage,draw=black!45,fill=black!4,minimum width=27mm,minimum height=14mm] (choose) at (7.4,0)
     {choose\\$\argmax_q y_q$};
-  \node[invstage,draw=black!45,fill=black!4,minimum width=38mm,minimum height=11mm,font=\small] (out4) at (9.6,-4.75)
-    {categorical baseline\\$q_t=\argmax_q y_q$};
-
-  \draw[invflow] (latent.east) -- (gate1.west);
-  \draw[invflow] (gate1) -- (qty1);
-  \draw[invflow] (qty1) -- (out1);
-  \node[invblue,font=\footnotesize,above=1pt of qty1.north] {soft-gated direct};
-
-  \draw[invflow] (latent.east) -- (gate2.west);
-  \draw[invflow] (gate2) -- (qty2);
-  \draw[invflow] (qty2) -- (out2);
-  \node[invblue,font=\footnotesize,above=1pt of qty2.north] {soft-gated ordinal};
-
-  \draw[invflow] (latent.east) -- (route.west);
-  \draw[invflow] (route) -- (leaves);
-  \draw[invflow] (leaves) -- (out3);
-  \node[invblue,font=\footnotesize,above=1pt of leaves.north] {soft tree};
+  \node[invoutput,minimum width=39mm,minimum height=14mm] (out) at (11.2,0)
+    {$q_t=\argmax_{q\in\{0,\ldots,\bar q\}} y_q$};
 
   \draw[black!55,-{Latex[length=3.0mm,width=2.0mm]},thick] (latent.east) -- (scores.west);
-  \draw[black!55,-{Latex[length=3.0mm,width=2.0mm]},thick] (scores) -- (argmax);
-  \draw[black!55,-{Latex[length=3.0mm,width=2.0mm]},thick] (argmax) -- (out4);
-
-  \node[invgray,below=3mm of out4.south,align=center,font=\footnotesize]
-    {The reported fixed-cost results use the direct, ordinal, and tree decoders; the gray path is the earlier score-per-order baseline.};
+  \draw[black!55,-{Latex[length=3.0mm,width=2.0mm]},thick] (scores.east) -- (choose.west);
+  \draw[black!55,-{Latex[length=3.0mm,width=2.0mm]},thick] (choose.east) -- (out.west);
+  \node[invgray,font=\footnotesize,align=center] at (5.8,-1.05)
+    {This is the earlier score-per-order representation, not the reported fixed-cost decoder.};
 \end{tikzpicture}}%
 }
 
@@ -241,31 +257,46 @@
 }
 
 \newcommand{\LostSalesEventFigure}{%
-\resizebox{0.98\linewidth}{!}{%
+\resizebox{\linewidth}{!}{%
 \begin{tikzpicture}[x=1cm,y=1cm]
-  \coordinate (panelNW) at (-1.25,1.85);
-  \coordinate (panelSE) at (11.25,-4.05);
+  \coordinate (panelNW) at (-0.75,2.25);
+  \coordinate (panelSE) at (15.05,-3.45);
   \begin{scope}[on background layer]
     \node[invbox,fit=(panelNW)(panelSE),inner sep=0pt] (box) {};
   \end{scope}
 
-  \node[invblue,font=\small\bfseries] at (5.0,1.55)
-    {Lost-sales event sequence};
-  \node[invevsource] (sup) at (0,0.25) {external\\supplier};
-  \node[invevstock] (stk) at (5.0,0.25) {on-hand\\stock $I_t$};
-  \node[invevdemand] (dem) at (10.0,0.25) {demand\\$D_t$};
-  \node[invevlost] (lost) at (10.0,-1.8) {lost\\demand};
+  \node[invblue,font=\small\bfseries] at (7.15,1.92)
+    {One-period lost-sales interaction};
 
-  \draw[invrequest] (stk.north) to[bend right=36] node[invlabel,above] {$q_t$ request} (sup.north);
-  \draw[invmaterial] (sup.south) to[bend right=36] node[invlabel,below] {$q_{t-L}$ arrives} (stk.south);
-  \draw[invdemandflow] (stk) -- node[invlabel,above] {serve $\min(I_t,D_t)$} (dem);
-  \draw[invlostflow] (dem) -- node[invlabel,right] {unmet} (lost);
+  \node[invevsource,minimum width=28mm] (arrival) at (0.95,0.75)
+    {1. arrival\\$q_{t-L}$};
+  \node[invevstock,minimum width=37mm] (state) at (4.15,0.75)
+    {2. observe state\\$\mathbf S_t=(I_t,\ldots)$};
+  \node[invmiddle,minimum width=35mm,minimum height=13mm,font=\small] (policy) at (4.15,-1.15)
+    {policy decision\\$q_t=\pi_{\btheta}(\mathbf S_t)$};
+  \node[invevsource,minimum width=31mm] (pipeline) at (0.95,-1.15)
+    {future pipeline\\new order $q_t$};
+  \node[invevdemand,minimum width=28mm] (demand) at (7.45,0.75)
+    {3. demand\\$D_t$};
+  \node[invevstock,minimum width=31mm] (served) at (10.2,1.25)
+    {served\\$\min(I_t,D_t)$};
+  \node[invevlost,minimum width=31mm] (lost) at (10.2,0.05)
+    {lost sales\\$(D_t-I_t)^+$};
+  \node[invoutput,minimum width=42mm,minimum height=26mm,font=\small] (cost) at (12.8,-1.25)
+    {4. period cost\\$c_t^K=$\\$h(I_t-D_t)^+ + p(D_t-I_t)^+$\\$+K\mathbf{1}\{q_t>0\}$\\vanilla: $K=0$};
 
-  \node[invcost,invblue] at (4.7,-1.95) {holding\\$h(I_t-D_t)^+$};
-  \node[invcost,invred] at (9.1,-3.0) {penalty\\$p(D_t-I_t)^+$};
-  \node[invcost,invgray] at (0.0,-1.45) {setup\\$K\mathbf{1}\{q_t>0\}$\\vanilla: $K=0$};
-  \node[invgray,align=center,font=\footnotesize,text width=105mm] at (5.0,-3.65)
-    {arrival $\rightarrow$ observe $\mathbf S_t$ $\rightarrow$ request $q_t$
-     $\rightarrow$ demand $D_t$ $\rightarrow$ holding and lost-sales cost};
+  \draw[invmaterial] (arrival.east) -- node[invlabel,above] {available before decision} (state.west);
+  \draw[invflow] (state.south) -- (policy.north);
+  \draw[invrequest] (policy.west) -- node[invlabel,below] {request} (pipeline.east);
+  \draw[invrequest] (pipeline.north) -- node[invlabel,left] {after $L$ periods} (arrival.south);
+  \draw[invdemandflow] (state.east) -- node[invlabel,above] {inventory meets demand} (demand.west);
+  \draw[invdemandflow] (demand.east) -- (served.west);
+  \draw[invlostflow] (demand.east) -- (lost.west);
+  \draw[invflow,draw=black!45] (served.east) -- (cost.north west);
+  \draw[invlostflow,draw=black!45] (lost.east) -- (cost.west);
+  \draw[invrequest,draw=black!45] (policy.east) -- node[invlabel,below] {setup if $q_t>0$} (cost.west);
+
+  \node[invgray,align=center,font=\footnotesize,text width=132mm] at (7.15,-3.05)
+    {The physical sequence is identical in the vanilla and fixed-cost models; the fixed-cost model adds only the setup term.};
 \end{tikzpicture}}%
 }

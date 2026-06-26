@@ -184,14 +184,7 @@ We use two backbone classes and one tree mechanism. A linear backbone is a singl
 
 \subsection{Decoder heads}
 
-The decoder is the main policy-design choice. Figure~\ref{fig:decoder_heads} summarizes the decoder family.
-
-\begin{figure}[H]
-\centering
-\DecoderHeadsFigure
-\caption{Decoder heads used for lost-sales order quantities. The categorical head is the prior score-per-order representation; the reported new results use soft-gated direct quantities, soft-gated ordinal quantities, and soft trees with linear leaves.}
-\label{fig:decoder_heads}
-\end{figure}
+The decoder is the main policy-design choice. We use three decoder families in the reported new results: soft-gated direct quantities, soft-gated ordinal quantities, and soft trees with linear leaves. We also record the earlier categorical score-per-order representation as a baseline action parameterization.
 
 \paragraph{Soft-gated direct quantity (L-SGD, NN-SGD)}
 The backbone emits a gate score $g(\mathbf x)$ and a quantity score $r(\mathbf x)$. The decoder returns
@@ -200,6 +193,13 @@ q_t=\left\lfloor \sigma(g(\mathbf x))\,\mathrm{softplus}(r(\mathbf x)) \right\rc
 \]
 where $\sigma$ is the logistic function and $\lfloor\cdot\rceil_{\ge0}$ rounds to the nearest nonnegative integer. The gate controls whether to order; the softplus head controls how much to order.
 
+\begin{figure}[H]
+\centering
+\SoftGatedDirectDecoderFigure
+\caption{Soft-gated direct decoder. The latent outputs are split into an order gate and a positive quantity head, then multiplied and rounded to produce the integer order.}
+\label{fig:decoder-direct}
+\end{figure}
+
 \paragraph{Soft-gated ordinal quantity (L-SGO, NN-SGO)}
 The backbone emits a gate score $g(\mathbf x)$ and $M=20$ ordinal threshold scores $o_1(\mathbf x),\dots,o_M(\mathbf x)$. The decoder returns
 \[
@@ -207,18 +207,39 @@ q_t=\left\lfloor \sigma(g(\mathbf x))\sum_{k=1}^{M}\sigma(o_k(\mathbf x)) \right
 \]
 The threshold sum acts as a soft count of units to order. This representation is useful when the policy should batch orders into a few discrete levels.
 
+\begin{figure}[H]
+\centering
+\SoftGatedOrdinalDecoderFigure
+\caption{Soft-gated ordinal decoder. The gate controls whether to order, while the ordinal threshold probabilities sum to a soft count of units.}
+\label{fig:decoder-ordinal}
+\end{figure}
+
 \paragraph{Soft trees with linear leaves (Tree-1, Tree-2)}
 The soft-tree policies use depth-1 or depth-2 oblique splits. Each leaf $\ell$ emits a local softplus-affine quantity $q_\ell(\mathbf x)=\mathrm{softplus}(\alpha_\ell^\top\mathbf x+\beta_\ell)$, and the decoder returns
 \[
 q_t=\left\lfloor \sum_\ell \pi_\ell(\mathbf x)q_\ell(\mathbf x) \right\rceil_{\ge0},
 \]
-where $\pi_\ell(\mathbf x)$ is the routing path probability. Figure~\ref{fig:soft_tree} illustrates the depth-2 case.
+where $\pi_\ell(\mathbf x)$ is the routing path probability. Figure~\ref{fig:decoder-tree} illustrates the depth-2 case.
 
 \begin{figure}[H]
 \centering
 \SoftTreeFigure
-\caption{Depth-2 soft decision tree. The action is the rounded mixture of leaf quantities, weighted by soft routing probabilities.}
-\label{fig:soft_tree}
+\caption{Soft-tree decoder with depth 2. The action is the rounded mixture of local leaf quantities, weighted by soft routing probabilities.}
+\label{fig:decoder-tree}
+\end{figure}
+
+\paragraph{Categorical score-per-order baseline}
+The earlier score-per-order representation emits one score $y_q$ for each feasible order $q\in\{0,\ldots,\bar q\}$ and chooses the largest score:
+\[
+q_t=\argmax_{q\in\{0,\ldots,\bar q\}} y_q.
+\]
+This decoder fixes the action grid in the output layer rather than learning an order/no-order gate.
+
+\begin{figure}[H]
+\centering
+\CategoricalDecoderFigure
+\caption{Categorical score-per-order baseline. The latent outputs score each feasible order size directly, and the policy selects the order with the largest score.}
+\label{fig:decoder-categorical}
 \end{figure}
 
 For an $L=4$ lost-sales state, the direct linear policy has 10 trainable parameters, the direct neural policy has 58, Tree-1 has 15, Tree-2 has 35, L-SGO has 105, and NN-SGO has 229. These policies are much smaller than typical DRL controllers for inventory problems, which often use thousands or more parameters \citep{gijsbrechts2022drl,kaynov2024owmr}.
