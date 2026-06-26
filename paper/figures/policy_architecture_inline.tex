@@ -289,44 +289,51 @@
 \newcommand{\LostSalesEventFigure}{%
 \resizebox{\linewidth}{!}{%
 \begin{tikzpicture}[x=1cm,y=1cm]
-  \coordinate (panelNW) at (-0.75,2.25);
-  \coordinate (panelSE) at (15.05,-3.45);
+  \coordinate (panelNW) at (-0.55,1.95);
+  \coordinate (panelSE) at (14.95,-3.25);
   \begin{scope}[on background layer]
     \node[invbox,fit=(panelNW)(panelSE),inner sep=0pt] (box) {};
   \end{scope}
 
-  \node[invblue,font=\small\bfseries] at (7.15,1.92)
-    {One-period lost-sales interaction};
+  \node[invblue,font=\small\bfseries] at (7.2,1.62)
+    {Period $t$ timeline};
 
-  \node[invevsource,minimum width=28mm] (arrival) at (0.95,0.75)
-    {1. arrival\\$q_{t-L}$};
-  \node[invevstock,minimum width=37mm] (state) at (4.15,0.75)
-    {2. observe state\\$\mathbf S_t=(I_t,\ldots)$};
-  \node[invmiddle,minimum width=35mm,minimum height=13mm,font=\small] (policy) at (4.15,-1.15)
-    {policy decision\\$q_t=\pi_{\btheta}(\mathbf S_t)$};
-  \node[invevsource,minimum width=31mm] (pipeline) at (0.95,-1.15)
-    {future pipeline\\new order $q_t$};
-  \node[invevdemand,minimum width=28mm] (demand) at (7.45,0.75)
-    {3. demand\\$D_t$};
-  \node[invevstock,minimum width=31mm] (served) at (10.2,1.25)
-    {served\\$\min(I_t,D_t)$};
-  \node[invevlost,minimum width=31mm] (lost) at (10.2,0.05)
-    {lost sales\\$(D_t-I_t)^+$};
-  \node[invoutput,minimum width=42mm,minimum height=26mm,font=\small] (cost) at (12.8,-1.25)
-    {4. period cost\\$c_t^K=$\\$h(I_t-D_t)^+ + p(D_t-I_t)^+$\\$+K\mathbf{1}\{q_t>0\}$\\vanilla: $K=0$};
+  \node[invevsource,minimum width=24mm,minimum height=14mm] (arrival) at (0.95,0.55)
+    {arrival\\$q_{t-L}$};
+  \node[invevstock,minimum width=28mm,minimum height=14mm] (state) at (3.55,0.55)
+    {observe\\$\mathbf S_t$};
+  \node[invmiddle,minimum width=30mm,minimum height=14mm,font=\small] (order) at (6.35,0.55)
+    {order\\$q_t=\pi_{\btheta}(\mathbf S_t)$};
+  \node[invevdemand,minimum width=24mm,minimum height=14mm] (demand) at (9.15,0.55)
+    {demand\\$D_t$};
+  \node[invoutput,minimum width=34mm,minimum height=14mm,font=\small] (outcome) at (12.05,0.55)
+    {outcome\\on hand $(I_t-D_t)^+$\\lost $(D_t-I_t)^+$};
 
-  \draw[invmaterial] (arrival.east) -- node[invlabel,above] {available before decision} (state.west);
-  \draw[invflow] (state.south) -- (policy.north);
-  \draw[invrequest] (policy.west) -- node[invlabel,below] {request} (pipeline.east);
-  \draw[invrequest] (pipeline.north) -- node[invlabel,left] {after $L$ periods} (arrival.south);
-  \draw[invdemandflow] (state.east) -- node[invlabel,above] {inventory meets demand} (demand.west);
-  \draw[invdemandflow] (demand.east) -- (served.west);
-  \draw[invlostflow] (demand.east) -- (lost.west);
-  \draw[invflow,draw=black!45] (served.east) -- (cost.north west);
-  \draw[invlostflow,draw=black!45] (lost.east) -- (cost.west);
-  \draw[invrequest,draw=black!45] (policy.east) -- node[invlabel,below] {setup if $q_t>0$} (cost.west);
+  \draw[invmaterial] (arrival.east) -- (state.west);
+  \draw[invflow] (state.east) -- (order.west);
+  \draw[invdemandflow] (order.east) -- (demand.west);
+  \draw[invdemandflow] (demand.east) -- (outcome.west);
 
-  \node[invgray,align=center,font=\footnotesize,text width=132mm] at (7.15,-3.05)
-    {The physical sequence is identical in the vanilla and fixed-cost models; the fixed-cost model adds only the setup term.};
+  \node[invcost,draw=invgray,fill=black!3,rounded corners=3pt,inner sep=4pt,
+        minimum width=29mm,minimum height=13mm] (setup) at (6.35,-1.05)
+    {setup\\$K\mathbf{1}\{q_t>0\}$\\{\scriptsize vanilla: $K=0$}};
+  \node[invcost,draw=invblue!60,fill=invblue!6,rounded corners=3pt,inner sep=4pt,
+        minimum width=30mm,minimum height=13mm] (holding) at (10.15,-1.05)
+    {holding\\$h(I_t-D_t)^+$};
+  \node[invcost,draw=invred!65,fill=invred!6,rounded corners=3pt,inner sep=4pt,
+        minimum width=30mm,minimum height=13mm] (penalty) at (13.25,-1.05)
+    {lost-sales\\$p(D_t-I_t)^+$};
+
+  \draw[invrequest] (order.south) -- (setup.north);
+  \draw[invflow,draw=black!45] (outcome.south west) -- (holding.north);
+  \draw[invlostflow,draw=black!45] (outcome.south east) -- (penalty.north);
+
+  \node[invstage,draw=black!35,fill=black!3,minimum width=89mm,minimum height=11mm,
+        font=\small] (total) at (9.75,-2.45)
+    {$c_t^K=h(I_t-D_t)^+ + p(D_t-I_t)^+ + K\mathbf{1}\{q_t>0\}$};
+
+  \draw[black!45,-{Latex[length=2.8mm,width=2.0mm]},thick] (setup.south) -- (total.north west);
+  \draw[black!45,-{Latex[length=2.8mm,width=2.0mm]},thick] (holding.south) -- (total.north);
+  \draw[black!45,-{Latex[length=2.8mm,width=2.0mm]},thick] (penalty.south) -- (total.north east);
 \end{tikzpicture}}%
 }
