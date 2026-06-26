@@ -222,41 +222,34 @@
 }
 
 \newcommand{\SoftTreeFigure}{%
-\resizebox{0.88\linewidth}{!}{%
+\resizebox{0.82\linewidth}{!}{%
 \begin{tikzpicture}[x=1cm,y=1cm]
-  \node[invinput,minimum width=34mm] (x) at (0,2.15)
+  \node[invinput,minimum width=34mm] (x) at (0,2.0)
     {normalized state\\$\mathbf x=\mathbf S_t/\kappa$};
-  \node[invsoft] (root) at (0,0.35) {$n_0$};
-  \node[invsoft] (left) at (-2.4,-1.25) {$n_1$};
-  \node[invsoft] (right) at (2.4,-1.25) {$n_2$};
-  \node[invleaf,minimum width=24mm,font=\small] (l1) at (-4.0,-3.05)
-    {leaf 1\\quantity $q_1$};
-  \node[invleaf,minimum width=24mm,font=\small] (l2) at (-1.35,-3.05)
-    {leaf 2\\quantity $q_2$};
-  \node[invleaf,minimum width=24mm,font=\small] (l3) at (1.35,-3.05)
-    {leaf 3\\quantity $q_3$};
-  \node[invleaf,minimum width=24mm,font=\small] (l4) at (4.0,-3.05)
-    {leaf 4\\quantity $q_4$};
-  \node[invmiddle,minimum width=40mm,minimum height=14mm,font=\small] (mix) at (0,-4.85)
-    {soft weighted vote\\$y=\sum_{\ell}\pi_{\ell}(\mathbf x)q_{\ell}(\mathbf x)$};
-  \node[invoutput,minimum width=36mm,minimum height=14mm,font=\small] (out) at (0,-6.45)
-    {round/project\\$q_t=\lfloor y\rceil_{\ge0}$};
+  \node[invsoft] (root) at (0,0) {$n_0$};
+  \node[invsoft] (left) at (-2.4,-1.8) {$n_1$};
+  \node[invsoft] (right) at (2.4,-1.8) {$n_2$};
+  \node[invleaf] (l1) at (-3.6,-3.7) {$q_1(\mathbf x)$};
+  \node[invleaf] (l2) at (-1.2,-3.7) {$q_2(\mathbf x)$};
+  \node[invleaf] (l3) at (1.2,-3.7) {$q_3(\mathbf x)$};
+  \node[invleaf] (l4) at (3.6,-3.7) {$q_4(\mathbf x)$};
+  \node[invoutput,minimum width=45mm] (out) at (0,-5.8)
+    {$q_t=\left\lfloor\sum_{\ell}\pi_{\ell}(\mathbf x)q_{\ell}(\mathbf x)\right\rceil_{\ge0}$};
 
   \draw[invflow] (x) -- (root);
-  \draw[invflow] (root) -- node[above left,font=\footnotesize] {soft split} (left);
-  \draw[invflow] (root) -- node[above right,font=\footnotesize] {soft split} (right);
-  \draw[invflow] (left) -- node[left,font=\footnotesize] {$\pi_1$} (l1);
-  \draw[invflow] (left) -- node[right,font=\footnotesize] {$\pi_2$} (l2);
-  \draw[invflow] (right) -- node[left,font=\footnotesize] {$\pi_3$} (l3);
-  \draw[invflow] (right) -- node[right,font=\footnotesize] {$\pi_4$} (l4);
+  \draw[invflow] (root) -- node[above left,font=\footnotesize] {$1-\sigma(\cdot)$} (left);
+  \draw[invflow] (root) -- node[above right,font=\footnotesize] {$\sigma(\cdot)$} (right);
+  \draw[invflow] (left) -- (l1);
+  \draw[invflow] (left) -- (l2);
+  \draw[invflow] (right) -- (l3);
+  \draw[invflow] (right) -- (l4);
 
-  \draw[invflow] (l1.south) -- (mix.north);
-  \draw[invflow] (l2.south) -- (mix.north);
-  \draw[invflow] (l3.south) -- (mix.north);
-  \draw[invflow] (l4.south) -- (mix.north);
-  \draw[invflow] (mix.south) -- (out.north);
+  \begin{scope}[on background layer]
+    \node[invbox,fit=(l1)(l2)(l3)(l4)] (leaves) {};
+  \end{scope}
+  \draw[invflow] (leaves.south) -- (out.north);
   \node[invgray,below=2pt of out.south,align=center]
-    {\footnotesize The state is not sent to one leaf only; all leaves vote with soft path probabilities.};
+    {\footnotesize Path probabilities $\pi_{\ell}(\mathbf x)$ weight the leaf quantities before rounding.};
 \end{tikzpicture}}%
 }
 
@@ -287,53 +280,51 @@
 }
 
 \newcommand{\LostSalesEventFigure}{%
-\resizebox{\linewidth}{!}{%
+\resizebox{\textwidth}{!}{%
 \begin{tikzpicture}[x=1cm,y=1cm]
-  \coordinate (panelNW) at (-0.55,1.95);
-  \coordinate (panelSE) at (14.95,-3.25);
-  \begin{scope}[on background layer]
-    \node[invbox,fit=(panelNW)(panelSE),inner sep=0pt] (box) {};
-  \end{scope}
+  \node[invevsource,minimum width=30mm,minimum height=15mm] (sup) at (0,0)
+    {external\\supplier};
+  \node[invevstock,minimum width=32mm,minimum height=15mm] (stk) at (6.4,0)
+    {on-hand\\stock $I_t$};
+  \node[invevdemand,minimum width=28mm,minimum height=15mm] (dem) at (12.4,0)
+    {i.i.d.\\demand $D_t$};
+  \node[invevlost,minimum width=28mm,minimum height=15mm] (lost) at (12.4,-3.6)
+    {demand \emph{lost}\\if $I_t<D_t$};
 
-  \node[invblue,font=\small\bfseries] at (7.2,1.62)
-    {Period $t$ timeline};
+  \draw[invrequest] (stk.north) to[bend right=42] (sup.north);
+  \node[invlabel,invgreen!60!black] at (3.2,2.55)
+    {\ding{184}\, order request $q_t$};
+  \draw[invmaterial] (sup.south) to[bend right=42] (stk.south);
+  \node[invlabel,invblue] at (3.2,-2.55)
+    {\ding{182}\, arrival $q_{t-L}$ (placed $L$ periods ago)};
+  \draw[invdemandflow] (stk) -- (dem)
+    node[midway,above=3pt,invlabel,invblue] {\ding{185}\, serve\\$\min(I_t,D_t)$};
+  \draw[invlostflow] (dem) -- (lost);
 
-  \node[invevsource,minimum width=24mm,minimum height=14mm] (arrival) at (0.95,0.55)
-    {arrival\\$q_{t-L}$};
-  \node[invevstock,minimum width=28mm,minimum height=14mm] (state) at (3.55,0.55)
-    {observe\\$\mathbf S_t$};
-  \node[invmiddle,minimum width=30mm,minimum height=14mm,font=\small] (order) at (6.35,0.55)
-    {order\\$q_t=\pi_{\btheta}(\mathbf S_t)$};
-  \node[invevdemand,minimum width=24mm,minimum height=14mm] (demand) at (9.15,0.55)
-    {demand\\$D_t$};
-  \node[invoutput,minimum width=34mm,minimum height=14mm,font=\small] (outcome) at (12.05,0.55)
-    {outcome\\on hand $(I_t-D_t)^+$\\lost $(D_t-I_t)^+$};
-
-  \draw[invmaterial] (arrival.east) -- (state.west);
-  \draw[invflow] (state.east) -- (order.west);
-  \draw[invdemandflow] (order.east) -- (demand.west);
-  \draw[invdemandflow] (demand.east) -- (outcome.west);
-
-  \node[invcost,draw=invgray,fill=black!3,rounded corners=3pt,inner sep=4pt,
-        minimum width=29mm,minimum height=13mm] (setup) at (6.35,-1.05)
-    {setup\\$K\mathbf{1}\{q_t>0\}$\\{\scriptsize vanilla: $K=0$}};
-  \node[invcost,draw=invblue!60,fill=invblue!6,rounded corners=3pt,inner sep=4pt,
-        minimum width=30mm,minimum height=13mm] (holding) at (10.15,-1.05)
+  \node[invcost,invgray,left=3pt of sup.west,align=center]
+    {setup\\fixed: $K\mathbf{1}\{q_t>0\}$\\vanilla: $0$};
+  \node[invcost,invblue] at (6.4,-3.6)
     {holding\\$h(I_t-D_t)^+$};
-  \node[invcost,draw=invred!65,fill=invred!6,rounded corners=3pt,inner sep=4pt,
-        minimum width=30mm,minimum height=13mm] (penalty) at (13.25,-1.05)
-    {lost-sales\\$p(D_t-I_t)^+$};
+  \node[invcost,invred,right=3pt of lost.east]
+    {penalty\\$p(D_t-I_t)^+$};
 
-  \draw[invrequest] (order.south) -- (setup.north);
-  \draw[invflow,draw=black!45] (outcome.south west) -- (holding.north);
-  \draw[invlostflow,draw=black!45] (outcome.south east) -- (penalty.north);
-
-  \node[invstage,draw=black!35,fill=black!3,minimum width=89mm,minimum height=11mm,
-        font=\small] (total) at (9.75,-2.45)
-    {$c_t^K=h(I_t-D_t)^+ + p(D_t-I_t)^+ + K\mathbf{1}\{q_t>0\}$};
-
-  \draw[black!45,-{Latex[length=2.8mm,width=2.0mm]},thick] (setup.south) -- (total.north west);
-  \draw[black!45,-{Latex[length=2.8mm,width=2.0mm]},thick] (holding.south) -- (total.north);
-  \draw[black!45,-{Latex[length=2.8mm,width=2.0mm]},thick] (penalty.south) -- (total.north east);
+  \begin{scope}[on background layer]
+    \node[invbox,fit=(current bounding box),inner sep=14pt] (box) {};
+  \end{scope}
+  \node[invblue,font=\small\bfseries,above=3pt of box.north,anchor=south]
+    {Lost-sales environment (one period): vanilla and fixed-cost};
 \end{tikzpicture}}%
+\par\vspace{6pt}\centerline{%
+  \tikz\node[draw=invblue!55,rounded corners=4pt,fill=invblue!4,inner sep=7pt]{%
+    \begin{minipage}{\dimexpr\linewidth-18pt\relax}\centering
+      {\small\bfseries\color{invblue!85}Per-period event sequence}\\[4pt]
+      {\small\begin{tabular}{@{}p{4.5cm}p{4.5cm}p{4.5cm}@{}}
+        \ding{182}\,arrival $q_{t-L}$ joins on-hand stock &
+        \ding{183}\,observe post-arrival state $\mathbf S_t$ &
+        \ding{184}\,place order request $q_t$ (setup if $K>0$ and $q_t>0$)\\[4pt]
+        \ding{185}\,demand $D_t$ served from on-hand $I_t$ &
+        \ding{186}\,unmet demand \emph{lost} &
+        \ding{187}\,charge holding $+$ lost-sales, plus setup in fixed-cost\\
+      \end{tabular}}
+    \end{minipage}};}\par
 }

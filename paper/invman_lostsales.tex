@@ -51,6 +51,7 @@
 \usepackage{hyperref}
 \usepackage{xcolor}
 \usepackage{tikz}
+\usepackage{pifont}
 \usepackage{tabularx}
 \usepackage{pdflscape}
 \usepackage{float}
@@ -224,7 +225,7 @@ where $\pi_\ell(\mathbf x)$ is the routing path probability. Figure~\ref{fig:dec
 \begin{figure}[H]
 \centering
 \SoftTreeFigure
-\caption{Soft-tree decoder with depth 2. Each leaf proposes a quantity, the soft path probabilities form a weighted vote, and the resulting continuous order is rounded.}
+\caption{Soft-tree decoder with depth 2. The action is the rounded mixture of local leaf quantities, weighted by soft routing probabilities.}
 \label{fig:decoder-tree}
 \end{figure}
 
