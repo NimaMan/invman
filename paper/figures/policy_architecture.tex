@@ -277,7 +277,7 @@
         node[midway,above=3pt,ltlabel] {\ding{185}\, serve\\$\min(I_t,D_t)$};
   \draw[lostflow] (dem) -- (lost);
 
-  \node[costK,left=3pt of sup.west] {order\\cost $c\,q_t$};
+  \node[costK,left=3pt of sup.west] {ordering\\cost $0$};
   \node[costH] (hcost) at (6.4,-3.6) {holding\\$h\,(I_t-D_t)^+$};
   \node[costP,right=3pt of lost.east] {penalty\\$p\,(D_t-I_t)^+$};
 
@@ -323,7 +323,7 @@
   \draw[lostflow] (dem) -- (lost);
 
   \node[costK,left=3pt of sup.west,align=center]
-        {order cost\\$c\,q_t + K\,\mathbf{1}\{q_t>0\}$};
+        {setup cost\\$K\,\mathbf{1}\{q_t>0\}$};
   \node[costH] (hcost) at (6.4,-3.6) {holding\\$h\,(I_t-D_t)^+$};
   \node[costP,right=3pt of lost.east] {penalty\\$p\,(D_t-I_t)^+$};
 
