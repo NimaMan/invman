@@ -133,18 +133,24 @@ This observation motivates our main methodological choice: the action parameteri
 
 Our contributions are as follows. First, we provide a focused CMA-ES study for both vanilla and fixed-cost lost-sales inventory control. Second, we show that compact learned policies are competitive with strong lost-sales heuristics on broad benchmark surfaces: learned policies are best in 22 of 24 vanilla instances and in 47 of 48 fixed-cost instances among the available comparators. Third, we show that the decoder matters more than raw network size. Soft trees and linear ordinal decoders are sufficient for many vanilla instances, while gated neural ordinal decoders dominate the fixed-cost setting. Fourth, we retain the practical advantages of compact policies: the learned controllers carry tens to a few hundred parameters and can be evaluated by simple arithmetic at run time.
 
-The remainder of the paper is organized as follows. Section~\ref{sec:literature} reviews learned inventory policies, evolution strategies, and lost-sales heuristics. Section~\ref{sec:policy_representation} describes the policy interface and CMA-ES optimization loop. Section~\ref{sec:lost_sales} formulates the vanilla and fixed-cost lost-sales problems. Section~\ref{sec:experiments} reports the benchmark setup and results. Section~\ref{sec:managerial_insights} discusses practical implications, and Section~\ref{sec:conclusions} concludes. The appendix records the validation anchors for the vanilla and fixed-cost simulators.
+The remainder of the paper is organized as follows. Section~\ref{sec:literature} reviews learned inventory policies, evolution strategies, and lost-sales heuristics. Section~\ref{sec:policy_representation} describes the policy interface and CMA-ES optimization loop. Section~\ref{sec:lost_sales} formulates the vanilla and fixed-cost lost-sales problems. Section~\ref{sec:experiments} reports the benchmark setup and results. Section~\ref{sec:managerial_insights} discusses practical implications, and Section~\ref{sec:conclusions} concludes.
 
 \section{Literature}
 \label{sec:literature}
 
-The lost-sales inventory problem is a classical benchmark for difficult stochastic inventory control. The system loses unmet demand instead of backordering it, and the pipeline of outstanding orders makes the state dimension grow with the lead time. \citet{Zipkin2008OldSystems} reviews old and new methods for lost-sales systems, and \citet{Xin2021CappedBaseStock} studies the performance of capped base-stock policies. With fixed ordering costs, the relevant heuristic family changes to threshold and batching policies such as $(s,S)$, $(s,nQ)$, and modified $(s,S,q)$ policies \citep{Bijvank2015ParametricPolicies}.
+In this paper, we learn linear and neural network ordering policies for inventory problems using a form of machine learning: Covariance Matrix Adaptation Evolution Strategy (CMA-ES). We first discuss the relatively recent adoption of neural network inventory policies, and DRL algorithms for training those policies. Then we discuss other machine learning methods for training neural network policies, including CMA-ES.
 
-Recent inventory-control research has increasingly adopted DRL and related learned-policy methods. \citet{gijsbrechts2022drl} benchmark A3C on lost sales, dual sourcing, and multi-echelon inventory control; \citet{boute2022deep} provide a broader roadmap for DRL in inventory management; and subsequent work explores larger networks and richer inventory settings \citep{kaynov2024owmr}. These methods demonstrate flexibility, but the typical state-action-reward learning loop requires credit assignment to individual actions and substantial hyperparameter choices.
+Many classical inventory problems can be trivially modelled as a MDP, but those MDPs are often computationally intractable because of the curse of dimensionality. There are several approaches for arriving at satisfactory solutions for such intractable MDPs, such as problem-specific analytical \emph{heuristics}, e.g. $(S,Q)$ policies. To overcome limitations of such heuristics, recent research has proposed to adopt DRL for inventory control. A key idea in DRL is the use of neural networks to represent policies and/or value functions \citep{boute2022deep}. Because neural networks can represent a very wide range of functions, their adoption potentially eliminates the need for defining appropriate problem specific strategies: To represent an inventory policy as a neural network, states of the MDP are interpreted as vectors that will be used as input to the neural network, while the output will be interpreted as a distribution over the possible actions, e.g. order sizes, see \cite{boute2022deep} for a detailed discussion.
 
-Evolution strategies provide a simpler policy-search alternative. CMA-ES adapts a full covariance matrix over a Gaussian search distribution and is effective on non-convex, non-smooth, and ill-conditioned optimization landscapes \citep{Hansen2001CompletelyStrategies}. \citet{Salimans2017EvolutionLearning} show that evolution strategies can optimize neural-network policies in large control problems. In inventory control, evolutionary methods have often been used to tune parameters of fixed-form heuristics. Our use is different: we learn the ordering policy itself, but keep the policy compact and structured enough to interpret.
+DRL is regarded as a promising research direction for inventory applications, and a range of Reinforcement Learning algorithms has been successfully applied to a variety of problems. Deep Q Networks (DQN) is amongst the earliest DRL algorithms, and is successfully applied to the beer game \citep{oroojlooyjadid2022deep} and to perishable inventory control \citep{deMoor2022perishable}. The flexibility of DRL algorithms to adapt to different problems was convincingly demonstrated with the application of A3C to dual sourcing, lost sales, and one-warehouse multi-retailer problems \citep{gijsbrechts2022drl}. Recent work is increasingly adopting proximal policy optimization (PPO), for example for the joint ordering problem \citep{vanvuchelen2020jrp}, the asymmetric one-warehouse multi-retailer problem \citep{kaynov2024owmr}, stochastic capacitated lot sizing \citep{vanhezewijk2023using}, and inventory control for non-stationary stochastic demand \citep{dehaybe2024deep}. \cite{temizoz2025dcl} propose a different algorithm that is specifically designed for highly stochastic models, viz. Deep Controlled Learning (DCL), and demonstrate superior results for several classical inventory models \citep[see also][]{van2025scalable}. DQN, A3C, PPO, and DCL, although differing in their specific mechanisms, all utilize state-action-reward sequences as the foundational structure for learning and optimizing policies in Reinforcement Learning environments. That is, these algorithms involve the attribution of rewards obtained over some simulation trajectory to individual actions taken in that trajectory, and subsequently the tuning of neural network parameters to promote the use of actions that are deemed to output favorable actions.
 
-This paper also connects to work on action representations. A neural or linear backbone is only one part of a learned controller; the map from latent outputs to feasible orders can impose or remove useful structure. In lost-sales systems without fixed costs, a plain state-dependent quantity is often enough. With setup costs, the decoder must represent the order/no-order boundary. Our experiments make this action-geometry issue visible by comparing direct, ordinal, and soft-tree decoders under the same CMA-ES optimization loop.
+CMA-ES is a global optimization method that has been successfully used for a wide range of contexts \citep{Hansen1996AdaptingAdaptation,Hansen2001CompletelyStrategies,Hansen2006TheReview}. CMA-ES was not originally proposed as a method for learning neural network policies, but recent work demonstrated its applicability for this purpose \citep{Salimans2017EvolutionLearning}. CMA-ES has fewer hyperparameters and its design inherently encourages exploration, making it potentially easier to tune and more robust. Unlike DRL algorithms, which rely on gradient information and backpropagation, CMA-ES belongs to the broader class of evolutionary algorithms that are population-based and gradient-free, mimicking natural selection through iterative sampling and adaptation. Its ability to adapt the full covariance matrix distinguishes it from simpler Evolution Strategies, enabling more efficient search in complex, high-dimensional spaces, such as the one considered in this paper.
+
+Within the inventory context, CMA-ES and other evolutionary algorithms have been adopted to optimize the parameters of problem-specific heuristics, e.g. $(S,Q)$ policies \citep{Bosman2007InventoryOptimization}. However, we are not aware of applications of evolutionary algorithms to learn generic ordering policies. In fact, the vast majority of machine learning algorithms applied to optimize generic ordering policies have adopted classical DRL algorithms focusing on state-action-reward signals, such as PPO and A3C. We next discuss some salient exceptions.
+
+To optimize inventory control for a large market-place, \cite{madeka2022deepinv} propose to apply a form of supervised learning. In particular, they directly apply back propagation to a simulation model of an inventory system, based on real-world estimated demand data. \cite{vanderhaar2023supervised} similarly model an inventory problem as a supervised learning problem, but rather than attempting to model the entire problem as a differential simulator, they propose a method to assign costs to each individual decision, extending the applicability of data-driven methods \citep{ban2019big} to cases where it is difficult to find a simple closed-form policy. Finally, \cite{amiri2023adaptive} adopt multi-armed bandit methods and change-point detection for data-driven policy optimization.
+
+Our paper similarly diverges from the standard methods for training generic (neural network) policies, and is, to our knowledge, the first to adopt evolutionary algorithms for the purpose. The learning of generic ordering policies for inventory systems is a nascent field, and as such it benefits from experimentation with a range of methods, to gain a good overview of strengths and limitations of various method, both in terms of performance and in terms of interpretability.
 
 \section{Policy Representation and Optimization}
 \label{sec:policy_representation}
@@ -439,53 +445,6 @@ This paper studies CMA-ES-trained compact policies for both the classical lost-s
 The main conclusion is architectural. For vanilla lost sales, small trees and linear ordinal decoders often suffice. With fixed ordering costs, gated decoders become decisive because the policy must represent the order/no-order boundary. This finding shifts the paper's emphasis from simply using smaller neural networks to designing the right action parameterization for the inventory economics.
 
 CMA-ES remains attractive because it directly optimizes simulated long-run average cost, requires few hyperparameters, and does not need value-function approximation or reward shaping. Future work should study seed robustness for the few diverged learned cells, investigate restart strategies for high setup-cost regimes, and extend the decoder-design perspective to data-limited and nonstationary lost-sales settings.
-
-\appendix
-
-\section{Environment Validation}
-\label{app:validation}
-
-Before relying on the simulators and heuristic stacks for learned-policy comparisons, we validate the implementation against published or reference lost-sales rows. These checks are implementation-fidelity anchors, not learned-policy results.
-
-\subsection{Vanilla lost-sales validation}
-
-For the canonical Poisson instance with $h=1$, $p=4$, $L=4$, and $D_t\sim\mathrm{Poisson}(5)$, the heuristic costs match the reference values used in the lost-sales literature \citep{Zipkin2008OldSystems,Xin2021CappedBaseStock} at the precision reported in Table~\ref{tab:vanilla-lost-sales-validation}.
-
-\begin{table}[!htbp]
-\centering
-\caption{Published/reference vanilla lost-sales validation example for the canonical Poisson-demand instance.}
-\label{tab:vanilla-lost-sales-validation}
-\begin{tabular}{lll}
-\toprule
-Quantity & Published/reference cost & Reproduced cost \\
-\midrule
-optimal & 4.73 & 4.73 (catalog reference) \\
-myopic-1 & 5.06 & 5.0569 \\
-myopic-2 & 4.82 & 4.8208 \\
-SVBS & 5.83 & 5.8153 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\subsection{Fixed-cost lost-sales validation}
-
-For fixed-cost lost sales, we validate against the published example of \citet{Bijvank2015ParametricPolicies}. Their Table~1 reports a Poisson-demand instance with $L=2$, $p=14$, $K=5$, $h=1$, and mean demand $5$. Table~\ref{tab:fixed-cost-validation} shows that the reproduced exact costs match the published values to the table precision.
-
-\begin{table}[!htbp]
-\centering
-\caption{Published fixed-cost lost-sales validation example from \citet{Bijvank2015ParametricPolicies} and reproduced exact average costs for the reported heuristic parameters.}
-\label{tab:fixed-cost-validation}
-\begin{tabular}{llll}
-\toprule
-Policy & Reported parameters & Published cost & Reproduced cost \\
-\midrule
-optimal & --- & 11.46 & 11.4631 \\
-$(s,S)$ & $(17,23)$ & 11.62 & 11.6181 \\
-$(s,nQ)$ & $(17,7)$ & 11.56 & 11.5552 \\
-modified $(s,S,q)$ & $(17,23,7)$ & 11.50 & 11.4974 \\
-\bottomrule
-\end{tabular}
-\end{table}
 
 \bibliographystyle{elsarticle-harv}
 \bibliography{references}
